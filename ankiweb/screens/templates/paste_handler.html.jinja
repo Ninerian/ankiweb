@@ -8,7 +8,7 @@ if(!img&&!html&&!text)return;
 e.preventDefault();e.stopImmediatePropagation();
 if(img){var f=new FormData();f.append('file',img,img.name||'paste.png');
 fetch('/upload_media',{method:'POST',body:f}).then(function(r){return r.json();})
-.then(function(j){window.pasteHTML('<img src="'+j.filename+'">',false,false);});}
+.then(function(j){window.pasteHTML('<img src="'+j.filename+'" alt="">',false,false);});}
 else if(html){window.pasteHTML(html,false,false);}
 else{var s=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
 .replace(/\n/g,'<br>');window.pasteHTML(s,false,false);}

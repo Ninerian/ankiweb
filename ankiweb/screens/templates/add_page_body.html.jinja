@@ -6,7 +6,7 @@ body{padding-top:84px}
 <div id='add-chrome'>
 <label>{{ tr.decks_deck() }} <select id='add-deck' onchange="window.pycmd('setdeck:'+this.value)">{% for d in decks %}<option value='{{ d.id }}'{% if d.selected %} selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></label>
 <label>{{ tr.notetypes_type() }} <select id='add-notetype' onchange="window.__ankiwebNotetypeId=this.value;window.pycmd('setnotetype:'+this.value)">{% for m in notetypes %}<option value='{{ m.id }}'{% if m.selected %} selected{% endif %}>{{ m.name }}</option>{% endfor %}</select></label>
-<button id='add-btn' onclick='ankiwebAddNote()'>{{ tr.actions_add_note() }}</button>
+<button type='button' id='add-btn' onclick='ankiwebAddNote()'>{{ tr.actions_add_note() }}</button>
 <a href='/deckbrowser'>{{ tr.actions_close() }}</a><span id='add-toast'></span>
 </div>
 <script>(function(){

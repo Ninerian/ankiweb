@@ -32,15 +32,15 @@
 <input id='search' type='text' autofocus placeholder='{{ tr.actions_search() }}…' value="{{ query }}" onkeydown="if(event.key==='Enter'){window.pycmd('search:'+this.value);}">
 <span id='browser-status'></span>
 <div id='browser-actions'>
-<button onclick="ankiwebAct('suspend')">{{ tr.studying_suspend() }}</button>
-<button onclick="ankiwebAct('unsuspend')">Unsuspend</button>
-<button onclick="ankiwebAct('forget')">{{ tr.actions_forget_card() }}</button>
-<button onclick="ankiwebActP('setdue','Due in days (e.g. 0, 3, 1-7):')">{{ tr.actions_set_due_date() }}</button>
-<button onclick="ankiwebActP('changedeck','Move to deck:')">{{ tr.browsing_change_deck() }}</button>
-<button onclick="ankiwebActP('addtag','Add tag:')">Add Tag</button>
-<button onclick="ankiwebActP('removetag','Remove tag:')">{{ tr.actions_remove_tag() }}</button>
-<button onclick="if(confirm('Delete selected notes?'))ankiwebAct('delete')">{{ tr.actions_delete() }}</button>
-<button onclick="ankiwebCardInfo()">{{ tr.actions_card_info() }}</button>
+<button type='button' onclick="ankiwebAct('suspend')">{{ tr.studying_suspend() }}</button>
+<button type='button' onclick="ankiwebAct('unsuspend')">Unsuspend</button>
+<button type='button' onclick="ankiwebAct('forget')">{{ tr.actions_forget_card() }}</button>
+<button type='button' onclick="ankiwebActP('setdue','Due in days (e.g. 0, 3, 1-7):')">{{ tr.actions_set_due_date() }}</button>
+<button type='button' onclick="ankiwebActP('changedeck','Move to deck:')">{{ tr.browsing_change_deck() }}</button>
+<button type='button' onclick="ankiwebActP('addtag','Add tag:')">Add Tag</button>
+<button type='button' onclick="ankiwebActP('removetag','Remove tag:')">{{ tr.actions_remove_tag() }}</button>
+<button type='button' onclick="if(confirm('Delete selected notes?'))ankiwebAct('delete')">{{ tr.actions_delete() }}</button>
+<button type='button' onclick="ankiwebCardInfo()">{{ tr.actions_card_info() }}</button>
 </div></div>
 <div id='browser-main'>
 <div id='sidebar'>{{ sidebar(decks, tags) }}</div>

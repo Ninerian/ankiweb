@@ -12,13 +12,13 @@
            &nbsp; {{ tr.scheduling_order() }} {{ order_select('order1', order1, labels) }}</div>
     </fieldset>
     <div><label><input type='checkbox' id="second" {% if has2 %}checked{% endif %} onchange='onSecond()'> {{ tr.decks_enable_second_filter() }}</label></div>
-    <fieldset id="filter2" {% if not has2 %}style='display:none;'{% endif %}><legend>{{ tr.decks_filter_2() }}</legend>
+    <fieldset id="filter2" {% if not has2 %}style="display:none;"{% endif %}><legend>{{ tr.decks_filter_2() }}</legend>
       <div><label>{{ tr.actions_search() }} <input type='text' id="search2" value="{{ search2 }}" size='40'></label></div>
       <div><label>{{ tr.decks_limit_to() }} <input type='number' id="limit2" value='{{ limit2 }}' min='1' style='width:6em;'></label>
            &nbsp; {{ tr.scheduling_order() }} {{ order_select('order2', order2, labels) }}</div>
     </fieldset>
     <div style='margin-top:8px;'><label><input type='checkbox' id="resched" {% if resched %}checked{% endif %} onchange='onResched()'> {{ tr.decks_reschedule_cards_based_on_my_answers() }}</label></div>
-    <fieldset id="previewblock" {% if resched %}style='display:none;'{% endif %}><legend>Preview delays (seconds)</legend>
+    <fieldset id="previewblock" {% if resched %}style="display:none;"{% endif %}><legend>Preview delays (seconds)</legend>
       <label>{{ tr.studying_again() }} <input type='number' id="preview_again" value='{{ preview_again }}' min='0' style='width:6em;'></label>
       <label>{{ tr.studying_hard() }} <input type='number' id="preview_hard" value='{{ preview_hard }}' min='0' style='width:6em;'></label>
       <label>{{ tr.studying_good() }} <input type='number' id="preview_good" value='{{ preview_good }}' min='0' style='width:6em;'></label>
