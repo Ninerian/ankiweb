@@ -1,20 +1,11 @@
 from __future__ import annotations
-import html
 import json
 from ankiweb.i18n import tr
+from ankiweb.screens import templating
 from ankiweb.screens.editor import _munge, paste_handler_js, editor_links_js
 from ankiweb.ankiconnect.actions._helpers import check_addable
 from ankiweb.collection_service import op_changes_to_flags
 
-_STYLE = (
-    "<style>"
-    # sits BELOW the global top toolbar (render_page, 34px tall, z-index 2000)
-    "#add-chrome{position:fixed;top:42px;left:0;right:0;height:38px;display:flex;gap:8px;"
-    "align-items:center;padding:4px 8px;background:#f4f4f4;border-bottom:1px solid #ccc;z-index:1000}"
-    "body{padding-top:84px}"
-    "#add-toast{color:#080;margin-left:8px}"
-    "</style>"
-)
 
 
 def _empty_load(col, ntid: int) -> dict:
@@ -49,54 +40,24 @@ def load_data_for_spec(col, note_spec) -> dict | None:
     return d
 
 
-def add_page_body(deck_opts: str, nt_opts: str) -> str:
-    return (
-        _STYLE +
-        "<div id='add-chrome'>"
-        f"<label>{tr.decks_deck()} <select id='add-deck' "
-        "onchange=\"window.pycmd('setdeck:'+this.value)\">" + deck_opts + "</select></label>"
-        f"<label>{tr.notetypes_type()} <select id='add-notetype' "
-        "onchange=\"window.__ankiwebNotetypeId=this.value;window.pycmd('setnotetype:'+this.value)\">" + nt_opts + "</select></label>"
-        f"<button id='add-btn' onclick='ankiwebAddNote()'>{tr.actions_add_note()}</button>"
-        f"<a href='/deckbrowser'>{tr.actions_close()}</a><span id='add-toast'></span>"
-        "</div>"
-        "<script>(function(){"
-        "window.setupEditor('add');"
-        "var _nt=document.getElementById('add-notetype');"
-        "if(_nt)window.__ankiwebNotetypeId=_nt.value;"
-        "var b=window.__ankiwebBridge;"
-        "function readAllFields(){"
-        "var cs=Array.prototype.slice.call(document.querySelectorAll('.field-container'));"
-        "cs.sort(function(a,b){return Number(a.dataset.index)-Number(b.dataset.index);});"
-        "return cs.map(function(fc){var h=fc.querySelector('.rich-text-editable');"
-        "if(!h||!h.shadowRoot)return '';"
-        "var e=h.shadowRoot.querySelector('[contenteditable]');return e?e.innerHTML:'';});}"
-        "window.ankiwebAddNote=function(){window.pycmd('addnote:'+JSON.stringify(readAllFields()));};"
-        "b.registerCalls({"
-        "ankiwebLoadNote:function(d){require('anki/ui').loaded.then(function(){"
-        "window.setFields(d.fields);window.setIsImageOcclusion(d.io);window.setFonts(d.fonts);"
-        "window.setNotetypeMeta(d.meta);window.setNoteId(d.noteId);window.setTags(d.tags);"
-        "window.triggerChanges();});},"
-        "ankiwebToast:function(m){var t=document.getElementById('add-toast');if(t){"
-        "t.textContent=String(m);setTimeout(function(){t.textContent='';},2000);}}"
-        "});"
-        "require('anki/ui').loaded.then(function(){window.pycmd('addReady');});"
-        + paste_handler_js()
-        + editor_links_js() +
-        "})();</script>"
+def add_page_body(decks, notetypes, paste_handler_js: str, editor_links_js: str) -> str:
+    return templating.render(
+        "add_page_body.html",
+        decks=decks,
+        notetypes=notetypes,
+        paste_handler_js=paste_handler_js,
+        editor_links_js=editor_links_js,
     )
 
 
 def render_add_html(col) -> str:
     cur_nt = col.models.current()["id"]
     cur_did = col.decks.get_current_id()
-    decks = "".join(
-        f"<option value='{d.id}'{' selected' if d.id == cur_did else ''}>{html.escape(d.name)}</option>"
-        for d in col.decks.all_names_and_ids())
-    nts = "".join(
-        f"<option value='{m.id}'{' selected' if m.id == cur_nt else ''}>{html.escape(m.name)}</option>"
-        for m in col.models.all_names_and_ids())
-    return add_page_body(decks, nts)
+    decks = [{"id": d.id, "name": d.name, "selected": d.id == cur_did}
+             for d in col.decks.all_names_and_ids()]
+    notetypes = [{"id": m.id, "name": m.name, "selected": m.id == cur_nt}
+                 for m in col.models.all_names_and_ids()]
+    return add_page_body(decks, notetypes, paste_handler_js(), editor_links_js())
 
 
 def make_add_handler(service, hub):

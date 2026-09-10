@@ -1,6 +1,5 @@
 from __future__ import annotations
-import html
-from ankiweb.i18n import tr
+from ankiweb.screens import templating
 from ankiweb.screens.congrats import render_congrats_html
 
 
@@ -56,10 +55,6 @@ def make_overview_handler(service, hub):
     return handler
 
 
-def _number_cell(n: int, cls: str) -> str:
-    return f"<td align='center'><span class='{cls}'>{n}</span></td>"
-
-
 def render_overview_html(col) -> str:
     deck = col.decks.current()
     new, learn, review = col.sched.counts()
@@ -68,54 +63,20 @@ def render_overview_html(col) -> str:
         # alternative to the private col.sched._is_finished().
         return render_congrats_html(col)
 
-    name = html.escape(deck["name"])
-
-    desc = ""
     raw = deck.get("desc", "")
-    if raw:
-        rendered = col.render_markdown(raw) if deck.get("md") else html.escape(raw)
-        desc = f"<div class='descfont descmid description'>{rendered}</div>"
+    desc = col.render_markdown(raw) if (raw and deck.get("md")) else raw
+    desc_is_markdown = bool(deck.get("md"))
 
-    table = (
-        "<table cellspacing='0' cellpadding='5' class='overview-counts'><tr>"
-        f"<th>{tr.statistics_counts_new_cards()}</th><th>{tr.statistics_counts_learning_cards()}</th>"
-        f"<th>{tr.studying_to_review()}</th></tr><tr>"
-        f"{_number_cell(new, 'new-count')}"
-        f"{_number_cell(learn, 'learn-count')}"
-        f"{_number_cell(review, 'review-count')}"
-        "</tr></table>"
-    )
-    study = ("<button id='study' class='but' autofocus "
-             f"onclick=\"pycmd('study');return false;\">{tr.studying_study_now()}</button>")
-
-    bottom = [f"<button onclick='pycmd(\"opts\")'>{tr.actions_options()}</button>"]
-    if deck.get("dyn"):
-        bottom.append(f"<button onclick='pycmd(\"refresh\")'>{tr.actions_rebuild()}</button>")
-        bottom.append(f"<button onclick='pycmd(\"empty\")'>{tr.studying_empty()}</button>")
-    else:
-        bottom.append(f"<button onclick='pycmd(\"studymore\")'>{tr.actions_custom_study()}</button>")
-    if col.sched.have_buried():
-        bottom.append(f"<button onclick='pycmd(\"unbury\")'>{tr.studying_unbury()}</button>")
-    bottom.append("<button onclick=\"document.getElementById('descedit').style.display=''\">"
-                  f"{tr.studying_edit()} {tr.fields_description()}</button>")
-    bottom.append(f"<button onclick='pycmd(\"decks\")'>{tr.actions_decks()}</button>")
-
-    md_checked = "checked" if deck.get("md") else ""
-    descedit = (
-        "<div id='descedit' style='display:none;margin-top:10px;'>"
-        f"<textarea id='descbox' rows='4' cols='50'>{html.escape(raw)}</textarea><br>"
-        f"<label><input type='checkbox' id='descmd' {md_checked}> Render as markdown</label><br>"
-        f"<button onclick='saveDesc()'>{tr.actions_save()}</button> "
-        f"<button onclick=\"document.getElementById('descedit').style.display='none'\">{tr.actions_cancel()}</button>"
-        "</div>"
-        "<script>function saveDesc(){"
-        "var d=document.getElementById('descbox').value,"
-        "m=document.getElementById('descmd').checked;"
-        "pycmd('setdesc:'+JSON.stringify({desc:d,md:m}));}</script>"
-    )
-
-    return (
-        f"<center><h3>{name}</h3>{desc}{table}"
-        f"<div class='studybtn'>{study}</div>"
-        f"<div class='bottom-buttons'>{''.join(bottom)}</div>{descedit}</center>"
+    return templating.render(
+        "overview.html",
+        name=deck["name"],
+        desc=desc,
+        desc_is_markdown=desc_is_markdown,
+        raw_desc=raw,
+        md_checked=bool(deck.get("md")),
+        new=new,
+        learn=learn,
+        review=review,
+        is_dyn=bool(deck.get("dyn")),
+        have_buried=col.sched.have_buried(),
     )

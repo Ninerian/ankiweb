@@ -1,60 +1,51 @@
 from __future__ import annotations
-import html
 
 from ankiweb.i18n import tr
+from ankiweb.screens import templating
 
 
 def render_tools_html(col) -> str:
     """Server-rendered Tools page: Check Database, Check Media, Empty Cards (each a
     button + an empty result <div> filled by the WS handler via ankiwebToolsResult),
     plus a link to Manage Note Types. Mirrors the E4/E5 server-rendered screens."""
-    L_checkdb = html.escape(tr.database_check_title())          # "Check Database"
-    L_checkmedia = html.escape(tr.media_check_check_media_action())  # "Check Media"
-    L_emptycards = html.escape(tr.qt_misc_empty_cards())        # "Empty Cards..."
-    L_notetypes = html.escape(tr.qt_misc_manage_note_types())   # "Manage Note Types"
-
-    return f"""
-<div class='tools'>
-  <h3>Tools</h3>
-  <section style='margin-bottom:16px;'>
-    <button type='button' onclick="pycmd('checkdb')">{L_checkdb}</button>
-    <div id='res-db'></div>
-  </section>
-  <section style='margin-bottom:16px;'>
-    <button type='button' onclick="pycmd('checkmedia')">{L_checkmedia}</button>
-    <div id='res-media'></div>
-  </section>
-  <section style='margin-bottom:16px;'>
-    <button type='button' onclick="pycmd('emptycards')">{L_emptycards}</button>
-    <div id='res-empty'></div>
-  </section>
-  <p><a href='/notetypes'>{L_notetypes}</a></p>
-</div>
-<script>
-window.ankiwebToolsResult=function(which,html){{var m={{db:'res-db',media:'res-media',empty:'res-empty'}};var d=document.getElementById(m[which]);if(d)d.innerHTML=html;}};
-</script>
-"""
+    return templating.render(
+        "tools.html",
+        checkdb_label=tr.database_check_title(),
+        checkmedia_label=tr.media_check_check_media_action(),
+        emptycards_label=tr.qt_misc_empty_cards(),
+        notetypes_label=tr.qt_misc_manage_note_types(),
+    )
 
 
 def _media_result_html(mc) -> str:
     """Build the Check Media result fragment: the report, a Delete-unused button when
-    there are unused files, and short escaped previews of the unused/missing names."""
-    parts = ["<pre>" + html.escape(mc.report) + "</pre>"]
+    there are unused files, and short previews of the unused/missing names."""
     unused = list(mc.unused)
     missing = list(mc.missing)
-    if unused:
-        L_del = html.escape(tr.media_check_delete_unused())
-        parts.append(
-            f"<button type='button' onclick=\"pycmd('deleteunused')\">"
-            f"{L_del} ({len(unused)})</button>")
-        preview = ", ".join(html.escape(n) for n in unused[:10])
-        more = "" if len(unused) <= 10 else f" (+{len(unused) - 10})"
-        parts.append(f"<div class='unused-list'>{preview}{more}</div>")
-    if missing:
-        preview = ", ".join(html.escape(n) for n in missing[:10])
-        more = "" if len(missing) <= 10 else f" (+{len(missing) - 10})"
-        parts.append(f"<div class='missing-list'>{preview}{more}</div>")
-    return "".join(parts)
+    return templating.render(
+        "tools_media_result.html",
+        report=mc.report,
+        unused=unused,
+        missing=missing,
+        delete_label=tr.media_check_delete_unused(),
+    )
+
+
+def _db_result_html(report: str) -> str:
+    return templating.render("tools_db_result.html", report=report)
+
+
+def _emptycards_result_html(report: str, cids: list) -> str:
+    return templating.render(
+        "tools_emptycards_result.html",
+        report=report,
+        cids=cids,
+        delete_label=tr.empty_cards_delete_button(),
+    )
+
+
+def _emptycards_deleted_html(n: int) -> str:
+    return templating.render("tools_emptycards_deleted.html", n=n)
 
 
 def make_tools_handler(service, hub):
@@ -74,7 +65,7 @@ def make_tools_handler(service, hub):
             report, ok = await service.run(lambda col: col.fix_integrity())
             await hub.push_call(
                 "tools", "ankiwebToolsResult",
-                ["db", "<pre>" + html.escape(report) + "</pre>"])
+                ["db", _db_result_html(report)])
             return None
 
         if cmd == "checkmedia":
@@ -97,13 +88,7 @@ def make_tools_handler(service, hub):
             rep = await service.run(lambda col: col.get_empty_cards())
             cids = [cid for n in rep.notes for cid in n.card_ids]
             state["empty"] = cids
-            parts = ["<pre>" + html.escape(rep.report) + "</pre>"]
-            if cids:
-                L_del = html.escape(tr.empty_cards_delete_button())
-                parts.append(
-                    f"<button type='button' onclick=\"pycmd('emptycards_delete')\">"
-                    f"{L_del} ({len(cids)})</button>")
-            await hub.push_call("tools", "ankiwebToolsResult", ["empty", "".join(parts)])
+            await hub.push_call("tools", "ankiwebToolsResult", ["empty", _emptycards_result_html(rep.report, cids)])
             return None
 
         if cmd == "emptycards_delete":
@@ -116,7 +101,7 @@ def make_tools_handler(service, hub):
             state["empty"] = []
             await hub.push_call(
                 "tools", "ankiwebToolsResult",
-                ["empty", f"<p>Deleted {n} empty cards</p>"])
+                ["empty", _emptycards_deleted_html(n)])
             return None
 
         return None

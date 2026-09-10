@@ -1,0 +1,35 @@
+<style>
+#add-chrome{position:fixed;top:42px;left:0;right:0;height:38px;display:flex;gap:8px;align-items:center;padding:4px 8px;background:#f4f4f4;border-bottom:1px solid #ccc;z-index:1000}
+body{padding-top:84px}
+#add-toast{color:#080;margin-left:8px}
+</style>
+<div id='add-chrome'>
+<label>{{ tr.decks_deck() }} <select id='add-deck' onchange="window.pycmd('setdeck:'+this.value)">{% for d in decks %}<option value='{{ d.id }}'{% if d.selected %} selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></label>
+<label>{{ tr.notetypes_type() }} <select id='add-notetype' onchange="window.__ankiwebNotetypeId=this.value;window.pycmd('setnotetype:'+this.value)">{% for m in notetypes %}<option value='{{ m.id }}'{% if m.selected %} selected{% endif %}>{{ m.name }}</option>{% endfor %}</select></label>
+<button id='add-btn' onclick='ankiwebAddNote()'>{{ tr.actions_add_note() }}</button>
+<a href='/deckbrowser'>{{ tr.actions_close() }}</a><span id='add-toast'></span>
+</div>
+<script>(function(){
+window.setupEditor('add');
+var _nt=document.getElementById('add-notetype');
+if(_nt)window.__ankiwebNotetypeId=_nt.value;
+var b=window.__ankiwebBridge;
+function readAllFields(){
+var cs=Array.prototype.slice.call(document.querySelectorAll('.field-container'));
+cs.sort(function(a,b){return Number(a.dataset.index)-Number(b.dataset.index);});
+return cs.map(function(fc){var h=fc.querySelector('.rich-text-editable');
+if(!h||!h.shadowRoot)return '';
+var e=h.shadowRoot.querySelector('[contenteditable]');return e?e.innerHTML:'';});}
+window.ankiwebAddNote=function(){window.pycmd('addnote:'+JSON.stringify(readAllFields()));};
+b.registerCalls({
+ankiwebLoadNote:function(d){require('anki/ui').loaded.then(function(){
+window.setFields(d.fields);window.setIsImageOcclusion(d.io);window.setFonts(d.fonts);
+window.setNotetypeMeta(d.meta);window.setNoteId(d.noteId);window.setTags(d.tags);
+window.triggerChanges();});},
+ankiwebToast:function(m){var t=document.getElementById('add-toast');if(t){
+t.textContent=String(m);setTimeout(function(){t.textContent='';},2000);}}
+});
+require('anki/ui').loaded.then(function(){window.pycmd('addReady');});
+{{ paste_handler_js | safe }}
+{{ editor_links_js | safe }}
+})();</script>

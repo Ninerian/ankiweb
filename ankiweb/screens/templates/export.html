@@ -1,0 +1,40 @@
+<div class='export'>
+  <h3>{{ tr.actions_export() }}</h3>
+  <form id='ex' method='post' action='/export'>
+    <div><label>Export: <select name='target' id='target'>
+      <option value='all'>{{ tr.browsing_whole_collection() }}</option>{% for d in decks %}<option value='{{ d.id }}'>{{ d.name }}</option>{% endfor %}</select></label></div>
+    <fieldset><legend>Format</legend>
+      <label><input type='radio' name='fmt' value='apkg' checked onchange='onFmt()'> {{ tr.exporting_anki_deck_package() }} (.apkg)</label><br>
+      <label><input type='radio' name='fmt' value='colpkg' onchange='onFmt()'> {{ tr.exporting_anki_collection_package() }} (.colpkg)</label><br>
+      <label><input type='radio' name='fmt' value='notes_csv' onchange='onFmt()'> {{ tr.exporting_notes_in_plain_text() }} (.csv)</label><br>
+      <label><input type='radio' name='fmt' value='cards_csv' onchange='onFmt()'> {{ tr.exporting_cards_in_plain_text() }} (.csv)</label>
+    </fieldset>
+    <fieldset id='pkgopts'><legend>Package options</legend>
+      <label><input type='checkbox' name='with_scheduling'> {{ tr.exporting_include_scheduling_information() }}</label><br>
+      <label><input type='checkbox' name='with_media' checked> {{ tr.exporting_include_media() }}</label><br>
+      <label><input type='checkbox' name='with_deck_configs'> {{ tr.exporting_include_deck_configs() }}</label><br>
+      <label><input type='checkbox' name='legacy' checked> {{ tr.exporting_support_older_anki_versions() }}</label>
+    </fieldset>
+    <fieldset id='csvopts' style='display:none;'><legend>CSV options</legend>
+      <label><input type='checkbox' name='with_html'> {{ tr.exporting_include_html_and_media_references() }}</label><br>
+      <label><input type='checkbox' name='with_tags' checked> {{ tr.exporting_include_tags() }}</label><br>
+      <label><input type='checkbox' name='with_deck' checked> {{ tr.exporting_include_deck() }}</label><br>
+      <label><input type='checkbox' name='with_notetype' checked> {{ tr.exporting_include_notetype() }}</label><br>
+      <label><input type='checkbox' name='with_guid'> {{ tr.exporting_include_guid() }}</label>
+    </fieldset>
+    <div style='margin-top:10px;'>
+      <button type='submit' id='go'>{{ tr.actions_export() }}</button>
+      <a href='/deckbrowser'>{{ tr.actions_cancel() }}</a>
+    </div>
+  </form>
+</div>
+<script>
+function onFmt() {
+  var f = document.querySelector("input[name='fmt']:checked").value;
+  var pkg = (f === 'apkg' || f === 'colpkg');
+  document.getElementById('pkgopts').style.display = pkg ? '' : 'none';
+  document.getElementById('csvopts').style.display = pkg ? 'none' : '';
+  document.getElementById('target').disabled = (f === 'colpkg');
+}
+onFmt();
+</script>

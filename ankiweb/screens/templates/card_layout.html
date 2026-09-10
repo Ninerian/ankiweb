@@ -1,0 +1,76 @@
+{% macro tmpl_block(tmpl) %}
+<div class='tmpl-block' data-orig='{{ tmpl.ord }}' style='border:1px solid #ccc;border-radius:6px;padding:10px;margin:10px 0;'>
+  <div><label>{{ tr.actions_name() }} <input type='text' class='tmpl-name' value="{{ tmpl.name }}" size='24'></label>
+    <button type='button' onclick='moveUp(this)'>&uarr;</button>
+    <button type='button' onclick='moveDown(this)'>&darr;</button>
+    <button type='button' onclick='deleteBlock(this)'>{{ tr.actions_delete() }}</button>
+  </div>
+  <div class='tmpl-label' style='margin-top:6px;'>{{ tr.card_templates_front_template() }}</div>
+  <textarea class='tmpl-qfmt' rows='6' style='width:100%;'>{{ tmpl.qfmt }}</textarea>
+  <div class='tmpl-label' style='margin-top:6px;'>{{ tr.card_templates_back_template() }}</div>
+  <textarea class='tmpl-afmt' rows='6' style='width:100%;'>{{ tmpl.afmt }}</textarea>
+</div>
+{% endmacro %}
+<div class='card-layout'>
+  <h3>Card Types</h3>
+  <input type='hidden' id='ntid' value='{{ ntid }}'>
+  <form id='clf' onsubmit='return false;'>
+    <div id='tmplblocks'>{% for t in templates %}{{ tmpl_block(t) }}{% endfor %}</div>
+    <div style='margin-top:8px;'>
+      <button type='button' id='addtmpl' onclick='addBlock()'>{{ tr.card_templates_add_card_type() }}</button>
+    </div>
+    <div style='margin-top:12px;'>
+      <div class='tmpl-label'>{{ tr.card_templates_template_styling() }}</div>
+      <textarea id='css' rows='8' style='width:100%;'>{{ css }}</textarea>
+    </div>
+    <div style='margin-top:10px;'>
+      <button type='button' id='save' onclick='saveLayout()'>{{ tr.actions_save() }}</button>
+      <button type='button' onclick="pycmd('cancel')">{{ tr.actions_cancel() }}</button>
+      <button type='button' id='preview' onclick="pycmd('previewlayout:'+document.getElementById('ntid').value)">{{ tr.actions_preview() }}</button>
+    </div>
+    <div id='err' style='color:#c00;margin-top:8px;'></div>
+  </form>
+</div>
+<template id='blankblock'>{{ tmpl_block({"ord": "new", "name": "", "qfmt": "", "afmt": ""}) }}</template>
+<script>
+function addBlock() {
+  var tpl = document.getElementById('blankblock');
+  var block = tpl.content.firstElementChild.cloneNode(true);
+  document.getElementById('tmplblocks').appendChild(block);
+}
+function deleteBlock(btn) {
+  var b = btn.closest('.tmpl-block');
+  b.parentNode.removeChild(b);
+}
+function moveUp(btn) {
+  var b = btn.closest('.tmpl-block');
+  var prev = b.previousElementSibling;
+  if (prev) b.parentNode.insertBefore(b, prev);
+}
+function moveDown(btn) {
+  var b = btn.closest('.tmpl-block');
+  var next = b.nextElementSibling;
+  if (next) b.parentNode.insertBefore(next, b);
+}
+function saveLayout() {
+  document.getElementById('err').textContent = '';
+  var blocks = Array.prototype.slice.call(
+    document.querySelectorAll('#tmplblocks .tmpl-block'));
+  var templates = blocks.map(function(b) {
+    var orig = b.getAttribute('data-orig');
+    return {
+      orig: (orig === 'new') ? null : parseInt(orig),
+      name: b.querySelector('.tmpl-name').value,
+      qfmt: b.querySelector('.tmpl-qfmt').value,
+      afmt: b.querySelector('.tmpl-afmt').value
+    };
+  });
+  var payload = {
+    notetypeId: parseInt(document.getElementById('ntid').value),
+    css: document.getElementById('css').value,
+    templates: templates
+  };
+  pycmd('savelayout:' + JSON.stringify(payload));
+}
+window.ankiwebCardLayoutError = function(m) { document.getElementById('err').textContent = m; };
+</script>

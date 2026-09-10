@@ -1,8 +1,7 @@
 from __future__ import annotations
 import copy
-import html
-
 from ankiweb.i18n import tr
+from ankiweb.screens import templating
 
 
 def _heading() -> str:
@@ -15,78 +14,23 @@ def _heading() -> str:
 
 
 def render_notetypes_html(col) -> str:
-    H = html.escape(_heading())
-    L_rename = html.escape(tr.actions_rename())
-    L_delete = html.escape(tr.actions_delete())
-    L_add = html.escape(tr.actions_add())
-    L_name = html.escape(tr.actions_name())
-    L_fields = html.escape(tr.notetypes_fields())
-    L_cards = html.escape(tr.notetypes_cards())
-
     rows = []
-    options = []
     for nt in col.models.all_names_and_ids():
         ntid = int(nt.id)
-        name = html.escape(nt.name)
         count = len(col.models.nids(ntid))
-        rows.append(
-            f"<tr class='nt-row' data-id='{ntid}' data-name=\"{name}\">"
-            f"<td class='nt-name'>{name}</td>"
-            f"<td class='nt-count'>{count} notes</td>"
-            f"<td><a href='/fields/{ntid}'>{L_fields}</a></td>"
-            f"<td><a href='/card-layout/{ntid}'>{L_cards}</a></td>"
-            f"<td><button type='button' onclick='ntRename({ntid})'>{L_rename}</button></td>"
-            f"<td><button type='button' onclick='ntDelete({ntid}, {count})'>{L_delete}</button></td>"
-            "</tr>"
-        )
-        options.append(f"<option value='{ntid}'>{name}</option>")
+        rows.append({"id": ntid, "name": nt.name, "count": count})
 
-    rows_html = "".join(rows)
-    options_html = "".join(options)
-
-    body = f"""
-<div class='notetypes'>
-  <h3>{H}</h3>
-  <table id='nttbl' border='1' cellpadding='6' cellspacing='0'>
-    <tbody id='ntrows'>{rows_html}</tbody>
-  </table>
-  <div id='ntadd' style='margin-top:16px;'>
-    <h4>{L_add}</h4>
-    <label>{L_name}
-      <input type='text' id='ntnewname' size='24'>
-    </label>
-    <select id='ntbase'>{options_html}</select>
-    <button type='button' onclick='ntAdd()'>{L_add}</button>
-  </div>
-  <div id='err' style='color:#c00;margin-top:8px;'></div>
-</div>
-<script>
-function ntRename(id) {{
-  document.getElementById('err').textContent = '';
-  var row = document.querySelector(".nt-row[data-id='" + id + "']");
-  var cur = row ? row.getAttribute('data-name') : '';
-  var name = window.prompt("New name:", cur);
-  if (name) pycmd('rename:' + id + ':' + name);
-}}
-function ntDelete(id, count) {{
-  document.getElementById('err').textContent = '';
-  var msg = "Delete this note type and its " + count + " note(s)?";
-  if (window.confirm(msg)) pycmd('delete:' + id);
-}}
-function ntAdd() {{
-  document.getElementById('err').textContent = '';
-  var name = document.getElementById('ntnewname').value;
-  var base = document.getElementById('ntbase').value;
-  if (name && base) pycmd('add:' + base + ':' + name);
-}}
-window.ankiwebNotetypesError = function(m) {{
-  var e = document.getElementById('err');
-  if (e) e.textContent = m; else alert(m);
-}};
-</script>
-"""
-    return body
-
+    return templating.render(
+        "notetypes.html",
+        heading=_heading(),
+        rows=rows,
+        L_rename=tr.actions_rename(),
+        L_delete=tr.actions_delete(),
+        L_add=tr.actions_add(),
+        L_name=tr.actions_name(),
+        L_fields=tr.notetypes_fields(),
+        L_cards=tr.notetypes_cards(),
+    )
 
 def make_notetypes_handler(service, hub):
     async def handler(arg: str):
