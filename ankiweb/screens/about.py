@@ -14,7 +14,7 @@ def render_about_html(settings) -> str:
         ver = "0.1.0"
     src = (getattr(settings, "source_url", "") or "").strip()
     return templating.render(
-        "about.html",
+        "about.html.jinja",
         version=ver,
         source_url=src,
         anki_src=_ANKI_SRC,

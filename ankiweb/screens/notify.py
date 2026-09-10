@@ -49,7 +49,7 @@ def render_notify_html(state, error: str = "", form=None) -> str:
         "poll_sec": cfg.poll_sec, "retry_sec": cfg.retry_sec, "scope": cfg.scope}
     scope = src.get("scope", "leaf")
     return templating.render(
-        "notify.html",
+        "notify.html.jinja",
         error=error,
         url=str(src.get("url", "")),
         token=str(src.get("token", "")),

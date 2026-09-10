@@ -38,7 +38,7 @@ def render_custom_study_html(col) -> str:
     }
 
     return templating.render(
-        "custom_study.html",
+        "custom_study.html.jinja",
         radios=radios,
         kinds=kinds,
         tags=tags,

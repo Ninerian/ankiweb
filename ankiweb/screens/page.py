@@ -28,7 +28,7 @@ def render_page(
     if toolbar is None:
         toolbar = True
     return templating.render(
-        "shell.html",
+        "shell.html.jinja",
         context=context,
         body=body,
         css_files=css_files,

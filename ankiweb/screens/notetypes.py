@@ -21,7 +21,7 @@ def render_notetypes_html(col) -> str:
         rows.append({"id": ntid, "name": nt.name, "count": count})
 
     return templating.render(
-        "notetypes.html",
+        "notetypes.html.jinja",
         heading=_heading(),
         rows=rows,
         L_rename=tr.actions_rename(),

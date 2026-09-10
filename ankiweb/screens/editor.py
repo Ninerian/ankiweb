@@ -38,7 +38,7 @@ def _save_field(col, nid: int, ord_: int, html: str):
 def paste_handler_js() -> str:
     """A document-capture paste handler that takes over from editor.js (which prevent-defaults
     paste and fires a payload-less bridgeCommand('paste')). Inserts via the editor's pasteHTML."""
-    return templating.render("paste_handler.html")
+    return templating.render("paste_handler.html.jinja")
 
 
 def editor_links_js() -> str:
@@ -46,12 +46,12 @@ def editor_links_js() -> str:
     'attach' -> a file picker -> /upload_media -> pasteHTML(img/[sound:]); 'preview' ->
     open /preview/<nid> in a new tab (browse mode only). 'fields'/'cards' are added by F5/F6.
     Everything else passes through to the real bridge (blur/key/saveTags/paste...)."""
-    return templating.render("editor_links.html")
+    return templating.render("editor_links.html.jinja")
 
 
 def editor_page_body(nid: int) -> str:
     return templating.render(
-        "editor_page_body.html",
+        "editor_page_body.html.jinja",
         nid=int(nid),
         paste_handler_js=paste_handler_js(),
         editor_links_js=editor_links_js(),

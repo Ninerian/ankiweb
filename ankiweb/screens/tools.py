@@ -9,7 +9,7 @@ def render_tools_html(col) -> str:
     button + an empty result <div> filled by the WS handler via ankiwebToolsResult),
     plus a link to Manage Note Types. Mirrors the E4/E5 server-rendered screens."""
     return templating.render(
-        "tools.html",
+        "tools.html.jinja",
         checkdb_label=tr.database_check_title(),
         checkmedia_label=tr.media_check_check_media_action(),
         emptycards_label=tr.qt_misc_empty_cards(),
@@ -23,7 +23,7 @@ def _media_result_html(mc) -> str:
     unused = list(mc.unused)
     missing = list(mc.missing)
     return templating.render(
-        "tools_media_result.html",
+        "tools_media_result.html.jinja",
         report=mc.report,
         unused=unused,
         missing=missing,
@@ -32,12 +32,12 @@ def _media_result_html(mc) -> str:
 
 
 def _db_result_html(report: str) -> str:
-    return templating.render("tools_db_result.html", report=report)
+    return templating.render("tools_db_result.html.jinja", report=report)
 
 
 def _emptycards_result_html(report: str, cids: list) -> str:
     return templating.render(
-        "tools_emptycards_result.html",
+        "tools_emptycards_result.html.jinja",
         report=report,
         cids=cids,
         delete_label=tr.empty_cards_delete_button(),
@@ -45,7 +45,7 @@ def _emptycards_result_html(report: str, cids: list) -> str:
 
 
 def _emptycards_deleted_html(n: int) -> str:
-    return templating.render("tools_emptycards_deleted.html", n=n)
+    return templating.render("tools_emptycards_deleted.html.jinja", n=n)
 
 
 def make_tools_handler(service, hub):

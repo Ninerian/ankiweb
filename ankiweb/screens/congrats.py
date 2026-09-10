@@ -9,7 +9,7 @@ def render_congrats_html(col) -> str:
     learn_remaining_mins = max(1, info.secs_until_next_learn // 60) if info.learn_remaining else None
     show_unbury = bool(info.have_user_buried or info.have_sched_buried)
     return templating.render(
-        "congrats.html",
+        "congrats.html.jinja",
         heading=tr.scheduling_congratulations_finished(),
         learn_remaining_mins=learn_remaining_mins,
         show_unbury=show_unbury,

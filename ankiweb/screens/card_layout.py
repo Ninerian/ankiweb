@@ -17,7 +17,7 @@ def render_card_layout_html(col, ntid: int) -> str:
     ]
     css = m.get("css", "")
     return templating.render(
-        "card_layout.html",
+        "card_layout.html.jinja",
         templates=templates,
         css=css,
         ntid=int(ntid),

@@ -19,7 +19,7 @@ def render_fields_html(col, ntid: int) -> str:
         for f in m["flds"]
     ]
     return templating.render(
-        "fields.html",
+        "fields.html.jinja",
         fields=fields,
         sortf=sortf,
         ntid=int(ntid),

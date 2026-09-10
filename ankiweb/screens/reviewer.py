@@ -9,7 +9,7 @@ def render_av_buttons(text: str) -> str:
     """Replace [anki:play:<side>:<N>] refs with inline replay buttons (pycmd('play:..'))."""
     def repl(m):
         ref = m.group(1)  # e.g. "play:q:0"
-        return templating.render("reviewer_replay_button.html", ref=ref)
+        return templating.render("reviewer_replay_button.html.jinja", ref=ref)
     return AV_REF_RE.sub(repl, text)
 
 
@@ -93,7 +93,7 @@ def _ease_names() -> tuple:
 
 
 def show_answer_bar() -> str:
-    return templating.render("reviewer_show_answer_bar.html")
+    return templating.render("reviewer_show_answer_bar.html.jinja")
 
 
 def ease_buttons_bar(labels) -> str:
@@ -106,7 +106,7 @@ def ease_buttons_bar(labels) -> str:
         }
         for i, name in enumerate(_ease_names(), start=1)
     ]
-    return templating.render("reviewer_ease_buttons_bar.html", cells=cells)
+    return templating.render("reviewer_ease_buttons_bar.html.jinja", cells=cells)
 
 
 def reviewer_actions_bar() -> str:
@@ -137,7 +137,7 @@ def reviewer_actions_bar() -> str:
     for i, (key, fb) in enumerate(flag_labels, start=1):
         buttons.append({"onclick": f"pycmd('setflag:{i}')", "label": f"⚑ {lbl(key, fb)}"})
     buttons.append({"onclick": "pycmd('setflag:0')", "label": lbl("browsing_no_flag", "No Flag")})
-    return templating.render("reviewer_actions_bar.html", buttons=buttons)
+    return templating.render("reviewer_actions_bar.html.jinja", buttons=buttons)
 
 
 def reviewer_page_body() -> str:
@@ -145,7 +145,7 @@ def reviewer_page_body() -> str:
     pushes (_showQuestion/_showAnswer from reviewer.js; ankiwebSetAnswerBar for our bar)
     and asks the server for the first card on load."""
     return templating.render(
-        "reviewer_page_body.html",
+        "reviewer_page_body.html.jinja",
         actions_bar=reviewer_actions_bar(),
     )
 

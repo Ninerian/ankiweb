@@ -23,7 +23,7 @@ def render_preview_html(col, nid: int) -> str:
             "answer": _strip_av(o.answer_and_style()),
         })
     return templating.render(
-        "preview.html",
+        "preview.html.jinja",
         title=tr.actions_preview(),
         cards=cards,
     )

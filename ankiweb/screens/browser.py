@@ -10,7 +10,7 @@ def render_browser_html(col, query: str = "") -> str:
     decks = [{"id": d.id, "name": d.name} for d in col.decks.all_names_and_ids()]
     tags = list(col.tags.all())
     return templating.render(
-        "browser.html",
+        "browser.html.jinja",
         decks=decks,
         tags=tags,
         query=query,
@@ -41,7 +41,7 @@ def _rows_html(rows) -> str:
         }
         for cid, sort, deck, due in rows
     ]
-    return templating.render("browser_rows.html", rows=row_dicts)
+    return templating.render("browser_rows.html.jinja", rows=row_dicts)
 
 
 def _detail_html(col, cid) -> str:
@@ -51,7 +51,7 @@ def _detail_html(col, cid) -> str:
     fields = [{"name": f["name"], "value": note.fields[i]} for i, f in enumerate(model["flds"])]
     tags = " ".join(note.tags)
     return templating.render(
-        "browser_detail.html",
+        "browser_detail.html.jinja",
         deck_name=col.decks.name(card.did),
         tags=tags,
         fields=fields,
@@ -59,7 +59,7 @@ def _detail_html(col, cid) -> str:
 
 
 def _io_detail_html(nid) -> str:
-    return templating.render("browser_io_detail.html", nid=nid)
+    return templating.render("browser_io_detail.html.jinja", nid=nid)
 
 def make_browser_handler(service, hub):
     """Bridge handler for the 'browser' context."""

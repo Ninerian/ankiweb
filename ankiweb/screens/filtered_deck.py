@@ -27,7 +27,7 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
     heading = f"{tr.studying_edit() if is_edit else 'Create'} Filtered Deck"
 
     return templating.render(
-        "filtered_deck.html",
+        "filtered_deck.html.jinja",
         did=g.id,
         name=name,
         heading=heading,

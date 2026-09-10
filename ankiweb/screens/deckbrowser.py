@@ -7,7 +7,7 @@ def render_deckbrowser_html(col) -> str:
     current_id = col.decks.get_current_id()
     children = tree.children if tree is not None else []
     return templating.render(
-        "deckbrowser.html",
+        "deckbrowser.html.jinja",
         children=children,
         current_id=current_id,
         studied_today=col.studied_today(),

@@ -42,7 +42,7 @@ def load_data_for_spec(col, note_spec) -> dict | None:
 
 def add_page_body(decks, notetypes, paste_handler_js: str, editor_links_js: str) -> str:
     return templating.render(
-        "add_page_body.html",
+        "add_page_body.html.jinja",
         decks=decks,
         notetypes=notetypes,
         paste_handler_js=paste_handler_js,

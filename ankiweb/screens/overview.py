@@ -68,7 +68,7 @@ def render_overview_html(col) -> str:
     desc_is_markdown = bool(deck.get("md"))
 
     return templating.render(
-        "overview.html",
+        "overview.html.jinja",
         name=deck["name"],
         desc=desc,
         desc_is_markdown=desc_is_markdown,

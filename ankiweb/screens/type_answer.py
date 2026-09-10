@@ -46,7 +46,7 @@ def type_answer_question_filter(col, card, session, html: str) -> str:
         # studying_type_answer_unknown_field embeds the field name (val=) + bidi isolates.
         warning = tr.studying_type_answer_unknown_field(val=field)
         return _TYPE_RE.sub(
-            lambda _m: templating.render("type_answer_warning.html", warning=warning),
+            lambda _m: templating.render("type_answer_warning.html.jinja", warning=warning),
             html,
         )
     if is_cloze:
@@ -59,7 +59,7 @@ def type_answer_question_filter(col, card, session, html: str) -> str:
     session.type_combining = combining
     session.type_font, session.type_size = _field_font(model, field)
     box = templating.render(
-        "type_answer_box.html",
+        "type_answer_box.html.jinja",
         font=session.type_font,
         size=session.type_size,
     )
@@ -73,7 +73,7 @@ def type_answer_answer_filter(col, session, html: str) -> str:
     output = col.compare_answer(session.type_correct, session.typed_answer or "",
                                 session.type_combining)
     block = templating.render(
-        "type_answer_diff.html",
+        "type_answer_diff.html.jinja",
         font=session.type_font,
         size=session.type_size,
         output=output,

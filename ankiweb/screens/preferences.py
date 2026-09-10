@@ -18,7 +18,7 @@ def render_preferences_html(col) -> str:
     ]
 
     return templating.render(
-        "preferences.html",
+        "preferences.html.jinja",
         s=s,
         r=r,
         e=e,

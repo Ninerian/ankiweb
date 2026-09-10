@@ -32,4 +32,4 @@ testpaths = ["tests"]
 include = ["ankiweb*"]
 
 [tool.setuptools.package-data]
-ankiweb = ["screens/templates/*.html"]
+ankiweb = ["screens/templates/*.html.jinja"]
