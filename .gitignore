@@ -23,3 +23,8 @@ ankiweb/_import_tmp/
 
 # Local collection / media / benchmark data (never committed)
 data/
+
+# Local Docker and deployment environment files
+.env
+.env.*
+!.env.example

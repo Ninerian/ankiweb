@@ -95,6 +95,20 @@ This starts **two servers in one process**:
 Open <http://127.0.0.1:8000> in a browser. The AnkiConnect port defaults to **8765** on
 purpose — existing AnkiConnect clients/scripts work unchanged.
 
+## Docker
+
+Prefer a container? A multi-stage `Dockerfile` and `docker-compose.yml` following Docker
+best practices (non-root user, healthcheck, persistent volume, minimal capabilities) are
+included:
+
+```bash
+docker compose up --build -d
+```
+
+Then open <http://127.0.0.1:8000>. See [DOCKER.md](DOCKER.md) for the full setup,
+configuration reference, data-persistence/backup instructions, and the AGPL
+source-URL obligation when hosting for other users.
+
 ## Configuration
 
 All settings have safe localhost defaults; override via environment variables:
