@@ -1,16 +1,15 @@
 from __future__ import annotations
-import html as _html
 from dataclasses import dataclass
 from anki.sound import SoundOrVideoTag, AV_REF_RE
 from ankiweb.i18n import tr
+from ankiweb.screens import templating
 
 
 def render_av_buttons(text: str) -> str:
     """Replace [anki:play:<side>:<N>] refs with inline replay buttons (pycmd('play:..'))."""
     def repl(m):
         ref = m.group(1)  # e.g. "play:q:0"
-        return ("<a class='replay-button soundLink' href=# "
-                f"onclick=\"pycmd('{ref}');return false;\"><span>&#9654;</span></a>")
+        return templating.render("reviewer_replay_button.html.jinja", ref=ref)
     return AV_REF_RE.sub(repl, text)
 
 
@@ -94,21 +93,20 @@ def _ease_names() -> tuple:
 
 
 def show_answer_bar() -> str:
-    return ("<button id='ansbut' class='ansbut' "
-            f"onclick=\"ankiwebShowAnswer()\">{tr.studying_show_answer()}</button>")
+    return templating.render("reviewer_show_answer_bar.html.jinja")
 
 
 def ease_buttons_bar(labels) -> str:
     """labels: 4 interval strings in order [Again, Hard, Good, Easy]."""
-    cells = []
-    for i, name in enumerate(_ease_names(), start=1):
-        label = _html.escape(labels[i - 1]) if i - 1 < len(labels) else ""
-        cells.append(
-            f"<button class='ease' data-ease='{i}' onclick=\"pycmd('ease{i}')\">"
-            f"<span class='ease-label'>{name}</span>"
-            f"<span class='ease-ivl'>{label}</span></button>"
-        )
-    return "<div class='ease-row'>" + "".join(cells) + "</div>"
+    cells = [
+        {
+            "i": i,
+            "name": name,
+            "label": labels[i - 1] if i - 1 < len(labels) else "",
+        }
+        for i, name in enumerate(_ease_names(), start=1)
+    ]
+    return templating.render("reviewer_ease_buttons_bar.html.jinja", cells=cells)
 
 
 def reviewer_actions_bar() -> str:
@@ -118,19 +116,18 @@ def reviewer_actions_bar() -> str:
     def lbl(key, fallback):
         f = getattr(tr, key, None)
         return f() if f is not None else fallback
-    btn = ("<button type='button' class='rev-act' "
-           "onclick=\"{onclick}\">{label}</button>")
-    parts = [
-        btn.format(onclick="pycmd('mark')", label=_html.escape(lbl("studying_mark_note", "Mark Note"))),
-        btn.format(onclick="pycmd('buryc')", label=_html.escape(lbl("studying_bury_card", "Bury Card"))),
-        btn.format(onclick="pycmd('buryn')", label=_html.escape(lbl("studying_bury_note", "Bury Note"))),
-        btn.format(onclick="pycmd('suspendc')", label=_html.escape(lbl("actions_suspend_card", "Suspend Card"))),
-        btn.format(onclick="pycmd('suspendn')", label=_html.escape(lbl("studying_suspend_note", "Suspend Note"))),
-        btn.format(onclick="ankiwebSetDue()", label=_html.escape(lbl("actions_set_due_date", "Set Due Date"))),
-        btn.format(onclick="pycmd('forget')", label=_html.escape(lbl("actions_forget_card", "Reset Card"))),
-        btn.format(onclick="ankiwebDeleteNote()", label=_html.escape(lbl("studying_delete_note", "Delete Note"))),
-        btn.format(onclick="pycmd('cardinfo')", label=_html.escape(lbl("actions_card_info", "Card Info"))),
-        btn.format(onclick="pycmd('undo')", label=_html.escape(lbl("undo_undo", "Undo"))),
+
+    buttons = [
+        {"onclick": "pycmd('mark')", "label": lbl("studying_mark_note", "Mark Note")},
+        {"onclick": "pycmd('buryc')", "label": lbl("studying_bury_card", "Bury Card")},
+        {"onclick": "pycmd('buryn')", "label": lbl("studying_bury_note", "Bury Note")},
+        {"onclick": "pycmd('suspendc')", "label": lbl("actions_suspend_card", "Suspend Card")},
+        {"onclick": "pycmd('suspendn')", "label": lbl("studying_suspend_note", "Suspend Note")},
+        {"onclick": "ankiwebSetDue()", "label": lbl("actions_set_due_date", "Set Due Date")},
+        {"onclick": "pycmd('forget')", "label": lbl("actions_forget_card", "Reset Card")},
+        {"onclick": "ankiwebDeleteNote()", "label": lbl("studying_delete_note", "Delete Note")},
+        {"onclick": "pycmd('cardinfo')", "label": lbl("actions_card_info", "Card Info")},
+        {"onclick": "pycmd('undo')", "label": lbl("undo_undo", "Undo")},
     ]
     # Flag buttons 1..4 + a clear (flag 0)
     flag_labels = [
@@ -138,85 +135,18 @@ def reviewer_actions_bar() -> str:
         ("actions_flag_green", "Green"), ("actions_flag_blue", "Blue"),
     ]
     for i, (key, fb) in enumerate(flag_labels, start=1):
-        parts.append(btn.format(onclick=f"pycmd('setflag:{i}')",
-                                 label=_html.escape(f"⚑ {lbl(key, fb)}")))
-    parts.append(btn.format(onclick="pycmd('setflag:0')",
-                            label=_html.escape(lbl("browsing_no_flag", "No Flag"))))
-    return "<div id='rev-actions'>" + "".join(parts) + "</div>"
+        buttons.append({"onclick": f"pycmd('setflag:{i}')", "label": f"⚑ {lbl(key, fb)}"})
+    buttons.append({"onclick": "pycmd('setflag:0')", "label": lbl("browsing_no_flag", "No Flag")})
+    return templating.render("reviewer_actions_bar.html.jinja", buttons=buttons)
 
 
 def reviewer_page_body() -> str:
     """The reviewer DOM shell + inline script that registers the JS calls the server
     pushes (_showQuestion/_showAnswer from reviewer.js; ankiwebSetAnswerBar for our bar)
     and asks the server for the first card on load."""
-    return (
-        "<div id='_mark' hidden>★</div>"
-        "<div id='_flag' hidden>⚑</div>"
-        "<div id='qa' dir='auto'></div>"
-        "<div id='ankiweb-answer'></div>"
-        + reviewer_actions_bar() +
-        "<script>(function(){"
-        "var b=window.__ankiwebBridge;"
-        "var _ankiAudio=null;"
-        "var _side='question';"
-        "function ankiwebPlayAudio(files){"
-        "if(_ankiAudio){try{_ankiAudio.pause();}catch(e){} _ankiAudio=null;}"
-        "files=files||[]; var i=0;"
-        "function next(){"
-        "if(i>=files.length)return;"
-        "_ankiAudio=new Audio('/'+encodeURIComponent(files[i])); i++;"
-        "_ankiAudio.addEventListener('ended',next);"
-        "var p=_ankiAudio.play(); if(p&&p.catch){p.catch(function(){});}"
-        "}"
-        "next();"
-        "}"
-        "function ankiwebShowAnswer(){"
-        "  var ta=document.getElementById('typeans');"
-        "  if(ta&&ta.tagName==='INPUT'){window.pycmd('typed:'+ta.value);}"
-        "  window.pycmd('ans');"
-        "}"
-        "window.ankiwebShowAnswer=ankiwebShowAnswer;"
-        "function ankiwebTypeAnsPress(e){if(e&&(e.key==='Enter'||e.keyCode===13)){ankiwebShowAnswer();}}"
-        "window.ankiwebTypeAnsPress=ankiwebTypeAnsPress;"
-        "function ankiwebSetDue(){"
-        "  var s=window.prompt('Set due date (e.g. 0, 3, 1-7):','');"
-        "  if(s!==null&&s!==''){window.pycmd('setdue:'+s);}"
-        "}"
-        "window.ankiwebSetDue=ankiwebSetDue;"
-        "function ankiwebDeleteNote(){"
-        "  if(window.confirm('Delete this note?')){window.pycmd('deletenote');}"
-        "}"
-        "window.ankiwebDeleteNote=ankiwebDeleteNote;"
-        "b.registerCalls({"
-        "_showQuestion:function(){_side='question';return window._showQuestion.apply(window,arguments);},"
-        "_showAnswer:function(){_side='answer';return window._showAnswer.apply(window,arguments);},"
-        "ankiwebSetAnswerBar:function(h){"
-        "document.getElementById('ankiweb-answer').innerHTML=String(h);},"
-        "ankiwebPlayAudio:function(files){return ankiwebPlayAudio(files);},"
-        "_drawMark:function(b){return window._drawMark&&window._drawMark(b);},"
-        "_drawFlag:function(n){return window._drawFlag&&window._drawFlag(n);},"
-        "ankiwebReviewerError:function(m){alert(m);}"
-        "});"
-        "document.addEventListener('keydown',function(e){"
-        "  var t=document.activeElement;"
-        "  if(t&&(t.id==='typeans'||t.tagName==='INPUT'||t.tagName==='TEXTAREA'))return;"
-        "  var k=e.key;"
-        "  if(e.ctrlKey&&(k==='1'||k==='2'||k==='3'||k==='4')){e.preventDefault();window.pycmd('setflag:'+k);return;}"
-        "  if(e.ctrlKey||e.metaKey||e.altKey)return;"
-        "  if(k===' '||k==='Enter'){e.preventDefault();if(_side==='question'){window.ankiwebShowAnswer();}else{window.pycmd('ease3');}}"
-        "  else if(_side==='answer'&&(k==='1'||k==='2'||k==='3'||k==='4')){e.preventDefault();window.pycmd('ease'+k);}"
-        "  else if(k==='r'||k==='R'||k==='F5'){e.preventDefault();window.pycmd('replay');}"
-        "  else if(k==='e'||k==='E'){e.preventDefault();window.pycmd('edit');}"
-        "  else if(k==='*'){e.preventDefault();window.pycmd('mark');}"
-        "  else if(k==='-'){e.preventDefault();window.pycmd('buryc');}"
-        "  else if(k==='='){e.preventDefault();window.pycmd('buryn');}"
-        "  else if(k==='@'){e.preventDefault();window.pycmd('suspendc');}"
-        "  else if(k==='!'){e.preventDefault();window.pycmd('suspendn');}"
-        "  else if(k==='i'||k==='I'){e.preventDefault();window.pycmd('cardinfo');}"
-        "  else if(k==='u'||k==='U'){e.preventDefault();window.pycmd('undo');}"
-        "});"
-        "window.addEventListener('load',function(){window.pycmd('show');});"
-        "})();</script>"
+    return templating.render(
+        "reviewer_page_body.html.jinja",
+        actions_bar=reviewer_actions_bar(),
     )
 
 

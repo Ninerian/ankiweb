@@ -1,0 +1,12 @@
+<div class="ease-row">
+  {% for c in cells %}<button
+      type="button"
+      class="ease"
+      data-ease="{{ c.i }}"
+      onclick="pycmd('ease{{ c.i }}')"
+    >
+      <span class="ease-label">{{ c.name }}</span><span class="ease-ivl">{{
+        c.label
+      }}</span>
+    </button>{% endfor %}
+</div>

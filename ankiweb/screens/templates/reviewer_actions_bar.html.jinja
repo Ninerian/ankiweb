@@ -1,0 +1,9 @@
+<div id="rev-actions">
+  {% for b in buttons %}<button
+      type="button"
+      class="rev-act"
+      onclick="{ { b.onclick | safe } }"
+    >
+      {{ b.label }}
+    </button>{% endfor %}
+</div>

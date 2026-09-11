@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+from ankiweb.screens import templating
 
 
 def _munge(col, html: str) -> str:
@@ -37,23 +38,7 @@ def _save_field(col, nid: int, ord_: int, html: str):
 def paste_handler_js() -> str:
     """A document-capture paste handler that takes over from editor.js (which prevent-defaults
     paste and fires a payload-less bridgeCommand('paste')). Inserts via the editor's pasteHTML."""
-    return (
-        "document.addEventListener('paste',function(e){"
-        "var cd=e.clipboardData;if(!cd)return;"
-        "var img=null,items=cd.items||[];"
-        "for(var i=0;i<items.length;i++){if(items[i].kind==='file'&&items[i].type&&"
-        "items[i].type.indexOf('image/')===0){img=items[i].getAsFile();break;}}"
-        "var html=cd.getData('text/html'),text=cd.getData('text/plain');"
-        "if(!img&&!html&&!text)return;"
-        "e.preventDefault();e.stopImmediatePropagation();"
-        "if(img){var f=new FormData();f.append('file',img,img.name||'paste.png');"
-        "fetch('/upload_media',{method:'POST',body:f}).then(function(r){return r.json();})"
-        ".then(function(j){window.pasteHTML('<img src=\"'+j.filename+'\">',false,false);});}"
-        "else if(html){window.pasteHTML(html,false,false);}"
-        "else{var s=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')"
-        ".replace(/\\n/g,'<br>');window.pasteHTML(s,false,false);}"
-        "},true);"
-    )
+    return templating.render("paste_handler.html.jinja")
 
 
 def editor_links_js() -> str:
@@ -61,53 +46,15 @@ def editor_links_js() -> str:
     'attach' -> a file picker -> /upload_media -> pasteHTML(img/[sound:]); 'preview' ->
     open /preview/<nid> in a new tab (browse mode only). 'fields'/'cards' are added by F5/F6.
     Everything else passes through to the real bridge (blur/key/saveTags/paste...)."""
-    return (
-        "var _awOrig=window.pycmd;"
-        "function _awAttach(){var inp=document.createElement('input');inp.type='file';"
-        "inp.accept='image/*,audio/*,video/*';inp.onchange=function(){"
-        "var f=inp.files&&inp.files[0];if(!f)return;var fd=new FormData();fd.append('file',f,f.name);"
-        "fetch('/upload_media',{method:'POST',body:fd}).then(function(r){return r.json();})"
-        ".then(function(j){if(!j.filename)return;var fn=j.filename,tag;"
-        "if(/\\.(png|jpg|jpeg|gif|webp|bmp|svg|avif)$/i.test(fn))tag='<img src=\"'+fn+'\">';"
-        "else tag='[sound:'+fn+']';window.pasteHTML(tag,false,false);});};inp.click();}"
-        "function _awCmd(c,cb){if(typeof c==='string'){"
-        "if(c==='attach'){_awAttach();return;}"
-        "if(c==='preview'){var nid=window.__ankiwebEditNid;if(nid)window.open('/preview/'+nid,'_blank');return;}"
-        "if(c==='fields'){if(window.__ankiwebNotetypeId)window.open('/fields/'+window.__ankiwebNotetypeId,'_blank');return;}"
-        "if(c==='cards'){if(window.__ankiwebNotetypeId)window.open('/card-layout/'+window.__ankiwebNotetypeId,'_blank');return;}}"
-        "return _awOrig?_awOrig.call(window,c,cb):undefined;}"
-        "window.pycmd=_awCmd;window.bridgeCommand=_awCmd;"
-    )
+    return templating.render("editor_links.html.jinja")
 
 
 def editor_page_body(nid: int) -> str:
-    return (
-        f"<script>window.__ankiwebEditNid={int(nid)}</script>"
-        "<script>(function(){"
-        "window.setupEditor('browse');"
-        "var b=window.__ankiwebBridge;"
-        "b.registerCalls({ankiwebLoadNote:function(d){"
-        "require('anki/ui').loaded.then(function(){"
-        "window.setFields(d.fields);"
-        "window.setIsImageOcclusion(d.io);"
-        "window.setFonts(d.fonts);"
-        "window.setNotetypeMeta(d.meta);"
-        "window.__ankiwebNotetypeId=d.meta.id;"
-        "window.setNoteId(d.noteId);"
-        "window.setTags(d.tags);"
-        "window.triggerChanges();"
-        "});}});"
-        "require('anki/ui').loaded.then(function(){"
-        "window.pycmd('load:'+window.__ankiwebEditNid);"
-        "});"
-        # The Browser reuses this iframe across card switches: load a different note IN-PLACE
-        # (re-renders via ankiwebLoadNote) instead of reloading the whole 3.5MB editor.
-        "window.addEventListener('message',function(ev){var d=ev.data;"
-        "if(d&&d.type==='ankiwebLoadNid'&&d.nid){window.__ankiwebEditNid=d.nid;"
-        "require('anki/ui').loaded.then(function(){window.pycmd('load:'+d.nid);});}});"
-        + paste_handler_js()
-        + editor_links_js() +
-        "})();</script>"
+    return templating.render(
+        "editor_page_body.html.jinja",
+        nid=int(nid),
+        paste_handler_js=paste_handler_js(),
+        editor_links_js=editor_links_js(),
     )
 
 

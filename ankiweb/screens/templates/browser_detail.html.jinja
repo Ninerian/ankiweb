@@ -1,0 +1,8 @@
+<div class="detail-meta">
+  <b>{{ tr.decks_deck() }}:</b> {{ deck_name }} &nbsp; <b>{{
+      tr.editing_tags()
+    }}:</b> {{ tags }}
+</div>{% for f in fields %}<div class="fld">
+    <div class="fldname">{{ f.name }}</div>
+    <div class="fldval">{{ f.value | safe }}</div>
+  </div>{% endfor %}

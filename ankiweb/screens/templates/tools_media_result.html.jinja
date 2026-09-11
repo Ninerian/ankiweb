@@ -1,0 +1,12 @@
+<pre>{{ report }}</pre>{% if unused %}<button
+    type="button"
+    onclick="pycmd('deleteunused')"
+  >
+    {{ delete_label }} ({{ unused|length }})
+  </button><div class="unused-list">
+    {{ unused[:10]|join(", ") }}{% if unused|length > 10 %}
+      (+{{ unused|length - 10 }}){% endif %}
+  </div>{% endif %}{% if missing %}<div class="missing-list">
+    {{ missing[:10]|join(", ") }}{% if missing|length > 10 %}
+      (+{{ missing|length - 10 }}){% endif %}
+  </div>{% endif %}

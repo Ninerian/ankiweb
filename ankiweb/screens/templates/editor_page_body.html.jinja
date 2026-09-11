@@ -1,0 +1,37 @@
+<script>
+  window.__ankiwebEditNid = {{ nid }}
+</script>
+<script>
+  (function() {
+      window.setupEditor('browse');
+      var b = window.__ankiwebBridge;
+      b.registerCalls({
+          ankiwebLoadNote: function(d) {
+              require('anki/ui').loaded.then(function() {
+                  window.setFields(d.fields);
+                  window.setIsImageOcclusion(d.io);
+                  window.setFonts(d.fonts);
+                  window.setNotetypeMeta(d.meta);
+                  window.__ankiwebNotetypeId = d.meta.id;
+                  window.setNoteId(d.noteId);
+                  window.setTags(d.tags);
+                  window.triggerChanges();
+              });
+          }
+      });
+      require('anki/ui').loaded.then(function() {
+          window.pycmd('load:' + window.__ankiwebEditNid);
+      });
+      window.addEventListener('message', function(ev) {
+          var d = ev.data;
+          if (d && d.type === 'ankiwebLoadNid' && d.nid) {
+              window.__ankiwebEditNid = d.nid;
+              require('anki/ui').loaded.then(function() {
+                  window.pycmd('load:' + d.nid);
+              });
+          }
+      });
+      {{ paste_handler_js | safe }}
+      {{ editor_links_js | safe }}
+  })();
+</script>

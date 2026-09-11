@@ -1,126 +1,20 @@
 from __future__ import annotations
-import html
-import json
 import re
-
 from ankiweb.i18n import tr
+from ankiweb.screens import templating
 
 _TAG_STRIP = re.compile(r"<[^>]+>")
 _LIMIT = 500
 
-_STYLE = (
-    "<style>"
-    "#browser{font-family:sans-serif;font-size:13px}"
-    "#browser-top{padding:6px;border-bottom:1px solid #ccc}"
-    "#search{width:60%;padding:4px}"
-    "#browser-status{margin-left:10px;color:#666}"
-    "#browser-main{display:flex;align-items:flex-start}"
-    "#sidebar{width:200px;padding:6px;border-right:1px solid #ccc}"
-    "#sidebar .side-section{font-weight:bold;margin-top:8px}"
-    # Long deck/tag names (esp. deep "a::b::c" paths) used to overflow the fixed-width sidebar and
-    # paint over the results table. Clip to one line with an ellipsis; direction:rtl keeps the
-    # *leaf* segment visible (truncating the shared prefix) so siblings stay distinguishable, and
-    # text-align:left keeps short names left-aligned. The full name is on the title= tooltip.
-    "#sidebar .side-item{display:block;padding:2px 4px;color:#06c;text-decoration:none;"
-    "white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left}"
-    "#sidebar .side-item:hover{background:#eef}"
-    "#results-wrap{flex:1;overflow:auto;max-height:80vh}"
-    "#results{width:100%;border-collapse:collapse}"
-    "#results th,#results td{text-align:left;padding:3px 6px;border-bottom:1px solid #eee}"
-    ".browser-row{cursor:pointer}.browser-row:hover{background:#eef}"
-    "#detail{width:46%;padding:6px;border-left:1px solid #ccc}"
-    "#detail .fldname{font-weight:bold;color:#888;font-size:11px;margin-top:6px}"
-    "#results tr.selected{background:#cde}"
-    ".editor-frame{width:100%;height:78vh;border:0}"
-    "</style>"
-)
-
-
-def _sidebar_html(col) -> str:
-    parts = [f"<div class='side-section'>{tr.actions_decks()}</div>"]
-    for d in col.decks.all_names_and_ids():
-        parts.append(
-            f"<a class='side-item' title=\"{html.escape(d.name)}\" href='#' "
-            f"onclick=\"return pycmd('searchdeck:{d.id}')\">"
-            f"{html.escape(d.name)}</a>")
-    parts.append(f"<div class='side-section'>{tr.editing_tags()}</div>")
-    for t in col.tags.all():
-        parts.append(
-            f"<a class='side-item' title=\"{html.escape(t)}\" href='#' "
-            f"onclick=\"return pycmd('searchtag:{html.escape(t)}')\">"
-            f"{html.escape(t)}</a>")
-    return "".join(parts)
-
-
 def render_browser_html(col, query: str = "") -> str:
-    return (
-        _STYLE +
-        "<div id='browser'>"
-        "<div id='browser-top'>"
-        f"<input id='search' type='text' autofocus placeholder='{tr.actions_search()}…' "
-        f"value=\"{html.escape(query, quote=True)}\" "
-        "onkeydown=\"if(event.key==='Enter'){window.pycmd('search:'+this.value);}\">"
-        "<span id='browser-status'></span>"
-        "<div id='browser-actions'>"
-        f"<button onclick=\"ankiwebAct('suspend')\">{tr.studying_suspend()}</button>"
-        "<button onclick=\"ankiwebAct('unsuspend')\">Unsuspend</button>"
-        f"<button onclick=\"ankiwebAct('forget')\">{tr.actions_forget_card()}</button>"
-        f"<button onclick=\"ankiwebActP('setdue','Due in days (e.g. 0, 3, 1-7):')\">{tr.actions_set_due_date()}</button>"
-        f"<button onclick=\"ankiwebActP('changedeck','Move to deck:')\">{tr.browsing_change_deck()}</button>"
-        "<button onclick=\"ankiwebActP('addtag','Add tag:')\">Add Tag</button>"
-        f"<button onclick=\"ankiwebActP('removetag','Remove tag:')\">{tr.actions_remove_tag()}</button>"
-        f"<button onclick=\"if(confirm('Delete selected notes?'))ankiwebAct('delete')\">{tr.actions_delete()}</button>"
-        f"<button onclick=\"ankiwebCardInfo()\">{tr.actions_card_info()}</button>"
-        "</div></div>"
-        "<div id='browser-main'>"
-        f"<div id='sidebar'>{_sidebar_html(col)}</div>"
-        "<div id='results-wrap'><table id='results'>"
-        f"<thead><tr><th>{tr.browsing_sort_field()}</th><th>{tr.decks_deck()}</th><th>{tr.statistics_due_date()}</th></tr></thead>"
-        "<tbody id='results-body'></tbody></table></div>"
-        "<div id='detail'></div>"
-        "</div></div>"
-        "<script>(function(){"
-        "var b=window.__ankiwebBridge;"
-        "window.__ankiwebOnOpchanges=function(){window.pycmd('refresh');};"
-        "var _sel=[],_anchor=null;"
-        "function _rows(){return Array.prototype.slice.call("
-        "document.querySelectorAll('#results-body tr[data-cid]'));}"
-        "function _hl(){_rows().forEach(function(tr){"
-        "tr.classList.toggle('selected',_sel.indexOf(tr.dataset.cid)>=0);});}"
-        "function _selChanged(){window.pycmd('select:'+_sel.join(','));_hl();}"
-        "function _click(tr,e){var cid=tr.dataset.cid,rs=_rows();"
-        "if(e.shiftKey&&_anchor!==null){"
-        "var i=rs.findIndex(function(r){return r.dataset.cid===_anchor;}),"
-        "j=rs.findIndex(function(r){return r.dataset.cid===cid;});"
-        "if(i>=0&&j>=0){var lo=Math.min(i,j),hi=Math.max(i,j);"
-        "_sel=rs.slice(lo,hi+1).map(function(r){return r.dataset.cid;});}}"
-        "else if(e.ctrlKey||e.metaKey){var k=_sel.indexOf(cid);"
-        "if(k>=0)_sel.splice(k,1);else _sel.push(cid);_anchor=cid;}"
-        "else{_sel=[cid];_anchor=cid;}_selChanged();}"
-        "window.ankiwebAct=function(v){window.pycmd(v);};"
-        "window.ankiwebCardInfo=function(){if(_sel.length)window.open('/card-info/'+_sel[0],'_blank');};"
-        # Reuse ONE editor iframe across card switches: if it's already mounted, just postMessage
-        # the new note id (the editor reloads the note in-place — no 3.5MB editor.js re-parse);
-        # only build the iframe when none exists (first select / after a clear).
-        "window.ankiwebShowEditor=function(nid){var d=document.getElementById('detail');"
-        "var f=document.getElementById('editor-frame');"
-        "if(f&&f.contentWindow){f.contentWindow.postMessage({type:'ankiwebLoadNid',nid:nid},'*');}"
-        "else{d.innerHTML=\"<iframe id='editor-frame' class='editor-frame' src='/edit?nid=\"+nid+\"'></iframe>\";}};"
-        "window.ankiwebActP=function(v,m){var x=prompt(m);"
-        "if(x!==null&&x!=='')window.pycmd(v+':'+x);};"
-        "b.registerCalls({"
-        "ankiwebSetRows:function(h,n){document.getElementById('results-body').innerHTML=String(h);"
-        "document.getElementById('browser-status').textContent=(n||0)+' cards';"
-        "_sel=[];_anchor=null;},"
-        "ankiwebSetDetail:function(h){document.getElementById('detail').innerHTML=String(h);},"
-        "ankiwebEditNote:function(nid){window.ankiwebShowEditor(nid);}"
-        "});"
-        "document.getElementById('results-body').addEventListener('click',function(e){"
-        "var tr=e.target.closest('tr');if(tr&&tr.dataset.cid){_click(tr,e);}});"
-        f"window.addEventListener('load',function(){{window.pycmd('search:'+{json.dumps(query)});}});"
-        "})();</script>"
+    decks = [{"id": d.id, "name": d.name} for d in col.decks.all_names_and_ids()]
+    tags = list(col.tags.all())
+    return templating.render(
+        "browser.html.jinja",
+        decks=decks,
+        tags=tags,
+        query=query,
     )
-
 
 def _row_data(col, cids):
     rows = []
@@ -138,27 +32,34 @@ def _row_data(col, cids):
 
 
 def _rows_html(rows) -> str:
-    out = []
-    for cid, sort, deck, due in rows:
-        text = html.escape(_TAG_STRIP.sub("", sort))[:200]
-        out.append(
-            f"<tr class='browser-row' data-cid='{cid}'>"
-            f"<td>{text}</td><td>{html.escape(deck)}</td><td>{due}</td></tr>")
-    return "".join(out)
+    row_dicts = [
+        {
+            "cid": cid,
+            "sort_text": _TAG_STRIP.sub("", sort)[:200],
+            "deck": deck,
+            "due": due,
+        }
+        for cid, sort, deck, due in rows
+    ]
+    return templating.render("browser_rows.html.jinja", rows=row_dicts)
 
 
 def _detail_html(col, cid) -> str:
     card = col.get_card(cid)
     note = card.note()
     model = note.note_type()
-    flds = "".join(
-        f"<div class='fld'><div class='fldname'>{html.escape(f['name'])}</div>"
-        f"<div class='fldval'>{note.fields[i]}</div></div>"
-        for i, f in enumerate(model["flds"]))
-    tags = html.escape(" ".join(note.tags))
-    return (f"<div class='detail-meta'><b>{tr.decks_deck()}:</b> {html.escape(col.decks.name(card.did))}"
-            f" &nbsp; <b>{tr.editing_tags()}:</b> {tags}</div>{flds}")
+    fields = [{"name": f["name"], "value": note.fields[i]} for i, f in enumerate(model["flds"])]
+    tags = " ".join(note.tags)
+    return templating.render(
+        "browser_detail.html.jinja",
+        deck_name=col.decks.name(card.did),
+        tags=tags,
+        fields=fields,
+    )
 
+
+def _io_detail_html(nid) -> str:
+    return templating.render("browser_io_detail.html.jinja", nid=nid)
 
 def make_browser_handler(service, hub):
     """Bridge handler for the 'browser' context."""
@@ -222,7 +123,7 @@ def make_browser_handler(service, hub):
                 # reuse the mounted editor iframe (postMessage the nid) — no iframe rebuild
                 await hub.push_call("browser", "ankiwebEditNote", [nids[0]])
             elif len(cids) == 1 and nids:  # image-occlusion note: a different SPA page
-                detail = f"<iframe class='editor-frame' src='/image-occlusion/{nids[0]}'></iframe>"
+                detail = _io_detail_html(nids[0])
                 await hub.push_call("browser", "ankiwebSetDetail", [detail])
             else:
                 await hub.push_call("browser", "ankiwebSetDetail", [""])
