@@ -1,1 +1,49 @@
-<div class='about' style='max-width:640px;margin:0 auto;'><h2>ankiweb {{ version }}</h2><p><strong>Unofficial, personal, single-user project.</strong> An independent browser port of Anki — not affiliated with or endorsed by Ankitects, and not the official AnkiWeb sync service.</p><p>ankiweb is free software, licensed under the <strong>GNU Affero General Public License, version 3 or later</strong> (AGPL-3.0-or-later). It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY.</p><h3>Source code (AGPL &sect;13)</h3><p>Because ankiweb is a network service, you are entitled to the complete Corresponding Source of this running version, at no charge.</p><p><strong>This deployment's source:</strong> {% if source_url %}<a href='{{ source_url }}' target='_blank' rel='noopener'>{{ source_url }}</a>{% else %}<em>not configured — set the <code>ANKIWEB_SOURCE_URL</code> environment variable to the location of this deployment's source.</em>{% endif %}</p><p><strong>Upstream sources it derives from and bundles:</strong></p><ul><li>Anki / aqt 25.9.4 — AGPL-3.0-or-later — <a href='{{ anki_src }}' target='_blank' rel='noopener'>{{ anki_src }}</a></li><li>AnkiConnect — GPL-3.0-or-later — <a href='{{ ac_src }}' target='_blank' rel='noopener'>{{ ac_src }}</a></li></ul><p>Full attribution is in the project's <code>LICENSE</code> and <code>THIRD-PARTY-NOTICES.md</code>.</p><p><a href='/deckbrowser'>&larr; Back to decks</a></p></div>
+<div class="about" style="max-width:640px;margin:0 auto;">
+  <h2>ankiweb {{ version }}</h2>
+  <p>
+    <strong>Unofficial, personal, single-user project.</strong> An independent
+    browser port of Anki — not affiliated with or endorsed by Ankitects, and not
+    the official AnkiWeb sync service.
+  </p>
+  <p>
+    ankiweb is free software, licensed under the <strong>GNU Affero General
+      Public License, version 3 or later</strong> (AGPL-3.0-or-later). It is
+    distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY.
+  </p>
+  <h3>Source code (AGPL §13)</h3>
+  <p>
+    Because ankiweb is a network service, you are entitled to the complete
+    Corresponding Source of this running version, at no charge.
+  </p>
+  <p>
+    <strong>This deployment's source:</strong> {% if source_url %}<a
+        href="{{ source_url }}"
+        target="_blank"
+        rel="noopener"
+      >{{ source_url }}</a>{% else %}<em>not configured — set the <code
+        >ANKIWEB_SOURCE_URL</code> environment variable to the location of this
+        deployment's source.</em>{% endif %}
+  </p>
+  <p><strong>Upstream sources it derives from and bundles:</strong></p>
+  <ul>
+    <li>
+      Anki / aqt 25.9.4 — AGPL-3.0-or-later — <a
+        href="{{ anki_src }}"
+        target="_blank"
+        rel="noopener"
+      >{{ anki_src }}</a>
+    </li>
+    <li>
+      AnkiConnect — GPL-3.0-or-later — <a
+        href="{{ ac_src }}"
+        target="_blank"
+        rel="noopener"
+      >{{ ac_src }}</a>
+    </li>
+  </ul>
+  <p>
+    Full attribution is in the project's <code>LICENSE</code> and <code
+    >THIRD-PARTY-NOTICES.md</code>.
+  </p>
+  <p><a href="/deckbrowser">← Back to decks</a></p>
+</div>

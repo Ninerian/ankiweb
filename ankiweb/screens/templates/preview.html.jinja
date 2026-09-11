@@ -1,10 +1,53 @@
 <style>
-.preview{max-width:760px;margin:0 auto;}
-.preview-card{border:1px solid #ccc;border-radius:6px;padding:12px;margin:12px 0;}
-.preview-card h4{margin:0 0 8px;font-size:13px;color:#666;}
-.preview-label{font-size:12px;color:#888;text-transform:uppercase;margin:6px 0 2px;}
-.preview-side{padding:6px 0;}
-.preview hr{border:0;border-top:1px solid #ddd;margin:8px 0;}
-html.night-mode .preview-card{border-color:#555;}
+  .preview {
+      max-width: 760px;
+      margin: 0 auto;
+  }
+
+  .preview-card {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 12px 0;
+  }
+
+  .preview-card h4 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: #666;
+  }
+
+  .preview-label {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      margin: 6px 0 2px;
+  }
+
+  .preview-side {
+      padding: 6px 0;
+  }
+
+  .preview hr {
+      border: 0;
+      border-top: 1px solid #ddd;
+      margin: 8px 0;
+  }
+
+  html.night-mode .preview-card {
+      border-color: #555;
+  }
 </style>
-{% if not cards %}<div class='preview'>(no cards)</div>{% else %}<div class='preview'><h3>{{ title }}</h3>{% for card in cards %}<div class='preview-card'><h4>{{ card.template_name }}</h4><div class='preview-label'>Front</div><div class='preview-side'>{{ card.question | safe }}</div><hr><div class='preview-label'>Back</div><div class='preview-side'>{{ card.answer | safe }}</div></div>{% endfor %}</div>{% endif %}
+{% if not cards %}<div class="preview">(no cards)</div>{%
+  else
+%}<div class="preview">
+    <h3>{{ title }}</h3>
+    {% for card in cards %}<div class="preview-card">
+        <h4>{{ card.template_name }}</h4>
+        <div class="preview-label">Front</div>
+        <div class="preview-side">{{ card.question | safe }}</div>
+        <hr>
+        <div class="preview-label">Back</div>
+        <div class="preview-side">{{ card.answer | safe }}</div>
+      </div>{% endfor %}
+  </div>{% endif %}

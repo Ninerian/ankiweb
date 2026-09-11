@@ -1,11 +1,75 @@
 {% macro render_node(node, current_id) %}
-<tr class='{{ "deck current" if node.deck_id == current_id else "deck" }}' id='{{ node.deck_id }}'>
-  <td class='decktd'>{{ ("&nbsp;" * 6 * (node.level - 1)) | safe }}{% if node.children %}<a class='collapse' href='#' onclick='return pycmd("collapse:{{ node.deck_id }}")'>{{ "+" if node.collapsed else "−" }}</a>{% else %}<span class='collapse'></span>{% endif %}<a class='deck{{ " filtered" if node.filtered else "" }}' href='#' onclick="return pycmd('open:{{ node.deck_id }}')">{{ node.name }}</a></td>
-  <td align='right' class='count'>{% if node.new_count %}<span class='new-count'>{{ node.new_count }}</span>{% else %}<span class='zero-count'>0</span>{% endif %}</td>
-  <td align='right' class='count'>{% if node.learn_count %}<span class='learn-count'>{{ node.learn_count }}</span>{% else %}<span class='zero-count'>0</span>{% endif %}</td>
-  <td align='right' class='count'>{% if node.review_count %}<span class='review-count'>{{ node.review_count }}</span>{% else %}<span class='zero-count'>0</span>{% endif %}</td>
-  <td align='center' class='opts'><a class='opts' href='#' onclick='return pycmd("opts:{{ node.deck_id }}")'><img src='/_anki/imgs/gears.svg' class='gears' alt=''></a></td>
-</tr>
-{% if not node.collapsed %}{% for child in node.children %}{{ render_node(child, current_id) }}{% endfor %}{% endif %}
+  <tr
+    class='{{ "deck current" if node.deck_id == current_id else "deck" }}'
+    id="{{ node.deck_id }}"
+  >
+    <td class="decktd">
+      {{ ("&nbsp;" * 6 * (node.level - 1)) | safe }}{% if node.children %}<a
+          class="collapse"
+          href="#"
+          onclick='return pycmd("collapse:{{ node.deck_id }}")'
+        >{{ "+" if node.collapsed else "−" }}</a>{% else %}<span
+          class="collapse"
+        ></span>{% endif %}<a
+        class='deck{{ " filtered" if node.filtered else "" }}'
+        href="#"
+        onclick="return pycmd('open:{{ node.deck_id }}')"
+      >{{ node.name }}</a>
+    </td>
+    <td align="right" class="count">
+      {% if node.new_count %}<span class="new-count">{{
+          node.new_count
+        }}</span>{% else %}<span class="zero-count">0</span>{% endif %}
+    </td>
+    <td align="right" class="count">
+      {% if node.learn_count %}<span class="learn-count">{{
+          node.learn_count
+        }}</span>{% else %}<span class="zero-count">0</span>{% endif %}
+    </td>
+    <td align="right" class="count">
+      {% if node.review_count %}<span class="review-count">{{
+          node.review_count
+        }}</span>{% else %}<span class="zero-count">0</span>{% endif %}
+    </td>
+    <td align="center" class="opts">
+      <a
+        class="opts"
+        href="#"
+        onclick='return pycmd("opts:{{ node.deck_id }}")'
+      >
+        <img src="/_anki/imgs/gears.svg" class="gears" alt="">
+      </a>
+    </td>
+  </tr>
+  {% if not node.collapsed %}{% for child in node.children %}{{
+        render_node(child, current_id)
+      }}{% endfor %}{% endif %}
 {% endmacro %}
-<center><table cellspacing='0' cellpadding='3' class='decks'><tr><th colspan='1' align='left'>{{ tr.actions_decks() }}</th><th class='count'>{{ tr.actions_new() }}</th><th class='count'>{{ tr.decks_learn_header() }}</th><th class='count'>{{ tr.decks_review_header() }}</th><th></th></tr>{% for c in children %}{{ render_node(c, current_id) }}{% endfor %}</table><div id='studiedToday'><span>{{ studied_today }}</span></div><div class='dyn-buttons'><button type='button' onclick='ankiwebCreateDeck()'>{{ tr.decks_create_deck() }}</button> <button type='button' onclick='pycmd("createfiltered")'>{{ tr.qt_misc_create_filtered_deck() }}</button> <button type='button' onclick='ankiwebImportFile()'>{{ tr.actions_import() }}</button> <a href='/export'>{{ tr.actions_export() }}</a> <button type='button' onclick='ankiwebImageOcclusion()'>{{ tr.notetypes_image_occlusion_name() }}</button></div></center>
+<center>
+  <table cellspacing="0" cellpadding="3" class="decks">
+    <tr>
+      <th colspan="1" align="left">{{ tr.actions_decks() }}</th>
+      <th class="count">{{ tr.actions_new() }}</th>
+      <th class="count">{{ tr.decks_learn_header() }}</th>
+      <th class="count">{{ tr.decks_review_header() }}</th>
+      <th></th>
+    </tr>
+    {% for c in children %}{{ render_node(c, current_id) }}{% endfor %}
+  </table>
+  <div id="studiedToday"><span>{{ studied_today }}</span></div>
+  <div class="dyn-buttons">
+    <button type="button" onclick="ankiwebCreateDeck()">
+      {{ tr.decks_create_deck() }}
+    </button>
+    <button type="button" onclick='pycmd("createfiltered")'>
+      {{ tr.qt_misc_create_filtered_deck() }}
+    </button>
+    <button type="button" onclick="ankiwebImportFile()">
+      {{ tr.actions_import() }}
+    </button>
+    <a href="/export">{{ tr.actions_export() }}</a>
+    <button type="button" onclick="ankiwebImageOcclusion()">
+      {{ tr.notetypes_image_occlusion_name() }}
+    </button>
+  </div>
+</center>

@@ -1,40 +1,143 @@
-<div style='max-width:760px;margin:0 auto;padding:8px 16px;'>
-<h2>Push notifications</h2>
-{% if error %}<div style='background:#fdd;border:1px solid #c00;color:#900;padding:8px;margin:8px 0'>{{ error }}</div>{% endif %}
-<p style='color:#666'>An ankiweb-original feature (not part of the Anki/AnkiConnect port). POSTs to your endpoint whenever a deck's new/learn/review counts change (any of the three). Configuration is live — saving applies without a restart.</p>
-
-<form method='post' action='/notify'>
-<table style='border-collapse:collapse'>
-<tr><td style='padding:6px 10px 6px 0'>Enabled</td>
-<td><input type='checkbox' name='enabled' {% if enabled_checked %}checked{% endif %}></td></tr>
-<tr><td style='padding:6px 10px 6px 0'>POST URL</td>
-<td><input type='text' name='url' size='52' value='{{ url }}' placeholder='https://example.com/anki-hook'></td></tr>
-<tr><td style='padding:6px 10px 6px 0'>Token (Bearer)</td>
-<td><input type='text' name='token' size='52' value='{{ token }}' placeholder='(optional)'></td></tr>
-<tr><td style='padding:6px 10px 6px 0'>Poll interval (sec)</td>
-<td><input type='number' name='poll_sec' min='1' step='1' value='{{ poll_sec }}'></td></tr>
-<tr><td style='padding:6px 10px 6px 0'>Retry interval (sec)</td>
-<td><input type='number' name='retry_sec' min='1' step='1' value='{{ retry_sec }}'></td></tr>
-<tr><td style='padding:6px 10px 6px 0'>Scope</td>
-<td><select name='scope'>
-<option value='leaf' {% if leaf_selected %}selected{% endif %}>Leaf only (last-level decks)</option>
-<option value='all' {% if all_selected %}selected{% endif %}>All levels (parents count subdecks)</option>
-</select></td></tr>
-</table>
-<p><button type='submit' name='action' value='save'>Save</button> <button type='submit' name='action' value='resync' title='Re-push every currently-learnable deck now'>Save &amp; re-push all</button></p>
-</form>
-
-<h3>Status</h3>
-<table style='border-collapse:collapse'>
-<tr><td style='padding:4px 16px 4px 0'>Active</td><td>{{ "yes" if active else "no" }}</td></tr>
-<tr><td style='padding:4px 16px 4px 0'>Decks watched</td><td>{{ watching }}</td></tr>
-<tr><td style='padding:4px 16px 4px 0'>Learnable now</td><td>{{ learnable }}</td></tr>
-<tr><td style='padding:4px 16px 4px 0'>Pending (unacked)</td><td>{{ pending }}</td></tr>
-<tr><td style='padding:4px 16px 4px 0'>Last attempt</td><td>{{ last_attempt }}</td></tr>
-<tr><td style='padding:4px 16px 4px 0'>Last success</td><td>{{ last_success }}</td></tr>
-<tr><td style='padding:4px 16px 4px 0'>Last error</td><td>{{ last_error }}</td></tr>
-</table>
-
-<h3>Request format</h3>
-<pre style='background:#f5f5f5;padding:10px;border:1px solid #ddd;overflow:auto'>{{ schema_doc | safe }}</pre>
+<div style="max-width:760px;margin:0 auto;padding:8px 16px;">
+  <h2>Push notifications</h2>
+  {% if error %}<div
+      style="background:#fdd;
+            border:1px solid #c00;
+            color:#900;
+            padding:8px;
+            margin:8px 0"
+    >
+      {{ error }}
+    </div>{% endif %}
+  <p style="color:#666">
+    An ankiweb-original feature (not part of the Anki/AnkiConnect port). POSTs
+    to your endpoint whenever a deck's new/learn/review counts change (any of
+    the three). Configuration is live — saving applies without a restart.
+  </p>
+  <form method="post" action="/notify">
+    <table style="border-collapse:collapse">
+      <tr>
+        <td style="padding:6px 10px 6px 0">Enabled</td>
+        <td>
+          <input
+            type="checkbox"
+            name="enabled"
+            {% if enabled_checked %}
+              checked
+            {% endif %}
+          >
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px 6px 0">POST URL</td>
+        <td>
+          <input
+            type="text"
+            name="url"
+            size="52"
+            value="{{ url }}"
+            placeholder="https://example.com/anki-hook"
+          >
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px 6px 0">Token (Bearer)</td>
+        <td>
+          <input
+            type="text"
+            name="token"
+            size="52"
+            value="{{ token }}"
+            placeholder="(optional)"
+          >
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px 6px 0">Poll interval (sec)</td>
+        <td>
+          <input
+            type="number"
+            name="poll_sec"
+            min="1"
+            step="1"
+            value="{{ poll_sec }}"
+          >
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px 6px 0">Retry interval (sec)</td>
+        <td>
+          <input
+            type="number"
+            name="retry_sec"
+            min="1"
+            step="1"
+            value="{{ retry_sec }}"
+          >
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px 6px 0">Scope</td>
+        <td>
+          <select name="scope">
+            <option value="leaf" {% if leaf_selected %}selected{% endif %}>
+              Leaf only (last-level decks)
+            </option>
+            <option value="all" {% if all_selected %}selected{% endif %}>
+              All levels (parents count subdecks)
+            </option>
+          </select>
+        </td>
+      </tr>
+    </table>
+    <p>
+      <button type="submit" name="action" value="save">Save</button>
+      <button
+        type="submit"
+        name="action"
+        value="resync"
+        title="Re-push every currently-learnable deck now"
+      >
+        Save &amp; re-push all
+      </button>
+    </p>
+  </form>
+  <h3>Status</h3>
+  <table style="border-collapse:collapse">
+    <tr>
+      <td style="padding:4px 16px 4px 0">Active</td>
+      <td>{{ "yes" if active else "no" }}</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 16px 4px 0">Decks watched</td>
+      <td>{{ watching }}</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 16px 4px 0">Learnable now</td>
+      <td>{{ learnable }}</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 16px 4px 0">Pending (unacked)</td>
+      <td>{{ pending }}</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 16px 4px 0">Last attempt</td>
+      <td>{{ last_attempt }}</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 16px 4px 0">Last success</td>
+      <td>{{ last_success }}</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 16px 4px 0">Last error</td>
+      <td>{{ last_error }}</td>
+    </tr>
+  </table>
+  <h3>Request format</h3>
+  <pre
+    style="background:#f5f5f5;
+                padding:10px;
+                border:1px solid #ddd;
+                overflow:auto"
+  >{{ schema_doc | safe }}</pre>
 </div>

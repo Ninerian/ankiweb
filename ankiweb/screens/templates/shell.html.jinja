@@ -1,9 +1,49 @@
-<!doctype html>
-<html lang='en'><head><title>AnkiWeb</title><meta charset="utf-8">
-<script>window.__ankiwebContext={{ context | tojson }}</script>
-<style>html.night-mode body{background:#2b2b2b;color:#e0e0e0;}html.night-mode a{color:#6cb6ff;}html.night-mode button,html.night-mode input,html.night-mode select,html.night-mode textarea{background:#3a3a3a;color:#e0e0e0;border-color:#555;}html.night-mode table,html.night-mode th,html.night-mode td{border-color:#555;}html.night-mode .zero-count{color:#888;}</style>
-{% for c in css_files %}<link rel="stylesheet" href="/_anki/{{ c }}">{% endfor %}
-{% for j in js_files %}<script src="/_anki/{{ j }}"></script>{% endfor %}
-<script src="/shell/static/bootstrap.js"></script>
-</head>
-<body>{% if toolbar %}{% include "_toolbar.html.jinja" %}{% endif %}{{ body | safe }}</body></html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>AnkiWeb</title>
+    <meta charset="utf-8">
+    <script>
+      window.__ankiwebContext = {{ context | tojson }}
+    </script>
+    <style>
+      html.night-mode body {
+          background: #2b2b2b;
+          color: #e0e0e0;
+      }
+
+      html.night-mode a {
+          color: #6cb6ff;
+      }
+
+      html.night-mode button,
+      html.night-mode input,
+      html.night-mode select,
+      html.night-mode textarea {
+          background: #3a3a3a;
+          color: #e0e0e0;
+          border-color: #555;
+      }
+
+      html.night-mode table,
+      html.night-mode th,
+      html.night-mode td {
+          border-color: #555;
+      }
+
+      html.night-mode .zero-count {
+          color: #888;
+      }
+    </style>
+    {% for c in css_files %}<link rel="stylesheet" href="/_anki/{{ c }}">{%
+      endfor
+    %}
+    {% for j in js_files %}<script src="/_anki/{{ j }}"></script>{% endfor %}
+    <script src="/shell/static/bootstrap.js"></script>
+  </head>
+  <body>
+    {% if toolbar %}{% include "_toolbar.html.jinja" %}{% endif %}{{
+      body | safe
+    }}
+  </body>
+</html>
