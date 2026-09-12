@@ -17,11 +17,13 @@ def render_preview_html(col, nid: int) -> str:
     cards = []
     for c in cards_list:
         o = c.render_output()
-        cards.append({
-            "template_name": c.template()["name"],
-            "question": _strip_av(o.question_and_style()),
-            "answer": _strip_av(o.answer_and_style()),
-        })
+        cards.append(
+            {
+                "template_name": c.template()["name"],
+                "question": _strip_av(o.question_and_style()),
+                "answer": _strip_av(o.answer_and_style()),
+            }
+        )
     return templating.render(
         "preview.html.jinja",
         title=tr.actions_preview(),

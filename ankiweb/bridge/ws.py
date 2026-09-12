@@ -41,7 +41,8 @@ def build_router(get_hub, allowed_hosts=(), password="") -> APIRouter:
                         result = None  # a handler error must not drop the session
                     if msg.get("id") is not None:
                         await websocket.send_json(
-                            {"type": "result", "id": msg["id"], "value": result})
+                            {"type": "result", "id": msg["id"], "value": result}
+                        )
                 elif mtype == "result":
                     mid = msg.get("id")
                     if mid is not None:

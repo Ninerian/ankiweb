@@ -12,6 +12,7 @@ translator at it, so the `tr` bound below keeps tracking the active language).
 Usage:  from ankiweb.i18n import tr   ;   tr.actions_add()
 Always import `tr` from here, never from `anki.lang` directly, so the guard runs first.
 """
+
 from __future__ import annotations
 import os
 import anki.lang

@@ -41,11 +41,15 @@
 Append to `tests/test_editor.py`:
 ```python
 def test_upload_media_stores_and_returns_name(client):
-    r = client.post("/upload_media", files={"file": ("x.png", b"\x89PNG-bytes", "image/png")})
+    r = client.post(
+        "/upload_media", files={"file": ("x.png", b"\x89PNG-bytes", "image/png")}
+    )
     assert r.status_code == 200
     fname = r.json()["filename"]
     assert fname.endswith(".png")
-    assert client.portal.call(client.app.state.service.run, lambda col: col.media.have(fname))
+    assert client.portal.call(
+        client.app.state.service.run, lambda col: col.media.have(fname)
+    )
 
 
 def test_upload_media_derives_extension_from_mime(client):
@@ -55,14 +59,20 @@ def test_upload_media_derives_extension_from_mime(client):
 
 def test_editor_body_has_paste_handler(client):
     from ankiweb.screens.editor import editor_page_body
+
     body = editor_page_body(1)
     assert ("addEventListener('paste'" in body) or ('addEventListener("paste"' in body)
-    assert "stopImmediatePropagation" in body and "pasteHTML" in body and "/upload_media" in body
+    assert (
+        "stopImmediatePropagation" in body
+        and "pasteHTML" in body
+        and "/upload_media" in body
+    )
 ```
 Append to `tests/test_add.py`:
 ```python
 def test_add_body_has_paste_handler(client):
     from ankiweb.screens.add import render_add_html
+
     body = client.portal.call(client.app.state.service.run, render_add_html)
     assert "pasteHTML" in body and "/upload_media" in body
 ```
@@ -104,8 +114,14 @@ and insert `paste_handler_js()` into the inline script string.
 ```python
 from fastapi import UploadFile
 
-_MIME_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif",
-             "image/webp": ".webp", "image/svg+xml": ".svg", "image/bmp": ".bmp"}
+_MIME_EXT = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/svg+xml": ".svg",
+    "image/bmp": ".bmp",
+}
 ```
 In `build_screen_router`:
 ```python
@@ -152,15 +168,36 @@ def test_gui_edit_note_navigates(client):
 
 
 def test_gui_browse_invalid_columnid_raises(client):
-    r = client.post("/", json={"action": "guiBrowse", "version": 6, "params": {
-        "query": "", "reorderCards": {"columnId": "definitelyNotAColumn", "order": "ascending"}}})
+    r = client.post(
+        "/",
+        json={
+            "action": "guiBrowse",
+            "version": 6,
+            "params": {
+                "query": "",
+                "reorderCards": {
+                    "columnId": "definitelyNotAColumn",
+                    "order": "ascending",
+                },
+            },
+        },
+    )
     assert r.json()["error"] is not None
 
 
 def test_gui_browse_valid_columnid_ok(client):
     # a real column key is accepted (reorder is a no-op without a table)
-    r = client.post("/", json={"action": "guiBrowse", "version": 6, "params": {
-        "query": "", "reorderCards": {"columnId": "deck", "order": "descending"}}})
+    r = client.post(
+        "/",
+        json={
+            "action": "guiBrowse",
+            "version": 6,
+            "params": {
+                "query": "",
+                "reorderCards": {"columnId": "deck", "order": "descending"},
+            },
+        },
+    )
     assert r.json()["error"] is None and isinstance(r.json()["result"], list)
 ```
 (If the existing `test_gui_browse_reorder_validation` uses a `columnId` like `"noteFld"`, first CONFIRM `noteFld` is in `col.all_browser_columns()` keys — if not, change that test's valid columnId to a confirmed key like `"deck"`. Run `conda run -n ankiweb python -c "from anki.collection import Collection;import tempfile,os;c=Collection(os.path.join(tempfile.mkdtemp(),'c.anki2'));print([x.key for x in c.all_browser_columns()])"` to list the keys.)
@@ -210,10 +247,13 @@ Status, pytest summaries, files changed, self-review, commit SHA, concerns.
 def test_paste_image_uploads_and_inserts(live_server_edit):
     url, nid = live_server_edit
     with sync_playwright() as p:
-        browser = p.chromium.launch(); page = browser.new_page()
+        browser = p.chromium.launch()
+        page = browser.new_page()
         page.on("pageerror", lambda e: print("PAGEERROR:", e))
         page.goto(f"{url}/edit?nid={nid}")
-        page.wait_for_function("document.querySelector('.note-editor')!==null", timeout=8000)
+        page.wait_for_function(
+            "document.querySelector('.note-editor')!==null", timeout=8000
+        )
         page.evaluate("window.focusField(0)")
         # dispatch a synthetic image paste on the focused editable (reaches the document-capture handler)
         page.evaluate(
@@ -221,19 +261,21 @@ def test_paste_image_uploads_and_inserts(live_server_edit):
             "  const fc=document.querySelector('.field-container');"
             "  const host=fc.querySelector('.rich-text-editable');"
             "  const ed=host.shadowRoot.querySelector('[contenteditable]');"
-            "  const bytes=new Uint8Array([137,80,78,71,13,10,26,10]);"   # PNG magic
+            "  const bytes=new Uint8Array([137,80,78,71,13,10,26,10]);"  # PNG magic
             "  const file=new File([bytes],'p.png',{type:'image/png'});"
             "  const dt=new DataTransfer(); dt.items.add(file);"
             "  ed.focus();"
             "  ed.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,"
             "    cancelable:true,composed:true}));"
-            "}")
+            "}"
+        )
         # the handler uploads then inserts <img src="..."> into the field (deep-walk shadow roots)
         page.wait_for_function(
             "() => { function walk(r,a){r.querySelectorAll('*').forEach(function(el){"
             "if(el.shadowRoot)walk(el.shadowRoot,a); if(el.tagName==='IMG')a.push(el.getAttribute('src'));});}"
             "const a=[]; walk(document,a); return a.some(function(s){return s&&s.indexOf('.png')>=0;}); }",
-            timeout=8000)
+            timeout=8000,
+        )
         browser.close()
 ```
 (If `ClipboardEvent` with a custom `clipboardData` can't be constructed in this Chromium [some builds make `clipboardData` read-only], fall back to the spike's exact technique in `/tmp/editor_spike_paste.py` — it constructed and dispatched a working paste. The load-bearing assertion is that an `<img>` with a `.png` src appears in a field after the synthetic paste, proving upload→insert through the real `/edit` + `/upload_media`.)

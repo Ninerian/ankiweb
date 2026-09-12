@@ -50,8 +50,9 @@ from ankiweb.app import create_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    settings = Settings(collection_path=tmp_path / "c.anki2",
-                        import_tmp_dir=tmp_path / "import-tmp")
+    settings = Settings(
+        collection_path=tmp_path / "c.anki2", import_tmp_dir=tmp_path / "import-tmp"
+    )
     with TestClient(create_app(settings)) as c:
         yield c
 
@@ -61,9 +62,11 @@ def _seed(client, n=2):
         did = col.decks.id("Default")
         for i in range(n):
             note = col.new_note(col.models.by_name("Basic"))
-            note["Front"] = f"f{i}"; note["Back"] = f"b{i}"
+            note["Front"] = f"f{i}"
+            note["Back"] = f"b{i}"
             col.add_note(note, did)
         return did
+
     return client.portal.call(client.app.state.service.run, seed)
 
 
@@ -87,8 +90,10 @@ def _assert_download(r, ext):
 
 def test_export_apkg_whole_collection(client):
     _seed(client)
-    r = client.post("/export", data={"fmt": "apkg", "target": "all",
-                                     "with_media": "on", "legacy": "on"})
+    r = client.post(
+        "/export",
+        data={"fmt": "apkg", "target": "all", "with_media": "on", "legacy": "on"},
+    )
     _assert_download(r, ".apkg")
 
 
@@ -100,8 +105,16 @@ def test_export_apkg_deck(client):
 
 def test_export_notes_csv(client):
     _seed(client)
-    r = client.post("/export", data={"fmt": "notes_csv", "target": "all",
-                                     "with_tags": "on", "with_deck": "on", "with_notetype": "on"})
+    r = client.post(
+        "/export",
+        data={
+            "fmt": "notes_csv",
+            "target": "all",
+            "with_tags": "on",
+            "with_deck": "on",
+            "with_notetype": "on",
+        },
+    )
     _assert_download(r, ".csv")
 
 
@@ -113,11 +126,15 @@ def test_export_cards_csv(client):
 
 def test_export_colpkg_then_collection_still_usable(client):
     _seed(client)
-    r = client.post("/export", data={"fmt": "colpkg", "with_media": "on", "legacy": "on"})
+    r = client.post(
+        "/export", data={"fmt": "colpkg", "with_media": "on", "legacy": "on"}
+    )
     _assert_download(r, ".colpkg")
     # the reopen() guard: export_collection_package killed the live collection;
     # the service must have revived it.
-    count = client.portal.call(client.app.state.service.run, lambda col: col.card_count())
+    count = client.portal.call(
+        client.app.state.service.run, lambda col: col.card_count()
+    )
     assert count == 2
 
 
@@ -131,14 +148,15 @@ def test_deckbrowser_has_export_link(client):
 
 - [ ] **Step 3: Add `CollectionService.reopen()`** — in `ankiweb/collection_service.py`, add to `CollectionService` (next to `open`/`close`; uses the same `asyncio`/`Collection` already imported):
 ```python
-    async def reopen(self) -> None:
-        """Re-open the collection on the worker WITHOUT shutting it down — for ops
-        that close it (export_collection_package). Unlike close(), keeps the executor."""
-        path = self._settings.collection_path
-        loop = asyncio.get_event_loop()
-        async with self._lock:
-            self._col = await loop.run_in_executor(
-                self._executor, lambda: Collection(str(path), server=False))
+async def reopen(self) -> None:
+    """Re-open the collection on the worker WITHOUT shutting it down — for ops
+    that close it (export_collection_package). Unlike close(), keeps the executor."""
+    path = self._settings.collection_path
+    loop = asyncio.get_event_loop()
+    async with self._lock:
+        self._col = await loop.run_in_executor(
+            self._executor, lambda: Collection(str(path), server=False)
+        )
 ```
 
 - [ ] **Step 4: Create `ankiweb/screens/export.py`**:
@@ -148,9 +166,12 @@ import html
 
 
 def render_export_html(col) -> str:
-    decks = col.decks.all_names_and_ids(skip_empty_default=False, include_filtered=False)
+    decks = col.decks.all_names_and_ids(
+        skip_empty_default=False, include_filtered=False
+    )
     opts = "".join(
-        f"<option value='{d.id}'>{html.escape(d.name)}</option>" for d in decks)
+        f"<option value='{d.id}'>{html.escape(d.name)}</option>" for d in decks
+    )
     body = f"""
 <div class='export'>
   <h3>Export</h3>
@@ -198,89 +219,122 @@ onFmt();
 
 - [ ] **Step 5: Add the routes** — in `ankiweb/screens/routes.py`: import `from ankiweb.screens.export import render_export_html`, `from fastapi import Form`, `from fastapi.responses import FileResponse`, `from starlette.background import BackgroundTask`, and `import os, tempfile`. Then inside `build_screen_router`:
 ```python
-    @router.get("/export", response_class=HTMLResponse)
-    async def export_page():
-        service = get_service()
-        body = await service.run(render_export_html)
-        return HTMLResponse(render_page("export", body))
+@router.get("/export", response_class=HTMLResponse)
+async def export_page():
+    service = get_service()
+    body = await service.run(render_export_html)
+    return HTMLResponse(render_page("export", body))
 
-    @router.post("/export")
-    async def export_post(
-        target: str = Form("all"),
-        fmt: str = Form("apkg"),
-        with_scheduling: bool = Form(False),
-        with_media: bool = Form(False),
-        with_deck_configs: bool = Form(False),
-        legacy: bool = Form(False),
-        with_html: bool = Form(False),
-        with_tags: bool = Form(False),
-        with_deck: bool = Form(False),
-        with_notetype: bool = Form(False),
-        with_guid: bool = Form(False),
-    ):
-        import anki.import_export_pb2 as ie
-        service = get_service()
 
-        def make_limit():
-            lim = ie.ExportLimit()
-            if target == "all":
-                lim.whole_collection.SetInParent()
-            else:
-                lim.deck_id = int(target)
-            return lim
+@router.post("/export")
+async def export_post(
+    target: str = Form("all"),
+    fmt: str = Form("apkg"),
+    with_scheduling: bool = Form(False),
+    with_media: bool = Form(False),
+    with_deck_configs: bool = Form(False),
+    legacy: bool = Form(False),
+    with_html: bool = Form(False),
+    with_tags: bool = Form(False),
+    with_deck: bool = Form(False),
+    with_notetype: bool = Form(False),
+    with_guid: bool = Form(False),
+):
+    import anki.import_export_pb2 as ie
 
-        suffix = {"apkg": ".apkg", "colpkg": ".colpkg",
-                  "notes_csv": ".csv", "cards_csv": ".csv"}.get(fmt, ".apkg")
-        fd, out = tempfile.mkstemp(suffix=suffix)
-        os.close(fd)
+    service = get_service()
+
+    def make_limit():
+        lim = ie.ExportLimit()
+        if target == "all":
+            lim.whole_collection.SetInParent()
+        else:
+            lim.deck_id = int(target)
+        return lim
+
+    suffix = {
+        "apkg": ".apkg",
+        "colpkg": ".colpkg",
+        "notes_csv": ".csv",
+        "cards_csv": ".csv",
+    }.get(fmt, ".apkg")
+    fd, out = tempfile.mkstemp(suffix=suffix)
+    os.close(fd)
+    try:
+        if fmt == "apkg":
+            opts = ie.ExportAnkiPackageOptions(
+                with_scheduling=with_scheduling,
+                with_media=with_media,
+                with_deck_configs=with_deck_configs,
+                legacy=legacy,
+            )
+            lim = make_limit()
+            await service.run(
+                lambda col: col.export_anki_package(
+                    out_path=out, options=opts, limit=lim
+                )
+            )
+            filename, media = "export.apkg", "application/octet-stream"
+        elif fmt == "colpkg":
+            await service.run(
+                lambda col: col.export_collection_package(out, with_media, legacy)
+            )
+            await service.reopen()  # export_collection_package closed the collection
+            filename, media = "collection.colpkg", "application/octet-stream"
+        elif fmt == "notes_csv":
+            lim = make_limit()
+            await service.run(
+                lambda col: col.export_note_csv(
+                    out_path=out,
+                    limit=lim,
+                    with_html=with_html,
+                    with_tags=with_tags,
+                    with_deck=with_deck,
+                    with_notetype=with_notetype,
+                    with_guid=with_guid,
+                )
+            )
+            filename, media = "notes.csv", "text/csv"
+        elif fmt == "cards_csv":
+            lim = make_limit()
+            await service.run(
+                lambda col: col.export_card_csv(
+                    out_path=out, limit=lim, with_html=with_html
+                )
+            )
+            filename, media = "cards.csv", "text/csv"
+        else:
+            os.remove(out)
+            return HTMLResponse("unknown export format", status_code=400)
+    except Exception as exc:
         try:
-            if fmt == "apkg":
-                opts = ie.ExportAnkiPackageOptions(
-                    with_scheduling=with_scheduling, with_media=with_media,
-                    with_deck_configs=with_deck_configs, legacy=legacy)
-                lim = make_limit()
-                await service.run(lambda col: col.export_anki_package(
-                    out_path=out, options=opts, limit=lim))
-                filename, media = "export.apkg", "application/octet-stream"
-            elif fmt == "colpkg":
-                await service.run(lambda col: col.export_collection_package(
-                    out, with_media, legacy))
-                await service.reopen()  # export_collection_package closed the collection
-                filename, media = "collection.colpkg", "application/octet-stream"
-            elif fmt == "notes_csv":
-                lim = make_limit()
-                await service.run(lambda col: col.export_note_csv(
-                    out_path=out, limit=lim, with_html=with_html, with_tags=with_tags,
-                    with_deck=with_deck, with_notetype=with_notetype, with_guid=with_guid))
-                filename, media = "notes.csv", "text/csv"
-            elif fmt == "cards_csv":
-                lim = make_limit()
-                await service.run(lambda col: col.export_card_csv(
-                    out_path=out, limit=lim, with_html=with_html))
-                filename, media = "cards.csv", "text/csv"
-            else:
-                os.remove(out)
-                return HTMLResponse("unknown export format", status_code=400)
-        except Exception as exc:
-            try:
-                os.remove(out)
-            except OSError:
-                pass
-            body = await service.run(render_export_html)
-            return HTMLResponse(render_page(
-                "export", f"<div style='color:#c00'>Export failed: {exc}</div>" + body))
-        return FileResponse(out, media_type=media, filename=filename,
-                            background=BackgroundTask(os.remove, out))
+            os.remove(out)
+        except OSError:
+            pass
+        body = await service.run(render_export_html)
+        return HTMLResponse(
+            render_page(
+                "export", f"<div style='color:#c00'>Export failed: {exc}</div>" + body
+            )
+        )
+    return FileResponse(
+        out,
+        media_type=media,
+        filename=filename,
+        background=BackgroundTask(os.remove, out),
+    )
 ```
 (NOTE: a disabled `<select>` is not submitted, so colpkg's disabled target falls back to `target="all"` — correct, colpkg is always whole-collection. `bool = Form(False)` reads HTML checkboxes. `FileResponse` reads the file as the response and the `BackgroundTask` deletes the temp after sending.)
 
 - [ ] **Step 6: Add the deck-browser Export link** — in `ankiweb/screens/deckbrowser.py` `render_deckbrowser_html`, extend the `create` line (it currently ends with the Stats link):
 ```python
-    create = ("<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
-              " <button onclick='pycmd(\"createfiltered\")'>Create Filtered Deck</button>"
-              " <button onclick='ankiwebImportFile()'>Import</button>"
-              " <a href='/export'>Export</a>"
-              " <a href='/graphs'>Stats</a>")
+create = (
+    "<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
+    " <button onclick='pycmd(\"createfiltered\")'>Create Filtered Deck</button>"
+    " <button onclick='ankiwebImportFile()'>Import</button>"
+    " <a href='/export'>Export</a>"
+    " <a href='/graphs'>Stats</a>"
+)
 ```
 
 - [ ] **Step 7: Run to verify pass** — `conda run -n ankiweb python -m pytest tests/test_export.py -v`, then regression: `conda run -n ankiweb python -m pytest tests/test_deckbrowser.py tests/test_screen_routes.py tests/test_import_upload.py tests/test_import_rpc.py -q`.
@@ -326,14 +380,19 @@ def live_server_exp(tmp_path: Path):
         did = col.decks.id("Default")
         for i in range(2):
             n = col.new_note(col.models.by_name("Basic"))
-            n["Front"] = f"f{i}"; n["Back"] = f"b{i}"
+            n["Front"] = f"f{i}"
+            n["Back"] = f"b{i}"
             col.add_note(n, did)
     finally:
         col.close()
-    settings = Settings(collection_path=col_path, port=8136,
-                        import_tmp_dir=tmp_path / "import-tmp")
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8136, log_level="warning"))
+    settings = Settings(
+        collection_path=col_path, port=8136, import_tmp_dir=tmp_path / "import-tmp"
+    )
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8136, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10

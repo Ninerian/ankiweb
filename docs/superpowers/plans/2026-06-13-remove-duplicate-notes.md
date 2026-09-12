@@ -45,9 +45,16 @@ Add a helper near the top of `tests/ankiconnect/test_extra_actions.py` (just aft
 ```python
 def _add_note(client, deck, model, fields):
     """Add a note (always allowing duplicates) and return its noteId."""
-    r = _post(client, "/actions/addNote",
-              note={"deckName": deck, "modelName": model, "fields": fields,
-                    "options": {"allowDuplicate": True}})
+    r = _post(
+        client,
+        "/actions/addNote",
+        note={
+            "deckName": deck,
+            "modelName": model,
+            "fields": fields,
+            "options": {"allowDuplicate": True},
+        },
+    )
     return r["result"]
 ```
 
@@ -67,9 +74,11 @@ def test_remove_duplicate_notes_keeps_oldest(client):
     assert r["dryRun"] is False
     assert r["notesScanned"] == 3
     assert r["groups"][0]["model"] == "Basic"
-    assert r["groups"][0]["kept"] == a                      # oldest survives
-    assert r["groups"][0]["deleted"] == [b, c]              # newer copies, ascending nid
-    remaining = client.post("/actions/findNotes", json={"query": "deck:Dup"}).json()["result"]
+    assert r["groups"][0]["kept"] == a  # oldest survives
+    assert r["groups"][0]["deleted"] == [b, c]  # newer copies, ascending nid
+    remaining = client.post("/actions/findNotes", json={"query": "deck:Dup"}).json()[
+        "result"
+    ]
     assert remaining == [a]
 
 
@@ -77,11 +86,17 @@ def test_remove_duplicate_notes_dry_run(client):
     _post(client, "/actions/createDeck", deck="DupDry")
     a = _add_note(client, "DupDry", "Basic", {"Front": "Q", "Back": "A"})
     b = _add_note(client, "DupDry", "Basic", {"Front": "Q", "Back": "A"})
-    r = _post(client, "/extra_actions/removeDuplicateNotes", deck="DupDry", dryRun=True)["result"]
+    r = _post(
+        client, "/extra_actions/removeDuplicateNotes", deck="DupDry", dryRun=True
+    )["result"]
     assert r["dryRun"] is True
-    assert r["duplicateGroups"] == 1 and r["duplicateNotes"] == 1  # 2 identical -> 1 redundant
-    assert r["deleted"] == 0                                 # nothing removed
-    remaining = client.post("/actions/findNotes", json={"query": "deck:DupDry"}).json()["result"]
+    assert (
+        r["duplicateGroups"] == 1 and r["duplicateNotes"] == 1
+    )  # 2 identical -> 1 redundant
+    assert r["deleted"] == 0  # nothing removed
+    remaining = client.post("/actions/findNotes", json={"query": "deck:DupDry"}).json()[
+        "result"
+    ]
     assert sorted(remaining) == sorted([a, b])
 
 
@@ -117,8 +132,9 @@ def test_remove_duplicate_notes_bad_deck_id(client):
     _post(client, "/actions/createDeck", deck="DupBad")
     _add_note(client, "DupBad", "Basic", {"Front": "Q", "Back": "A"})
     _add_note(client, "DupBad", "Basic", {"Front": "Q", "Back": "A"})
-    r2 = _post(client, "/extra_actions/removeDuplicateNotes",
-               deckId=99999999, deck="DupBad")["result"]
+    r2 = _post(
+        client, "/extra_actions/removeDuplicateNotes", deckId=99999999, deck="DupBad"
+    )["result"]
     assert r2["deck"] == "DupBad" and r2["deleted"] == 1
 ```
 
@@ -136,10 +152,14 @@ class RemoveDuplicateNotesParams(ACBaseModel):
     """Find notes in a deck (and its subdecks) that are duplicates across ALL fields within the
     same note type, and remove the newer copies (keeping the oldest). Identify the deck by name
     or id. Set dryRun to preview the statistics without deleting anything."""
+
     deck: Optional[str] = Field(default=None, description="Deck name.")
-    deckId: Optional[int] = Field(default=None, description="Deck id (alternative to `deck`).")
-    dryRun: bool = Field(default=False,
-                         description="If true, report duplicates but delete nothing.")
+    deckId: Optional[int] = Field(
+        default=None, description="Deck id (alternative to `deck`)."
+    )
+    dryRun: bool = Field(
+        default=False, description="If true, report duplicates but delete nothing."
+    )
 ```
 
 (`Optional` and `Field` are already imported at the top of the file.)
@@ -150,6 +170,7 @@ Create `ankiweb/ankiconnect/extra_actions/notes.py`:
 
 ```python
 """Note de-duplication extra actions."""
+
 from __future__ import annotations
 from anki.collection import SearchNode
 from anki.utils import ids2str, split_fields, strip_html_media
@@ -158,8 +179,11 @@ from ankiweb.ankiconnect.actions._helpers import run_emit
 from ankiweb.ankiconnect.schemas.extra import RemoveDuplicateNotesParams
 
 
-@extra_action("removeDuplicateNotes", params=RemoveDuplicateNotesParams,
-              summary="Remove notes that duplicate another across ALL fields (keep the oldest)")
+@extra_action(
+    "removeDuplicateNotes",
+    params=RemoveDuplicateNotesParams,
+    summary="Remove notes that duplicate another across ALL fields (keep the oldest)",
+)
 async def remove_duplicate_notes(rt, deck=None, deckId=None, dryRun=False):
     """Scan a deck and its subdecks for notes that are duplicates across every field within the
     same note type (each field normalized with strip_html_media, as Anki's find_dupes does;
@@ -167,13 +191,17 @@ async def remove_duplicate_notes(rt, deck=None, deckId=None, dryRun=False):
     added copies, keeping the oldest note in each duplicate group. dryRun returns the same
     statistics without deleting. ankiweb-original: reachable only at
     /extra_actions/removeDuplicateNotes, never via the canonical POST /."""
+
     def fn(col):
         # resolve the deck: a valid deckId wins, else fall back to the name
         # default=False is REQUIRED: col.decks.get(id) defaults to returning the Default deck
         # for ANY unknown id, which would make a bogus deckId resolve to a phantom "[no deck]"
         # scope and even shadow a valid `deck` name. default=False returns None for unknown ids.
-        did = deckId if (deckId is not None
-                         and col.decks.get(deckId, default=False) is not None) else None
+        did = (
+            deckId
+            if (deckId is not None and col.decks.get(deckId, default=False) is not None)
+            else None
+        )
         name = col.decks.name(did) if did is not None else None
         if name is None and deck:
             d = col.decks.by_name(deck)
@@ -183,13 +211,16 @@ async def remove_duplicate_notes(rt, deck=None, deckId=None, dryRun=False):
             raise Exception("deck was not found: " + str(deck if deck else deckId))
 
         nids = col.find_notes(col.build_search_string(SearchNode(deck=name)))
-        rows = col.db.all(
-            f"select id, mid, flds from notes where id in {ids2str(nids)}") if nids else []
+        rows = (
+            col.db.all(f"select id, mid, flds from notes where id in {ids2str(nids)}")
+            if nids
+            else []
+        )
 
         groups: dict[tuple, list[int]] = {}
         for nid, mid, flds in rows:
             stripped = tuple(strip_html_media(v) for v in split_fields(flds))
-            if not any(stripped):                 # all fields empty -> never a duplicate
+            if not any(stripped):  # all fields empty -> never a duplicate
                 continue
             groups.setdefault((mid, stripped), []).append(nid)
 
@@ -198,11 +229,12 @@ async def remove_duplicate_notes(rt, deck=None, deckId=None, dryRun=False):
         for (mid, _key), members in groups.items():
             if len(members) < 2:
                 continue
-            members.sort()                        # ascending nid: oldest first
+            members.sort()  # ascending nid: oldest first
             kept, dupes = members[0], members[1:]
             redundant.extend(dupes)
-            detail.append({"model": col.models.get(mid)["name"],
-                           "kept": kept, "deleted": dupes})
+            detail.append(
+                {"model": col.models.get(mid)["name"], "kept": kept, "deleted": dupes}
+            )
 
         op = col.remove_notes(redundant) if (redundant and not dryRun) else None
         result = {
@@ -216,6 +248,7 @@ async def remove_duplicate_notes(rt, deck=None, deckId=None, dryRun=False):
             "groups": detail,
         }
         return result, op
+
     return await run_emit(rt, fn)
 ```
 
@@ -278,7 +311,9 @@ def test_remove_duplicate_notes_all_fields_participate(client):
     b = _add_note(client, "AllF", "Basic", {"Front": "Q", "Back": "A2"})
     r = _post(client, "/extra_actions/removeDuplicateNotes", deck="AllF")["result"]
     assert r["duplicateGroups"] == 0 and r["deleted"] == 0
-    remaining = client.post("/actions/findNotes", json={"query": "deck:AllF"}).json()["result"]
+    remaining = client.post("/actions/findNotes", json={"query": "deck:AllF"}).json()[
+        "result"
+    ]
     assert sorted(remaining) == sorted([a, b])
 
 
@@ -286,10 +321,14 @@ def test_remove_duplicate_notes_cross_notetype_not_merged(client):
     # identical field values but different note types -> NOT duplicates
     _post(client, "/actions/createDeck", deck="XType")
     a = _add_note(client, "XType", "Basic", {"Front": "Q", "Back": "A"})
-    b = _add_note(client, "XType", "Basic (and reversed card)", {"Front": "Q", "Back": "A"})
+    b = _add_note(
+        client, "XType", "Basic (and reversed card)", {"Front": "Q", "Back": "A"}
+    )
     r = _post(client, "/extra_actions/removeDuplicateNotes", deck="XType")["result"]
     assert r["duplicateGroups"] == 0 and r["deleted"] == 0
-    remaining = client.post("/actions/findNotes", json={"query": "deck:XType"}).json()["result"]
+    remaining = client.post("/actions/findNotes", json={"query": "deck:XType"}).json()[
+        "result"
+    ]
     assert sorted(remaining) == sorted([a, b])
 
 
@@ -300,9 +339,11 @@ def test_remove_duplicate_notes_includes_subdecks(client):
     b = _add_note(client, "Parent::Child", "Basic", {"Front": "S", "Back": "B"})
     r = _post(client, "/extra_actions/removeDuplicateNotes", deck="Parent")["result"]
     assert r["duplicateGroups"] == 1 and r["deleted"] == 1
-    assert r["groups"][0]["kept"] == a              # oldest (in Parent) kept
-    assert r["groups"][0]["deleted"] == [b]         # subdeck copy removed
-    remaining = client.post("/actions/findNotes", json={"query": "deck:Parent"}).json()["result"]
+    assert r["groups"][0]["kept"] == a  # oldest (in Parent) kept
+    assert r["groups"][0]["deleted"] == [b]  # subdeck copy removed
+    remaining = client.post("/actions/findNotes", json={"query": "deck:Parent"}).json()[
+        "result"
+    ]
     assert remaining == [a]
 
 
@@ -318,11 +359,20 @@ def test_remove_duplicate_notes_strip_html_equivalent(client):
 
 def test_remove_duplicate_notes_not_on_canonical_root(client):
     # the canonical POST / dispatcher must NOT know removeDuplicateNotes
-    body = client.post("/", json={"action": "removeDuplicateNotes", "version": 6,
-                                  "params": {"deck": "Default"}}).json()
+    body = client.post(
+        "/",
+        json={
+            "action": "removeDuplicateNotes",
+            "version": 6,
+            "params": {"deck": "Default"},
+        },
+    ).json()
     assert body["result"] is None and "unsupported action" in body["error"]
     # and it is not a typed /actions/ route either
-    assert client.post("/actions/removeDuplicateNotes", json={"deck": "x"}).status_code == 404
+    assert (
+        client.post("/actions/removeDuplicateNotes", json={"deck": "x"}).status_code
+        == 404
+    )
 
 
 def test_remove_duplicate_notes_in_openapi(client):
@@ -330,7 +380,10 @@ def test_remove_duplicate_notes_in_openapi(client):
     assert "/extra_actions/removeDuplicateNotes" in schema["paths"]
     assert "/actions/removeDuplicateNotes" not in schema["paths"]
     assert "RemoveDuplicateNotesParams" in schema["components"]["schemas"]
-    assert "extra_actions" in schema["paths"]["/extra_actions/removeDuplicateNotes"]["post"]["tags"]
+    assert (
+        "extra_actions"
+        in schema["paths"]["/extra_actions/removeDuplicateNotes"]["post"]["tags"]
+    )
 ```
 
 - [ ] **Step 2: Run the new tests**

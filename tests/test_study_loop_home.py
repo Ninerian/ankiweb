@@ -24,8 +24,11 @@ def live_server(tmp_path: Path):
         col.close()
 
     settings = Settings(collection_path=col_path, port=8124)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8124, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8124, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10

@@ -2,7 +2,10 @@ import tempfile, os
 import pytest
 from anki.collection import Collection
 from ankiweb.screens.reviewer import (
-    ReviewerSession, load_question, render_answer, answer_current,
+    ReviewerSession,
+    load_question,
+    render_answer,
+    answer_current,
 )
 
 
@@ -10,7 +13,9 @@ from ankiweb.screens.reviewer import (
 def col():
     c = Collection(os.path.join(tempfile.mkdtemp(), "c.anki2"))
     for i in range(2):
-        n = c.new_note(c.models.by_name("Basic")); n["Front"] = f"Q{i}"; n["Back"] = f"A{i}"
+        n = c.new_note(c.models.by_name("Basic"))
+        n["Front"] = f"Q{i}"
+        n["Back"] = f"A{i}"
         c.add_note(n, c.decks.id("Default"))
     yield c
     c.close()
@@ -20,7 +25,7 @@ def test_load_question_returns_html_and_sets_session(col):
     s = ReviewerSession()
     info = load_question(col, s)
     assert info is not None
-    assert "Q0" in info["q"] or "Q1" in info["q"]   # one of the two cards' fronts
+    assert "Q0" in info["q"] or "Q1" in info["q"]  # one of the two cards' fronts
     assert info["bodyclass"].startswith("card card")
     assert s.card is not None and s.states is not None
 
@@ -38,22 +43,23 @@ def test_render_answer_has_answer_and_four_labels(col):
     s = ReviewerSession()
     load_question(col, s)
     info = render_answer(col, s)
-    assert info["a"]                       # answer HTML present
-    assert len(info["labels"]) == 4        # Again/Hard/Good/Easy interval labels
+    assert info["a"]  # answer HTML present
+    assert len(info["labels"]) == 4  # Again/Hard/Good/Easy interval labels
 
 
 def test_answer_advances_queue(col):
     s = ReviewerSession()
     load_question(col, s)
-    before = col.sched.counts()            # (new, learn, review)
-    changes = answer_current(col, s, 3)    # rate Good
+    before = col.sched.counts()  # (new, learn, review)
+    changes = answer_current(col, s, 3)  # rate Good
     assert changes.study_queues is True
     after = col.sched.counts()
-    assert after != before                 # answering moved the card
+    assert after != before  # answering moved the card
 
 
 def test_show_answer_bar():
     from ankiweb.screens.reviewer import show_answer_bar
+
     html = show_answer_bar()
     assert "Show Answer" in html
     assert "ankiwebShowAnswer()" in html
@@ -61,6 +67,7 @@ def test_show_answer_bar():
 
 def test_ease_buttons_bar():
     from ankiweb.screens.reviewer import ease_buttons_bar
+
     html = ease_buttons_bar(["<1m", "<6m", "<10m", "3d"])
     for name in ("Again", "Hard", "Good", "Easy"):
         assert name in html
@@ -71,6 +78,7 @@ def test_ease_buttons_bar():
 
 def test_reviewer_page_body_loads_qa_and_registers():
     from ankiweb.screens.reviewer import reviewer_page_body
+
     body = reviewer_page_body()
     assert "id='qa'" in body or 'id="qa"' in body
     assert "ankiweb-answer" in body
@@ -81,6 +89,7 @@ def test_reviewer_page_body_loads_qa_and_registers():
 
 def test_render_av_buttons_and_filenames():
     from ankiweb.screens.reviewer import render_av_buttons
+
     html = render_av_buttons("X [anki:play:q:0] Y [anki:play:a:1] Z")
     assert "[anki:play" not in html
     assert html.count("replay-button") == 2
@@ -89,6 +98,7 @@ def test_render_av_buttons_and_filenames():
 
 def test_reviewer_body_registers_audio_player():
     from ankiweb.screens.reviewer import reviewer_page_body
+
     body = reviewer_page_body()
     assert "ankiwebPlayAudio" in body
     assert "Audio(" in body or "new Audio" in body
@@ -96,13 +106,15 @@ def test_reviewer_body_registers_audio_player():
 
 def test_reviewer_body_has_shortcuts_guarded():
     from ankiweb.screens.reviewer import reviewer_page_body
+
     body = reviewer_page_body()
     assert "keydown" in body
-    assert "typeans" in body          # the input guard
-    assert "ease" in body             # digit -> ease mapping
+    assert "typeans" in body  # the input guard
+    assert "ease" in body  # digit -> ease mapping
 
 
 def test_reviewer_body_has_edit_shortcut():
     from ankiweb.screens.reviewer import reviewer_page_body
+
     body = reviewer_page_body()
     assert "'edit'" in body or '"edit"' in body

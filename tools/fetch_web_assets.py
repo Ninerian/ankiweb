@@ -1,4 +1,5 @@
 """Download the aqt wheel (no deps) and extract _aqt/data/web/ into ankiweb/web_assets/."""
+
 from __future__ import annotations
 import subprocess
 import sys
@@ -9,15 +10,32 @@ from pathlib import Path
 
 AQT_VERSION = "25.9.4"
 DEST = Path(__file__).resolve().parent.parent / "ankiweb" / "web_assets"
-REQUIRED = ["js/reviewer.js", "js/reviewer-bottom.js", "css/reviewer.css",
-            "sveltekit/index.html", "pages/congrats.html", "js/vendor/jquery.min.js"]
+REQUIRED = [
+    "js/reviewer.js",
+    "js/reviewer-bottom.js",
+    "css/reviewer.css",
+    "sveltekit/index.html",
+    "pages/congrats.html",
+    "js/vendor/jquery.min.js",
+]
 
 
 def main() -> None:
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
-        subprocess.run([sys.executable, "-m", "pip", "download", f"aqt=={AQT_VERSION}",
-                        "--no-deps", "-d", str(td)], check=True)
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "download",
+                f"aqt=={AQT_VERSION}",
+                "--no-deps",
+                "-d",
+                str(td),
+            ],
+            check=True,
+        )
         wheels = list(td.glob("aqt-*.whl"))
         if not wheels:
             raise SystemExit("pip download produced no aqt wheel")
@@ -25,12 +43,14 @@ def main() -> None:
         with zipfile.ZipFile(wheel) as zf:
             members = [m for m in zf.namelist() if m.startswith("_aqt/data/web/")]
             if not members:
-                raise SystemExit("aqt wheel has no _aqt/data/web/ — version layout changed")
+                raise SystemExit(
+                    "aqt wheel has no _aqt/data/web/ — version layout changed"
+                )
             if DEST.exists():
                 shutil.rmtree(DEST)
             DEST.mkdir(parents=True)
             for m in members:
-                rel = m[len("_aqt/data/web/"):]
+                rel = m[len("_aqt/data/web/") :]
                 if not rel:
                     continue
                 out = DEST / rel

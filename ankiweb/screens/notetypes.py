@@ -3,9 +3,14 @@ import copy
 import html
 from typing import Callable
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
+from datastar_py.fastapi import (
+    DatastarResponse,
+    ServerSentEventGenerator as SSE,
+    ReadSignals,
+)
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
+
 
 def _heading() -> str:
     """Prefer the desktop "Manage Note Types" string; fall back to a keyless heading.
@@ -34,6 +39,7 @@ def render_notetypes_html(col) -> str:
         L_fields=tr.notetypes_fields(),
         L_cards=tr.notetypes_cards(),
     )
+
 
 def make_notetypes_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/notetypes")

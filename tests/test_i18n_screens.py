@@ -5,6 +5,7 @@ so the default-English tests need no setup; the zh-CN tests call set_lang in-bod
 use the process-global `tr` (ankiweb.i18n), so set_lang controls their language regardless
 of how the test collection was opened.
 """
+
 from __future__ import annotations
 import anki.lang
 from ankiweb.screens.page import render_page

@@ -2,7 +2,11 @@ from __future__ import annotations
 import html
 from typing import Callable
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
+from datastar_py.fastapi import (
+    DatastarResponse,
+    ServerSentEventGenerator as SSE,
+    ReadSignals,
+)
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
 
@@ -67,6 +71,7 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
 
         def build_and_run(col):
             import anki.decks_pb2 as dp
+
             g = col.sched.get_or_create_filtered_deck(int(p.get("id", 0)))
             g.name = p.get("name", g.name)
             g.allow_empty = bool(p.get("allow_empty"))
@@ -76,13 +81,21 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
             cfg.preview_hard_secs = int(p.get("preview_hard", 0))
             cfg.preview_good_secs = int(p.get("preview_good", 0))
             del cfg.delays[:]
-            terms = [dp.Deck.Filtered.SearchTerm(
-                search=p.get("search1", ""), limit=int(p.get("limit1", 100)),
-                order=int(p.get("order1", 0)))]
+            terms = [
+                dp.Deck.Filtered.SearchTerm(
+                    search=p.get("search1", ""),
+                    limit=int(p.get("limit1", 100)),
+                    order=int(p.get("order1", 0)),
+                )
+            ]
             if p.get("second"):
-                terms.append(dp.Deck.Filtered.SearchTerm(
-                    search=p.get("search2", ""), limit=int(p.get("limit2", 20)),
-                    order=int(p.get("order2", 5))))
+                terms.append(
+                    dp.Deck.Filtered.SearchTerm(
+                        search=p.get("search2", ""),
+                        limit=int(p.get("limit2", 20)),
+                        order=int(p.get("order2", 5)),
+                    )
+                )
             del cfg.search_terms[:]
             cfg.search_terms.extend(terms)
             out = col.sched.add_or_update_filtered_deck(g)
@@ -93,7 +106,12 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
             await service.run_op(build_and_run, initiator="filtereddeck")
         except Exception as e:
             from anki.errors import FilteredDeckError
-            msg = str(e) if isinstance(e, FilteredDeckError) else "Could not build the filtered deck."
+
+            msg = (
+                str(e)
+                if isinstance(e, FilteredDeckError)
+                else "Could not build the filtered deck."
+            )
             err_html = f'<div id="err" style="color:#c00;margin-top:8px;">{html.escape(msg)}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 

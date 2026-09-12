@@ -27,10 +27,18 @@ def test_notify_page_renders(client):
 
 def test_notify_save_persists_config(client):
     c, tmp_path = client
-    r = c.post("/notify", data={"action": "save", "enabled": "on",
-                                "url": "http://hook.example/anki", "token": "sek",
-                                "poll_sec": "20", "retry_sec": "8"},
-               follow_redirects=False)
+    r = c.post(
+        "/notify",
+        data={
+            "action": "save",
+            "enabled": "on",
+            "url": "http://hook.example/anki",
+            "token": "sek",
+            "poll_sec": "20",
+            "retry_sec": "8",
+        },
+        follow_redirects=False,
+    )
     assert r.status_code == 303 and r.headers["location"] == "/notify"
     # persisted to notify.json next to the collection
     cfg = NotifyConfig.load(tmp_path / "notify.json")
@@ -49,23 +57,43 @@ def test_notify_scope_selector_defaults_leaf(client):
 
 def test_notify_save_scope_all(client):
     c, tmp_path = client
-    c.post("/notify", data={"action": "save", "enabled": "on", "url": "http://x",
-                            "poll_sec": "5", "retry_sec": "5", "scope": "all"})
+    c.post(
+        "/notify",
+        data={
+            "action": "save",
+            "enabled": "on",
+            "url": "http://x",
+            "poll_sec": "5",
+            "retry_sec": "5",
+            "scope": "all",
+        },
+    )
     assert NotifyConfig.load(tmp_path / "notify.json").scope == "all"
 
 
 def test_notify_unchecked_enabled_is_false(client):
     c, tmp_path = client
-    c.post("/notify", data={"action": "save", "url": "http://x", "poll_sec": "5",
-                            "retry_sec": "5"})  # no 'enabled' field -> unchecked
+    c.post(
+        "/notify",
+        data={"action": "save", "url": "http://x", "poll_sec": "5", "retry_sec": "5"},
+    )  # no 'enabled' field -> unchecked
     assert NotifyConfig.load(tmp_path / "notify.json").enabled is False
 
 
 def test_notify_rejects_non_latin1_token(client):  # fix #5
     c, tmp_path = client
-    r = c.post("/notify", data={"action": "save", "enabled": "on", "url": "http://x",
-                                "token": "secret你", "poll_sec": "5", "retry_sec": "5"},
-               follow_redirects=False)
+    r = c.post(
+        "/notify",
+        data={
+            "action": "save",
+            "enabled": "on",
+            "url": "http://x",
+            "token": "secret你",
+            "poll_sec": "5",
+            "retry_sec": "5",
+        },
+        follow_redirects=False,
+    )
     assert r.status_code == 400
     assert "latin-1" in r.text or "ASCII" in r.text
     assert "http://x" in r.text  # the submitted URL is preserved on the error page
@@ -75,8 +103,16 @@ def test_notify_rejects_non_latin1_token(client):  # fix #5
 
 def test_notify_resync_sets_flag(client):
     c, _ = client
-    c.post("/notify", data={"action": "resync", "enabled": "on", "url": "http://x",
-                            "poll_sec": "5", "retry_sec": "5"})
+    c.post(
+        "/notify",
+        data={
+            "action": "resync",
+            "enabled": "on",
+            "url": "http://x",
+            "poll_sec": "5",
+            "retry_sec": "5",
+        },
+    )
     # the route should have flipped the runner's resync flag on app.state.notifier
     state = c.app.state.notifier
     assert state.resync_pending is True

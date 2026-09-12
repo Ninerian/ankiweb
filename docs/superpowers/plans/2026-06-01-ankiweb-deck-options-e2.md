@@ -49,7 +49,9 @@ def client(tmp_path: Path):
 
 
 def test_deck_options_serves_spa_shell(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
     r = client.get(f"/deck-options/{did}")
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/html")
@@ -60,24 +62,40 @@ def test_frontend_service_methods_are_custom_noops(client):
     # deckOptionsReady/RequireClose would 500 (InvalidServiceIndex) via passthrough;
     # CUSTOM no-ops return 204.
     for m in ("deckOptionsReady", "deckOptionsRequireClose"):
-        r = client.post(f"/_anki/{m}", content=b"", headers={"content-type": "application/binary"})
+        r = client.post(
+            f"/_anki/{m}", content=b"", headers={"content-type": "application/binary"}
+        )
         assert r.status_code == 204, m
 
 
 def test_get_deck_configs_for_update_passthrough(client):
     # the page's load RPC works (read); empty body is a valid (default) request
-    r = client.post("/_anki/get_deck_configs_for_update", content=b"",
-                    headers={"content-type": "application/binary"})
-    assert r.status_code in (200, 500)   # allowed (not 404); 200 with a body or 500 if empty-body invalid
+    r = client.post(
+        "/_anki/get_deck_configs_for_update",
+        content=b"",
+        headers={"content-type": "application/binary"},
+    )
+    assert r.status_code in (
+        200,
+        500,
+    )  # allowed (not 404); 200 with a body or 500 if empty-body invalid
     assert r.status_code != 404
 
 
 def test_passthrough_and_custom_registered():
     from ankiweb.anki_rpc.passthrough import PASSTHROUGH
     from ankiweb.anki_rpc.handlers import CUSTOM
-    for m in ("get_ignored_before_count", "compute_fsrs_params", "evaluate_params_legacy",
-              "compute_optimal_retention", "simulate_fsrs_review", "simulate_fsrs_workload",
-              "get_retention_workload", "set_wants_abort"):
+
+    for m in (
+        "get_ignored_before_count",
+        "compute_fsrs_params",
+        "evaluate_params_legacy",
+        "compute_optimal_retention",
+        "simulate_fsrs_review",
+        "simulate_fsrs_workload",
+        "get_retention_workload",
+        "set_wants_abort",
+    ):
         assert m in PASSTHROUGH, m
     for m in ("updateDeckConfigs", "deckOptionsReady", "deckOptionsRequireClose"):
         assert m in CUSTOM, m
@@ -86,11 +104,17 @@ def test_passthrough_and_custom_registered():
 def test_update_deck_configs_persists_and_broadcasts(client):
     # round-trip: read the configs, flip a value, write via the CUSTOM handler, confirm persisted
     import anki.deck_config_pb2 as dc
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
+
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
 
     def read(col):
         return col.decks.get_deck_configs_for_update(did)
-    state = client.portal.call(client.app.state.service.run, read)  # DeckConfigsForUpdate
+
+    state = client.portal.call(
+        client.app.state.service.run, read
+    )  # DeckConfigsForUpdate
     # build a minimal UpdateDeckConfigsRequest from the current state (keep the same config)
     cfg = state.all_config[0].config
     new_limit = cfg.new_per_day + 7
@@ -107,20 +131,30 @@ def test_update_deck_configs_persists_and_broadcasts(client):
         fsrs=state.fsrs,
         fsrs_reschedule=False,
     )
-    r = client.post("/_anki/updateDeckConfigs", content=req.SerializeToString(),
-                    headers={"content-type": "application/binary"})
+    r = client.post(
+        "/_anki/updateDeckConfigs",
+        content=req.SerializeToString(),
+        headers={"content-type": "application/binary"},
+    )
     assert r.status_code == 200
     # the new_per_day limit persisted
     persisted = client.portal.call(
         client.app.state.service.run,
-        lambda col: col.decks.get_deck_configs_for_update(did).all_config[0].config.new_per_day)
+        lambda col: (
+            col.decks.get_deck_configs_for_update(did).all_config[0].config.new_per_day
+        ),
+    )
     assert persisted == new_limit
 
 
 def test_gear_menu_navigates_to_deck_options(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"opts:{did}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"opts:{did}"}
+        )
         m = ws.receive_json()
         while m["type"] != "call" or m["fn"] != "ankiwebNavigate":
             m = ws.receive_json()
@@ -139,9 +173,20 @@ def test_gear_menu_navigates_to_deck_options(client):
 
 - [ ] **Step 4: Extend the passthrough** — in `ankiweb/anki_rpc/passthrough.py`, add to the `PASSTHROUGH` set:
 ```python
-    "get_ignored_before_count", "compute_fsrs_params", "evaluate_params_legacy",
-    "compute_optimal_retention", "simulate_fsrs_review", "simulate_fsrs_workload",
-    "get_retention_workload", "set_wants_abort",
+(
+    "get_ignored_before_count",
+    "compute_fsrs_params",
+    "evaluate_params_legacy",
+)
+(
+    "compute_optimal_retention",
+    "simulate_fsrs_review",
+    "simulate_fsrs_workload",
+)
+(
+    "get_retention_workload",
+    "set_wants_abort",
+)
 ```
 
 - [ ] **Step 5: Add the CUSTOM handlers** — in `ankiweb/anki_rpc/handlers.py`:
@@ -152,6 +197,7 @@ async def update_deck_configs(service, body: bytes) -> bytes:
     try:
         from anki.collection_pb2 import OpChanges
         from ankiweb.collection_service import op_changes_to_flags
+
         op = OpChanges()
         op.ParseFromString(bytes(out))
         flags = op_changes_to_flags(op)
@@ -220,45 +266,70 @@ def live_server_dopts(tmp_path: Path):
     col_path = tmp_path / "d.anki2"
     col = Collection(str(col_path))
     try:
-        n = col.new_note(col.models.by_name("Basic")); n["Front"] = "x"; n["Back"] = "y"
+        n = col.new_note(col.models.by_name("Basic"))
+        n["Front"] = "x"
+        n["Back"] = "y"
         col.add_note(n, col.decks.id("Default"))
         did = col.decks.id("Default")
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8131)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8131, log_level="warning"))
-    t = threading.Thread(target=server.run, daemon=True); t.start()
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8131, log_level="warning"
+        )
+    )
+    t = threading.Thread(target=server.run, daemon=True)
+    t.start()
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
             raise RuntimeError("server did not start")
         time.sleep(0.05)
     yield "http://127.0.0.1:8131", did
-    server.should_exit = True; t.join(timeout=5)
+    server.should_exit = True
+    t.join(timeout=5)
 
 
 def test_deck_options_spa_boots(live_server_dopts):
     url, did = live_server_dopts
     with sync_playwright() as p:
-        browser = p.chromium.launch(); page = browser.new_page()
+        browser = p.chromium.launch()
+        page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on("requestfailed",
-                lambda r: errors.append("REQFAIL " + r.url) if ("/_app/" in r.url or "/_anki/" in r.url) else None)
+        page.on(
+            "requestfailed",
+            lambda r: (
+                errors.append("REQFAIL " + r.url)
+                if ("/_app/" in r.url or "/_anki/" in r.url)
+                else None
+            ),
+        )
         posts = []
-        page.on("request", lambda r: posts.append(r.url) if r.method == "POST" and "/_anki/" in r.url else None)
+        page.on(
+            "request",
+            lambda r: (
+                posts.append(r.url)
+                if r.method == "POST" and "/_anki/" in r.url
+                else None
+            ),
+        )
         page.goto(f"{url}/deck-options/{did}")
         # the deck-options SvelteKit page renders its form. Inspect for a stable selector:
         # the page has inputs / tab titles ("Daily Limits", "New Cards", a Save affordance).
         # wait for a real deck-options element (e.g. an <input>, or text like "New cards/day").
         page.wait_for_function(
-            "document.querySelectorAll('input,button').length>3", timeout=10000)
+            "document.querySelectorAll('input,button').length>3", timeout=10000
+        )
         page.wait_for_function(
-            "document.body.innerText.length>50", timeout=10000)  # the form rendered content
+            "document.body.innerText.length>50", timeout=10000
+        )  # the form rendered content
         assert not errors, errors
-        assert any("get_deck_configs_for_update" in u or "getDeckConfigsForUpdate" in u
-                   for u in posts), posts   # the load RPC fired
+        assert any(
+            "get_deck_configs_for_update" in u or "getDeckConfigsForUpdate" in u
+            for u in posts
+        ), posts  # the load RPC fired
         browser.close()
 ```
 (NOTE: pick the most stable mount selector by inspecting the rendered page — the deck-options form has many inputs + tab headers. The load-bearing assertions: no `/_app/` or `/_anki/` request failed, no page error, and the `getDeckConfigsForUpdate` POST fired (the page loaded the config through ankiweb). Optionally extend to click the Save control and assert an `updateDeckConfigs` POST returns 200, if you can find a stable Save selector — but the Task-1 `test_update_deck_configs_persists_and_broadcasts` already proves the write path, so mount+load is sufficient here.)

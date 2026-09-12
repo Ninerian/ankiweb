@@ -22,7 +22,7 @@ _OPENAPI_TAGS = [
             "**Native AnkiConnect actions**, documented here for convenience. Each route simply "
             "forwards to the canonical dispatcher, so it works — but for real integrations prefer "
             "calling AnkiConnect the standard way: **`POST /`** with a "
-            "`{\"action\", \"version\", \"params\"}` body. That root endpoint is the source of "
+            '`{"action", "version", "params"}` body. That root endpoint is the source of '
             "truth and stays byte-compatible with existing AnkiConnect clients/scripts."
         ),
     },
@@ -58,19 +58,25 @@ def create_ankiconnect_app(
         app.state.service = svc
         app.state.config = config
         app.state.hub = hub
-        app.state.notifier = notifier  # shared NotifierState (None if not wired, e.g. tests)
+        app.state.notifier = (
+            notifier  # shared NotifierState (None if not wired, e.g. tests)
+        )
         try:
             yield
         finally:
             if owns_service:
                 await svc.close()
 
-    app = FastAPI(title="ankiweb-ankiconnect", lifespan=lifespan, openapi_tags=_OPENAPI_TAGS)
+    app = FastAPI(
+        title="ankiweb-ankiconnect", lifespan=lifespan, openapi_tags=_OPENAPI_TAGS
+    )
 
     def _cors_headers(origin):
         allowed, header = allow_origin(origin, config.cors_origin_list)
-        return allowed, {"Access-Control-Allow-Origin": header,
-                         "Access-Control-Allow-Headers": "*"}
+        return allowed, {
+            "Access-Control-Allow-Origin": header,
+            "Access-Control-Allow-Headers": "*",
+        }
 
     @app.options("/")
     async def preflight(request: Request):
@@ -95,9 +101,14 @@ def create_ankiconnect_app(
             return JSONResponse({"apiVersion": "AnkiConnect v.6"}, headers=headers)
         action_name = req.get("action") or ""
         if not allowed and action_name != "requestPermission":
-            return JSONResponse({"result": None, "error": "origin not allowed"},
-                                status_code=403, headers=headers)
-        rt = Runtime(service=app.state.service, config=app.state.config, hub=app.state.hub)
+            return JSONResponse(
+                {"result": None, "error": "origin not allowed"},
+                status_code=403,
+                headers=headers,
+            )
+        rt = Runtime(
+            service=app.state.service, config=app.state.config, hub=app.state.hub
+        )
         if action_name == "requestPermission":  # inject CORS result + origin
             req.setdefault("params", {})
             req["params"]["allowed"] = allowed

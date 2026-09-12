@@ -11,6 +11,7 @@ def _default_english_lang():
     anki.lang.current_i18n in sync with tr_legacyglobal's backend). Tests that need another
     locale call anki.lang.set_lang(...) in their own body."""
     import anki.lang
+
     anki.lang.set_lang("en")
     yield
 
@@ -21,6 +22,7 @@ def temp_collection(tmp_path: Path):
     yield col
     col.close()
 
+
 def parse_datastar_events(text: str) -> list[tuple[str | None, str]]:
     """Parse a DatastarResponse SSE body into (event-type, joined-data-lines) pairs."""
     events = []
@@ -30,8 +32,8 @@ def parse_datastar_events(text: str) -> list[tuple[str | None, str]]:
         etype, data = None, []
         for line in block.splitlines():
             if line.startswith("event: "):
-                etype = line[len("event: "):]
+                etype = line[len("event: ") :]
             elif line.startswith("data: "):
-                data.append(line[len("data: "):])
+                data.append(line[len("data: ") :])
         events.append((etype, "\n".join(data)))
     return events

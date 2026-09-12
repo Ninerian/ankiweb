@@ -185,6 +185,7 @@ git commit -m "feat: scaffold ankiweb; verify anki backend opens on py3.12"
 `tools/fetch_web_assets.py`:
 ```python
 """Download the aqt wheel (no deps) and extract _aqt/data/web/ into ankiweb/web_assets/."""
+
 from __future__ import annotations
 import subprocess
 import sys
@@ -195,25 +196,44 @@ from pathlib import Path
 
 AQT_VERSION = "25.9.4"
 DEST = Path(__file__).resolve().parent.parent / "ankiweb" / "web_assets"
-REQUIRED = ["js/reviewer.js", "js/reviewer-bottom.js", "css/reviewer.css",
-            "sveltekit/index.html", "pages/congrats.html", "js/vendor/jquery.min.js"]
+REQUIRED = [
+    "js/reviewer.js",
+    "js/reviewer-bottom.js",
+    "css/reviewer.css",
+    "sveltekit/index.html",
+    "pages/congrats.html",
+    "js/vendor/jquery.min.js",
+]
 
 
 def main() -> None:
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
-        subprocess.run([sys.executable, "-m", "pip", "download", f"aqt=={AQT_VERSION}",
-                        "--no-deps", "-d", str(td)], check=True)
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "download",
+                f"aqt=={AQT_VERSION}",
+                "--no-deps",
+                "-d",
+                str(td),
+            ],
+            check=True,
+        )
         wheel = next(td.glob("aqt-*.whl"))
         with zipfile.ZipFile(wheel) as zf:
             members = [m for m in zf.namelist() if m.startswith("_aqt/data/web/")]
             if not members:
-                raise SystemExit("aqt wheel has no _aqt/data/web/ — version layout changed")
+                raise SystemExit(
+                    "aqt wheel has no _aqt/data/web/ — version layout changed"
+                )
             if DEST.exists():
                 shutil.rmtree(DEST)
             DEST.mkdir(parents=True)
             for m in members:
-                rel = m[len("_aqt/data/web/"):]
+                rel = m[len("_aqt/data/web/") :]
                 if not rel:
                     continue
                 out = DEST / rel
@@ -249,8 +269,13 @@ ASSETS = Path(__file__).resolve().parent.parent / "ankiweb" / "web_assets"
 
 
 def test_required_assets_vendored():
-    for rel in ["js/reviewer.js", "css/reviewer.css", "sveltekit/index.html",
-                "js/vendor/jquery.min.js", "VERSION"]:
+    for rel in [
+        "js/reviewer.js",
+        "css/reviewer.css",
+        "sveltekit/index.html",
+        "js/vendor/jquery.min.js",
+        "VERSION",
+    ]:
         assert (ASSETS / rel).exists(), f"missing {rel}"
     assert (ASSETS / "VERSION").read_text().strip() == "25.9.4"
 ```
@@ -310,7 +335,9 @@ async def test_run_serializes_access(service):
             n = col.new_note(col.models.by_name("Basic"))
             n["Front"] = str(i)
             col.add_note(n, col.decks.id("Default"))
+
         await service.run(fn)
+
     await asyncio.gather(*[add(i) for i in range(20)])
     total = await service.run(lambda col: col.note_count())
     assert total == 20
@@ -456,20 +483,23 @@ Add to `CollectionService.__init__`:
 ```
 Add methods to `CollectionService`:
 ```python
-    async def backend_raw(self, method: str, data: bytes) -> bytes:
-        def fn(col):
-            return getattr(col._backend, f"{method}_raw")(data)
-        return await self.run(fn)
+async def backend_raw(self, method: str, data: bytes) -> bytes:
+    def fn(col):
+        return getattr(col._backend, f"{method}_raw")(data)
 
-    def subscribe(self, cb) -> None:
-        """cb(changes, initiator) — called after a mutating op broadcasts changes."""
-        self._subscribers.append(cb)
+    return await self.run(fn)
 
-    async def emit(self, changes, initiator) -> None:
-        for cb in list(self._subscribers):
-            res = cb(changes, initiator)
-            if asyncio.iscoroutine(res):
-                await res
+
+def subscribe(self, cb) -> None:
+    """cb(changes, initiator) — called after a mutating op broadcasts changes."""
+    self._subscribers.append(cb)
+
+
+async def emit(self, changes, initiator) -> None:
+    for cb in list(self._subscribers):
+        res = cb(changes, initiator)
+        if asyncio.iscoroutine(res):
+            await res
 ```
 
 - [ ] **Step 4: Run to verify pass**
@@ -539,7 +569,9 @@ def test_sveltekit_spa_fallback(client):
 
 
 def test_immutable_cache_header(client):
-    idx = (Settings(collection_path=Path("x")).assets_dir / "sveltekit/index.html").read_text()
+    idx = (
+        Settings(collection_path=Path("x")).assets_dir / "sveltekit/index.html"
+    ).read_text()
     # just assert the rule via a known immutable path if present; otherwise skip
     r = client.get("/_anki/sveltekit/_app/version.json")
     if r.status_code == 200 and "immutable" in "/_app/version.json":
@@ -562,14 +594,35 @@ from fastapi.responses import FileResponse, PlainTextResponse
 
 # subset of mediasrv _mime_for_path (mediasrv.py:171-210)
 MIME = {
-    ".css": "text/css", ".js": "application/javascript", ".mjs": "application/javascript",
-    ".html": "text/html", ".svg": "image/svg+xml", ".png": "image/png",
-    ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp",
-    ".ico": "image/x-icon", ".json": "application/json", ".woff": "font/woff",
-    ".woff2": "font/woff2", ".ttf": "font/ttf", ".otf": "font/otf", ".map": "application/json",
+    ".css": "text/css",
+    ".js": "application/javascript",
+    ".mjs": "application/javascript",
+    ".html": "text/html",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".ico": "image/x-icon",
+    ".json": "application/json",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".otf": "font/otf",
+    ".map": "application/json",
 }
-SVELTEKIT_PAGES = {"graphs", "congrats", "card-info", "change-notetype", "deck-options",
-                   "import-anki-package", "import-csv", "import-page", "image-occlusion"}
+SVELTEKIT_PAGES = {
+    "graphs",
+    "congrats",
+    "card-info",
+    "change-notetype",
+    "deck-options",
+    "import-anki-package",
+    "import-csv",
+    "import-page",
+    "image-occlusion",
+}
 
 
 def _mime(path: str) -> str:
@@ -631,8 +684,9 @@ def build_router(assets_dir: Path) -> APIRouter:
 
 In `ankiweb/app.py`, inside `create_app` after `app = FastAPI(...)`:
 ```python
-    from ankiweb.assets import build_router as build_assets_router
-    app.include_router(build_assets_router(settings.assets_dir))
+from ankiweb.assets import build_router as build_assets_router
+
+app.include_router(build_assets_router(settings.assets_dir))
 ```
 
 - [ ] **Step 5: Run to verify pass**
@@ -725,8 +779,9 @@ def build_media_router(get_service) -> APIRouter:
 
 The media catch-all matches `GET /{path:path}` — **Starlette matches routes in registration order**, so it MUST be the very last route registered, after every other route/mount added in this and later tasks (`/healthz`, `/shell/static`, `/spike/*`, `/_anki`, `/ws`). Otherwise it shadows them. The authoritative final order is the consolidated `create_app` in **Task 13** — follow that. For now, add the media include as the final statement before `return app`, with a lazy service accessor:
 ```python
-    from ankiweb.assets import build_media_router
-    app.include_router(build_media_router(lambda: app.state.service))
+from ankiweb.assets import build_media_router
+
+app.include_router(build_media_router(lambda: app.state.service))
 ```
 
 - [ ] **Step 5: Run to verify pass**
@@ -771,29 +826,40 @@ def client(tmp_path: Path):
 
 def test_name_mapping_roundtrip():
     assert camel_to_snake("getDeckConfigsForUpdate") == "get_deck_configs_for_update"
-    assert camel_to_snake("i18nResources") == "i18n_resources"  # digit-run regression guard
+    assert (
+        camel_to_snake("i18nResources") == "i18n_resources"
+    )  # digit-run regression guard
     assert camel_to_snake("cardStats") == "card_stats"
     assert snake_to_camel("i18n_resources") == "i18nResources"
     assert snake_to_camel("get_note") == "getNote"
 
 
 def test_i18n_resources_passthrough(client):
-    r = client.post("/_anki/i18nResources", content=b"",
-                    headers={"Content-Type": "application/binary"})
+    r = client.post(
+        "/_anki/i18nResources",
+        content=b"",
+        headers={"Content-Type": "application/binary"},
+    )
     assert r.status_code == 200
     assert r.headers["content-type"] == "application/binary"
     assert len(r.content) > 0
 
 
 def test_content_type_guard(client):
-    r = client.post("/_anki/i18nResources", content=b"",
-                    headers={"Content-Type": "application/json"})
+    r = client.post(
+        "/_anki/i18nResources",
+        content=b"",
+        headers={"Content-Type": "application/json"},
+    )
     assert r.status_code == 403
 
 
 def test_unknown_method_404(client):
-    r = client.post("/_anki/doesNotExist", content=b"",
-                    headers={"Content-Type": "application/binary"})
+    r = client.post(
+        "/_anki/doesNotExist",
+        content=b"",
+        headers={"Content-Type": "application/binary"},
+    )
     assert r.status_code == 404
 ```
 
@@ -813,10 +879,21 @@ import re
 # col._backend.<snake>_raw(body). Seeded from mediasrv exposed_backend_list
 # (mediasrv.py:659-701); extend per page as needed in later plans.
 PASSTHROUGH: set[str] = {
-    "latest_progress", "get_custom_colours", "get_deck_names", "i18n_resources",
-    "get_field_names", "get_note", "get_notetype_names", "get_change_notetype_info",
-    "card_stats", "get_review_logs", "graphs", "get_graph_preferences",
-    "set_graph_preferences", "complete_tag", "congrats_info",
+    "latest_progress",
+    "get_custom_colours",
+    "get_deck_names",
+    "i18n_resources",
+    "get_field_names",
+    "get_note",
+    "get_notetype_names",
+    "get_change_notetype_info",
+    "card_stats",
+    "get_review_logs",
+    "graphs",
+    "get_graph_preferences",
+    "set_graph_preferences",
+    "complete_tag",
+    "congrats_info",
     "get_deck_configs_for_update",
 }
 
@@ -861,6 +938,7 @@ def build_router(get_service) -> APIRouter:
         snake = camel_to_snake(method)
 
         from ankiweb.anki_rpc.handlers import CUSTOM
+
         try:
             if method in CUSTOM:
                 out = await CUSTOM[method](service, body)
@@ -891,23 +969,30 @@ CUSTOM: dict[str, Callable[..., Awaitable[bytes]]] = {}
 
 In `ankiweb/app.py` (after assets router, before media catch-all):
 ```python
-    from ankiweb.anki_rpc import build_router as build_rpc_router
-    app.include_router(build_rpc_router(lambda: app.state.service))
+from ankiweb.anki_rpc import build_router as build_rpc_router
+
+app.include_router(build_rpc_router(lambda: app.state.service))
 ```
 Add a host guard (mediasrv.py:329-336) as middleware in `create_app`:
 ```python
-    from starlette.middleware.base import BaseHTTPMiddleware
-    from starlette.responses import PlainTextResponse as _PTR
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import PlainTextResponse as _PTR
 
-    async def host_guard(request, call_next):
-        host = request.headers.get("host", "")
-        if not (host.startswith("127.0.0.1:") or host.startswith("localhost:")
-                or host.startswith("[::1]:") or host in ("127.0.0.1", "localhost")
-                or host == "testserver"):
-            return _PTR("forbidden host", status_code=403)
-        return await call_next(request)
 
-    app.add_middleware(BaseHTTPMiddleware, dispatch=host_guard)
+async def host_guard(request, call_next):
+    host = request.headers.get("host", "")
+    if not (
+        host.startswith("127.0.0.1:")
+        or host.startswith("localhost:")
+        or host.startswith("[::1]:")
+        or host in ("127.0.0.1", "localhost")
+        or host == "testserver"
+    ):
+        return _PTR("forbidden host", status_code=403)
+    return await call_next(request)
+
+
+app.add_middleware(BaseHTTPMiddleware, dispatch=host_guard)
 ```
 
 - [ ] **Step 6: Run to verify pass**
@@ -935,8 +1020,11 @@ git commit -m "feat: /_anki/{method} protobuf RPC dispatch + passthrough + guard
 ```python
 def test_save_custom_colours(client):
     # empty body is a valid no-op write; returns 204
-    r = client.post("/_anki/saveCustomColours", content=b"",
-                    headers={"Content-Type": "application/binary"})
+    r = client.post(
+        "/_anki/saveCustomColours",
+        content=b"",
+        headers={"Content-Type": "application/binary"},
+    )
     assert r.status_code == 204
 ```
 
@@ -992,6 +1080,7 @@ from ankiweb.bridge.hub import BridgeHub
 class FakeWS:
     def __init__(self):
         self.sent = []
+
     async def send_json(self, obj):
         self.sent.append(obj)
 
@@ -1001,7 +1090,9 @@ async def test_register_and_broadcast_opchanges():
     ws = FakeWS()
     hub.register("deckbrowser", ws)
     await hub.broadcast_opchanges({"study_queues": True}, initiator="x")
-    assert ws.sent == [{"type": "opchanges", "flags": {"study_queues": True}, "initiator": "x"}]
+    assert ws.sent == [
+        {"type": "opchanges", "flags": {"study_queues": True}, "initiator": "x"}
+    ]
     hub.unregister("deckbrowser", ws)
     await hub.broadcast_opchanges({"note": True}, initiator=None)
     assert len(ws.sent) == 1  # no longer receives
@@ -1127,8 +1218,10 @@ def build_router(get_hub) -> APIRouter:
     async def ws_endpoint(websocket: WebSocket, context: str = "default"):
         # BaseHTTPMiddleware host_guard does NOT cover WS upgrades — check here too.
         host = websocket.headers.get("host", "")
-        if not (host.startswith(("127.0.0.1:", "localhost:", "[::1]:"))
-                or host in ("127.0.0.1", "localhost", "testserver")):
+        if not (
+            host.startswith(("127.0.0.1:", "localhost:", "[::1]:"))
+            or host in ("127.0.0.1", "localhost", "testserver")
+        ):
             await websocket.close(code=1008)
             return
         hub = get_hub()
@@ -1142,7 +1235,8 @@ def build_router(get_hub) -> APIRouter:
                     result = await hub.dispatch_cmd(context, msg.get("arg", ""))
                     if msg.get("id") is not None:
                         await websocket.send_json(
-                            {"type": "result", "id": msg["id"], "value": result})
+                            {"type": "result", "id": msg["id"], "value": result}
+                        )
                 elif mtype == "result":
                     hub.resolve(msg["id"], msg.get("value"))
                 elif mtype == "ready":
@@ -1159,16 +1253,17 @@ def build_router(get_hub) -> APIRouter:
 
 In `ankiweb/app.py` lifespan, create the hub and bind the bus:
 ```python
-        from ankiweb.bridge.hub import BridgeHub
-        hub = BridgeHub()
-        app.state.hub = hub
-        service.subscribe(lambda flags, initiator:
-                          hub.broadcast_opchanges(flags, initiator))
+from ankiweb.bridge.hub import BridgeHub
+
+hub = BridgeHub()
+app.state.hub = hub
+service.subscribe(lambda flags, initiator: hub.broadcast_opchanges(flags, initiator))
 ```
 And register the ws router in `create_app`:
 ```python
-    from ankiweb.bridge.ws import build_router as build_ws_router
-    app.include_router(build_ws_router(lambda: app.state.hub))
+from ankiweb.bridge.ws import build_router as build_ws_router
+
+app.include_router(build_ws_router(lambda: app.state.hub))
 ```
 
 - [ ] **Step 7: Commit**
@@ -1339,6 +1434,7 @@ Expected: `built ankiweb/shell/static/bootstrap.js`.
 ```python
 from pathlib import Path
 
+
 def test_shell_bundle_built():
     out = Path(__file__).resolve().parent.parent / "ankiweb/shell/static/bootstrap.js"
     assert out.exists(), "run: npm install && npm run build"
@@ -1349,10 +1445,15 @@ def test_shell_bundle_built():
 
 In `ankiweb/app.py` `create_app`, register this **before** the media catch-all (see the consolidated `create_app` in Task 13). Use `check_dir=False` + `mkdir` so the app constructs even when the shell hasn't been built yet (fresh clone / asset-serving tests):
 ```python
-    from fastapi.staticfiles import StaticFiles
-    static_dir = settings.shell_dir / "static"
-    static_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/shell/static", StaticFiles(directory=str(static_dir), check_dir=False), name="shell")
+from fastapi.staticfiles import StaticFiles
+
+static_dir = settings.shell_dir / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+app.mount(
+    "/shell/static",
+    StaticFiles(directory=str(static_dir), check_dir=False),
+    name="shell",
+)
 ```
 Run: `pytest tests/test_shell_build.py -v`
 Expected: PASS.
@@ -1395,6 +1496,7 @@ def test_cmd_with_callback_roundtrip(client):
     # register a handler for ctx "t" that echoes the arg uppercased
     async def handler(arg: str):
         return arg.upper()
+
     client.app.state.hub.set_handler("t", handler)
 
     with client.websocket_connect("/ws?context=t") as ws:
@@ -1407,7 +1509,8 @@ def test_opchanges_broadcast_reaches_socket(client):
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
         # Drive the broadcast on the app's own loop via the TestClient portal.
         client.portal.call(
-            client.app.state.hub.broadcast_opchanges, {"study_queues": True}, "init1")
+            client.app.state.hub.broadcast_opchanges, {"study_queues": True}, "init1"
+        )
         msg = ws.receive_json()
         assert msg["type"] == "opchanges"
         assert msg["flags"] == {"study_queues": True}
@@ -1471,22 +1574,25 @@ This is the de-risk capstone (Spec §10.3): prove the reused bundle's globals (`
 
 In `ankiweb/app.py` `create_app`, register these **before** the media catch-all (see Task 13's consolidated `create_app`):
 ```python
-    from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse
 
-    @app.get("/spike/reviewer")
-    def spike_page():
-        return FileResponse(settings.shell_dir / "reviewer_spike.html")
 
-    @app.post("/spike/push_question")
-    async def spike_push():
-        # render the first card's question through the real bundle
-        async def render(col):
-            cid = col.find_cards("")[0]
-            card = col.get_card(cid)
-            return card.question(), card.answer()
-        q, a = await app.state.service.run(render)
-        await app.state.hub.push_call("reviewer", "_showQuestion", [q, a, "card card1"])
-        return {"pushed": True}
+@app.get("/spike/reviewer")
+def spike_page():
+    return FileResponse(settings.shell_dir / "reviewer_spike.html")
+
+
+@app.post("/spike/push_question")
+async def spike_push():
+    # render the first card's question through the real bundle
+    async def render(col):
+        cid = col.find_cards("")[0]
+        card = col.get_card(cid)
+        return card.question(), card.answer()
+
+    q, a = await app.state.service.run(render)
+    await app.state.hub.push_call("reviewer", "_showQuestion", [q, a, "card card1"])
+    return {"pushed": True}
 ```
 
 - [ ] **Step 3: Write the Playwright spike test**
@@ -1548,9 +1654,12 @@ def test_reviewer_js_renders_question(live_server):
         page.goto(f"{live_server}/spike/reviewer?context=reviewer")
         page.wait_for_timeout(800)  # WS connect + bundle load + ready()
         import httpx
+
         httpx.post(f"{live_server}/spike/push_question")
-        page.wait_for_function("document.getElementById('qa').textContent.includes('Spike Q')",
-                               timeout=5000)
+        page.wait_for_function(
+            "document.getElementById('qa').textContent.includes('Spike Q')",
+            timeout=5000,
+        )
         assert "Spike Q" in page.inner_text("#qa")
         browser.close()
 ```
@@ -1613,7 +1722,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         service = CollectionService(settings)
         await service.open()
         hub = BridgeHub()
-        service.subscribe(lambda flags, initiator: hub.broadcast_opchanges(flags, initiator))
+        service.subscribe(
+            lambda flags, initiator: hub.broadcast_opchanges(flags, initiator)
+        )
         app.state.settings = settings
         app.state.service = service
         app.state.hub = hub
@@ -1639,7 +1750,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     static_dir = settings.shell_dir / "static"
     static_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/shell/static", StaticFiles(directory=str(static_dir), check_dir=False), name="shell")
+    app.mount(
+        "/shell/static",
+        StaticFiles(directory=str(static_dir), check_dir=False),
+        name="shell",
+    )
 
     @app.get("/spike/reviewer")
     def spike_page():
@@ -1651,14 +1766,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             cid = col.find_cards("")[0]
             card = col.get_card(cid)
             return card.question(), card.answer()
+
         q, a = await app.state.service.run(render)
         await app.state.hub.push_call("reviewer", "_showQuestion", [q, a, "card card1"])
         return {"pushed": True}
 
-    app.include_router(build_assets_router(settings.assets_dir))       # GET  /_anki/{path}
-    app.include_router(build_rpc_router(lambda: app.state.service))    # POST /_anki/{method}
-    app.include_router(build_ws_router(lambda: app.state.hub))         # WS   /ws
-    app.include_router(build_media_router(lambda: app.state.service))  # GET  /{path} — LAST
+    app.include_router(build_assets_router(settings.assets_dir))  # GET  /_anki/{path}
+    app.include_router(
+        build_rpc_router(lambda: app.state.service)
+    )  # POST /_anki/{method}
+    app.include_router(build_ws_router(lambda: app.state.hub))  # WS   /ws
+    app.include_router(
+        build_media_router(lambda: app.state.service)
+    )  # GET  /{path} — LAST
 
     return app
 ```

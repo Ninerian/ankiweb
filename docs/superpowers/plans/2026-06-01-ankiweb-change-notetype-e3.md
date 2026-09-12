@@ -60,6 +60,7 @@ def client(tmp_path: Path):
 def _basic_cloze(client):
     def ids(col):
         return col.models.by_name("Basic")["id"], col.models.by_name("Cloze")["id"]
+
     return client.portal.call(client.app.state.service.run, ids)
 
 
@@ -80,13 +81,17 @@ def test_change_notetype_serves_spa_shell_two_ids(client):
 
 def test_changenotetype_registered_custom():
     from ankiweb.anki_rpc.handlers import CUSTOM
+
     assert "changeNotetype" in CUSTOM
 
 
 def test_get_change_notetype_info_passthrough(client):
     # the page's load RPC is reachable (read); not 404
-    r = client.post("/_anki/get_change_notetype_info", content=b"",
-                    headers={"content-type": "application/binary"})
+    r = client.post(
+        "/_anki/get_change_notetype_info",
+        content=b"",
+        headers={"content-type": "application/binary"},
+    )
     assert r.status_code != 404
 
 
@@ -94,47 +99,68 @@ def test_change_notetype_converts_selected_notes_and_broadcasts(client):
     # mirror the page: build a ChangeNotetypeRequest from info.input with EMPTY note_ids;
     # the handler must inject hub.ui_state.selected_note_ids and convert just those.
     import anki.notetypes_pb2 as nt
+
     old, new = _basic_cloze(client)
     svc = client.app.state.service
 
     def seed(col):
-        n1 = col.new_note(col.models.get(old)); n1["Front"] = "a"; n1["Back"] = "b"
+        n1 = col.new_note(col.models.get(old))
+        n1["Front"] = "a"
+        n1["Back"] = "b"
         col.add_note(n1, col.decks.id("Default"))
-        n2 = col.new_note(col.models.get(old)); n2["Front"] = "c"; n2["Back"] = "d"
+        n2 = col.new_note(col.models.get(old))
+        n2["Front"] = "c"
+        n2["Back"] = "d"
         col.add_note(n2, col.decks.id("Default"))
         return n1.id, n2.id
+
     nid1, nid2 = client.portal.call(svc.run, seed)
 
     # select only nid1 in the (server-side) ui_state, as the browser would
     client.app.state.hub.ui_state.selected_note_ids = [nid1]
 
-    info = client.portal.call(svc.run, lambda col: col.models.change_notetype_info(old, new))
-    req = info.input            # prefilled ChangeNotetypeRequest, note_ids EMPTY
+    info = client.portal.call(
+        svc.run, lambda col: col.models.change_notetype_info(old, new)
+    )
+    req = info.input  # prefilled ChangeNotetypeRequest, note_ids EMPTY
     assert list(req.note_ids) == []
-    r = client.post("/_anki/changeNotetype", content=req.SerializeToString(),
-                    headers={"content-type": "application/binary"})
+    r = client.post(
+        "/_anki/changeNotetype",
+        content=req.SerializeToString(),
+        headers={"content-type": "application/binary"},
+    )
     assert r.status_code == 200
     mids = client.portal.call(
-        svc.run, lambda col: (col.get_note(nid1).mid, col.get_note(nid2).mid))
-    assert mids[0] == new          # nid1 converted (it was selected)
-    assert mids[1] == old          # nid2 untouched (not selected)
+        svc.run, lambda col: (col.get_note(nid1).mid, col.get_note(nid2).mid)
+    )
+    assert mids[0] == new  # nid1 converted (it was selected)
+    assert mids[1] == old  # nid2 untouched (not selected)
 
 
 def test_change_notetype_falls_back_to_all_notes_when_no_selection(client):
     import anki.notetypes_pb2 as nt
+
     old, new = _basic_cloze(client)
     svc = client.app.state.service
 
     def seed(col):
-        n = col.new_note(col.models.get(old)); n["Front"] = "x"; n["Back"] = "y"
+        n = col.new_note(col.models.get(old))
+        n["Front"] = "x"
+        n["Back"] = "y"
         col.add_note(n, col.decks.id("Default"))
         return n.id
-    nid = client.portal.call(svc.run, seed)
-    client.app.state.hub.ui_state.selected_note_ids = []     # no selection
 
-    info = client.portal.call(svc.run, lambda col: col.models.change_notetype_info(old, new))
-    r = client.post("/_anki/changeNotetype", content=info.input.SerializeToString(),
-                    headers={"content-type": "application/binary"})
+    nid = client.portal.call(svc.run, seed)
+    client.app.state.hub.ui_state.selected_note_ids = []  # no selection
+
+    info = client.portal.call(
+        svc.run, lambda col: col.models.change_notetype_info(old, new)
+    )
+    r = client.post(
+        "/_anki/changeNotetype",
+        content=info.input.SerializeToString(),
+        headers={"content-type": "application/binary"},
+    )
     assert r.status_code == 200
     assert client.portal.call(svc.run, lambda col: col.get_note(nid).mid) == new
 
@@ -144,13 +170,20 @@ def test_browser_change_notetype_navigates(client):
     svc = client.app.state.service
 
     def seed(col):
-        n = col.new_note(col.models.get(old)); n["Front"] = "q"; n["Back"] = "r"
+        n = col.new_note(col.models.get(old))
+        n["Front"] = "q"
+        n["Back"] = "r"
         col.add_note(n, col.decks.id("Default"))
         return col.find_cards("")[0]
+
     cid = client.portal.call(svc.run, seed)
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"})
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "changenotetype:"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"}
+        )
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": "changenotetype:"}
+        )
         m = ws.receive_json()
         while not (m["type"] == "call" and m["fn"] == "ankiwebNavigate"):
             m = ws.receive_json()
@@ -182,6 +215,7 @@ def build_router(get_service, get_hub) -> APIRouter:
         snake = camel_to_snake(method)
 
         from ankiweb.anki_rpc.handlers import CUSTOM
+
         try:
             if method in CUSTOM:
                 out = await CUSTOM[method](service, body, get_hub())
@@ -220,6 +254,7 @@ async def update_deck_configs(service, body: bytes, hub) -> bytes:
     try:
         from anki.collection_pb2 import OpChanges
         from ankiweb.collection_service import op_changes_to_flags
+
         op = OpChanges()
         op.ParseFromString(bytes(out))
         flags = op_changes_to_flags(op)
@@ -239,17 +274,21 @@ async def change_notetype(service, body: bytes, hub) -> bytes:
     (Qt injects them server-side from the dialog's selection); inject the browser's
     current selection here, falling back to ALL notes of the old notetype."""
     import anki.notetypes_pb2 as nt
+
     req = nt.ChangeNotetypeRequest()
     req.ParseFromString(bytes(body))
     if not list(req.note_ids):
         nids = list(getattr(hub.ui_state, "selected_note_ids", []) or [])
         if not nids:
-            nids = await service.run(lambda col: list(col.models.nids(req.old_notetype_id)))
+            nids = await service.run(
+                lambda col: list(col.models.nids(req.old_notetype_id))
+            )
         req.note_ids.extend(nids)
     out = await service.backend_raw("change_notetype", req.SerializeToString())
     try:
         from anki.collection_pb2 import OpChanges
         from ankiweb.collection_service import op_changes_to_flags
+
         op = OpChanges()
         op.ParseFromString(bytes(out))
         flags = op_changes_to_flags(op)
@@ -269,7 +308,9 @@ CUSTOM["changeNotetype"] = change_notetype
 
 - [ ] **Step 6: Wire the RPC router with the hub** — in `ankiweb/app.py`, update the include:
 ```python
-    app.include_router(build_rpc_router(lambda: app.state.service, lambda: app.state.hub))  # POST /_anki/{method}
+app.include_router(
+    build_rpc_router(lambda: app.state.service, lambda: app.state.hub)
+)  # POST /_anki/{method}
 ```
 
 - [ ] **Step 7: Wire the browser deep-link** — in `ankiweb/screens/browser.py` `handler`, add a `changenotetype` branch (place it among the other `elif cmd ==` branches, e.g. after `changedeck`):
@@ -339,8 +380,11 @@ def live_server_cnt(tmp_path: Path):
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8132)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8132, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8132, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10
@@ -360,16 +404,34 @@ def test_change_notetype_spa_boots(live_server_cnt):
         page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on("requestfailed",
-                lambda r: errors.append("REQFAIL " + r.url) if ("/_app/" in r.url or "/_anki/" in r.url) else None)
+        page.on(
+            "requestfailed",
+            lambda r: (
+                errors.append("REQFAIL " + r.url)
+                if ("/_app/" in r.url or "/_anki/" in r.url)
+                else None
+            ),
+        )
         posts = []
-        page.on("request", lambda r: posts.append(r.url) if r.method == "POST" and "/_anki/" in r.url else None)
+        page.on(
+            "request",
+            lambda r: (
+                posts.append(r.url)
+                if r.method == "POST" and "/_anki/" in r.url
+                else None
+            ),
+        )
         page.goto(f"{url}/change-notetype/{old}")
-        page.wait_for_function("document.querySelectorAll('select,button,table').length>1", timeout=10000)
+        page.wait_for_function(
+            "document.querySelectorAll('select,button,table').length>1", timeout=10000
+        )
         page.wait_for_function("document.body.innerText.length>20", timeout=10000)
         assert not errors, errors
-        assert any("get_change_notetype_info" in u.lower() or "getchangenotetypeinfo" in u.lower()
-                   for u in posts), posts
+        assert any(
+            "get_change_notetype_info" in u.lower()
+            or "getchangenotetypeinfo" in u.lower()
+            for u in posts
+        ), posts
         browser.close()
 ```
 (NOTE: pick the most stable mount selector by inspecting the rendered page — the change-notetype UI has a target-notetype `<select>` and a field/template mapping `<table>`. Load-bearing asserts: no `/_app/` or `/_anki/` request failed, no page error, and the `getChangeNotetypeInfo` POST fired. If a benign pageerror/requestfailed appears, narrow the filter with a comment explaining why it's benign — never weaken the load-bearing asserts. If the selector times out, dump `page.content()` to find a real element and adjust.)

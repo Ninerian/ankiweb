@@ -20,13 +20,17 @@ def live_server_cs(tmp_path: Path):
         col.decks.set_current(did)
         for i in range(3):
             n = col.new_note(col.models.by_name("Basic"))
-            n["Front"] = f"f{i}"; n["Back"] = f"b{i}"
+            n["Front"] = f"f{i}"
+            n["Back"] = f"b{i}"
             col.add_note(n, did)
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8133)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8133, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8133, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10

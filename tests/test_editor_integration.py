@@ -17,22 +17,28 @@ def live_server_edit(tmp_path: Path):
     col = Collection(str(col_path))
     try:
         n = col.new_note(col.models.by_name("Basic"))
-        n["Front"] = "CapitalFrance"; n["Back"] = "Paris"
+        n["Front"] = "CapitalFrance"
+        n["Back"] = "Paris"
         col.add_note(n, col.decks.id("Default"))
         nid = n.id
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8128)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8128, log_level="warning"))
-    t = threading.Thread(target=server.run, daemon=True); t.start()
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8128, log_level="warning"
+        )
+    )
+    t = threading.Thread(target=server.run, daemon=True)
+    t.start()
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
             raise RuntimeError("server did not start")
         time.sleep(0.05)
     yield "http://127.0.0.1:8128", nid
-    server.should_exit = True; t.join(timeout=5)
+    server.should_exit = True
+    t.join(timeout=5)
 
 
 def test_editor_mounts_and_loads(live_server_edit):
@@ -43,7 +49,9 @@ def test_editor_mounts_and_loads(live_server_edit):
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(f"{url}/edit?nid={nid}")
-        page.wait_for_function("document.querySelector('.note-editor')!==null", timeout=8000)
+        page.wait_for_function(
+            "document.querySelector('.note-editor')!==null", timeout=8000
+        )
         page.wait_for_function(
             "(function(){"
             "var t='';"
@@ -56,7 +64,8 @@ def test_editor_mounts_and_loads(live_server_edit):
             "walk(document);"
             "return t.indexOf('CapitalFrance')>=0;"
             "})()",
-            timeout=8000)
+            timeout=8000,
+        )
         assert not errors, errors
         browser.close()
 
@@ -64,28 +73,34 @@ def test_editor_mounts_and_loads(live_server_edit):
 def test_browse_single_select_embeds_editor(live_server_edit):
     url, nid = live_server_edit
     with sync_playwright() as p:
-        browser = p.chromium.launch(); page = browser.new_page()
+        browser = p.chromium.launch()
+        page = browser.new_page()
         page.goto(f"{url}/browse")
         page.wait_for_function(
-            "document.getElementById('results-body').children.length>=1", timeout=6000)
-        page.locator(".browser-row").first.click()           # single-select -> embed editor
+            "document.getElementById('results-body').children.length>=1", timeout=6000
+        )
+        page.locator(".browser-row").first.click()  # single-select -> embed editor
         page.wait_for_selector("#detail iframe.editor-frame", timeout=6000)
         # the editor mounts INSIDE the iframe (reach into contentDocument)
         page.wait_for_function(
             "() => { const f=document.querySelector('#detail iframe.editor-frame'); "
             "return f && f.contentDocument && "
             "f.contentDocument.querySelector('.note-editor')!==null; }",
-            timeout=8000)
+            timeout=8000,
+        )
         browser.close()
 
 
 def test_reviewer_e_opens_editor(live_server_edit):
     url, nid = live_server_edit
     with sync_playwright() as p:
-        browser = p.chromium.launch(); page = browser.new_page()
+        browser = p.chromium.launch()
+        page = browser.new_page()
         page.goto(f"{url}/reviewer")
         page.wait_for_function(
-            "document.getElementById('qa').textContent.includes('CapitalFrance')", timeout=8000)
+            "document.getElementById('qa').textContent.includes('CapitalFrance')",
+            timeout=8000,
+        )
         page.keyboard.press("e")
         page.wait_for_url("**/edit?nid=*", timeout=6000)
         browser.close()
@@ -94,10 +109,13 @@ def test_reviewer_e_opens_editor(live_server_edit):
 def test_paste_image_uploads_and_inserts(live_server_edit):
     url, nid = live_server_edit
     with sync_playwright() as p:
-        browser = p.chromium.launch(); page = browser.new_page()
+        browser = p.chromium.launch()
+        page = browser.new_page()
         page.on("pageerror", lambda e: print("PAGEERROR:", e))
         page.goto(f"{url}/edit?nid={nid}")
-        page.wait_for_function("document.querySelector('.note-editor')!==null", timeout=8000)
+        page.wait_for_function(
+            "document.querySelector('.note-editor')!==null", timeout=8000
+        )
         page.evaluate("window.focusField(0)")
         # synthesize an image paste using the same dispatch technique proven in the spike:
         # construct DataTransfer with a PNG file, then dispatch ClipboardEvent with
@@ -115,7 +133,8 @@ def test_paste_image_uploads_and_inserts(live_server_edit):
             "var evt=new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,"
             "cancelable:true,composed:true});"
             "ed.dispatchEvent(evt);"
-            "})()")
+            "})()"
+        )
         # the handler uploads then inserts <img src="..."> into the field (deep-walk shadow roots)
         page.wait_for_function(
             "(function(){"
@@ -127,5 +146,6 @@ def test_paste_image_uploads_and_inserts(live_server_edit):
             "var a=[]; walk(document,a);"
             "return a.some(function(s){return s&&s.indexOf('.png')>=0;});"
             "})()",
-            timeout=8000)
+            timeout=8000,
+        )
         browser.close()

@@ -21,8 +21,11 @@ def live_server_imp(tmp_path: Path):
     csv = tmp_dir / "notes.csv"
     csv.write_text("front,back\nhello,world\nfoo,bar\n")
     settings = Settings(collection_path=col_path, port=8135, import_tmp_dir=tmp_dir)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8135, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8135, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10
@@ -42,13 +45,32 @@ def test_import_csv_spa_boots(live_server_imp):
         page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on("requestfailed",
-                lambda r: errors.append("REQFAIL " + r.url) if ("/_app/" in r.url or "/_anki/" in r.url) else None)
+        page.on(
+            "requestfailed",
+            lambda r: (
+                errors.append("REQFAIL " + r.url)
+                if ("/_app/" in r.url or "/_anki/" in r.url)
+                else None
+            ),
+        )
         posts = []
-        page.on("request", lambda r: posts.append(r.url) if r.method == "POST" and "/_anki/" in r.url else None)
+        page.on(
+            "request",
+            lambda r: (
+                posts.append(r.url)
+                if r.method == "POST" and "/_anki/" in r.url
+                else None
+            ),
+        )
         page.goto(f"{url}/import-csv/{quote(csv_path, safe='')}")
-        page.wait_for_function("document.querySelectorAll('select,button,table,input').length>2", timeout=10000)
+        page.wait_for_function(
+            "document.querySelectorAll('select,button,table,input').length>2",
+            timeout=10000,
+        )
         page.wait_for_function("document.body.innerText.length>30", timeout=10000)
         assert not errors, errors
-        assert any("get_csv_metadata" in u.lower() or "getcsvmetadata" in u.lower() for u in posts), posts
+        assert any(
+            "get_csv_metadata" in u.lower() or "getcsvmetadata" in u.lower()
+            for u in posts
+        ), posts
         browser.close()

@@ -13,10 +13,14 @@ def col():
     c.models.add_field(m, c.models.new_field("Back"))
     t = c.models.new_template("Card1")
     t["qfmt"] = "{{Front}}\n\n{{type:Back}}"
-    t["afmt"] = "{{FrontSide}}<hr id=answer>{{Back}}"   # stock form: marker comes via {{FrontSide}}
+    t["afmt"] = (
+        "{{FrontSide}}<hr id=answer>{{Back}}"  # stock form: marker comes via {{FrontSide}}
+    )
     c.models.add_template(m, t)
     c.models.add_dict(m)
-    n = c.new_note(c.models.by_name("TypeM")); n["Front"] = "capital?"; n["Back"] = "Paris"
+    n = c.new_note(c.models.by_name("TypeM"))
+    n["Front"] = "capital?"
+    n["Back"] = "Paris"
     c.add_note(n, c.decks.id("Default"))
     yield c
     c.close()
@@ -35,20 +39,26 @@ def test_non_type_card_leaves_type_correct_none(col):
     m = col.models.new("Plain")
     col.models.add_field(m, col.models.new_field("Front"))
     col.models.add_field(m, col.models.new_field("Back"))
-    t = col.models.new_template("C"); t["qfmt"] = "{{Front}}"; t["afmt"] = "{{Back}}"
-    col.models.add_template(m, t); col.models.add_dict(m)
-    n = col.new_note(col.models.by_name("Plain")); n["Front"] = "x"; n["Back"] = "y"
+    t = col.models.new_template("C")
+    t["qfmt"] = "{{Front}}"
+    t["afmt"] = "{{Back}}"
+    col.models.add_template(m, t)
+    col.models.add_dict(m)
+    n = col.new_note(col.models.by_name("Plain"))
+    n["Front"] = "x"
+    n["Back"] = "y"
     col.add_note(n, col.decks.id("Default"))
     s = ReviewerSession()
     s.type_correct = "stale"
     info = load_question(col, s)
-    assert s.type_correct in (None, "Paris")   # reset per card; never the stale value
+    assert s.type_correct in (None, "Paris")  # reset per card; never the stale value
 
 
 def test_answer_filter_renders_diff(col):
     from ankiweb.screens.reviewer import ReviewerSession, load_question, render_answer
+
     s = ReviewerSession()
-    load_question(col, s)               # sets s.type_correct = "Paris"
+    load_question(col, s)  # sets s.type_correct = "Paris"
     s.typed_answer = "Paros"
     info = render_answer(col, s)
     assert "typeans" in info["a"]

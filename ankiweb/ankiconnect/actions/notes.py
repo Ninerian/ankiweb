@@ -4,16 +4,38 @@ from ankiweb.ankiconnect.registry import action
 from ankiweb.ankiconnect.actions._helpers import run_emit, build_note, check_addable
 from ankiweb.ankiconnect.actions.media import attach_media
 from ankiweb.ankiconnect.schemas.notes import (
-    AddNoteParams, CanAddNoteParams, CanAddNoteWithErrorDetailParams, AddNotesParams,
-    CanAddNotesParams, CanAddNotesWithErrorDetailParams, FindNotesParams, NotesInfoParams,
-    UpdateNoteFieldsParams, UpdateNoteTagsParams, GetNoteTagsParams, UpdateNoteParams,
-    UpdateNoteModelParams, AddTagsParams, RemoveTagsParams, GetTagsParams, ClearUnusedTagsParams,
-    ReplaceTagsParams, ReplaceTagsInAllNotesParams, NotesModTimeParams, DeleteNotesParams,
-    RemoveEmptyNotesParams, CardsToNotesParams,
+    AddNoteParams,
+    CanAddNoteParams,
+    CanAddNoteWithErrorDetailParams,
+    AddNotesParams,
+    CanAddNotesParams,
+    CanAddNotesWithErrorDetailParams,
+    FindNotesParams,
+    NotesInfoParams,
+    UpdateNoteFieldsParams,
+    UpdateNoteTagsParams,
+    GetNoteTagsParams,
+    UpdateNoteParams,
+    UpdateNoteModelParams,
+    AddTagsParams,
+    RemoveTagsParams,
+    GetTagsParams,
+    ClearUnusedTagsParams,
+    ReplaceTagsParams,
+    ReplaceTagsInAllNotesParams,
+    NotesModTimeParams,
+    DeleteNotesParams,
+    RemoveEmptyNotesParams,
+    CardsToNotesParams,
 )
 
 
-@action("addNote", params=AddNoteParams, returns=Optional[int], summary="Create a single note")
+@action(
+    "addNote",
+    params=AddNoteParams,
+    returns=Optional[int],
+    summary="Create a single note",
+)
 async def add_note(rt, note=None):
     spec = note or {}
 
@@ -26,10 +48,13 @@ async def add_note(rt, note=None):
         did = col.decks.id(spec.get("deckName", "Default"))
         res = col.add_note(n, did)
         return n.id, res
+
     return await run_emit(rt, fn)
 
 
-@action("canAddNote", params=CanAddNoteParams, returns=bool, summary="Can a note be added")
+@action(
+    "canAddNote", params=CanAddNoteParams, returns=bool, summary="Can a note be added"
+)
 async def can_add_note(rt, note=None):
     spec = note or {}
 
@@ -40,11 +65,15 @@ async def can_add_note(rt, note=None):
             return ok
         except Exception:
             return False
+
     return await rt.service.run(fn)
 
 
-@action("canAddNoteWithErrorDetail", params=CanAddNoteWithErrorDetailParams,
-        summary="Can a note be added (with error detail)")
+@action(
+    "canAddNoteWithErrorDetail",
+    params=CanAddNoteWithErrorDetailParams,
+    summary="Can a note be added (with error detail)",
+)
 async def can_add_note_with_error_detail(rt, note=None):
     spec = note or {}
 
@@ -55,10 +84,16 @@ async def can_add_note_with_error_detail(rt, note=None):
             return {"canAdd": ok} if ok else {"canAdd": False, "error": err}
         except Exception as exc:
             return {"canAdd": False, "error": str(exc)}
+
     return await rt.service.run(fn)
 
 
-@action("addNotes", params=AddNotesParams, returns=list[int], summary="Create multiple notes")
+@action(
+    "addNotes",
+    params=AddNotesParams,
+    returns=list[int],
+    summary="Create multiple notes",
+)
 async def add_notes(rt, notes=None):
     specs = notes or []
 
@@ -86,22 +121,35 @@ async def add_notes(rt, notes=None):
                 col.remove_notes(added_ids)
             raise Exception(str(errs))
         return added_ids, last_op
+
     return await run_emit(rt, fn)
 
 
-@action("canAddNotes", params=CanAddNotesParams, returns=list[bool],
-        summary="Can each note be added")
+@action(
+    "canAddNotes",
+    params=CanAddNotesParams,
+    returns=list[bool],
+    summary="Can each note be added",
+)
 async def can_add_notes(rt, notes=None):
     return [await can_add_note(rt, note=n) for n in (notes or [])]
 
 
-@action("canAddNotesWithErrorDetail", params=CanAddNotesWithErrorDetailParams,
-        summary="Can each note be added (with error detail)")
+@action(
+    "canAddNotesWithErrorDetail",
+    params=CanAddNotesWithErrorDetailParams,
+    summary="Can each note be added (with error detail)",
+)
 async def can_add_notes_with_error_detail(rt, notes=None):
     return [await can_add_note_with_error_detail(rt, note=n) for n in (notes or [])]
 
 
-@action("findNotes", params=FindNotesParams, returns=list[int], summary="Find note ids by query")
+@action(
+    "findNotes",
+    params=FindNotesParams,
+    returns=list[int],
+    summary="Find note ids by query",
+)
 async def find_notes(rt, query=None):
     return await rt.service.run(lambda col: list(col.find_notes(query or "")))
 
@@ -120,19 +168,25 @@ async def notes_info(rt, notes=None, query=None):
             except Exception:
                 out.append({})
         return out
+
     return await rt.service.run(fn)
 
 
-@action("updateNoteFields", params=UpdateNoteFieldsParams, summary="Update a note's fields")
+@action(
+    "updateNoteFields", params=UpdateNoteFieldsParams, summary="Update a note's fields"
+)
 async def update_note_fields(rt, note=None):
     spec = note or {}
 
     def fn(col):
         n = col.get_note(spec["id"])
         for name, val in (spec.get("fields") or {}).items():
-            if name in n:  # case-sensitive (AnkiConnect updateNoteFields is case-sensitive)
+            if (
+                name in n
+            ):  # case-sensitive (AnkiConnect updateNoteFields is case-sensitive)
                 n[name] = val
         return None, col.update_note(n, skip_undo_entry=True)
+
     await run_emit(rt, fn)
     return None
 
@@ -145,16 +199,24 @@ async def update_note_tags(rt, note=None, tags=None):
         n = col.get_note(note)
         n.tags = list(tags)
         return None, col.update_note(n)
+
     await run_emit(rt, fn)
     return None
 
 
-@action("getNoteTags", params=GetNoteTagsParams, returns=list[str], summary="Get a note's tags")
+@action(
+    "getNoteTags",
+    params=GetNoteTagsParams,
+    returns=list[str],
+    summary="Get a note's tags",
+)
 async def get_note_tags(rt, note=None):
     return await rt.service.run(lambda col: list(col.get_note(note).tags))
 
 
-@action("updateNote", params=UpdateNoteParams, summary="Update a note's fields and/or tags")
+@action(
+    "updateNote", params=UpdateNoteParams, summary="Update a note's fields and/or tags"
+)
 async def update_note(rt, note=None):
     spec = note or {}
     if "fields" not in spec and "tags" not in spec:
@@ -166,8 +228,11 @@ async def update_note(rt, note=None):
     return None
 
 
-@action("updateNoteModel", params=UpdateNoteModelParams,
-        summary="Reassign a note's model, fields and tags")
+@action(
+    "updateNoteModel",
+    params=UpdateNoteModelParams,
+    summary="Reassign a note's model, fields and tags",
+)
 async def update_note_model(rt, note=None):
     # Reassign a note's notetype + fields/tags. Minimal: change mid, rebuild fields by name.
     spec = note or {}
@@ -187,6 +252,7 @@ async def update_note_model(rt, note=None):
         if "tags" in spec:
             n.tags = list(spec["tags"])
         return None, col.update_note(n)
+
     await run_emit(rt, fn)
     return None
 
@@ -197,6 +263,7 @@ async def add_tags(rt, notes=None, tags=None, add=True):
 
     def fn(col):
         return None, col.tags.bulk_add(notes, tags or "")
+
     await run_emit(rt, fn)
     return None
 
@@ -207,6 +274,7 @@ async def remove_tags(rt, notes=None, tags=None):
 
     def fn(col):
         return None, col.tags.bulk_remove(notes, tags or "")
+
     await run_emit(rt, fn)
     return None
 
@@ -220,6 +288,7 @@ async def get_tags(rt):
 async def clear_unused_tags(rt):
     def fn(col):
         return None, col.tags.clear_unused_tags()
+
     await run_emit(rt, fn)
     return None
 
@@ -232,23 +301,32 @@ async def replace_tags(rt, notes=None, tag_to_replace=None, replace_with_tag=Non
         for nid in notes:
             n = col.get_note(nid)
             if tag_to_replace in n.tags:
-                n.tags = [replace_with_tag if t == tag_to_replace else t for t in n.tags]
+                n.tags = [
+                    replace_with_tag if t == tag_to_replace else t for t in n.tags
+                ]
                 col.update_note(n)
         return None
+
     await rt.service.run(fn)
     return None
 
 
-@action("replaceTagsInAllNotes", params=ReplaceTagsInAllNotesParams,
-        summary="Replace a tag across all notes")
+@action(
+    "replaceTagsInAllNotes",
+    params=ReplaceTagsInAllNotesParams,
+    summary="Replace a tag across all notes",
+)
 async def replace_tags_in_all_notes(rt, tag_to_replace=None, replace_with_tag=None):
     def fn(col):
         return None, col.tags.rename(tag_to_replace, replace_with_tag)
+
     await run_emit(rt, fn)
     return None
 
 
-@action("notesModTime", params=NotesModTimeParams, summary="Modification time of each note")
+@action(
+    "notesModTime", params=NotesModTimeParams, summary="Modification time of each note"
+)
 async def notes_mod_time(rt, notes=None):
     notes = notes or []
 
@@ -260,6 +338,7 @@ async def notes_mod_time(rt, notes=None):
             except Exception:
                 out.append({})
         return out
+
     return await rt.service.run(fn)
 
 
@@ -269,6 +348,7 @@ async def delete_notes(rt, notes=None):
 
     def fn(col):
         return None, col.remove_notes(notes)
+
     await run_emit(rt, fn)
     return None
 
@@ -282,12 +362,17 @@ async def remove_empty_notes(rt):
         if nids:
             return None, col.remove_notes(nids)
         return None, None  # run_emit tolerates a None op
+
     await run_emit(rt, fn)
     return None
 
 
-@action("cardsToNotes", params=CardsToNotesParams, returns=list[int],
-        summary="Map card ids to note ids")
+@action(
+    "cardsToNotes",
+    params=CardsToNotesParams,
+    returns=list[int],
+    summary="Map card ids to note ids",
+)
 async def cards_to_notes(rt, cards=None):
     cards = cards or []
 
@@ -298,5 +383,7 @@ async def cards_to_notes(rt, cards=None):
         # card ids (instead of looping col.get_card, which raises NotFoundError on a bad id).
         placeholders = ",".join("?" * len(cards))
         return col.db.list(
-            "select distinct nid from cards where id in (%s)" % placeholders, *cards)
+            "select distinct nid from cards where id in (%s)" % placeholders, *cards
+        )
+
     return await rt.service.run(fn)

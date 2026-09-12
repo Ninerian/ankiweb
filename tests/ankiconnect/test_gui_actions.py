@@ -20,13 +20,18 @@ def client(tmp_path: Path):
 
 
 def _seed(col):
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"; n["Back"] = "a"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "q"
+    n["Back"] = "a"
     col.add_note(n, col.decks.id("Default"))
 
 
 def _rt(client):
-    return Runtime(service=client.app.state.service, config=AnkiConnectConfig(),
-                   hub=client.app.state.hub)
+    return Runtime(
+        service=client.app.state.service,
+        config=AnkiConnectConfig(),
+        hub=client.app.state.hub,
+    )
 
 
 async def _run(rt, name, params):
@@ -42,8 +47,12 @@ def _drive(client, arg):
 
 
 def _select_default(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
 
 
 def test_review_active_false_when_idle(client):
@@ -57,7 +66,7 @@ def test_gui_current_card_raises_when_idle(client):
 
 def test_reviewer_flow(client):
     _select_default(client)
-    _drive(client, "show")                       # loads the seeded card
+    _drive(client, "show")  # loads the seeded card
     assert _gui(client, "guiReviewActive") is True
     cur = _gui(client, "guiCurrentCard")
     assert cur["cardId"] and cur["question"] and "Back" in cur["fields"]
@@ -73,15 +82,17 @@ def test_reviewer_flow(client):
 
 def test_gui_answer_card_requires_answer_side(client):
     _select_default(client)
-    _drive(client, "show")                       # side == 'question'
+    _drive(client, "show")  # side == 'question'
     assert _gui(client, "guiAnswerCard", ease=3) is False  # answer not shown yet
     assert _gui(client, "guiAnswerCard", ease=9) is False  # out of range
 
 
 def test_gui_undo(client):
     def add(col):
-        n = col.new_note(col.models.by_name("Basic")); n["Front"] = "u"
+        n = col.new_note(col.models.by_name("Basic"))
+        n["Front"] = "u"
         return col.add_note(n, col.decks.id("Default"))
+
     client.portal.call(client.app.state.service.run_op, add, "test")
     assert _gui(client, "guiUndo") is True
     # undoing again with nothing to undo still returns True (no-op)
@@ -127,8 +138,15 @@ def test_gui_browse_no_query_returns_empty(client):
 def test_gui_browse_reorder_validation(client):
     with pytest.raises(Exception):
         _gui(client, "guiBrowse", query="", reorderCards={"order": "sideways"})
-    assert isinstance(_gui(client, "guiBrowse", query="",
-                            reorderCards={"columnId": "noteFld", "order": "descending"}), list)
+    assert isinstance(
+        _gui(
+            client,
+            "guiBrowse",
+            query="",
+            reorderCards={"columnId": "noteFld", "order": "descending"},
+        ),
+        list,
+    )
 
 
 def test_gui_select_and_selected_notes(client):
@@ -145,15 +163,18 @@ def test_gui_select_card_false_without_browse(client):
 
 
 def test_gui_play_audio(client):
-    assert _gui(client, "guiPlayAudio") is False     # not reviewing
+    assert _gui(client, "guiPlayAudio") is False  # not reviewing
     _select_default(client)
     _drive(client, "show")
-    assert _gui(client, "guiPlayAudio") is True       # reviewing -> faithful True
+    assert _gui(client, "guiPlayAudio") is True  # reviewing -> faithful True
 
 
 def test_gui_add_note_set_data_stub(client):
-    res = _gui(client, "guiAddNoteSetData",
-               note={"deckName": "Default", "modelName": "Basic", "fields": {"Front": "x"}})
+    res = _gui(
+        client,
+        "guiAddNoteSetData",
+        note={"deckName": "Default", "modelName": "Basic", "fields": {"Front": "x"}},
+    )
     assert res == {"error": "Add Note dialog is not open", "code": 1}
 
 
@@ -162,16 +183,29 @@ def test_gui_edit_note_noop(client):
 
 
 def test_gui_add_cards_returns_int_and_validates(client):
-    res = _gui(client, "guiAddCards",
-               note={"deckName": "Default", "modelName": "Basic", "fields": {"Front": "x"}})
+    res = _gui(
+        client,
+        "guiAddCards",
+        note={"deckName": "Default", "modelName": "Basic", "fields": {"Front": "x"}},
+    )
     assert isinstance(res, int)
-    assert isinstance(_gui(client, "guiAddCards"), int)   # blank dialog form
+    assert isinstance(_gui(client, "guiAddCards"), int)  # blank dialog form
     with pytest.raises(Exception):
-        _gui(client, "guiAddCards",
-             note={"deckName": "No Such Deck", "modelName": "Basic", "fields": {"Front": "x"}})
+        _gui(
+            client,
+            "guiAddCards",
+            note={
+                "deckName": "No Such Deck",
+                "modelName": "Basic",
+                "fields": {"Front": "x"},
+            },
+        )
     with pytest.raises(Exception):
-        _gui(client, "guiAddCards",
-             note={"deckName": "Default", "modelName": "No Such Model", "fields": {}})
+        _gui(
+            client,
+            "guiAddCards",
+            note={"deckName": "Default", "modelName": "No Such Model", "fields": {}},
+        )
 
 
 def test_gui_import_file_refuses(client):
@@ -185,21 +219,27 @@ def test_gui_exit_anki_noop(client):
 
 def test_gui_play_audio_pushes_when_reviewing(client):
     import os
+
     def setup(col):
         m = col.models.new("AudioM")
         col.models.add_field(m, col.models.new_field("F"))
-        t = col.models.new_template("C"); t["qfmt"] = "{{F}} [sound:s.mp3]"; t["afmt"] = "{{F}}"
-        col.models.add_template(m, t); col.models.add_dict(m)
+        t = col.models.new_template("C")
+        t["qfmt"] = "{{F}} [sound:s.mp3]"
+        t["afmt"] = "{{F}}"
+        col.models.add_template(m, t)
+        col.models.add_dict(m)
         did = col.decks.id("AudioDeck")
-        n = col.new_note(col.models.by_name("AudioM")); n["F"] = "x"
+        n = col.new_note(col.models.by_name("AudioM"))
+        n["F"] = "x"
         col.add_note(n, did)
         with open(os.path.join(col.media.dir(), "s.mp3"), "wb") as f:
             f.write(b"\x00")
         col.decks.set_current(did)
+
     client.portal.call(client.app.state.service.run, setup)
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
-        for _ in range(3):   # _showQuestion + ankiwebSetAnswerBar + ankiwebPlayAudio
+        for _ in range(3):  # _showQuestion + ankiwebSetAnswerBar + ankiwebPlayAudio
             ws.receive_json()
         assert _gui(client, "guiPlayAudio") is True
         m = ws.receive_json()
@@ -219,11 +259,19 @@ def test_gui_edit_note_navigates(client):
 
 def test_gui_browse_invalid_columnid_raises(client):
     with pytest.raises(Exception, match="invalid columnId"):
-        _gui(client, "guiBrowse", query="",
-             reorderCards={"columnId": "definitelyNotAColumn", "order": "ascending"})
+        _gui(
+            client,
+            "guiBrowse",
+            query="",
+            reorderCards={"columnId": "definitelyNotAColumn", "order": "ascending"},
+        )
 
 
 def test_gui_browse_valid_columnid_ok(client):
-    result = _gui(client, "guiBrowse", query="",
-                  reorderCards={"columnId": "deck", "order": "descending"})
+    result = _gui(
+        client,
+        "guiBrowse",
+        query="",
+        reorderCards={"columnId": "deck", "order": "descending"},
+    )
     assert isinstance(result, list)

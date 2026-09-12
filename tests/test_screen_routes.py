@@ -15,7 +15,8 @@ def client(tmp_path: Path):
 
 
 def _seed(col):
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "q"
     col.add_note(n, col.decks.id("Default"))
 
 
@@ -35,23 +36,35 @@ def test_deckbrowser_route(client):
 
 def test_open_command_sets_current_and_navigates(client):
     from conftest import parse_datastar_events
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
+
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
     r = client.post(f"/deckbrowser/open/{did}")
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/overview'" in data for _, data in events)
-    cur = client.portal.call(client.app.state.service.run, lambda col: col.decks.get_current_id())
+    cur = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.get_current_id()
+    )
     assert cur == did
 
+
 def test_overview_route(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     r = client.get("/overview")
     assert 'window.__ankiwebContext = "overview"' in r.text
     assert "/_anki/css/overview.css" in r.text
 
+
 def test_overview_study_navigates_to_reviewer(client):
     from conftest import parse_datastar_events
+
     r = client.post("/overview/study")
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
@@ -60,27 +73,35 @@ def test_overview_study_navigates_to_reviewer(client):
 
 def test_overview_decks_navigates_home(client):
     from conftest import parse_datastar_events
+
     r = client.post("/overview/decks")
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/deckbrowser'" in data for _, data in events)
 
+
 def test_reviewer_route_serves_real_page(client):
     r = client.get("/reviewer")
     assert r.status_code == 200
     assert 'window.__ankiwebContext = "reviewer"' in r.text
-    assert "/_anki/js/reviewer.js" in r.text          # real reviewer bundle loaded
+    assert "/_anki/js/reviewer.js" in r.text  # real reviewer bundle loaded
     assert "/_anki/css/reviewer.css" in r.text
     assert "id='qa'" in r.text or 'id="qa"' in r.text
 
 
 def test_reviewer_show_pushes_question(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
         msgs = {}
-        for _ in range(2):  # expect _showQuestion + ankiwebSetAnswerBar (order not guaranteed)
+        for _ in range(
+            2
+        ):  # expect _showQuestion + ankiwebSetAnswerBar (order not guaranteed)
             m = ws.receive_json()
             if m["type"] == "call":
                 msgs[m["fn"]] = m["args"]
@@ -91,11 +112,16 @@ def test_reviewer_show_pushes_question(client):
 
 def test_reviewer_ease_answers_and_shows_next(client):
     # The client fixture already seeds exactly ONE Basic card (do NOT seed again).
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
-        ws.receive_json(); ws.receive_json()   # drain the two pushes from show
+        ws.receive_json()
+        ws.receive_json()  # drain the two pushes from show
         # answer Easy (ease4): a new card graduates to review → today's queue empties
         # → reviewer navigates to /overview. (Good/ease3 would leave it in learning.)
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "ease4"})
@@ -103,15 +129,20 @@ def test_reviewer_ease_answers_and_shows_next(client):
         for _ in range(5):  # tolerate an intervening opchanges broadcast frame
             m = ws.receive_json()
             if m["type"] == "call" and m["fn"] == "ankiwebNavigate":
-                nav = m["args"]; break
+                nav = m["args"]
+                break
         assert nav == ["/overview"]
 
 
 def test_reviewer_ans_before_show_does_not_crash_socket(client):
     # Sending 'ans' with no in-flight card must NOT drop the socket; a subsequent
     # 'show' must still work (proves the handler guarded session.card is None).
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "ans"})
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
@@ -120,17 +151,25 @@ def test_reviewer_ans_before_show_does_not_crash_socket(client):
         for _ in range(3):
             m = ws.receive_json()
             if m["type"] == "call" and m["fn"] == "_showQuestion":
-                got_question = True; break
+                got_question = True
+                break
         assert got_question
 
 
 def test_reviewer_edit_navigates_to_editor(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
-    nid = client.portal.call(client.app.state.service.run, lambda col: list(col.find_notes(""))[0])
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
+    nid = client.portal.call(
+        client.app.state.service.run, lambda col: list(col.find_notes(""))[0]
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
-        ws.receive_json(); ws.receive_json()
+        ws.receive_json()
+        ws.receive_json()
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "edit"})
         m = ws.receive_json()
         while m["type"] != "call" or m["fn"] != "ankiwebNavigate":

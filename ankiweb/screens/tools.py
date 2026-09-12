@@ -5,6 +5,7 @@ from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SS
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
 
+
 def render_tools_html(col) -> str:
     """Server-rendered Tools page: Check Database, Check Media, Empty Cards (each a
     button + an empty result <div> patched in place by the corresponding /tools/*
@@ -49,6 +50,7 @@ def _emptycards_result_html(report: str, cids: list) -> str:
 def _emptycards_deleted_html(n: int) -> str:
     return templating.render("tools_emptycards_deleted.html.jinja", n=n)
 
+
 def make_tools_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/tools")
     state: dict = {}
@@ -77,7 +79,8 @@ def make_tools_routes(get_service: Callable) -> APIRouter:
         un = state.get("unused") or []
         if un:
             await service.run(
-                lambda col: (col.media.trash_files(un), col.media.empty_trash()))
+                lambda col: (col.media.trash_files(un), col.media.empty_trash())
+            )
         state["unused"] = []
         mc = await service.run(lambda col: col.media.check())
         return _push_media(mc)
@@ -88,7 +91,9 @@ def make_tools_routes(get_service: Callable) -> APIRouter:
         rep = await service.run(lambda col: col.get_empty_cards())
         cids = [cid for n in rep.notes for cid in n.card_ids]
         state["empty"] = cids
-        res_html = f'<div id="res-empty">{_emptycards_result_html(rep.report, cids)}</div>'
+        res_html = (
+            f'<div id="res-empty">{_emptycards_result_html(rep.report, cids)}</div>'
+        )
         return DatastarResponse(SSE.patch_elements(res_html, selector="#res-empty"))
 
     @router.post("/emptycards_delete")
@@ -97,8 +102,8 @@ def make_tools_routes(get_service: Callable) -> APIRouter:
         cids = state.get("empty") or []
         if cids:
             await service.run_op(
-                lambda col: col.remove_cards_and_orphaned_notes(cids),
-                initiator="tools")
+                lambda col: col.remove_cards_and_orphaned_notes(cids), initiator="tools"
+            )
         n = len(cids)
         state["empty"] = []
         res_html = f'<div id="res-empty">{_emptycards_deleted_html(n)}</div>'

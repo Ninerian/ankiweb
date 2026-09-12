@@ -8,7 +8,9 @@ from ankiweb.auth import COOKIE, auth_token
 
 
 def _client(tmp_path: Path, password: str = "") -> TestClient:
-    return TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2", password=password)))
+    return TestClient(
+        create_app(Settings(collection_path=tmp_path / "c.anki2", password=password))
+    )
 
 
 def test_open_when_no_password(tmp_path: Path):

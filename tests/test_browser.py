@@ -14,7 +14,9 @@ def client(tmp_path: Path):
 
 def _seed(col):
     for q in ("dog", "cat"):
-        n = col.new_note(col.models.by_name("Basic")); n["Front"] = q; n["Back"] = q.upper()
+        n = col.new_note(col.models.by_name("Basic"))
+        n["Front"] = q
+        n["Back"] = q.upper()
         col.add_note(n, col.decks.id("Default"))
     col.tags.bulk_add(col.find_notes(""), "animals")
     col.decks.id("Spanish")
@@ -32,8 +34,11 @@ def test_browse_route_renders(client):
 
 def test_browse_search_pushes_rows_and_mirrors_ui_state(client):
     from conftest import parse_datastar_events
+
     hub = client.app.state.hub
-    r = client.post("/browse/search", json={"query": "dog"}, headers={"Datastar-Request": "true"})
+    r = client.post(
+        "/browse/search", json={"query": "dog"}, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("dog" in data and "cat" not in data for _, data in events)
@@ -45,13 +50,20 @@ def test_browse_search_pushes_rows_and_mirrors_ui_state(client):
 
 def test_browse_searchdeck_and_searchtag(client):
     from conftest import parse_datastar_events
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
+
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
     r1 = client.post(f"/browse/searchdeck/{did}")
     assert r1.status_code == 200
     events1 = parse_datastar_events(r1.text)
     assert any("dog" in data and "cat" in data for _, data in events1)
 
-    r2 = client.post("/browse/searchtag", json={"tag": "animals"}, headers={"Datastar-Request": "true"})
+    r2 = client.post(
+        "/browse/searchtag",
+        json={"tag": "animals"},
+        headers={"Datastar-Request": "true"},
+    )
     assert r2.status_code == 200
     events2 = parse_datastar_events(r2.text)
     assert any("dog" in data and "cat" in data for _, data in events2)
@@ -59,7 +71,10 @@ def test_browse_searchdeck_and_searchtag(client):
 
 def test_browse_open_pushes_detail_and_selection(client):
     from conftest import parse_datastar_events
-    cid = client.portal.call(client.app.state.service.run, lambda col: list(col.find_cards("dog"))[0])
+
+    cid = client.portal.call(
+        client.app.state.service.run, lambda col: list(col.find_cards("dog"))[0]
+    )
     hub = client.app.state.hub
     r = client.post(f"/browse/open/{cid}")
     assert r.status_code == 200
@@ -71,7 +86,12 @@ def test_browse_open_pushes_detail_and_selection(client):
 
 def test_browse_invalid_search_does_not_crash(client):
     from conftest import parse_datastar_events
-    r = client.post("/browse/search", json={"query": "deck:((("}, headers={"Datastar-Request": "true"})
+
+    r = client.post(
+        "/browse/search",
+        json={"query": "deck:((("},
+        headers={"Datastar-Request": "true"},
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("invalid search" in data for _, data in events)
@@ -84,12 +104,17 @@ def test_search_and_refresh_reset_client_selection(client):
     # rows carry no "selected" markup of their own — old ankiwebSetRows did this
     # on every row push; __ankiwebResetSel must be invoked the same way now.
     for path, kwargs in [
-        ("/browse/search", dict(json={"query": "dog"}, headers={"Datastar-Request": "true"})),
+        (
+            "/browse/search",
+            dict(json={"query": "dog"}, headers={"Datastar-Request": "true"}),
+        ),
         ("/browse/refresh", {}),
     ]:
         r = client.post(path, **kwargs)
         assert r.status_code == 200
-        assert "__ankiwebResetSel" in r.text, f"{path} must reset client selection state"
+        assert "__ankiwebResetSel" in r.text, (
+            f"{path} must reset client selection state"
+        )
 
 
 def _run(client, fn):
@@ -98,9 +123,12 @@ def _run(client, fn):
 
 def test_select_then_suspend(client):
     from conftest import parse_datastar_events
+
     hub = client.app.state.hub
     cids = _run(client, lambda col: list(col.find_cards("")))
-    r1 = client.post("/browse/select", json={"cids": cids}, headers={"Datastar-Request": "true"})
+    r1 = client.post(
+        "/browse/select", json={"cids": cids}, headers={"Datastar-Request": "true"}
+    )
     assert r1.status_code == 200
     assert hub.ui_state.selected_card_ids == cids
     assert len(hub.ui_state.selected_note_ids) == 2
@@ -124,10 +152,22 @@ def test_mutation_routes_are_silent_noop_with_empty_selection(client):
         ("/browse/unsuspend", {}),
         ("/browse/forget", {}),
         ("/browse/delete", {}),
-        ("/browse/setdue", dict(json={"value": "0"}, headers={"Datastar-Request": "true"})),
-        ("/browse/changedeck", dict(json={"deck": "Spanish"}, headers={"Datastar-Request": "true"})),
-        ("/browse/addtag", dict(json={"tag": "marked"}, headers={"Datastar-Request": "true"})),
-        ("/browse/removetag", dict(json={"tag": "marked"}, headers={"Datastar-Request": "true"})),
+        (
+            "/browse/setdue",
+            dict(json={"value": "0"}, headers={"Datastar-Request": "true"}),
+        ),
+        (
+            "/browse/changedeck",
+            dict(json={"deck": "Spanish"}, headers={"Datastar-Request": "true"}),
+        ),
+        (
+            "/browse/addtag",
+            dict(json={"tag": "marked"}, headers={"Datastar-Request": "true"}),
+        ),
+        (
+            "/browse/removetag",
+            dict(json={"tag": "marked"}, headers={"Datastar-Request": "true"}),
+        ),
     ]:
         r = client.post(path, **kwargs)
         assert r.status_code == 204, f"{path} should no-op (204) with empty selection"
@@ -136,9 +176,12 @@ def test_mutation_routes_are_silent_noop_with_empty_selection(client):
 
 def test_select_one_pushes_editor(client):
     from conftest import parse_datastar_events
+
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
     nid = _run(client, lambda col: col.get_card(cid).nid)
-    r = client.post("/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"})
+    r = client.post(
+        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any(f"nid: {nid}" in data for _, data in events)
@@ -146,9 +189,12 @@ def test_select_one_pushes_editor(client):
 
 def test_delete_removes_notes(client):
     from conftest import parse_datastar_events
+
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
     before = _run(client, lambda col: len(col.find_notes("")))
-    client.post("/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"})
+    client.post(
+        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+    )
     r = client.post("/browse/delete")
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
@@ -158,9 +204,16 @@ def test_delete_removes_notes(client):
 
 def test_changedeck_moves_card(client):
     from conftest import parse_datastar_events
+
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
-    client.post("/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"})
-    r = client.post("/browse/changedeck", json={"deck": "Spanish"}, headers={"Datastar-Request": "true"})
+    client.post(
+        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+    )
+    r = client.post(
+        "/browse/changedeck",
+        json={"deck": "Spanish"},
+        headers={"Datastar-Request": "true"},
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("results-body" in data for _, data in events)
@@ -170,24 +223,40 @@ def test_changedeck_moves_card(client):
 
 def test_add_and_remove_tag(client):
     from conftest import parse_datastar_events
+
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
     nid = _run(client, lambda col: col.get_card(cid).nid)
-    client.post("/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"})
-    r1 = client.post("/browse/addtag", json={"tag": "marked"}, headers={"Datastar-Request": "true"})
+    client.post(
+        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+    )
+    r1 = client.post(
+        "/browse/addtag", json={"tag": "marked"}, headers={"Datastar-Request": "true"}
+    )
     assert r1.status_code == 200
     assert "marked" in _run(client, lambda col: col.get_note(nid).tags)
 
-    client.post("/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"})
-    r2 = client.post("/browse/removetag", json={"tag": "marked"}, headers={"Datastar-Request": "true"})
+    client.post(
+        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+    )
+    r2 = client.post(
+        "/browse/removetag",
+        json={"tag": "marked"},
+        headers={"Datastar-Request": "true"},
+    )
     assert r2.status_code == 200
     assert "marked" not in _run(client, lambda col: col.get_note(nid).tags)
 
 
 def test_setdue_runs(client):
     from conftest import parse_datastar_events
+
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
-    client.post("/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"})
-    r = client.post("/browse/setdue", json={"value": "0"}, headers={"Datastar-Request": "true"})
+    client.post(
+        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+    )
+    r = client.post(
+        "/browse/setdue", json={"value": "0"}, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("results-body" in data for _, data in events)
@@ -195,7 +264,10 @@ def test_setdue_runs(client):
 
 def test_browse_refresh_repushes_rows(client):
     from conftest import parse_datastar_events
-    client.post("/browse/search", json={"query": "dog"}, headers={"Datastar-Request": "true"})
+
+    client.post(
+        "/browse/search", json={"query": "dog"}, headers={"Datastar-Request": "true"}
+    )
     r = client.post("/browse/refresh")
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
@@ -207,13 +279,16 @@ def test_browser_select_emits_reusable_editor_script(client):
     # already-mounted iframe, falling back to creating one only if none exists —
     # not rebuild a fresh iframe unconditionally on every selection.
     from conftest import parse_datastar_events
+
     cid1 = _run(client, lambda col: list(col.find_cards("dog"))[0])
     nid1 = _run(client, lambda col: col.get_card(cid1).nid)
     cid2 = _run(client, lambda col: list(col.find_cards("cat"))[0])
     nid2 = _run(client, lambda col: col.get_card(cid2).nid)
 
     for cid, nid in ((cid1, nid1), (cid2, nid2)):
-        r = client.post("/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"})
+        r = client.post(
+            "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+        )
         assert r.status_code == 200
         _, script = parse_datastar_events(r.text)[0]
         assert "contentWindow" in script and "postMessage" in script

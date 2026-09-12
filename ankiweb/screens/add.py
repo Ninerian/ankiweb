@@ -7,14 +7,15 @@ from ankiweb.ankiconnect.actions._helpers import check_addable
 from ankiweb.collection_service import op_changes_to_flags
 
 
-
 def _empty_load(col, ntid: int) -> dict:
     model = col.models.get(ntid)
     flds = model["flds"]
     return {
         "fields": [[f["name"], ""] for f in flds],
-        "fonts": [[f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
-                  for f in flds],
+        "fonts": [
+            [f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
+            for f in flds
+        ],
         "io": False,
         "noteId": 0,
         "meta": {"id": model["id"], "modTime": model.get("mod", 0)},
@@ -27,7 +28,9 @@ def load_data_for_spec(col, note_spec) -> dict | None:
     (modelName/fields/tags) — used by guiAddCards/guiAddNoteSetData to live-prefill
     the open Add dialog. Returns None if the model is unknown (case-insensitive fields)."""
     spec = note_spec or {}
-    model = col.models.by_name(spec.get("modelName", "")) if spec.get("modelName") else None
+    model = (
+        col.models.by_name(spec.get("modelName", "")) if spec.get("modelName") else None
+    )
     if model is None:
         return None
     d = _empty_load(col, model["id"])
@@ -53,10 +56,14 @@ def add_page_body(decks, notetypes, paste_handler_js: str, editor_links_js: str)
 def render_add_html(col) -> str:
     cur_nt = col.models.current()["id"]
     cur_did = col.decks.get_current_id()
-    decks = [{"id": d.id, "name": d.name, "selected": d.id == cur_did}
-             for d in col.decks.all_names_and_ids()]
-    notetypes = [{"id": m.id, "name": m.name, "selected": m.id == cur_nt}
-                 for m in col.models.all_names_and_ids()]
+    decks = [
+        {"id": d.id, "name": d.name, "selected": d.id == cur_did}
+        for d in col.decks.all_names_and_ids()
+    ]
+    notetypes = [
+        {"id": m.id, "name": m.name, "selected": m.id == cur_nt}
+        for m in col.models.all_names_and_ids()
+    ]
     return add_page_body(decks, notetypes, paste_handler_js(), editor_links_js())
 
 
@@ -66,10 +73,12 @@ def make_add_handler(service, hub):
     async def handler(arg: str):
         head, _, rest = arg.partition(":")
         if head == "addReady":
+
             def init(col):
                 ntid = col.models.current()["id"]
                 did = col.decks.get_current_id()
                 return ntid, did, _empty_load(col, ntid)
+
             ntid, did, data = await service.run(init)
             state.update(notetype_id=ntid, deck_id=did, tags=[])
             await hub.push_call("add", "ankiwebLoadNote", [data])
@@ -85,7 +94,11 @@ def make_add_handler(service, hub):
             state["tags"] = json.loads(rest)
         elif head == "addnote":
             fields = json.loads(rest)
-            ntid, did, tags = state["notetype_id"], state["deck_id"], list(state["tags"])
+            ntid, did, tags = (
+                state["notetype_id"],
+                state["deck_id"],
+                list(state["tags"]),
+            )
 
             def add(col):
                 model = col.models.get(ntid)
@@ -99,6 +112,7 @@ def make_add_handler(service, hub):
                     return (None, err), None
                 op = col.add_note(note, did)
                 return (note.id, None), op
+
             (nid, err), op = await service.run(add)
             if op is not None:
                 flags = op_changes_to_flags(getattr(op, "changes", op))

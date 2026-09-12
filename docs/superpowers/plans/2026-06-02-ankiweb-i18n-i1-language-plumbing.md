@@ -72,7 +72,7 @@ In `ankiweb/config.py`, add a `lang` field to the `Settings` dataclass (after `s
 And in `from_env`, add to the `cls(...)` call (e.g. after `source_url=...`):
 
 ```python
-            lang=os.environ.get("ANKIWEB_LANG", ""),
+lang = (os.environ.get("ANKIWEB_LANG", ""),)
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -110,6 +110,7 @@ def test_ensure_lang_initializes_when_none(monkeypatch):
     monkeypatch.setattr(anki.lang, "current_i18n", None, raising=False)
     monkeypatch.delenv("ANKIWEB_LANG", raising=False)
     from ankiweb.i18n import _ensure_lang
+
     _ensure_lang()
     assert anki.lang.current_i18n is not None
     # English default works without opening a Collection.
@@ -119,6 +120,7 @@ def test_ensure_lang_initializes_when_none(monkeypatch):
 def test_tr_is_callable_without_collection():
     # Importing the module must have self-initialized; tr works with no Collection open.
     from ankiweb.i18n import tr
+
     assert tr.actions_add() == "Add"
 
 
@@ -126,6 +128,7 @@ def test_ensure_lang_honors_env(monkeypatch):
     monkeypatch.setattr(anki.lang, "current_i18n", None, raising=False)
     monkeypatch.setenv("ANKIWEB_LANG", "zh-CN")
     from ankiweb.i18n import _ensure_lang
+
     _ensure_lang()
     assert anki.lang.tr_legacyglobal.actions_add() == "添加"
 
@@ -135,6 +138,7 @@ def test_ensure_lang_is_idempotent_when_already_set(monkeypatch):
     anki.lang.set_lang("zh-CN")
     monkeypatch.setenv("ANKIWEB_LANG", "ja")  # would change it if guard were absent
     from ankiweb.i18n import _ensure_lang
+
     _ensure_lang()
     assert anki.lang.tr_legacyglobal.actions_add() == "添加"  # still zh-CN, not ja
 ```
@@ -162,6 +166,7 @@ is set (the backend is mutated in place).
 Usage:  from ankiweb.i18n import tr   ;   tr.actions_add()
 Always import `tr` from here, never from `anki.lang` directly, so the guard runs first.
 """
+
 from __future__ import annotations
 import os
 import anki.lang
@@ -215,7 +220,9 @@ from ankiweb.collection_service import CollectionService
 
 
 async def test_open_localizes_collection_zh(tmp_path: Path):
-    svc = CollectionService(Settings(collection_path=tmp_path / "c.anki2", lang="zh-CN"))
+    svc = CollectionService(
+        Settings(collection_path=tmp_path / "c.anki2", lang="zh-CN")
+    )
     await svc.open()
     try:
         add = await svc.run(lambda col: col.tr.actions_add())
@@ -247,10 +254,11 @@ Expected: `test_open_localizes_collection_zh` FAILS (`assert 'Add' == '添加'`)
 In `ankiweb/collection_service.py`, change the `_open` closure inside `open()` (currently lines 44-45) so `set_lang` runs on the worker thread immediately before the `Collection` is built:
 
 ```python
-        def _open() -> Collection:
-            import anki.lang
-            anki.lang.set_lang(self._settings.lang or "en")
-            return Collection(str(path), server=False)
+def _open() -> Collection:
+    import anki.lang
+
+    anki.lang.set_lang(self._settings.lang or "en")
+    return Collection(str(path), server=False)
 ```
 
 Also re-apply `set_lang` inside `reopen()`'s closure (same one line) for self-consistency with `open()` — defensive against a future second service with a different language; the single-service topology makes the inherited process-global sufficient today.
@@ -287,6 +295,7 @@ def _default_english_lang():
     assertions are order-independent (set_lang is process-global and sticky). Tests that
     need another locale call anki.lang.set_lang(...) in their own body."""
     import anki.lang
+
     anki.lang.set_lang("en")
     yield
 ```

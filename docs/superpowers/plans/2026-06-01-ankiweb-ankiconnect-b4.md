@@ -73,11 +73,11 @@ def test_ui_state_defaults_and_review_active():
     assert s.matched_card_ids == [] and s.selected_note_ids == []
     assert s.review_active is False
     s.current_screen = "reviewer"
-    assert s.review_active is False           # needs a card too
+    assert s.review_active is False  # needs a card too
     s.current_card_id = 123
     assert s.review_active is True
     s.current_screen = "deckbrowser"
-    assert s.review_active is False           # not on reviewer
+    assert s.review_active is False  # not on reviewer
 
 
 def test_hub_has_ui_state():
@@ -92,22 +92,30 @@ def client(tmp_path: Path):
 
 
 def _seed(col):
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"; n["Back"] = "a"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "q"
+    n["Back"] = "a"
     col.add_note(n, col.decks.id("Default"))
 
 
 def test_dispatch_cmd_sets_current_screen(client):
     hub = client.app.state.hub
     # deckbrowser 'open:...'-style cmd flows through dispatch_cmd -> sets current_screen
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
     client.portal.call(hub.dispatch_cmd, "deckbrowser", f"open:{did}")
     assert hub.ui_state.current_screen == "deckbrowser"
 
 
 def test_reviewer_show_updates_ui_state(client):
     hub = client.app.state.hub
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     # drive the reviewer handler directly (no WS needed; pushes are no-ops)
     client.portal.call(hub.dispatch_cmd, "reviewer", "show")
     assert hub.ui_state.current_screen == "reviewer"
@@ -119,11 +127,17 @@ def test_reviewer_show_updates_ui_state(client):
 
 def test_reviewer_finish_clears_ui_state(client):
     hub = client.app.state.hub
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     client.portal.call(hub.dispatch_cmd, "reviewer", "show")
     client.portal.call(hub.dispatch_cmd, "reviewer", "ans")
-    client.portal.call(hub.dispatch_cmd, "reviewer", "ease4")  # graduates the only card -> finished
+    client.portal.call(
+        hub.dispatch_cmd, "reviewer", "ease4"
+    )  # graduates the only card -> finished
     assert hub.ui_state.current_card_id is None
     assert hub.ui_state.side is None
 
@@ -151,11 +165,12 @@ class UiState:
 
     Written by: the web client/screens (current_screen via dispatch_cmd + WS connect;
     current_card_id/side by the reviewer handler) and the gui* actions (browse/selection)."""
-    current_screen: str | None = None        # 'deckbrowser'|'overview'|'reviewer'|'congrats'
-    current_card_id: int | None = None        # reviewer's in-flight card
-    side: str | None = None                   # 'question'|'answer'|None
-    browser_open: bool = False                # set True by guiBrowse (degraded "Browser window")
-    last_browse_query: str | None = None      # the last guiBrowse query (may be None)
+
+    current_screen: str | None = None  # 'deckbrowser'|'overview'|'reviewer'|'congrats'
+    current_card_id: int | None = None  # reviewer's in-flight card
+    side: str | None = None  # 'question'|'answer'|None
+    browser_open: bool = False  # set True by guiBrowse (degraded "Browser window")
+    last_browse_query: str | None = None  # the last guiBrowse query (may be None)
     matched_card_ids: list = field(default_factory=list)
     selected_card_ids: list = field(default_factory=list)
     selected_note_ids: list = field(default_factory=list)
@@ -196,18 +211,19 @@ After `hub.register(context, websocket)` add:
 
 In `make_reviewer_handler`'s `_show_next`, replace the body so it writes `hub.ui_state`:
 ```python
-    async def _show_next():
-        info = await service.run(lambda col: load_question(col, session))
-        if info is None:  # finished → overview (which renders Congrats)
-            hub.ui_state.current_card_id = None
-            hub.ui_state.side = None
-            await hub.push_call("reviewer", "ankiwebNavigate", ["/overview"])
-            return
-        hub.ui_state.current_card_id = session.card.id
-        hub.ui_state.side = "question"
-        await hub.push_call("reviewer", "_showQuestion",
-                            [info["q"], info["a"], info["bodyclass"]])
-        await hub.push_call("reviewer", "ankiwebSetAnswerBar", [show_answer_bar()])
+async def _show_next():
+    info = await service.run(lambda col: load_question(col, session))
+    if info is None:  # finished → overview (which renders Congrats)
+        hub.ui_state.current_card_id = None
+        hub.ui_state.side = None
+        await hub.push_call("reviewer", "ankiwebNavigate", ["/overview"])
+        return
+    hub.ui_state.current_card_id = session.card.id
+    hub.ui_state.side = "question"
+    await hub.push_call(
+        "reviewer", "_showQuestion", [info["q"], info["a"], info["bodyclass"]]
+    )
+    await hub.push_call("reviewer", "ankiwebSetAnswerBar", [show_answer_bar()])
 ```
 In the `handler`, in the `arg == "ans"` branch, after the two `push_call`s add `hub.ui_state.side = "answer"`:
 ```python
@@ -290,13 +306,18 @@ def client(tmp_path: Path):
 
 
 def _seed(col):
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"; n["Back"] = "a"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "q"
+    n["Back"] = "a"
     col.add_note(n, col.decks.id("Default"))
 
 
 def _rt(client):
-    return Runtime(service=client.app.state.service, config=AnkiConnectConfig(),
-                   hub=client.app.state.hub)
+    return Runtime(
+        service=client.app.state.service,
+        config=AnkiConnectConfig(),
+        hub=client.app.state.hub,
+    )
 
 
 async def _run(rt, name, params):
@@ -312,8 +333,12 @@ def _drive(client, arg):
 
 
 def _select_default(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
 
 
 def test_review_active_false_when_idle(client):
@@ -327,7 +352,7 @@ def test_gui_current_card_raises_when_idle(client):
 
 def test_reviewer_flow(client):
     _select_default(client)
-    _drive(client, "show")                       # loads the seeded card
+    _drive(client, "show")  # loads the seeded card
     assert _gui(client, "guiReviewActive") is True
     cur = _gui(client, "guiCurrentCard")
     assert cur["cardId"] and cur["question"] and "Back" in cur["fields"]
@@ -344,16 +369,20 @@ def test_reviewer_flow(client):
 
 def test_gui_answer_card_requires_answer_side(client):
     _select_default(client)
-    _drive(client, "show")                       # side == 'question'
+    _drive(client, "show")  # side == 'question'
     assert _gui(client, "guiAnswerCard", ease=3) is False  # answer not shown yet
-    assert _gui(client, "guiAnswerCard", ease=9) is False  # out of range, even on answer side later
+    assert (
+        _gui(client, "guiAnswerCard", ease=9) is False
+    )  # out of range, even on answer side later
 
 
 def test_gui_undo(client):
     # add a note via the API path so there is something to undo
     def add(col):
-        n = col.new_note(col.models.by_name("Basic")); n["Front"] = "u"
+        n = col.new_note(col.models.by_name("Basic"))
+        n["Front"] = "u"
         return col.add_note(n, col.decks.id("Default"))
+
     client.portal.call(client.app.state.service.run_op, add, "test")
     assert _gui(client, "guiUndo") is True
     # undoing again with nothing to undo still returns True (no-op)
@@ -422,28 +451,39 @@ async def gui_current_card(rt):
             labels = list(col.sched.describe_next_states(queued.cards[0].states))
         else:
             try:
-                labels = list(col.sched.describe_next_states(
-                    col._backend.get_scheduling_states(cid)))
+                labels = list(
+                    col.sched.describe_next_states(
+                        col._backend.get_scheduling_states(cid)
+                    )
+                )
             except Exception:
                 labels = []
         card = col.get_card(cid)
         note = card.note()
         model = note.note_type()
-        fields = {name: {"value": note.fields[o], "order": o}
-                  for name, (o, _f) in col.models.field_map(model).items()}
+        fields = {
+            name: {"value": note.fields[o], "order": o}
+            for name, (o, _f) in col.models.field_map(model).items()
+        }
         return {
             "cardId": cid,
             "fields": fields,
             "fieldOrder": card.ord,
             "question": card.question(),
             "answer": card.answer(),
-            "buttons": [1, 2, 3, 4],          # v3 always has 4 answer buttons (shape-stable, ref-faithful)
+            "buttons": [
+                1,
+                2,
+                3,
+                4,
+            ],  # v3 always has 4 answer buttons (shape-stable, ref-faithful)
             "nextReviews": labels,
             "modelName": model["name"],
             "deckName": col.decks.name(card.did),
             "css": model.get("css", ""),
             "template": card.template()["name"],
         }
+
     return await rt.service.run(build)
 
 
@@ -523,12 +563,14 @@ async def gui_deck_review(rt, name=None):
 async def gui_undo(rt):
     def do(col):
         from anki.errors import UndoEmpty
+
         if not col.undo_status().undo:
-            return True, None          # nothing to undo → no-op (mw.undo is a no-op)
+            return True, None  # nothing to undo → no-op (mw.undo is a no-op)
         try:
             return True, col.undo()
-        except UndoEmpty:              # undo_status can report a label yet undo() still be empty
+        except UndoEmpty:  # undo_status can report a label yet undo() still be empty
             return True, None
+
     return await run_emit(rt, do)
 
 
@@ -591,8 +633,15 @@ def test_gui_browse_reorder_validation(client):
     with pytest.raises(Exception):
         _gui(client, "guiBrowse", query="", reorderCards={"order": "sideways"})
     # a well-formed one is accepted (reorder is a no-op without a table)
-    assert isinstance(_gui(client, "guiBrowse", query="",
-                            reorderCards={"columnId": "noteFld", "order": "descending"}), list)
+    assert isinstance(
+        _gui(
+            client,
+            "guiBrowse",
+            query="",
+            reorderCards={"columnId": "noteFld", "order": "descending"},
+        ),
+        list,
+    )
 
 
 def test_gui_select_and_selected_notes(client):
@@ -612,15 +661,20 @@ def test_gui_select_card_false_without_browse(client):
 
 
 def test_gui_play_audio(client):
-    assert _gui(client, "guiPlayAudio") is False     # not reviewing
+    assert _gui(client, "guiPlayAudio") is False  # not reviewing
     _select_default(client)
     _drive(client, "show")
-    assert _gui(client, "guiPlayAudio") is True       # reviewing -> faithful True (best-effort)
+    assert (
+        _gui(client, "guiPlayAudio") is True
+    )  # reviewing -> faithful True (best-effort)
 
 
 def test_gui_add_note_set_data_stub(client):
-    res = _gui(client, "guiAddNoteSetData",
-               note={"deckName": "Default", "modelName": "Basic", "fields": {"Front": "x"}})
+    res = _gui(
+        client,
+        "guiAddNoteSetData",
+        note={"deckName": "Default", "modelName": "Basic", "fields": {"Front": "x"}},
+    )
     assert res == {"error": "Add Note dialog is not open", "code": 1}
 
 
@@ -630,17 +684,30 @@ def test_gui_edit_note_noop(client):
 
 def test_gui_add_cards_returns_int_and_validates(client):
     # faithful shape: returns an int note id (note is validated but NOT added pre-D)
-    res = _gui(client, "guiAddCards",
-               note={"deckName": "Default", "modelName": "Basic", "fields": {"Front": "x"}})
+    res = _gui(
+        client,
+        "guiAddCards",
+        note={"deckName": "Default", "modelName": "Basic", "fields": {"Front": "x"}},
+    )
     assert isinstance(res, int)
-    assert isinstance(_gui(client, "guiAddCards"), int)   # blank dialog form
+    assert isinstance(_gui(client, "guiAddCards"), int)  # blank dialog form
     # unknown deck / model still raise (matches the reference's validation)
     with pytest.raises(Exception):
-        _gui(client, "guiAddCards",
-             note={"deckName": "No Such Deck", "modelName": "Basic", "fields": {"Front": "x"}})
+        _gui(
+            client,
+            "guiAddCards",
+            note={
+                "deckName": "No Such Deck",
+                "modelName": "Basic",
+                "fields": {"Front": "x"},
+            },
+        )
     with pytest.raises(Exception):
-        _gui(client, "guiAddCards",
-             note={"deckName": "Default", "modelName": "No Such Model", "fields": {}})
+        _gui(
+            client,
+            "guiAddCards",
+            note={"deckName": "Default", "modelName": "No Such Model", "fields": {}},
+        )
 
 
 def test_gui_import_file_refuses(client):
@@ -662,7 +729,9 @@ Expected: FAIL.
 # ---------- degraded browser-domain actions (faithful to AnkiConnect's "no window" values) ----------
 @action("guiBrowse")
 async def gui_browse(rt, query=None, reorderCards=None):
-    if reorderCards is not None:  # reference checks 1-3 (ref 1795-1807); columnId-resolves (4) needs the table (Plan D)
+    if (
+        reorderCards is not None
+    ):  # reference checks 1-3 (ref 1795-1807); columnId-resolves (4) needs the table (Plan D)
         if not isinstance(reorderCards, dict):
             raise Exception("reorderCards should be a dict")
         if "columnId" not in reorderCards or "order" not in reorderCards:
@@ -672,9 +741,10 @@ async def gui_browse(rt, query=None, reorderCards=None):
         # columnId validity is checked against the live Browser table → deferred to Plan D.
     # findCards(None) returns [] (ref cards.py); only a real query searches.
     cids = await rt.service.run(
-        lambda col: [] if query is None else list(col.find_cards(query)))
+        lambda col: [] if query is None else list(col.find_cards(query))
+    )
     ui = _ui(rt)
-    ui.browser_open = True          # guiBrowse opens the Browser regardless of the query
+    ui.browser_open = True  # guiBrowse opens the Browser regardless of the query
     ui.last_browse_query = query
     ui.matched_card_ids = cids
     return cids
@@ -683,7 +753,7 @@ async def gui_browse(rt, query=None, reorderCards=None):
 @action("guiSelectCard")
 async def gui_select_card(rt, card=None):
     ui = _ui(rt)
-    if not ui.browser_open:   # no Browser window open → reference returns False
+    if not ui.browser_open:  # no Browser window open → reference returns False
         return False
 
     def note_of(col):
@@ -691,6 +761,7 @@ async def gui_select_card(rt, card=None):
             return col.get_card(card).nid
         except Exception:
             return None
+
     nid = await rt.service.run(note_of)
     ui.selected_card_ids = [card]
     ui.selected_note_ids = [nid] if nid is not None else []
@@ -742,8 +813,11 @@ async def gui_add_cards(rt, note=None):
         did = col.decks.id_for_name(note.get("deckName", ""))
         if did is None:
             raise Exception("deck was not found: " + str(note.get("deckName")))
-        n, _ = build_note(col, note)  # raises on unknown model/fields (faithful validation)
-        return n.id                   # unsaved note id (0 until added; dialog deferred to D)
+        n, _ = build_note(
+            col, note
+        )  # raises on unknown model/fields (faithful validation)
+        return n.id  # unsaved note id (0 until added; dialog deferred to D)
+
     return await rt.service.run(build)
 
 

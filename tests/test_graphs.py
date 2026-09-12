@@ -47,8 +47,11 @@ def test_favicon(client):
 
 
 def test_graphs_rpc_passthrough(client):
-    r = client.post("/_anki/get_graph_preferences", content=b"",
-                    headers={"content-type": "application/binary"})
+    r = client.post(
+        "/_anki/get_graph_preferences",
+        content=b"",
+        headers={"content-type": "application/binary"},
+    )
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("application/binary")
 

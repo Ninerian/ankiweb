@@ -59,21 +59,26 @@ def _seed(client, n=4):
         col.decks.set_current(did)
         for i in range(n):
             note = col.new_note(col.models.by_name("Basic"))
-            note["Front"] = f"f{i}"; note["Back"] = f"b{i}"
+            note["Front"] = f"f{i}"
+            note["Back"] = f"b{i}"
             col.add_note(note, did)
         return did
+
     return client.portal.call(client.app.state.service.run, seed)
 
 
 def _make_filtered(client, search="deck:Default", limit=10):
     def mk(col):
         import anki.decks_pb2 as dp
+
         g = col.sched.get_or_create_filtered_deck(0)
         g.name = "Filt"
         del g.config.search_terms[:]
         g.config.search_terms.append(
-            dp.Deck.Filtered.SearchTerm(search=search, limit=limit, order=5))
+            dp.Deck.Filtered.SearchTerm(search=search, limit=limit, order=5)
+        )
         return col.sched.add_or_update_filtered_deck(g).id
+
     return client.portal.call(client.app.state.service.run, mk)
 
 
@@ -91,8 +96,8 @@ def test_filtered_deck_new_route_renders(client):
     body = r.text
     assert 'id="name"' in body
     assert 'id="search1"' in body
-    assert "Random" in body and "Order due" in body   # order labels
-    assert ">Build<" in body                            # new-deck OK label
+    assert "Random" in body and "Order due" in body  # order labels
+    assert ">Build<" in body  # new-deck OK label
 
 
 def test_filtered_deck_edit_route_renders(client):
@@ -101,55 +106,110 @@ def test_filtered_deck_edit_route_renders(client):
     r = client.get(f"/filtered-deck/{did}")
     assert r.status_code == 200
     assert "Filt" in r.text
-    assert ">Rebuild<" in r.text                          # edit OK label
+    assert ">Rebuild<" in r.text  # edit OK label
 
 
 def test_filtered_deck_create_saves_and_navigates(client):
     _seed(client)
-    payload = {"id": 0, "name": "NewFiltered", "reschedule": True,
-               "search1": "deck:Default", "limit1": 10, "order1": 1,
-               "second": False, "search2": "", "limit2": 20, "order2": 5,
-               "preview_again": 60, "preview_hard": 600, "preview_good": 0,
-               "allow_empty": False}
+    payload = {
+        "id": 0,
+        "name": "NewFiltered",
+        "reschedule": True,
+        "search1": "deck:Default",
+        "limit1": 10,
+        "order1": 1,
+        "second": False,
+        "search2": "",
+        "limit2": 20,
+        "order2": 5,
+        "preview_again": 60,
+        "preview_hard": 600,
+        "preview_good": 0,
+        "allow_empty": False,
+    }
     with client.websocket_connect("/ws?context=filtereddeck") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "filtereddeck",
-                      "arg": "submit:" + json.dumps(payload)})
+        ws.send_json(
+            {
+                "type": "cmd",
+                "id": None,
+                "ctx": "filtereddeck",
+                "arg": "submit:" + json.dumps(payload),
+            }
+        )
         m = _drain_for(ws, "ankiwebNavigate")
         assert m["args"] == ["/overview"]
     info = client.portal.call(
         client.app.state.service.run,
-        lambda col: (col.decks.by_name("NewFiltered") is not None,
-                     bool(col.decks.by_name("NewFiltered")["dyn"])))
+        lambda col: (
+            col.decks.by_name("NewFiltered") is not None,
+            bool(col.decks.by_name("NewFiltered")["dyn"]),
+        ),
+    )
     assert info == (True, True)
 
 
 def test_filtered_deck_edit_renames(client):
     _seed(client)
     did = _make_filtered(client)
-    payload = {"id": did, "name": "Renamed", "reschedule": True,
-               "search1": "deck:Default", "limit1": 10, "order1": 5,
-               "second": False, "search2": "", "limit2": 20, "order2": 5,
-               "preview_again": 60, "preview_hard": 600, "preview_good": 0,
-               "allow_empty": True}
+    payload = {
+        "id": did,
+        "name": "Renamed",
+        "reschedule": True,
+        "search1": "deck:Default",
+        "limit1": 10,
+        "order1": 5,
+        "second": False,
+        "search2": "",
+        "limit2": 20,
+        "order2": 5,
+        "preview_again": 60,
+        "preview_hard": 600,
+        "preview_good": 0,
+        "allow_empty": True,
+    }
     with client.websocket_connect("/ws?context=filtereddeck") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "filtereddeck",
-                      "arg": "submit:" + json.dumps(payload)})
+        ws.send_json(
+            {
+                "type": "cmd",
+                "id": None,
+                "ctx": "filtereddeck",
+                "arg": "submit:" + json.dumps(payload),
+            }
+        )
         _drain_for(ws, "ankiwebNavigate")
-    name = client.portal.call(client.app.state.service.run,
-                              lambda col: col.decks.get(did)["name"])
+    name = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.get(did)["name"]
+    )
     assert name == "Renamed"
 
 
 def test_filtered_deck_error_when_no_match(client):
     _seed(client)
-    payload = {"id": 0, "name": "Empty", "reschedule": True,
-               "search1": "tag:__nonexistent__", "limit1": 10, "order1": 1,
-               "second": False, "search2": "", "limit2": 20, "order2": 5,
-               "preview_again": 60, "preview_hard": 600, "preview_good": 0,
-               "allow_empty": False}
+    payload = {
+        "id": 0,
+        "name": "Empty",
+        "reschedule": True,
+        "search1": "tag:__nonexistent__",
+        "limit1": 10,
+        "order1": 1,
+        "second": False,
+        "search2": "",
+        "limit2": 20,
+        "order2": 5,
+        "preview_again": 60,
+        "preview_hard": 600,
+        "preview_good": 0,
+        "allow_empty": False,
+    }
     with client.websocket_connect("/ws?context=filtereddeck") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "filtereddeck",
-                      "arg": "submit:" + json.dumps(payload)})
+        ws.send_json(
+            {
+                "type": "cmd",
+                "id": None,
+                "ctx": "filtereddeck",
+                "arg": "submit:" + json.dumps(payload),
+            }
+        )
         m = ws.receive_json()
         seen = False
         for _ in range(10):
@@ -166,7 +226,9 @@ def test_deckbrowser_gear_dyn_opens_filtered(client):
     _seed(client)
     did = _make_filtered(client)
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"opts:{did}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"opts:{did}"}
+        )
         m = _drain_for(ws, "ankiwebNavigate")
         assert m["args"] == [f"/filtered-deck/{did}"]
 
@@ -174,7 +236,9 @@ def test_deckbrowser_gear_dyn_opens_filtered(client):
 def test_deckbrowser_gear_normal_opens_deck_options(client):
     did = _seed(client)
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"opts:{did}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"opts:{did}"}
+        )
         m = _drain_for(ws, "ankiwebNavigate")
         assert m["args"] == [f"/deck-options/{did}"]
 
@@ -184,14 +248,16 @@ def test_deckbrowser_create_filtered_entry(client):
     r = client.get("/deckbrowser")
     assert "createfiltered" in r.text
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": "createfiltered"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": "createfiltered"}
+        )
         m = _drain_for(ws, "ankiwebNavigate")
         assert m["args"] == ["/filtered-deck"]
 
 
 def test_overview_opts_dyn_opens_filtered(client):
     _seed(client)
-    did = _make_filtered(client)   # add_or_update selects it as current
+    did = _make_filtered(client)  # add_or_update selects it as current
     with client.websocket_connect("/ws?context=overview") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "overview", "arg": "opts"})
         m = _drain_for(ws, "ankiwebNavigate")
@@ -219,7 +285,8 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
     def order_select(sel_id: str, selected: int) -> str:
         opts = "".join(
             f"<option value='{i}'{' selected' if i == selected else ''}>{html.escape(l)}</option>"
-            for i, l in enumerate(labels))
+            for i, l in enumerate(labels)
+        )
         return f"<select id='{sel_id}'>{opts}</select>"
 
     name = html.escape(g.name)
@@ -239,20 +306,20 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
 
     body = f"""
 <div class='filtered-deck'>
-  <h3>{'Edit' if is_edit else 'Create'} Filtered Deck</h3>
+  <h3>{"Edit" if is_edit else "Create"} Filtered Deck</h3>
   <form id='fd' onsubmit='return false;'>
     <input type='hidden' id='did' value='{g.id}'>
     <div><label>Name <input type='text' id='name' value="{name}" size='30'></label></div>
     <fieldset><legend>Filter</legend>
       <div><label>Search <input type='text' id='search1' value="{search1}" size='40'></label></div>
       <div><label>Limit <input type='number' id='limit1' value='{limit1}' min='1' style='width:6em;'></label>
-           &nbsp; Order {order_select('order1', order1)}</div>
+           &nbsp; Order {order_select("order1", order1)}</div>
     </fieldset>
     <div><label><input type='checkbox' id='second' {second_checked} onchange='onSecond()'> Enable second filter</label></div>
     <fieldset id='filter2' style='{second_disp}'><legend>Second filter</legend>
       <div><label>Search <input type='text' id='search2' value="{search2}" size='40'></label></div>
       <div><label>Limit <input type='number' id='limit2' value='{limit2}' min='1' style='width:6em;'></label>
-           &nbsp; Order {order_select('order2', order2)}</div>
+           &nbsp; Order {order_select("order2", order2)}</div>
     </fieldset>
     <div style='margin-top:8px;'><label><input type='checkbox' id='resched' {resched} onchange='onResched()'> Reschedule cards based on my answers</label></div>
     <fieldset id='previewblock' style='{preview_disp}'><legend>Preview delays (seconds)</legend>
@@ -306,6 +373,7 @@ def make_filtered_deck_handler(service, hub):
 
         def build_and_run(col):
             import anki.decks_pb2 as dp
+
             g = col.sched.get_or_create_filtered_deck(int(p.get("id", 0)))
             g.name = p.get("name", g.name)
             g.allow_empty = bool(p.get("allow_empty"))
@@ -315,13 +383,21 @@ def make_filtered_deck_handler(service, hub):
             cfg.preview_hard_secs = int(p.get("preview_hard", 0))
             cfg.preview_good_secs = int(p.get("preview_good", 0))
             del cfg.delays[:]
-            terms = [dp.Deck.Filtered.SearchTerm(
-                search=p.get("search1", ""), limit=int(p.get("limit1", 100)),
-                order=int(p.get("order1", 0)))]
+            terms = [
+                dp.Deck.Filtered.SearchTerm(
+                    search=p.get("search1", ""),
+                    limit=int(p.get("limit1", 100)),
+                    order=int(p.get("order1", 0)),
+                )
+            ]
             if p.get("second"):
-                terms.append(dp.Deck.Filtered.SearchTerm(
-                    search=p.get("search2", ""), limit=int(p.get("limit2", 20)),
-                    order=int(p.get("order2", 5))))
+                terms.append(
+                    dp.Deck.Filtered.SearchTerm(
+                        search=p.get("search2", ""),
+                        limit=int(p.get("limit2", 20)),
+                        order=int(p.get("order2", 5)),
+                    )
+                )
             del cfg.search_terms[:]
             cfg.search_terms.extend(terms)
             out = col.sched.add_or_update_filtered_deck(g)
@@ -332,7 +408,12 @@ def make_filtered_deck_handler(service, hub):
             await service.run_op(build_and_run, initiator="filtereddeck")
         except Exception as e:
             from anki.errors import FilteredDeckError
-            msg = str(e) if isinstance(e, FilteredDeckError) else "Could not build the filtered deck."
+
+            msg = (
+                str(e)
+                if isinstance(e, FilteredDeckError)
+                else "Could not build the filtered deck."
+            )
             await hub.push_call("filtereddeck", "ankiwebFilteredDeckError", [msg])
             return None
         await hub.push_call("filtereddeck", "ankiwebNavigate", ["/overview"])
@@ -344,17 +425,18 @@ def make_filtered_deck_handler(service, hub):
 
 - [ ] **Step 4: Wire the routes + handler** — in `ankiweb/screens/routes.py`: add `from ankiweb.screens.filtered_deck import render_filtered_deck_html, make_filtered_deck_handler`; add inside `build_screen_router` (next to `/custom-study`):
 ```python
-    @router.get("/filtered-deck", response_class=HTMLResponse)
-    async def filtered_deck_new_page():
-        service = get_service()
-        body = await service.run(lambda col: render_filtered_deck_html(col, 0))
-        return HTMLResponse(render_page("filtereddeck", body))
+@router.get("/filtered-deck", response_class=HTMLResponse)
+async def filtered_deck_new_page():
+    service = get_service()
+    body = await service.run(lambda col: render_filtered_deck_html(col, 0))
+    return HTMLResponse(render_page("filtereddeck", body))
 
-    @router.get("/filtered-deck/{deck_id}", response_class=HTMLResponse)
-    async def filtered_deck_edit_page(deck_id: int):
-        service = get_service()
-        body = await service.run(lambda col: render_filtered_deck_html(col, deck_id))
-        return HTMLResponse(render_page("filtereddeck", body))
+
+@router.get("/filtered-deck/{deck_id}", response_class=HTMLResponse)
+async def filtered_deck_edit_page(deck_id: int):
+    service = get_service()
+    body = await service.run(lambda col: render_filtered_deck_html(col, deck_id))
+    return HTMLResponse(render_page("filtereddeck", body))
 ```
 and register inside `register_screen_handlers`:
 ```python
@@ -374,9 +456,11 @@ and register inside `register_screen_handlers`:
 ```
   (b) in `render_deckbrowser_html`, add a Create-Filtered button to the `create` line:
 ```python
-    create = ("<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
-              " <button onclick='pycmd(\"createfiltered\")'>Create Filtered Deck</button>"
-              " <a href='/graphs'>Stats</a>")
+create = (
+    "<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
+    " <button onclick='pycmd(\"createfiltered\")'>Create Filtered Deck</button>"
+    " <a href='/graphs'>Stats</a>"
+)
 ```
 
 - [ ] **Step 6: Dyn-aware overview opts** — in `ankiweb/screens/overview.py` `make_overview_handler`, replace the `opts` branch (added in E4) with:
@@ -433,13 +517,17 @@ def live_server_fd(tmp_path: Path):
         col.decks.set_current(did)
         for i in range(4):
             n = col.new_note(col.models.by_name("Basic"))
-            n["Front"] = f"f{i}"; n["Back"] = f"b{i}"
+            n["Front"] = f"f{i}"
+            n["Back"] = f"b{i}"
             col.add_note(n, did)
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8134)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8134, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8134, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10

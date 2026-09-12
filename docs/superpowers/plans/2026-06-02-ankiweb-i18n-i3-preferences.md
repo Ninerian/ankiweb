@@ -104,26 +104,32 @@ import pytest
 from pathlib import Path
 from ankiweb.config import Settings
 from ankiweb.collection_service import CollectionService
-from ankiweb.screens.preferences import render_preferences_html, make_preferences_handler
+from ankiweb.screens.preferences import (
+    render_preferences_html,
+    make_preferences_handler,
+)
 
 
 def test_render_default_english(temp_collection):
     html = render_preferences_html(temp_collection)
-    assert "Next day starts at" in html      # preferences_next_day_starts_at
+    assert "Next day starts at" in html  # preferences_next_day_starts_at
     assert "Learn ahead limit" in html
-    assert "Enable load balancer" in html     # english fallback
-    assert "id=\"rollover\"" in html or "id='rollover'" in html
+    assert "Enable load balancer" in html  # english fallback
+    assert 'id="rollover"' in html or "id='rollover'" in html
 
 
 def test_render_zh(temp_collection):
     anki.lang.set_lang("zh-CN")
     html = render_preferences_html(temp_collection)
-    assert "设置" in html                      # preferences_preferences heading
+    assert "设置" in html  # preferences_preferences heading
 
 
 class _Hub:
-    def __init__(self): self.calls = []
-    async def push_call(self, ctx, fn, args): self.calls.append((fn, args))
+    def __init__(self):
+        self.calls = []
+
+    async def push_call(self, ctx, fn, args):
+        self.calls.append((fn, args))
 
 
 async def _svc(tmp_path):
@@ -138,16 +144,28 @@ async def test_saveprefs_roundtrip(tmp_path: Path):
     handler = make_preferences_handler(svc, hub)
     base = await svc.run(lambda col: col.get_preferences())
     payload = {
-        "rollover": 6, "learn_ahead_secs": 99, "new_review_mix": 2,
-        "new_timezone": base.scheduling.new_timezone, "day_learn_first": True,
-        "hide_audio_play_buttons": False, "interrupt_audio_when_answering": True,
-        "show_remaining_due_counts": True, "show_intervals_on_buttons": True,
-        "time_limit_secs": 0, "load_balancer_enabled": True,
+        "rollover": 6,
+        "learn_ahead_secs": 99,
+        "new_review_mix": 2,
+        "new_timezone": base.scheduling.new_timezone,
+        "day_learn_first": True,
+        "hide_audio_play_buttons": False,
+        "interrupt_audio_when_answering": True,
+        "show_remaining_due_counts": True,
+        "show_intervals_on_buttons": True,
+        "time_limit_secs": 0,
+        "load_balancer_enabled": True,
         "fsrs_short_term_with_steps_enabled": False,
-        "adding_defaults_to_current_deck": True, "paste_images_as_png": False,
-        "paste_strips_formatting": False, "default_search_text": "deck:current",
-        "ignore_accents_in_search": False, "render_latex": False,
-        "daily": 7, "weekly": 4, "monthly": 3, "minimum_interval_mins": 45,
+        "adding_defaults_to_current_deck": True,
+        "paste_images_as_png": False,
+        "paste_strips_formatting": False,
+        "default_search_text": "deck:current",
+        "ignore_accents_in_search": False,
+        "render_latex": False,
+        "daily": 7,
+        "weekly": 4,
+        "monthly": 3,
+        "minimum_interval_mins": 45,
     }
     await handler("savePrefs:" + json.dumps(payload))
     p = await svc.run(lambda col: col.get_preferences())
@@ -166,17 +184,29 @@ async def test_saveprefs_error_uses_callback(tmp_path: Path):
     handler = make_preferences_handler(svc, hub)
     # rollover out of range (>23) -> backend raises -> error callback, no navigate
     base = await svc.run(lambda col: col.get_preferences())
-    payload = {f.name: getattr(base.scheduling, f.name) for f in base.scheduling.DESCRIPTOR.fields}
-    payload.update({f.name: getattr(base.reviewing, f.name) for f in base.reviewing.DESCRIPTOR.fields})
-    payload.update({f.name: getattr(base.editing, f.name) for f in base.editing.DESCRIPTOR.fields})
-    payload.update({f.name: getattr(base.backups, f.name) for f in base.backups.DESCRIPTOR.fields})
+    payload = {
+        f.name: getattr(base.scheduling, f.name)
+        for f in base.scheduling.DESCRIPTOR.fields
+    }
+    payload.update(
+        {
+            f.name: getattr(base.reviewing, f.name)
+            for f in base.reviewing.DESCRIPTOR.fields
+        }
+    )
+    payload.update(
+        {f.name: getattr(base.editing, f.name) for f in base.editing.DESCRIPTOR.fields}
+    )
+    payload.update(
+        {f.name: getattr(base.backups, f.name) for f in base.backups.DESCRIPTOR.fields}
+    )
     payload["new_timezone"] = base.scheduling.new_timezone
     payload["rollover"] = 99  # invalid
     await handler("savePrefs:" + json.dumps(payload))
     fns = [c[0] for c in hub.calls]
-    if "ankiwebPrefsError" in fns:           # backend validated -> error path
+    if "ankiwebPrefsError" in fns:  # backend validated -> error path
         assert "ankiwebNavigate" not in fns
-    else:                                     # backend clamped silently -> navigated, no crash
+    else:  # backend clamped silently -> navigated, no crash
         assert "ankiwebNavigate" in fns
     await svc.close()
 ```

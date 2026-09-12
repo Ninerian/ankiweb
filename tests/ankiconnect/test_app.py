@@ -25,14 +25,20 @@ def test_empty_get_is_probe(client):
 
 
 def test_disallowed_origin_403(client):
-    r = client.post("/", json={"action": "version", "version": 6},
-                    headers={"Origin": "https://evil.example"})
+    r = client.post(
+        "/",
+        json={"action": "version", "version": 6},
+        headers={"Origin": "https://evil.example"},
+    )
     assert r.status_code == 403
 
 
 def test_localhost_origin_ok_with_acao(client):
-    r = client.post("/", json={"action": "version", "version": 6},
-                    headers={"Origin": "http://localhost"})
+    r = client.post(
+        "/",
+        json={"action": "version", "version": 6},
+        headers={"Origin": "http://localhost"},
+    )
     assert r.status_code == 200
     assert r.headers["access-control-allow-origin"] == "http://localhost"
 

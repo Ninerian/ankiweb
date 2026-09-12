@@ -12,7 +12,11 @@ from ankiweb.auth import COOKIE, auth_token, cookie_ok, password_ok
 
 def _login_html(error: bool = False) -> str:
     """Self-contained login page (no /_anki assets, so it works before authentication)."""
-    err = "<p style='color:#c0392b;margin:0 0 12px'>密码错误 / Wrong password</p>" if error else ""
+    err = (
+        "<p style='color:#c0392b;margin:0 0 12px'>密码错误 / Wrong password</p>"
+        if error
+        else ""
+    )
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -29,17 +33,27 @@ def _login_html(error: bool = False) -> str:
         "<input type='password' name='password' autofocus placeholder='密码 / Password'><br>"
         "<button type='submit'>进入 / Enter</button></form></body></html>"
     )
+
+
 from ankiweb.collection_service import CollectionService
 from ankiweb.bridge.hub import BridgeHub
-from ankiweb.assets import build_router as build_assets_router, build_media_router, build_sveltekit_router
+from ankiweb.assets import (
+    build_router as build_assets_router,
+    build_media_router,
+    build_sveltekit_router,
+)
 from ankiweb.anki_rpc import build_router as build_rpc_router
 from ankiweb.bridge.ws import build_router as build_ws_router
 from ankiweb.screens.routes import build_screen_router, register_screen_handlers
 from ankiweb.notifier import NotifierState
 
 
-def create_app(settings: Settings | None = None, service: CollectionService | None = None,
-               hub: BridgeHub | None = None, notifier=None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    service: CollectionService | None = None,
+    hub: BridgeHub | None = None,
+    notifier=None,
+) -> FastAPI:
     settings = settings or Settings.from_env()
     owns = service is None
 
@@ -54,8 +68,11 @@ def create_app(settings: Settings | None = None, service: CollectionService | No
         app.state.settings = settings
         app.state.service = svc
         app.state.hub = h
-        app.state.notifier = notifier if notifier is not None else NotifierState(
-            settings.collection_path.parent / "notify.json")
+        app.state.notifier = (
+            notifier
+            if notifier is not None
+            else NotifierState(settings.collection_path.parent / "notify.json")
+        )
         register_screen_handlers(svc, h)
         try:
             yield
@@ -76,7 +93,11 @@ def create_app(settings: Settings | None = None, service: CollectionService | No
     async def auth_guard(request, call_next):
         # Open by default; only gates when ANKIWEB_PASSWORD is set. /login, /logout, /healthz
         # stay reachable so an unauthenticated user can reach the login form.
-        if settings.password and request.url.path not in ("/login", "/logout", "/healthz"):
+        if settings.password and request.url.path not in (
+            "/login",
+            "/logout",
+            "/healthz",
+        ):
             if not cookie_ok(request.cookies.get(COOKIE), settings.password):
                 return RedirectResponse("/login", status_code=303)
         return await call_next(request)
@@ -96,10 +117,17 @@ def create_app(settings: Settings | None = None, service: CollectionService | No
     @app.post("/login")
     async def login_submit(request: Request):
         form = await request.form()
-        if settings.password and password_ok(form.get("password", ""), settings.password):
+        if settings.password and password_ok(
+            form.get("password", ""), settings.password
+        ):
             resp = RedirectResponse("/", status_code=303)
-            resp.set_cookie(COOKIE, auth_token(settings.password),
-                            httponly=True, samesite="lax", max_age=30 * 86400)
+            resp.set_cookie(
+                COOKIE,
+                auth_token(settings.password),
+                httponly=True,
+                samesite="lax",
+                max_age=30 * 86400,
+            )
             return resp
         return HTMLResponse(_login_html(error=True), status_code=401)
 
@@ -111,13 +139,31 @@ def create_app(settings: Settings | None = None, service: CollectionService | No
 
     static_dir = settings.shell_dir / "static"
     static_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/shell/static", StaticFiles(directory=str(static_dir), check_dir=False), name="shell")
+    app.mount(
+        "/shell/static",
+        StaticFiles(directory=str(static_dir), check_dir=False),
+        name="shell",
+    )
 
-    app.include_router(build_assets_router(settings.assets_dir))       # GET  /_anki/{path}
-    app.include_router(build_rpc_router(lambda: app.state.service, lambda: app.state.hub))    # POST /_anki/{method}
-    app.include_router(build_ws_router(lambda: app.state.hub, settings.allowed_hosts, settings.password))  # WS /ws
-    app.include_router(build_screen_router(lambda: app.state.service, lambda: app.state.notifier, lambda: app.state.hub))  # GET / + /notify
-    app.include_router(build_sveltekit_router(settings.assets_dir))     # GET  /graphs, /_app/{path}, /favicon.ico
-    app.include_router(build_media_router(lambda: app.state.service))  # GET  /{path} — LAST
+    app.include_router(build_assets_router(settings.assets_dir))  # GET  /_anki/{path}
+    app.include_router(
+        build_rpc_router(lambda: app.state.service, lambda: app.state.hub)
+    )  # POST /_anki/{method}
+    app.include_router(
+        build_ws_router(
+            lambda: app.state.hub, settings.allowed_hosts, settings.password
+        )
+    )  # WS /ws
+    app.include_router(
+        build_screen_router(
+            lambda: app.state.service, lambda: app.state.notifier, lambda: app.state.hub
+        )
+    )  # GET / + /notify
+    app.include_router(
+        build_sveltekit_router(settings.assets_dir)
+    )  # GET  /graphs, /_app/{path}, /favicon.ico
+    app.include_router(
+        build_media_router(lambda: app.state.service)
+    )  # GET  /{path} — LAST
 
     return app

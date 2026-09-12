@@ -24,8 +24,8 @@ def _field_names(col, ntid):
 # (a) route renders Front + Back + "Add Field" + "Save"
 def test_fields_route_renders(client):
     ntid = client.portal.call(
-        client.app.state.service.run,
-        lambda col: col.models.by_name("Basic")["id"])
+        client.app.state.service.run, lambda col: col.models.by_name("Basic")["id"]
+    )
     r = client.get(f"/fields/{ntid}")
     assert r.status_code == 200
     assert "Front" in r.text
@@ -41,15 +41,33 @@ def test_rename_field_persists(client):
         "notetypeId": ntid,
         "sortf": 0,
         "fields": [
-            {"orig": 0, "name": "Q", "font": "Arial", "size": 20, "rtl": False, "description": ""},
-            {"orig": 1, "name": "Back", "font": "Arial", "size": 20, "rtl": False, "description": ""},
+            {
+                "orig": 0,
+                "name": "Q",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
+            {
+                "orig": 1,
+                "name": "Back",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
         ],
     }
-    r = client.post("/fields/savefields", json=payload, headers={"Datastar-Request": "true"})
+    r = client.post(
+        "/fields/savefields", json=payload, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/deckbrowser'" in data for _, data in events)
-    names = client.portal.call(client.app.state.service.run, lambda col: _field_names(col, ntid))
+    names = client.portal.call(
+        client.app.state.service.run, lambda col: _field_names(col, ntid)
+    )
     assert names == ["Q", "Back"]
 
 
@@ -60,35 +78,73 @@ def test_add_field_persists(client):
         "notetypeId": ntid,
         "sortf": 0,
         "fields": [
-            {"orig": 0, "name": "Front", "font": "Arial", "size": 20, "rtl": False, "description": ""},
-            {"orig": 1, "name": "Back", "font": "Arial", "size": 20, "rtl": False, "description": ""},
-            {"orig": None, "name": "Extra", "font": "Arial", "size": 20, "rtl": False, "description": ""},
+            {
+                "orig": 0,
+                "name": "Front",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
+            {
+                "orig": 1,
+                "name": "Back",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
+            {
+                "orig": None,
+                "name": "Extra",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
         ],
     }
-    r = client.post("/fields/savefields", json=payload, headers={"Datastar-Request": "true"})
+    r = client.post(
+        "/fields/savefields", json=payload, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/deckbrowser'" in data for _, data in events)
-    names = client.portal.call(client.app.state.service.run, lambda col: _field_names(col, ntid))
+    names = client.portal.call(
+        client.app.state.service.run, lambda col: _field_names(col, ntid)
+    )
     assert names == ["Front", "Back", "Extra"]
 
 
 # (d) delete a field persists (count drops)
 def test_delete_field_persists(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
-    before = client.portal.call(client.app.state.service.run, lambda col: len(col.models.get(ntid)["flds"]))
+    before = client.portal.call(
+        client.app.state.service.run, lambda col: len(col.models.get(ntid)["flds"])
+    )
     payload = {
         "notetypeId": ntid,
         "sortf": 0,
         "fields": [
-            {"orig": 0, "name": "Front", "font": "Arial", "size": 20, "rtl": False, "description": ""},
+            {
+                "orig": 0,
+                "name": "Front",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
         ],
     }
-    r = client.post("/fields/savefields", json=payload, headers={"Datastar-Request": "true"})
+    r = client.post(
+        "/fields/savefields", json=payload, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/deckbrowser'" in data for _, data in events)
-    after = client.portal.call(client.app.state.service.run, lambda col: len(col.models.get(ntid)["flds"]))
+    after = client.portal.call(
+        client.app.state.service.run, lambda col: len(col.models.get(ntid)["flds"])
+    )
     assert after == before - 1
 
 
@@ -99,15 +155,33 @@ def test_reposition_persists(client):
         "notetypeId": ntid,
         "sortf": 0,
         "fields": [
-            {"orig": 1, "name": "Back", "font": "Arial", "size": 20, "rtl": False, "description": ""},
-            {"orig": 0, "name": "Front", "font": "Arial", "size": 20, "rtl": False, "description": ""},
+            {
+                "orig": 1,
+                "name": "Back",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
+            {
+                "orig": 0,
+                "name": "Front",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
         ],
     }
-    r = client.post("/fields/savefields", json=payload, headers={"Datastar-Request": "true"})
+    r = client.post(
+        "/fields/savefields", json=payload, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/deckbrowser'" in data for _, data in events)
-    names = client.portal.call(client.app.state.service.run, lambda col: _field_names(col, ntid))
+    names = client.portal.call(
+        client.app.state.service.run, lambda col: _field_names(col, ntid)
+    )
     assert names == ["Back", "Front"]
 
 
@@ -118,15 +192,33 @@ def test_sortf_persists(client):
         "notetypeId": ntid,
         "sortf": 1,
         "fields": [
-            {"orig": 0, "name": "Front", "font": "Arial", "size": 20, "rtl": False, "description": ""},
-            {"orig": 1, "name": "Back", "font": "Arial", "size": 20, "rtl": False, "description": ""},
+            {
+                "orig": 0,
+                "name": "Front",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
+            {
+                "orig": 1,
+                "name": "Back",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
         ],
     }
-    r = client.post("/fields/savefields", json=payload, headers={"Datastar-Request": "true"})
+    r = client.post(
+        "/fields/savefields", json=payload, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/deckbrowser'" in data for _, data in events)
-    sortf = client.portal.call(client.app.state.service.run, lambda col: col.models.get(ntid)["sortf"])
+    sortf = client.portal.call(
+        client.app.state.service.run, lambda col: col.models.get(ntid)["sortf"]
+    )
     assert sortf == 1
 
 
@@ -137,15 +229,33 @@ def test_field_attrs_persist(client):
         "notetypeId": ntid,
         "sortf": 0,
         "fields": [
-            {"orig": 0, "name": "Front", "font": "Courier", "size": 28, "rtl": True, "description": "d1"},
-            {"orig": 1, "name": "Back", "font": "Arial", "size": 20, "rtl": False, "description": ""},
+            {
+                "orig": 0,
+                "name": "Front",
+                "font": "Courier",
+                "size": 28,
+                "rtl": True,
+                "description": "d1",
+            },
+            {
+                "orig": 1,
+                "name": "Back",
+                "font": "Arial",
+                "size": 20,
+                "rtl": False,
+                "description": "",
+            },
         ],
     }
-    r = client.post("/fields/savefields", json=payload, headers={"Datastar-Request": "true"})
+    r = client.post(
+        "/fields/savefields", json=payload, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/deckbrowser'" in data for _, data in events)
-    f0 = client.portal.call(client.app.state.service.run, lambda col: col.models.get(ntid)["flds"][0])
+    f0 = client.portal.call(
+        client.app.state.service.run, lambda col: col.models.get(ntid)["flds"][0]
+    )
     assert f0["font"] == "Courier"
     assert f0["size"] == 28
     assert f0["rtl"] is True
@@ -155,18 +265,24 @@ def test_field_attrs_persist(client):
 # (h) deleting ALL fields -> err fragment returned + NO navigation
 def test_delete_all_fields_errors(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
-    before = client.portal.call(client.app.state.service.run, lambda col: _field_names(col, ntid))
+    before = client.portal.call(
+        client.app.state.service.run, lambda col: _field_names(col, ntid)
+    )
     payload = {
         "notetypeId": ntid,
         "sortf": 0,
         "fields": [],
     }
-    r = client.post("/fields/savefields", json=payload, headers={"Datastar-Request": "true"})
+    r = client.post(
+        "/fields/savefields", json=payload, headers={"Datastar-Request": "true"}
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("needs at least one field" in data for _, data in events)
     assert not any("window.location = '/deckbrowser'" in data for _, data in events)
-    after = client.portal.call(client.app.state.service.run, lambda col: _field_names(col, ntid))
+    after = client.portal.call(
+        client.app.state.service.run, lambda col: _field_names(col, ntid)
+    )
     assert after == before
 
 
@@ -182,4 +298,3 @@ def test_cancel_navigates(client):
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/deckbrowser'" in data for _, data in events)
-

@@ -15,9 +15,13 @@ def _parse_spec(spec: str):
     while changed:
         changed = False
         if spec.startswith("cloze:"):
-            is_cloze = True; spec = spec[len("cloze:"):]; changed = True
+            is_cloze = True
+            spec = spec[len("cloze:") :]
+            changed = True
         if spec.startswith("nc:"):
-            combining = False; spec = spec[len("nc:"):]; changed = True
+            combining = False
+            spec = spec[len("nc:") :]
+            changed = True
     return spec.strip(), is_cloze, combining
 
 
@@ -35,25 +39,31 @@ def type_answer_question_filter(col, card, session, html: str) -> str:
     session.type_combining = True
     session.type_font = "Arial"
     session.type_size = 20
-    session.typed_answer = ""        # reset per card; set later by the "typed:" command
+    session.typed_answer = ""  # reset per card; set later by the "typed:" command
     m = _TYPE_RE.search(html)
     if m is None:
         return html
     field, is_cloze, combining = _parse_spec(m.group(1))
     note = card.note()
     model = note.note_type()
-    if field not in note:   # unknown field → warn, no input (Qt shows a warning); type_correct stays None
+    if (
+        field not in note
+    ):  # unknown field → warn, no input (Qt shows a warning); type_correct stays None
         # studying_type_answer_unknown_field embeds the field name (val=) + bidi isolates.
         warning = tr.studying_type_answer_unknown_field(val=field)
         return _TYPE_RE.sub(
-            lambda _m: templating.render("type_answer_warning.html.jinja", warning=warning),
+            lambda _m: templating.render(
+                "type_answer_warning.html.jinja", warning=warning
+            ),
             html,
         )
     if is_cloze:
         expected = col.extract_cloze_for_typing(note[field], card.ord + 1)
     else:
         expected = note[field]
-    if not expected:        # empty field → drop the marker, no input (Qt removes it); type_correct None
+    if (
+        not expected
+    ):  # empty field → drop the marker, no input (Qt removes it); type_correct None
         return _TYPE_RE.sub("", html)
     session.type_correct = expected
     session.type_combining = combining
@@ -63,15 +73,18 @@ def type_answer_question_filter(col, card, session, html: str) -> str:
         font=session.type_font,
         size=session.type_size,
     )
-    return _TYPE_RE.sub(box, html)   # replace-all (a qfmt could carry the marker more than once)
+    return _TYPE_RE.sub(
+        box, html
+    )  # replace-all (a qfmt could carry the marker more than once)
 
 
 def type_answer_answer_filter(col, session, html: str) -> str:
     """Port of Qt typeAnsAnswerFilter: replace [[type:...]] with the compare_answer diff."""
     if session.type_correct is None:
-        return _TYPE_RE.sub("", html)   # no expected → drop any stray marker
-    output = col.compare_answer(session.type_correct, session.typed_answer or "",
-                                session.type_combining)
+        return _TYPE_RE.sub("", html)  # no expected → drop any stray marker
+    output = col.compare_answer(
+        session.type_correct, session.typed_answer or "", session.type_combining
+    )
     block = templating.render(
         "type_answer_diff.html.jinja",
         font=session.type_font,

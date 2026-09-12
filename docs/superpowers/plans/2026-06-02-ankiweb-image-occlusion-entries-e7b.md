@@ -51,15 +51,17 @@ from ankiweb.app import create_app
 
 PNG = bytes.fromhex(
     "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
-    "0000000a49444154789c6360000002000154a24f1f0000000049454e44ae426082")
+    "0000000a49444154789c6360000002000154a24f1f0000000049454e44ae426082"
+)
 OCCL = "{{c1::image-occlusion:rect:left=.1:top=.1:width=.2:height=.2}}"
 BIN = {"content-type": "application/binary"}
 
 
 @pytest.fixture
 def client(tmp_path: Path):
-    settings = Settings(collection_path=tmp_path / "c.anki2",
-                        import_tmp_dir=tmp_path / "import-tmp")
+    settings = Settings(
+        collection_path=tmp_path / "c.anki2", import_tmp_dir=tmp_path / "import-tmp"
+    )
     with TestClient(create_app(settings)) as c:
         yield c
 
@@ -70,10 +72,13 @@ def test_upload_image_returns_io_path(client):
     assert r.status_code == 200
     p = Path(r.json()["path"])
     assert p.exists() and p.read_bytes() == PNG
-    assert p.parent.name == "io"                       # the dedicated subdir
-    assert not p.name[:1].isdigit() or p.is_absolute()  # absolute => add-mode classification
+    assert p.parent.name == "io"  # the dedicated subdir
+    assert (
+        not p.name[:1].isdigit() or p.is_absolute()
+    )  # absolute => add-mode classification
     assert p.is_absolute()
     from ankiweb import import_tmp
+
     assert import_tmp.is_within(client.app.state.service.settings, str(p))
 
 
@@ -86,59 +91,93 @@ def test_upload_non_image_400(client):
 def test_upload_ensures_io_notetype(client):
     files = {"file": ("photo.png", io.BytesIO(PNG), "image/png")}
     client.post("/image-occlusion/upload", files=files)
-    exists = client.portal.call(client.app.state.service.run,
-                                lambda col: col.models.by_name("Image Occlusion") is not None)
+    exists = client.portal.call(
+        client.app.state.service.run,
+        lambda col: col.models.by_name("Image Occlusion") is not None,
+    )
     assert exists
 
 
 def test_io_temp_survives_import_gc(client):
     from ankiweb import import_tmp
+
     s = client.app.state.service.settings
     p = import_tmp.io_allocate(s, ".png")
     p.write_bytes(PNG)
     old = time.time() - 7200
     os.utime(p, (old, old))
-    import_tmp.gc(s, ttl_seconds=3600)   # the IMPORT gc (non-recursive) must NOT reap io/
+    import_tmp.gc(
+        s, ttl_seconds=3600
+    )  # the IMPORT gc (non-recursive) must NOT reap io/
     assert p.exists()
 
 
 def test_image_persists_after_temp_deleted(client):
     import anki.image_occlusion_pb2 as iopb
     from ankiweb import import_tmp
+
     svc = client.app.state.service
     p = import_tmp.io_allocate(svc.settings, ".png")
     p.write_bytes(PNG)
     req = iopb.AddImageOcclusionNoteRequest(
-        notetype_id=0, image_path=str(p), occlusions=OCCL, header="H", back_extra="B", tags=[])
-    r = client.post("/_anki/addImageOcclusionNote", content=req.SerializeToString(), headers=BIN)
+        notetype_id=0,
+        image_path=str(p),
+        occlusions=OCCL,
+        header="H",
+        back_extra="B",
+        tags=[],
+    )
+    r = client.post(
+        "/_anki/addImageOcclusionNote", content=req.SerializeToString(), headers=BIN
+    )
     assert r.status_code == 200
-    os.remove(p)                                          # temp gone
+    os.remove(p)  # temp gone
     media = client.portal.call(svc.run, lambda col: os.listdir(col.media.dir()))
-    assert any(f.endswith(".png") for f in media)          # note's image survives in media
+    assert any(f.endswith(".png") for f in media)  # note's image survives in media
 
 
 def test_browser_routes_io_note_to_io_editor(client):
     import anki.image_occlusion_pb2 as iopb
     from ankiweb import import_tmp
+
     svc = client.app.state.service
     p = import_tmp.io_allocate(svc.settings, ".png")
     p.write_bytes(PNG)
-    client.post("/_anki/addImageOcclusionNote", headers=BIN, content=iopb.AddImageOcclusionNoteRequest(
-        notetype_id=0, image_path=str(p), occlusions=OCCL, header="H", back_extra="B", tags=[]).SerializeToString())
+    client.post(
+        "/_anki/addImageOcclusionNote",
+        headers=BIN,
+        content=iopb.AddImageOcclusionNoteRequest(
+            notetype_id=0,
+            image_path=str(p),
+            occlusions=OCCL,
+            header="H",
+            back_extra="B",
+            tags=[],
+        ).SerializeToString(),
+    )
 
     def seed_normal(col):
-        n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"; n["Back"] = "a"
+        n = col.new_note(col.models.by_name("Basic"))
+        n["Front"] = "q"
+        n["Back"] = "a"
         col.add_note(n, col.decks.id("Default"))
-        return col.find_cards('note:"Image Occlusion"')[0], col.find_cards("note:Basic")[0]
+        return col.find_cards('note:"Image Occlusion"')[0], col.find_cards(
+            "note:Basic"
+        )[0]
+
     io_cid, normal_cid = client.portal.call(svc.run, seed_normal)
 
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{io_cid}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{io_cid}"}
+        )
         m = ws.receive_json()
         while not (m["type"] == "call" and m["fn"] == "ankiwebSetDetail"):
             m = ws.receive_json()
         assert "/image-occlusion/" in m["args"][0]
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{normal_cid}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{normal_cid}"}
+        )
         m = ws.receive_json()
         while not (m["type"] == "call" and m["fn"] == "ankiwebSetDetail"):
             m = ws.receive_json()
@@ -177,20 +216,25 @@ def io_gc(settings, ttl_seconds: int = 86400) -> None:
 
 - [ ] **Step 4: Add the upload endpoint** — in `ankiweb/screens/routes.py` `build_screen_router` (next to `/import/upload`):
 ```python
-    @router.post("/image-occlusion/upload")
-    async def image_occlusion_upload(file: UploadFile):
-        from fastapi.responses import JSONResponse
-        from ankiweb import import_tmp
-        service = get_service()
-        import_tmp.io_gc(service.settings)
-        name = (file.filename or "").lower()
-        ext = "." + name.rsplit(".", 1)[-1] if "." in name else ""
-        if ext not in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".avif"):
-            return JSONResponse({"error": f"unsupported image type: {ext or '(none)'}"}, status_code=400)
-        dest = import_tmp.io_allocate(service.settings, ext)
-        dest.write_bytes(await file.read())
-        await service.run(lambda col: col.add_image_occlusion_notetype())  # idempotent ensure
-        return {"path": str(dest)}
+@router.post("/image-occlusion/upload")
+async def image_occlusion_upload(file: UploadFile):
+    from fastapi.responses import JSONResponse
+    from ankiweb import import_tmp
+
+    service = get_service()
+    import_tmp.io_gc(service.settings)
+    name = (file.filename or "").lower()
+    ext = "." + name.rsplit(".", 1)[-1] if "." in name else ""
+    if ext not in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".avif"):
+        return JSONResponse(
+            {"error": f"unsupported image type: {ext or '(none)'}"}, status_code=400
+        )
+    dest = import_tmp.io_allocate(service.settings, ext)
+    dest.write_bytes(await file.read())
+    await service.run(
+        lambda col: col.add_image_occlusion_notetype()
+    )  # idempotent ensure
+    return {"path": str(dest)}
 ```
 
 - [ ] **Step 5: Add the shell function** — in `shell_src/bootstrap.ts`, after `ankiwebImportFile`:
@@ -216,12 +260,14 @@ Then recompile: `node tools/build_shell.mjs` (regenerates `ankiweb/shell/static/
 
 - [ ] **Step 6: Add the deck-browser button** — in `ankiweb/screens/deckbrowser.py` `render_deckbrowser_html`, extend the `create` line (before the Stats link):
 ```python
-    create = ("<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
-              " <button onclick='pycmd(\"createfiltered\")'>Create Filtered Deck</button>"
-              " <button onclick='ankiwebImportFile()'>Import</button>"
-              " <a href='/export'>Export</a>"
-              " <button onclick='ankiwebImageOcclusion()'>Image Occlusion</button>"
-              " <a href='/graphs'>Stats</a>")
+create = (
+    "<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
+    " <button onclick='pycmd(\"createfiltered\")'>Create Filtered Deck</button>"
+    " <button onclick='ankiwebImportFile()'>Import</button>"
+    " <a href='/export'>Export</a>"
+    " <button onclick='ankiwebImageOcclusion()'>Image Occlusion</button>"
+    " <a href='/graphs'>Stats</a>"
+)
 ```
 
 - [ ] **Step 7: Wire the browser IO edit-routing** — in `ankiweb/screens/browser.py`, replace the single-select detail logic in the `("select", "open")` branch (READ the current branch first; it builds `detail` from `/edit?nid=`):
@@ -284,7 +330,8 @@ from playwright.sync_api import sync_playwright
 
 PNG = bytes.fromhex(
     "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
-    "0000000a49444154789c6360000002000154a24f1f0000000049454e44ae426082")
+    "0000000a49444154789c6360000002000154a24f1f0000000049454e44ae426082"
+)
 OCCL = "{{c1::image-occlusion:rect:left=.1:top=.1:width=.2:height=.2}}"
 
 
@@ -299,16 +346,26 @@ def live_io(tmp_path: Path):
     col = Collection(str(col_path))
     try:
         import anki.image_occlusion_pb2 as iopb
+
         col.add_image_occlusion_notetype()
         nt = col.models.by_name("Image Occlusion")
-        col.add_image_occlusion_note(notetype_id=nt["id"], image_path=str(img),
-                                     occlusions=OCCL, header="H", back_extra="B", tags=[])
+        col.add_image_occlusion_note(
+            notetype_id=nt["id"],
+            image_path=str(img),
+            occlusions=OCCL,
+            header="H",
+            back_extra="B",
+            tags=[],
+        )
         nid = col.find_notes('note:"Image Occlusion"')[0]
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8137, import_tmp_dir=tmp_dir)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8137, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8137, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10
@@ -327,21 +384,42 @@ def _boot(url, expect_method):
         page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on("requestfailed",
-                lambda r: errors.append("REQFAIL " + r.url) if ("/_app/" in r.url or "/_anki/" in r.url) else None)
+        page.on(
+            "requestfailed",
+            lambda r: (
+                errors.append("REQFAIL " + r.url)
+                if ("/_app/" in r.url or "/_anki/" in r.url)
+                else None
+            ),
+        )
         posts = []
-        page.on("request", lambda r: posts.append(r.url) if r.method == "POST" and "/_anki/" in r.url else None)
+        page.on(
+            "request",
+            lambda r: (
+                posts.append(r.url)
+                if r.method == "POST" and "/_anki/" in r.url
+                else None
+            ),
+        )
         page.goto(url)
-        page.wait_for_selector("canvas", timeout=15000)   # MaskEditor's <canvas>
-        page.wait_for_function("document.body.innerText.length>0 || document.querySelector('canvas')", timeout=10000)
+        page.wait_for_selector("canvas", timeout=15000)  # MaskEditor's <canvas>
+        page.wait_for_function(
+            "document.body.innerText.length>0 || document.querySelector('canvas')",
+            timeout=10000,
+        )
         assert not errors, errors
-        assert any(expect_method.lower() in u.lower() for u in posts), (expect_method, posts)
+        assert any(expect_method.lower() in u.lower() for u in posts), (
+            expect_method,
+            posts,
+        )
         browser.close()
 
 
 def test_io_add_mode_boots(live_io):
     base, img_path, _nid = live_io
-    _boot(f"{base}/image-occlusion/{quote(img_path, safe='')}", "get_image_for_occlusion")
+    _boot(
+        f"{base}/image-occlusion/{quote(img_path, safe='')}", "get_image_for_occlusion"
+    )
 
 
 def test_io_edit_mode_boots(live_io):

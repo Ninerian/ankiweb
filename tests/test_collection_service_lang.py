@@ -4,7 +4,9 @@ from ankiweb.collection_service import CollectionService
 
 
 async def test_open_localizes_collection_zh(tmp_path: Path):
-    svc = CollectionService(Settings(collection_path=tmp_path / "c.anki2", lang="zh-CN"))
+    svc = CollectionService(
+        Settings(collection_path=tmp_path / "c.anki2", lang="zh-CN")
+    )
     await svc.open()
     try:
         add = await svc.run(lambda col: col.tr.actions_add())

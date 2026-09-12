@@ -38,18 +38,28 @@ def test_notetypes_route_renders(client):
 # (b) RENAME: rename/{basicId} -> name persists, returns reload script
 def test_rename_persists(client):
     basicId = client.portal.call(client.app.state.service.run, _basic_id)
-    r = client.post(f"/notetypes/rename/{basicId}", json={"name": "MyBasic"}, headers={"Datastar-Request": "true"})
+    r = client.post(
+        f"/notetypes/rename/{basicId}",
+        json={"name": "MyBasic"},
+        headers={"Datastar-Request": "true"},
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location.reload()" in data for _, data in events)
-    name = client.portal.call(client.app.state.service.run, lambda col: col.models.get(basicId)["name"])
+    name = client.portal.call(
+        client.app.state.service.run, lambda col: col.models.get(basicId)["name"]
+    )
     assert name == "MyBasic"
 
 
 # (c) ADD: add/{basicId} -> new notetype exists AND adding a note generates a card
 def test_add_clones_usable_notetype(client):
     basicId = client.portal.call(client.app.state.service.run, _basic_id)
-    r = client.post(f"/notetypes/add/{basicId}", json={"name": "Cloned"}, headers={"Datastar-Request": "true"})
+    r = client.post(
+        f"/notetypes/add/{basicId}",
+        json={"name": "Cloned"},
+        headers={"Datastar-Request": "true"},
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location.reload()" in data for _, data in events)
@@ -70,13 +80,24 @@ def test_add_clones_usable_notetype(client):
 # (d) DELETE: clone an extra type, delete/{thatId} removes it
 def test_delete_removes_notetype(client):
     basicId = client.portal.call(client.app.state.service.run, _basic_id)
-    client.post(f"/notetypes/add/{basicId}", json={"name": "Temp"}, headers={"Datastar-Request": "true"})
-    tempId = client.portal.call(client.app.state.service.run, lambda col: col.models.by_name("Temp")["id"])
+    client.post(
+        f"/notetypes/add/{basicId}",
+        json={"name": "Temp"},
+        headers={"Datastar-Request": "true"},
+    )
+    tempId = client.portal.call(
+        client.app.state.service.run, lambda col: col.models.by_name("Temp")["id"]
+    )
     r = client.post(f"/notetypes/delete/{tempId}")
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location.reload()" in data for _, data in events)
-    assert client.portal.call(client.app.state.service.run, lambda col: col.models.by_name("Temp")) is None
+    assert (
+        client.portal.call(
+            client.app.state.service.run, lambda col: col.models.by_name("Temp")
+        )
+        is None
+    )
 
 
 # (e) delete REFUSED when only one notetype remains -> error fragment, no removal
@@ -88,7 +109,9 @@ def test_delete_refused_when_only_one(client):
         return all_ids[0]
 
     onlyId = client.portal.call(client.app.state.service.run, setup_single)
-    count = client.portal.call(client.app.state.service.run, lambda col: len(col.models.all_names_and_ids()))
+    count = client.portal.call(
+        client.app.state.service.run, lambda col: len(col.models.all_names_and_ids())
+    )
     assert count == 1
 
     r = client.post(f"/notetypes/delete/{onlyId}")
@@ -96,7 +119,13 @@ def test_delete_refused_when_only_one(client):
     events = parse_datastar_events(r.text)
     assert any("Cannot delete the only note type" in data for _, data in events)
     assert not any("window.location.reload()" in data for _, data in events)
-    assert client.portal.call(client.app.state.service.run, lambda col: len(col.models.all_names_and_ids())) == 1
+    assert (
+        client.portal.call(
+            client.app.state.service.run,
+            lambda col: len(col.models.all_names_and_ids()),
+        )
+        == 1
+    )
 
 
 # (f) the page lists the note counts

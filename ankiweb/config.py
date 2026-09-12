@@ -17,7 +17,9 @@ def host_allowed(host: str, extra=()) -> bool:
         return True
     if host in extra:
         return True
-    bare = host.rsplit(":", 1)[0] if host.count(":") == 1 else host  # strip :port (not IPv6)
+    bare = (
+        host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+    )  # strip :port (not IPv6)
     return bare in extra
 
 
@@ -49,9 +51,17 @@ class Settings:
             collection_path=Path(os.environ.get("ANKIWEB_COLLECTION", str(default))),
             host=os.environ.get("ANKIWEB_HOST", "127.0.0.1"),
             port=int(os.environ.get("ANKIWEB_PORT", "8000")),
-            import_tmp_dir=Path(os.environ["ANKIWEB_IMPORT_TMP_DIR"]) if os.environ.get("ANKIWEB_IMPORT_TMP_DIR") else (Path(os.environ.get("ANKIWEB_COLLECTION", str(default))).parent / "import-tmp"),
+            import_tmp_dir=Path(os.environ["ANKIWEB_IMPORT_TMP_DIR"])
+            if os.environ.get("ANKIWEB_IMPORT_TMP_DIR")
+            else (
+                Path(os.environ.get("ANKIWEB_COLLECTION", str(default))).parent
+                / "import-tmp"
+            ),
             allowed_hosts=tuple(
-                h.strip() for h in os.environ.get("ANKIWEB_ALLOWED_HOSTS", "").split(",") if h.strip()),
+                h.strip()
+                for h in os.environ.get("ANKIWEB_ALLOWED_HOSTS", "").split(",")
+                if h.strip()
+            ),
             source_url=os.environ.get("ANKIWEB_SOURCE_URL", ""),
             lang=os.environ.get("ANKIWEB_LANG", ""),
             password=os.environ.get("ANKIWEB_PASSWORD", ""),

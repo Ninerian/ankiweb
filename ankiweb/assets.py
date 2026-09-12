@@ -16,24 +16,64 @@ _SPA_BRIDGE = (
 
 # subset of mediasrv _mime_for_path (mediasrv.py:171-210)
 MIME = {
-    ".css": "text/css", ".js": "application/javascript", ".mjs": "application/javascript",
-    ".html": "text/html", ".svg": "image/svg+xml", ".png": "image/png",
-    ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp",
-    ".ico": "image/x-icon", ".json": "application/json", ".woff": "font/woff",
-    ".woff2": "font/woff2", ".ttf": "font/ttf", ".otf": "font/otf", ".map": "application/json",
-    ".mp3": "audio/mpeg", ".ogg": "audio/ogg", ".oga": "audio/ogg",
-    ".opus": "audio/opus", ".wav": "audio/wav", ".flac": "audio/flac",
-    ".m4a": "audio/mp4", ".aac": "audio/aac",
-    ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
+    ".css": "text/css",
+    ".js": "application/javascript",
+    ".mjs": "application/javascript",
+    ".html": "text/html",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".ico": "image/x-icon",
+    ".json": "application/json",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".otf": "font/otf",
+    ".map": "application/json",
+    ".mp3": "audio/mpeg",
+    ".ogg": "audio/ogg",
+    ".oga": "audio/ogg",
+    ".opus": "audio/opus",
+    ".wav": "audio/wav",
+    ".flac": "audio/flac",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
 }
-SVELTEKIT_PAGES = {"graphs", "congrats", "card-info", "change-notetype", "deck-options",
-                   "import-anki-package", "import-csv", "import-page", "image-occlusion"}
+SVELTEKIT_PAGES = {
+    "graphs",
+    "congrats",
+    "card-info",
+    "change-notetype",
+    "deck-options",
+    "import-anki-package",
+    "import-csv",
+    "import-page",
+    "image-occlusion",
+}
 
 
 # vendored binary assets that are content-stable across the pinned anki version: cache hard.
 # (fonts are the big one — MathJax CHTML lazy-loads ~dozens of woff glyph files per render.)
-_STATIC_ASSET_EXTS = {"woff", "woff2", "ttf", "otf", "eot",
-                      "svg", "png", "jpg", "jpeg", "gif", "webp", "ico"}
+_STATIC_ASSET_EXTS = {
+    "woff",
+    "woff2",
+    "ttf",
+    "otf",
+    "eot",
+    "svg",
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "webp",
+    "ico",
+}
 
 
 def _mime(path: str) -> str:

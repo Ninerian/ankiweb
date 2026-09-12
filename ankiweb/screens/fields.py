@@ -2,7 +2,11 @@ from __future__ import annotations
 import html
 from typing import Callable
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
+from datastar_py.fastapi import (
+    DatastarResponse,
+    ServerSentEventGenerator as SSE,
+    ReadSignals,
+)
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
 
@@ -54,7 +58,11 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
             payload_fields = p["fields"]
             kept = {f["orig"] for f in payload_fields if f.get("orig") is not None}
             deletes = [f for f in cur if f["ord"] not in kept]
-            remaining = len(cur) - len(deletes) + sum(1 for f in payload_fields if f.get("orig") is None)
+            remaining = (
+                len(cur)
+                - len(deletes)
+                + sum(1 for f in payload_fields if f.get("orig") is None)
+            )
             if len(payload_fields) == 0 or remaining < 1:
                 raise Exception("a notetype needs at least one field")
             for f in deletes:

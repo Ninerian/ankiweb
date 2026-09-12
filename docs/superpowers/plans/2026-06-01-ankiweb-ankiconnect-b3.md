@@ -51,7 +51,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -109,9 +111,11 @@ def test_model_fields_on_templates(client):
 
 def test_find_models_missing_raises(client):
     # reference RAISES on a missing model (never returns null entries)
-    for action, kw in (("findModelsByName", {"modelNames": ["NoSuchModel"]}),
-                       ("findModelsById", {"modelIds": [123]}),
-                       ("modelNameFromId", {"modelId": 123})):
+    for action, kw in (
+        ("findModelsByName", {"modelNames": ["NoSuchModel"]}),
+        ("findModelsById", {"modelIds": [123]}),
+        ("modelNameFromId", {"modelId": 123}),
+    ):
         r = client.post("/", json={"action": action, "version": 6, "params": kw})
         assert r.json()["error"] is not None
 ```
@@ -140,46 +144,61 @@ def _model_or_raise(col, name):
 
 @action("modelNames")
 async def model_names(rt):
-    return await rt.service.run(lambda col: [m.name for m in col.models.all_names_and_ids()])
+    return await rt.service.run(
+        lambda col: [m.name for m in col.models.all_names_and_ids()]
+    )
 
 
 @action("modelNamesAndIds")
 async def model_names_and_ids(rt):
     return await rt.service.run(
-        lambda col: {m.name: m.id for m in col.models.all_names_and_ids()})
+        lambda col: {m.name: m.id for m in col.models.all_names_and_ids()}
+    )
 
 
 @action("modelFieldNames")
 async def model_field_names(rt, modelName=None):
     return await rt.service.run(
-        lambda col: [f["name"] for f in _model_or_raise(col, modelName)["flds"]])
+        lambda col: [f["name"] for f in _model_or_raise(col, modelName)["flds"]]
+    )
 
 
 @action("modelFieldDescriptions")
 async def model_field_descriptions(rt, modelName=None):
     return await rt.service.run(
-        lambda col: [f.get("description", "") for f in _model_or_raise(col, modelName)["flds"]])
+        lambda col: [
+            f.get("description", "") for f in _model_or_raise(col, modelName)["flds"]
+        ]
+    )
 
 
 @action("modelFieldFonts")
 async def model_field_fonts(rt, modelName=None):
     def fn(col):
-        return {f["name"]: {"font": f.get("font", "Arial"), "size": f.get("size", 20)}
-                for f in _model_or_raise(col, modelName)["flds"]}
+        return {
+            f["name"]: {"font": f.get("font", "Arial"), "size": f.get("size", 20)}
+            for f in _model_or_raise(col, modelName)["flds"]
+        }
+
     return await rt.service.run(fn)
 
 
 @action("modelTemplates")
 async def model_templates(rt, modelName=None):
     def fn(col):
-        return {t["name"]: {"Front": t["qfmt"], "Back": t["afmt"]}
-                for t in _model_or_raise(col, modelName)["tmpls"]}
+        return {
+            t["name"]: {"Front": t["qfmt"], "Back": t["afmt"]}
+            for t in _model_or_raise(col, modelName)["tmpls"]
+        }
+
     return await rt.service.run(fn)
 
 
 @action("modelStyling")
 async def model_styling(rt, modelName=None):
-    return await rt.service.run(lambda col: {"css": _model_or_raise(col, modelName)["css"]})
+    return await rt.service.run(
+        lambda col: {"css": _model_or_raise(col, modelName)["css"]}
+    )
 
 
 @action("modelFieldsOnTemplates")
@@ -194,6 +213,7 @@ async def model_fields_on_templates(rt, modelName=None):
             a = [r for r in _refs(t["afmt"]) if r not in q]  # de-dupe vs question side
             out[t["name"]] = [q, a]
         return out
+
     return await rt.service.run(fn)
 
 
@@ -209,6 +229,7 @@ async def find_models_by_id(rt, modelIds=None):
                 raise Exception("model was not found: " + str(mid))
             out.append(m)
         return out
+
     return await rt.service.run(fn)
 
 
@@ -224,6 +245,7 @@ async def find_models_by_name(rt, modelNames=None):
                 raise Exception("model was not found: " + str(n))
             out.append(m)
         return out
+
     return await rt.service.run(fn)
 
 
@@ -234,6 +256,7 @@ async def model_name_from_id(rt, modelId=None):
         if m is None:
             raise Exception("model was not found: " + str(modelId))
         return m["name"]
+
     return await rt.service.run(fn)
 ```
 
@@ -276,51 +299,113 @@ Report: Status, test results, files changed, self-review, commit SHA, concerns.
 
 ```python
 def test_create_model(client):
-    res = _call(client, "createModel", modelName="MyModel",
-                inOrderFields=["A", "B"],
-                cardTemplates=[{"Name": "C1", "Front": "{{A}}", "Back": "{{FrontSide}}<hr>{{B}}"}],
-                css=".card{color:red}")
+    res = _call(
+        client,
+        "createModel",
+        modelName="MyModel",
+        inOrderFields=["A", "B"],
+        cardTemplates=[
+            {"Name": "C1", "Front": "{{A}}", "Back": "{{FrontSide}}<hr>{{B}}"}
+        ],
+        css=".card{color:red}",
+    )
     assert res["name"] == "MyModel"
     assert _call(client, "modelFieldNames", modelName="MyModel") == ["A", "B"]
-    assert _call(client, "modelTemplates", modelName="MyModel")["C1"]["Front"] == "{{A}}"
+    assert (
+        _call(client, "modelTemplates", modelName="MyModel")["C1"]["Front"] == "{{A}}"
+    )
     assert "color:red" in _call(client, "modelStyling", modelName="MyModel")["css"]
 
 
 def test_create_cloze_model(client):
-    _call(client, "createModel", modelName="MyCloze", inOrderFields=["Text"],
-          cardTemplates=[{"Front": "{{cloze:Text}}", "Back": "{{cloze:Text}}"}], isCloze=True)
+    _call(
+        client,
+        "createModel",
+        modelName="MyCloze",
+        inOrderFields=["Text"],
+        cardTemplates=[{"Front": "{{cloze:Text}}", "Back": "{{cloze:Text}}"}],
+        isCloze=True,
+    )
     # cloze model type is 1 (verify via findModelsByName)
     assert _call(client, "findModelsByName", modelNames=["MyCloze"])[0]["type"] == 1
 
 
 def test_update_model_templates_and_styling(client):
-    _call(client, "createModel", modelName="UM", inOrderFields=["A"],
-          cardTemplates=[{"Name": "C1", "Front": "{{A}}", "Back": "{{A}}"}])
-    assert _call(client, "updateModelTemplates",
-                 model={"name": "UM", "templates": {"C1": {"Front": "Q:{{A}}", "Back": "X"}}}) is None
+    _call(
+        client,
+        "createModel",
+        modelName="UM",
+        inOrderFields=["A"],
+        cardTemplates=[{"Name": "C1", "Front": "{{A}}", "Back": "{{A}}"}],
+    )
+    assert (
+        _call(
+            client,
+            "updateModelTemplates",
+            model={
+                "name": "UM",
+                "templates": {"C1": {"Front": "Q:{{A}}", "Back": "X"}},
+            },
+        )
+        is None
+    )
     assert _call(client, "modelTemplates", modelName="UM")["C1"]["Front"] == "Q:{{A}}"
-    assert _call(client, "updateModelStyling", model={"name": "UM", "css": ".x{}"}) is None
+    assert (
+        _call(client, "updateModelStyling", model={"name": "UM", "css": ".x{}"}) is None
+    )
     assert _call(client, "modelStyling", modelName="UM")["css"] == ".x{}"
 
 
 def test_find_and_replace_in_models(client):
-    _call(client, "createModel", modelName="FR", inOrderFields=["A"],
-          cardTemplates=[{"Name": "C1", "Front": "HELLO HELLO {{A}}", "Back": "{{A}}"}])
+    _call(
+        client,
+        "createModel",
+        modelName="FR",
+        inOrderFields=["A"],
+        cardTemplates=[{"Name": "C1", "Front": "HELLO HELLO {{A}}", "Back": "{{A}}"}],
+    )
     # returns the count of MODELS updated (==1), NOT the 2 occurrences replaced
-    n = _call(client, "findAndReplaceInModels", modelName="FR",
-              findText="HELLO", replaceText="HI", front=True, back=False, css=False)
+    n = _call(
+        client,
+        "findAndReplaceInModels",
+        modelName="FR",
+        findText="HELLO",
+        replaceText="HI",
+        front=True,
+        back=False,
+        css=False,
+    )
     assert n == 1
     assert "HI HI" in _call(client, "modelTemplates", modelName="FR")["C1"]["Front"]
 
 
 def test_create_model_guards(client):
     # duplicate name, empty fields, and empty templates all raise (ref 1120-1127)
-    dup = client.post("/", json={"action": "createModel", "version": 6, "params": {
-        "modelName": "Basic", "inOrderFields": ["X"],
-        "cardTemplates": [{"Name": "C", "Front": "{{X}}", "Back": "{{X}}"}]}})
+    dup = client.post(
+        "/",
+        json={
+            "action": "createModel",
+            "version": 6,
+            "params": {
+                "modelName": "Basic",
+                "inOrderFields": ["X"],
+                "cardTemplates": [{"Name": "C", "Front": "{{X}}", "Back": "{{X}}"}],
+            },
+        },
+    )
     assert dup.json()["error"] is not None
-    empty = client.post("/", json={"action": "createModel", "version": 6, "params": {
-        "modelName": "EmptyOne", "inOrderFields": [], "cardTemplates": []}})
+    empty = client.post(
+        "/",
+        json={
+            "action": "createModel",
+            "version": 6,
+            "params": {
+                "modelName": "EmptyOne",
+                "inOrderFields": [],
+                "cardTemplates": [],
+            },
+        },
+    )
     assert empty.json()["error"] is not None
 ```
 
@@ -336,8 +421,9 @@ from ankiweb.ankiconnect.actions._helpers import run_emit
 
 
 @action("createModel")
-async def create_model(rt, modelName=None, inOrderFields=None, cardTemplates=None,
-                       css=None, isCloze=False):
+async def create_model(
+    rt, modelName=None, inOrderFields=None, cardTemplates=None, css=None, isCloze=False
+):
     inOrderFields = inOrderFields or []
     cardTemplates = cardTemplates or []
     # Reference guards (plugin/__init__.py:1120-1127): reject empty field/template lists.
@@ -363,6 +449,7 @@ async def create_model(rt, modelName=None, inOrderFields=None, cardTemplates=Non
             m["type"] = 1
         op = col.models.add_dict(m)
         return col.models.get(op.id), op  # return the persisted model dict
+
     return await run_emit(rt, fn)
 
 
@@ -376,11 +463,12 @@ async def update_model_templates(rt, model=None):
         for t in m["tmpls"]:
             if t["name"] in templates:
                 upd = templates[t["name"]]
-                if upd.get("Front"):   # ref ignores empty-string Front/Back (1305/1309)
+                if upd.get("Front"):  # ref ignores empty-string Front/Back (1305/1309)
                     t["qfmt"] = upd["Front"]
                 if upd.get("Back"):
                     t["afmt"] = upd["Back"]
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
@@ -393,13 +481,15 @@ async def update_model_styling(rt, model=None):
         m = _model_or_raise(col, model.get("name"))
         m["css"] = model.get("css", "")
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
 
 @action("findAndReplaceInModels")
-async def find_and_replace_in_models(rt, modelName=None, findText=None, replaceText=None,
-                                     front=True, back=True, css=True):
+async def find_and_replace_in_models(
+    rt, modelName=None, findText=None, replaceText=None, front=True, back=True, css=True
+):
     # Reference returns the number of MODELS updated (ref 1328-1353), not the
     # occurrence count, and treats a falsy modelName as "all models".
     def _replace(m):
@@ -428,6 +518,7 @@ async def find_and_replace_in_models(rt, modelName=None, findText=None, replaceT
                 last_op = col.models.update_dict(m)
                 updated += 1
         return updated, last_op  # run_emit tolerates last_op None (no model changed)
+
     return await run_emit(rt, fn)
 ```
 
@@ -461,8 +552,13 @@ Report: Status, test results, files changed, self-review, commit SHA, concerns.
 
 ```python
 def _mk(client, name="MUT"):
-    _call(client, "createModel", modelName=name, inOrderFields=["A", "B"],
-          cardTemplates=[{"Name": "C1", "Front": "{{A}}", "Back": "{{B}}"}])
+    _call(
+        client,
+        "createModel",
+        modelName=name,
+        inOrderFields=["A", "B"],
+        cardTemplates=[{"Name": "C1", "Front": "{{A}}", "Back": "{{B}}"}],
+    )
     return name
 
 
@@ -470,15 +566,38 @@ def test_field_mutators(client):
     m = _mk(client, "MF")
     assert _call(client, "modelFieldAdd", modelName=m, fieldName="C") is None
     assert "C" in _call(client, "modelFieldNames", modelName=m)
-    assert _call(client, "modelFieldRename", modelName=m, oldFieldName="C", newFieldName="D") is None
+    assert (
+        _call(
+            client, "modelFieldRename", modelName=m, oldFieldName="C", newFieldName="D"
+        )
+        is None
+    )
     assert "D" in _call(client, "modelFieldNames", modelName=m)
-    assert _call(client, "modelFieldReposition", modelName=m, fieldName="D", index=0) is None
+    assert (
+        _call(client, "modelFieldReposition", modelName=m, fieldName="D", index=0)
+        is None
+    )
     assert _call(client, "modelFieldNames", modelName=m)[0] == "D"
-    assert _call(client, "modelFieldSetFont", modelName=m, fieldName="A", font="Courier") is None
+    assert (
+        _call(client, "modelFieldSetFont", modelName=m, fieldName="A", font="Courier")
+        is None
+    )
     assert _call(client, "modelFieldFonts", modelName=m)["A"]["font"] == "Courier"
-    assert _call(client, "modelFieldSetFontSize", modelName=m, fieldName="A", fontSize=30) is None
+    assert (
+        _call(client, "modelFieldSetFontSize", modelName=m, fieldName="A", fontSize=30)
+        is None
+    )
     assert _call(client, "modelFieldFonts", modelName=m)["A"]["size"] == 30
-    assert _call(client, "modelFieldSetDescription", modelName=m, fieldName="A", description="d") is True
+    assert (
+        _call(
+            client,
+            "modelFieldSetDescription",
+            modelName=m,
+            fieldName="A",
+            description="d",
+        )
+        is True
+    )
     assert "d" in _call(client, "modelFieldDescriptions", modelName=m)
     assert _call(client, "modelFieldRemove", modelName=m, fieldName="D") is None
     assert "D" not in _call(client, "modelFieldNames", modelName=m)
@@ -486,13 +605,33 @@ def test_field_mutators(client):
 
 def test_template_mutators(client):
     m = _mk(client, "MT")
-    assert _call(client, "modelTemplateAdd", modelName=m,
-                 template={"Name": "C2", "Front": "{{B}}", "Back": "{{A}}"}) is None
+    assert (
+        _call(
+            client,
+            "modelTemplateAdd",
+            modelName=m,
+            template={"Name": "C2", "Front": "{{B}}", "Back": "{{A}}"},
+        )
+        is None
+    )
     assert "C2" in _call(client, "modelTemplates", modelName=m)
-    assert _call(client, "modelTemplateRename", modelName=m,
-                 oldTemplateName="C2", newTemplateName="C3") is None
+    assert (
+        _call(
+            client,
+            "modelTemplateRename",
+            modelName=m,
+            oldTemplateName="C2",
+            newTemplateName="C3",
+        )
+        is None
+    )
     assert "C3" in _call(client, "modelTemplates", modelName=m)
-    assert _call(client, "modelTemplateReposition", modelName=m, templateName="C3", index=0) is None
+    assert (
+        _call(
+            client, "modelTemplateReposition", modelName=m, templateName="C3", index=0
+        )
+        is None
+    )
     assert list(_call(client, "modelTemplates", modelName=m).keys())[0] == "C3"
     assert _call(client, "modelTemplateRemove", modelName=m, templateName="C3") is None
     assert "C3" not in _call(client, "modelTemplates", modelName=m)
@@ -523,13 +662,15 @@ def _template_or_raise(m, name):
 @action("modelTemplateAdd")
 async def model_template_add(rt, modelName=None, template=None):
     template = template or {}
-    name = template["Name"]   # ref requires Name/Front/Back (1377-1397); KeyError if absent
+    name = template[
+        "Name"
+    ]  # ref requires Name/Front/Back (1377-1397); KeyError if absent
     front = template["Front"]
     back = template["Back"]
 
     def fn(col):
         m = _model_or_raise(col, modelName)
-        for t in m["tmpls"]:        # update-in-place if a template with this name exists
+        for t in m["tmpls"]:  # update-in-place if a template with this name exists
             if t["name"] == name:
                 t["qfmt"] = front
                 t["afmt"] = back
@@ -539,6 +680,7 @@ async def model_template_add(rt, modelName=None, template=None):
         t["afmt"] = back
         col.models.add_template(m, t)
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
@@ -549,16 +691,20 @@ async def model_template_remove(rt, modelName=None, templateName=None):
         m = _model_or_raise(col, modelName)
         col.models.remove_template(m, _template_or_raise(m, templateName))
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
 
 @action("modelTemplateRename")
-async def model_template_rename(rt, modelName=None, oldTemplateName=None, newTemplateName=None):
+async def model_template_rename(
+    rt, modelName=None, oldTemplateName=None, newTemplateName=None
+):
     def fn(col):
         m = _model_or_raise(col, modelName)
         _template_or_raise(m, oldTemplateName)["name"] = newTemplateName
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
@@ -567,8 +713,11 @@ async def model_template_rename(rt, modelName=None, oldTemplateName=None, newTem
 async def model_template_reposition(rt, modelName=None, templateName=None, index=None):
     def fn(col):
         m = _model_or_raise(col, modelName)
-        col.models.reposition_template(m, _template_or_raise(m, templateName), int(index))
+        col.models.reposition_template(
+            m, _template_or_raise(m, templateName), int(index)
+        )
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
@@ -582,6 +731,7 @@ async def model_field_add(rt, modelName=None, fieldName=None, index=None):
         if index is not None:
             col.models.reposition_field(m, f, int(index))
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
@@ -592,6 +742,7 @@ async def model_field_remove(rt, modelName=None, fieldName=None):
         m = _model_or_raise(col, modelName)
         col.models.remove_field(m, _field_or_raise(m, fieldName))
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
@@ -602,6 +753,7 @@ async def model_field_rename(rt, modelName=None, oldFieldName=None, newFieldName
         m = _model_or_raise(col, modelName)
         col.models.rename_field(m, _field_or_raise(m, oldFieldName), newFieldName)
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
@@ -612,45 +764,53 @@ async def model_field_reposition(rt, modelName=None, fieldName=None, index=None)
         m = _model_or_raise(col, modelName)
         col.models.reposition_field(m, _field_or_raise(m, fieldName), int(index))
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
 
 @action("modelFieldSetFont")
 async def model_field_set_font(rt, modelName=None, fieldName=None, font=None):
-    if not isinstance(font, str):   # ref 1469-1470
+    if not isinstance(font, str):  # ref 1469-1470
         raise Exception("font should be a string")
 
     def fn(col):
         m = _model_or_raise(col, modelName)
         _field_or_raise(m, fieldName)["font"] = font
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
 
 @action("modelFieldSetFontSize")
 async def model_field_set_font_size(rt, modelName=None, fieldName=None, fontSize=None):
-    if not isinstance(fontSize, int) or isinstance(fontSize, bool):   # ref 1483-1484
+    if not isinstance(fontSize, int) or isinstance(fontSize, bool):  # ref 1483-1484
         raise Exception("fontSize should be an integer")
 
     def fn(col):
         m = _model_or_raise(col, modelName)
         _field_or_raise(m, fieldName)["size"] = fontSize
         return None, col.models.update_dict(m)
+
     await run_emit(rt, fn)
     return None
 
 
 @action("modelFieldSetDescription")
-async def model_field_set_description(rt, modelName=None, fieldName=None, description=None):
-    if not isinstance(description, str):   # ref 1497-1498
+async def model_field_set_description(
+    rt, modelName=None, fieldName=None, description=None
+):
+    if not isinstance(description, str):  # ref 1497-1498
         raise Exception("description should be a string")
 
     def fn(col):
         m = _model_or_raise(col, modelName)
         _field_or_raise(m, fieldName)["description"] = description
-        return True, col.models.update_dict(m)  # 25.9.4 always has the 'description' key
+        return True, col.models.update_dict(
+            m
+        )  # 25.9.4 always has the 'description' key
+
     return await run_emit(rt, fn)
 ```
 
@@ -694,7 +854,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -722,27 +884,39 @@ def test_store_media_from_path(client, tmp_path):
     p.write_bytes(b"frompath")
     fname = _call(client, "storeMediaFile", filename="p.txt", path=str(p))
     assert fname == "p.txt"
-    assert base64.b64decode(_call(client, "retrieveMediaFile", filename="p.txt")) == b"frompath"
+    assert (
+        base64.b64decode(_call(client, "retrieveMediaFile", filename="p.txt"))
+        == b"frompath"
+    )
 
 
 def test_add_note_with_picture_field(client):
     data = base64.b64encode(b"\x89PNG-fake").decode()
-    nid = _call(client, "addNote", note={
-        "deckName": "Default", "modelName": "Basic",
-        "fields": {"Front": "q", "Back": ""},
-        "picture": [{"filename": "img.png", "data": data, "fields": ["Back"]}],
-    })
+    nid = _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"Front": "q", "Back": ""},
+            "picture": [{"filename": "img.png", "data": data, "fields": ["Back"]}],
+        },
+    )
     info = _call(client, "notesInfo", notes=[nid])[0]
     assert '<img src="img.png">' in info["fields"]["Back"]["value"]
 
 
 def test_store_media_skip_hash_short_circuits(client):
     import hashlib
+
     raw = b"skip-me"
     data = base64.b64encode(raw).decode()
     h = hashlib.md5(raw).hexdigest()
     # matching skipHash -> returns None and writes nothing
-    assert _call(client, "storeMediaFile", filename="sk.txt", data=data, skipHash=h) is None
+    assert (
+        _call(client, "storeMediaFile", filename="sk.txt", data=data, skipHash=h)
+        is None
+    )
     assert "sk.txt" not in _call(client, "getMediaFilesNames", pattern="*.txt")
 
 
@@ -750,11 +924,20 @@ def test_add_note_picture_single_object_and_unknown_field(client):
     # picture may be a single object (not a list); a target field absent from the
     # model is ignored rather than fabricated.
     data = base64.b64encode(b"\x89PNG").decode()
-    nid = _call(client, "addNote", note={
-        "deckName": "Default", "modelName": "Basic",
-        "fields": {"Front": "q", "Back": ""},
-        "picture": {"filename": "one.png", "data": data, "fields": ["Back", "Nope"]},
-    })
+    nid = _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"Front": "q", "Back": ""},
+            "picture": {
+                "filename": "one.png",
+                "data": data,
+                "fields": ["Back", "Nope"],
+            },
+        },
+    )
     info = _call(client, "notesInfo", notes=[nid])[0]
     assert '<img src="one.png">' in info["fields"]["Back"]["value"]
     assert "Nope" not in info["fields"]
@@ -790,11 +973,14 @@ def _fetch_bytes(data=None, path=None, url=None):
             return f.read()
     if url is not None:
         import httpx
+
         return httpx.get(url, follow_redirects=True, timeout=30).content
     raise Exception("storeMediaFile requires one of data/path/url")
 
 
-def _store(col, filename, data=None, path=None, url=None, skipHash=None, deleteExisting=True):
+def _store(
+    col, filename, data=None, path=None, url=None, skipHash=None, deleteExisting=True
+):
     """Returns the stored filename (possibly renamed), or None if skipHash matched."""
     raw = _fetch_bytes(data, path, url)
     if skipHash is not None and hashlib.md5(raw).hexdigest() == skipHash:
@@ -805,21 +991,32 @@ def _store(col, filename, data=None, path=None, url=None, skipHash=None, deleteE
 
 
 @action("storeMediaFile")
-async def store_media_file(rt, filename=None, data=None, path=None, url=None,
-                           skipHash=None, deleteExisting=True):
+async def store_media_file(
+    rt,
+    filename=None,
+    data=None,
+    path=None,
+    url=None,
+    skipHash=None,
+    deleteExisting=True,
+):
     return await rt.service.run(
-        lambda col: _store(col, filename, data, path, url, skipHash, deleteExisting))
+        lambda col: _store(col, filename, data, path, url, skipHash, deleteExisting)
+    )
 
 
 @action("retrieveMediaFile")
 async def retrieve_media_file(rt, filename=None):
     def fn(col):
-        safe = os.path.basename(filename or "")   # ref normalizes; prevents '../' traversal
+        safe = os.path.basename(
+            filename or ""
+        )  # ref normalizes; prevents '../' traversal
         full = os.path.join(col.media.dir(), safe)
         if not safe or not os.path.exists(full):
             return False
         with open(full, "rb") as f:
             return base64.b64encode(f.read()).decode()
+
     return await rt.service.run(fn)
 
 
@@ -828,6 +1025,7 @@ async def get_media_files_names(rt, pattern="*"):
     def fn(col):
         names = os.listdir(col.media.dir())
         return [n for n in names if fnmatch.fnmatch(n, pattern)]
+
     return await rt.service.run(fn)
 
 
@@ -850,14 +1048,25 @@ def attach_media(col, spec):
     fields = spec.setdefault("fields", {})
     model = col.models.by_name(spec.get("modelName", ""))
     valid = set(col.models.field_names(model)) if model else None
-    for kind, tmpl in (("picture", '<img src="%s">'), ("audio", "[sound:%s]"),
-                       ("video", "[sound:%s]")):
+    for kind, tmpl in (
+        ("picture", '<img src="%s">'),
+        ("audio", "[sound:%s]"),
+        ("video", "[sound:%s]"),
+    ):
         media_list = spec.get(kind) or []
-        if isinstance(media_list, dict):   # AnkiConnect accepts a single object too (ref 773-776)
+        if isinstance(
+            media_list, dict
+        ):  # AnkiConnect accepts a single object too (ref 773-776)
             media_list = [media_list]
         for media in media_list:
-            stored = _store(col, media["filename"], media.get("data"), media.get("path"),
-                            media.get("url"), media.get("skipHash"))
+            stored = _store(
+                col,
+                media["filename"],
+                media.get("data"),
+                media.get("path"),
+                media.get("url"),
+                media.get("skipHash"),
+            )
             fname = stored if stored is not None else media["filename"]
             html = tmpl % fname
             for field_name in media.get("fields") or []:
@@ -916,6 +1125,7 @@ async def notes_info(rt, notes=None, query=None):
             except Exception:
                 out.append({})
         return out
+
     return await rt.service.run(fn)
 ```
 
@@ -933,6 +1143,7 @@ async def notes_mod_time(rt, notes=None):
             except Exception:
                 out.append({})
         return out
+
     return await rt.service.run(fn)
 ```
 
@@ -956,6 +1167,7 @@ async def cards_info(rt, cards=None):
             except Exception:
                 out.append({})
         return out
+
     return await rt.service.run(fn)
 
 
@@ -971,6 +1183,7 @@ async def cards_mod_time(rt, cards=None):
             except Exception:
                 out.append({})
         return out
+
     return await rt.service.run(fn)
 ```
 
