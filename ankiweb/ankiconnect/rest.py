@@ -68,21 +68,27 @@ def _make_endpoint(name: str, model: type, registry: dict, op_name: str):
 
     # Build the signature dynamically so FastAPI generates a distinct request-body schema per
     # action (the POC validated this works on fastapi 0.136 / pydantic 2.13).
-    endpoint.__signature__ = inspect.Signature(
-        [
-            inspect.Parameter(
-                "params", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=model
-            ),
-            inspect.Parameter(
-                "request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request
-            ),
-            inspect.Parameter(
-                "x_api_key",
-                inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                default=Security(_api_key_header),
-                annotation=Optional[str],
-            ),
-        ]
+    setattr(
+        endpoint,
+        "__signature__",
+        inspect.Signature(
+            [
+                inspect.Parameter(
+                    "params", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=model
+                ),
+                inspect.Parameter(
+                    "request",
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    annotation=Request,
+                ),
+                inspect.Parameter(
+                    "x_api_key",
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    default=Security(_api_key_header),
+                    annotation=Optional[str],
+                ),
+            ]
+        ),
     )
     endpoint.__name__ = op_name  # unique operationId across the two namespaces
     return endpoint

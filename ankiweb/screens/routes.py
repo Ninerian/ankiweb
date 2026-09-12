@@ -5,14 +5,6 @@ from fastapi import APIRouter, Form, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from starlette.background import BackgroundTask
 
-_MIME_EXT = {
-    "image/png": ".png",
-    "image/jpeg": ".jpg",
-    "image/gif": ".gif",
-    "image/webp": ".webp",
-    "image/svg+xml": ".svg",
-    "image/bmp": ".bmp",
-}
 from ankiweb.screens.page import render_page
 from ankiweb.screens.deckbrowser import render_deckbrowser_html, make_deckbrowser_routes
 from ankiweb.screens.overview import render_overview_html, make_overview_routes
@@ -36,7 +28,17 @@ from ankiweb.screens.fields import render_fields_html, make_fields_routes
 from ankiweb.screens.card_layout import render_card_layout_html, make_card_layout_routes
 from ankiweb.screens.tools import render_tools_html, make_tools_routes
 from ankiweb.screens.notetypes import render_notetypes_html, make_notetypes_routes
-from ankiweb.screens.notify import render_notify_html, config_from_form, header_safe
+from ankiweb.screens.notify import render_notify_html, config_from_form
+from ankiweb.notifier import header_safe
+
+_MIME_EXT = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/svg+xml": ".svg",
+    "image/bmp": ".bmp",
+}
 
 
 def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRouter:
@@ -50,7 +52,8 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
     router.include_router(make_card_layout_routes(get_service))
     router.include_router(make_tools_routes(get_service))
     router.include_router(make_notetypes_routes(get_service))
-    router.include_router(make_browser_routes(get_service, get_hub))
+    if get_hub is not None:
+        router.include_router(make_browser_routes(get_service, get_hub))
 
     @router.get("/", response_class=HTMLResponse)
     @router.get("/deckbrowser", response_class=HTMLResponse)
@@ -137,7 +140,8 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
 
     @router.get("/notify", response_class=HTMLResponse)
     async def notify_page():
-        return HTMLResponse(render_page("notify", render_notify_html(get_notifier())))
+        state = get_notifier() if get_notifier is not None else None
+        return HTMLResponse(render_page("notify", render_notify_html(state)))
 
     @router.post("/notify")
     async def notify_post(
@@ -149,7 +153,7 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
         retry_sec: float = Form(30.0),
         scope: str = Form("leaf"),
     ):
-        state = get_notifier()
+        state = get_notifier() if get_notifier is not None else None
         if not header_safe(token):
             form = {
                 "enabled": enabled,
@@ -170,9 +174,12 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
                 ),
                 status_code=400,
             )
-        state.update(config_from_form(enabled, url, token, poll_sec, retry_sec, scope))
-        if action == "resync":
-            state.request_resync()  # drop the baseline so all learnable decks re-push
+        if state is not None:
+            state.update(
+                config_from_form(enabled, url, token, poll_sec, retry_sec, scope)
+            )
+            if action == "resync":
+                state.request_resync()  # drop the baseline so all learnable decks re-push
         return RedirectResponse("/notify", status_code=303)
 
     @router.get("/about", response_class=HTMLResponse)

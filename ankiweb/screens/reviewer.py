@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from typing import Any
 from anki.sound import SoundOrVideoTag, AV_REF_RE
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
@@ -35,12 +36,10 @@ class ReviewerSession:
     """Holds the in-flight card (timer started) and its scheduling states between
     show-question, show-answer, and answer. Single-user → one session per reviewer."""
 
-    card: object = None  # anki.cards.Card with start_timer() already called
-    states: object = None  # SchedulingStates from the queue
-    context: object = None  # SchedulingContext
-    type_correct: object = (
-        None  # expected answer string when the card has {{type:Field}}
-    )
+    card: Any = None  # anki.cards.Card with start_timer() already called
+    states: Any = None  # SchedulingStates from the queue
+    context: Any = None  # SchedulingContext
+    type_correct: Any = None  # expected answer string when the card has {{type:Field}}
     type_combining: bool = True
     type_font: str = "Arial"
     type_size: int = 20

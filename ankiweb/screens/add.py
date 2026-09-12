@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+from typing import Any
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
 from ankiweb.screens.editor import _munge, paste_handler_js, editor_links_js
@@ -68,15 +69,15 @@ def render_add_html(col) -> str:
 
 
 def make_add_handler(service, hub):
-    state = {"notetype_id": None, "deck_id": None, "tags": []}
+    state: dict[str, Any] = {"notetype_id": None, "deck_id": None, "tags": []}
 
     async def handler(arg: str):
         head, _, rest = arg.partition(":")
         if head == "addReady":
 
             def init(col):
-                ntid = col.models.current()["id"]
-                did = col.decks.get_current_id()
+                ntid = int(col.models.current()["id"])
+                did = int(col.decks.get_current_id())
                 return ntid, did, _empty_load(col, ntid)
 
             ntid, did, data = await service.run(init)
@@ -94,11 +95,11 @@ def make_add_handler(service, hub):
             state["tags"] = json.loads(rest)
         elif head == "addnote":
             fields = json.loads(rest)
-            ntid, did, tags = (
-                state["notetype_id"],
-                state["deck_id"],
-                list(state["tags"]),
-            )
+            ntid_raw = state["notetype_id"]
+            did_raw = state["deck_id"]
+            ntid = int(ntid_raw) if ntid_raw is not None else 0
+            did = int(did_raw) if did_raw is not None else 0
+            tags = list(state["tags"] or [])
 
             def add(col):
                 model = col.models.get(ntid)

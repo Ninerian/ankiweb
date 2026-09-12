@@ -1,5 +1,4 @@
 from __future__ import annotations
-import html
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -8,6 +7,17 @@ from starlette.responses import HTMLResponse, PlainTextResponse, RedirectRespons
 
 from ankiweb.config import Settings, host_allowed
 from ankiweb.auth import COOKIE, auth_token, cookie_ok, password_ok
+from ankiweb.collection_service import CollectionService
+from ankiweb.bridge.hub import BridgeHub
+from ankiweb.assets import (
+    build_router as build_assets_router,
+    build_media_router,
+    build_sveltekit_router,
+)
+from ankiweb.anki_rpc import build_router as build_rpc_router
+from ankiweb.bridge.ws import build_router as build_ws_router
+from ankiweb.screens.routes import build_screen_router, register_screen_handlers
+from ankiweb.notifier import NotifierState
 
 
 def _login_html(error: bool = False) -> str:
@@ -35,19 +45,6 @@ def _login_html(error: bool = False) -> str:
     )
 
 
-from ankiweb.collection_service import CollectionService
-from ankiweb.bridge.hub import BridgeHub
-from ankiweb.assets import (
-    build_router as build_assets_router,
-    build_media_router,
-    build_sveltekit_router,
-)
-from ankiweb.anki_rpc import build_router as build_rpc_router
-from ankiweb.bridge.ws import build_router as build_ws_router
-from ankiweb.screens.routes import build_screen_router, register_screen_handlers
-from ankiweb.notifier import NotifierState
-
-
 def create_app(
     settings: Settings | None = None,
     service: CollectionService | None = None,
@@ -64,7 +61,10 @@ def create_app(
             svc = CollectionService(settings)
             await svc.open()
         h = hub if hub is not None else BridgeHub()
-        svc.subscribe(lambda flags, initiator: h.broadcast_opchanges(flags, initiator))
+        if svc is not None:
+            svc.subscribe(
+                lambda flags, initiator: h.broadcast_opchanges(flags, initiator)
+            )
         app.state.settings = settings
         app.state.service = svc
         app.state.hub = h
@@ -77,7 +77,7 @@ def create_app(
         try:
             yield
         finally:
-            if owns:
+            if owns and svc is not None:
                 await svc.close()
 
     app = FastAPI(title="ankiweb", lifespan=lifespan)
@@ -117,9 +117,9 @@ def create_app(
     @app.post("/login")
     async def login_submit(request: Request):
         form = await request.form()
-        if settings.password and password_ok(
-            form.get("password", ""), settings.password
-        ):
+        pwd = form.get("password", "")
+        pwd_str = pwd if isinstance(pwd, str) else ""
+        if settings.password and password_ok(pwd_str, settings.password):
             resp = RedirectResponse("/", status_code=303)
             resp.set_cookie(
                 COOKIE,

@@ -67,7 +67,8 @@ def test_import_anki_package_route_serves_spa_shell(client):
 
 
 def test_gc_removes_old_files(client, tmp_path):
-    import os, time
+    import os
+    import time
     from ankiweb import import_tmp
 
     s = client.app.state.service.settings

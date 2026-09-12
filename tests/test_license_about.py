@@ -1,5 +1,4 @@
 from pathlib import Path
-import pytest
 from fastapi.testclient import TestClient
 from ankiweb.config import Settings
 from ankiweb.app import create_app

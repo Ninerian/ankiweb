@@ -165,7 +165,7 @@ async def test_forget_resets_card(tmp_path: Path):
 async def test_forget_branch_runs_and_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    first = hub.ui_state.current_card_id
+    _first = hub.ui_state.current_card_id
     await handler("forget")
     # forget on a new card keeps it new but the branch advances to the next card
     assert "_showQuestion" in hub.fns()

@@ -143,7 +143,7 @@ async def set_deck_config_id(rt, decks=None, configId=None):
     decks = decks or []
 
     def fn(col):
-        if not _config_exists(col, configId):
+        if configId is None or not _config_exists(col, configId):
             return False
         for name in decks:
             did = col.decks.id_for_name(name)  # read-only: skip missing decks
@@ -179,7 +179,7 @@ async def clone_deck_config_id(rt, name=None, cloneFrom="1"):
 async def remove_deck_config_id(rt, configId=None):
     def fn(col):
         # refuse the Default config (id 1 → backend raises) and unknown ids
-        if int(configId) == 1 or not _config_exists(col, configId):
+        if configId is None or int(configId) == 1 or not _config_exists(col, configId):
             return False
         col.decks.remove_config(int(configId))
         return True

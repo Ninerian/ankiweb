@@ -28,8 +28,6 @@ def live_io(tmp_path: Path):
     img.write_bytes(PNG)
     col = Collection(str(col_path))
     try:
-        import anki.image_occlusion_pb2 as iopb
-
         col.add_image_occlusion_notetype()
         nt = col.models.by_name("Image Occlusion")
         col.add_image_occlusion_note(

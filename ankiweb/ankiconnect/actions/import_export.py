@@ -52,7 +52,9 @@ async def import_package(rt, path=None):
     def fn(col):
         import anki.import_export_pb2 as ie
 
-        resp = col.import_anki_package(ie.ImportAnkiPackageRequest(package_path=path))
+        resp = col.import_anki_package(
+            ie.ImportAnkiPackageRequest(package_path=str(path or ""))
+        )
         return True, resp
 
     return await run_emit(rt, fn)

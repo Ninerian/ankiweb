@@ -1,8 +1,7 @@
 from pathlib import Path
+import pytest
 
 ASSETS = Path(__file__).resolve().parent.parent / "ankiweb" / "web_assets"
-
-import pytest
 
 pytestmark = pytest.mark.skipif(
     not ASSETS.exists(), reason="run tools/fetch_web_assets.py first"

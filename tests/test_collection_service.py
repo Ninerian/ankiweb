@@ -51,7 +51,8 @@ async def test_opchanges_bus_notifies_subscribers(service):
 def test_op_changes_to_flags():
     from ankiweb.collection_service import op_changes_to_flags
     from anki.collection import Collection
-    import tempfile, os
+    import tempfile
+    import os
 
     col = Collection(os.path.join(tempfile.mkdtemp(), "c.anki2"))
     try:

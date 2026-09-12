@@ -7,7 +7,6 @@ from datastar_py.fastapi import (
     ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.i18n import tr
 from ankiweb.screens import templating
 
 _TAG_STRIP = re.compile(r"<[^>]+>")

@@ -1,7 +1,7 @@
 """Request models for the card actions (ankiweb/ankiconnect/actions/cards.py)."""
 
 from __future__ import annotations
-from typing import Any, Optional
+from typing import Any
 from pydantic import Field
 from ankiweb.ankiconnect.schemas._base import ACBaseModel
 

@@ -6,10 +6,7 @@ translation keys."""
 from __future__ import annotations
 import time
 
-from ankiweb.notifier import (
-    NotifyConfig,
-    header_safe,
-)  # header_safe re-exported for routes.py
+from ankiweb.notifier import NotifyConfig
 from ankiweb.screens import templating
 
 

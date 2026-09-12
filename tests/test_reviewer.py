@@ -1,4 +1,5 @@
-import tempfile, os
+import tempfile
+import os
 import pytest
 from anki.collection import Collection
 from ankiweb.screens.reviewer import (

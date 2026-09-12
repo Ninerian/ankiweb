@@ -385,7 +385,7 @@ def test_remove_duplicate_notes_strip_html_equivalent(client):
     # HTML-different but strip-equivalent first field -> duplicates
     _post(client, "/actions/createDeck", deck="Strip")
     a = _add_note(client, "Strip", "Basic", {"Front": "Q", "Back": "A"})
-    b = _add_note(client, "Strip", "Basic", {"Front": "<b>Q</b>", "Back": "A"})
+    _b = _add_note(client, "Strip", "Basic", {"Front": "<b>Q</b>", "Back": "A"})
     r = _post(client, "/extra_actions/removeDuplicateNotes", deck="Strip")["result"]
     assert r["duplicateGroups"] == 1 and r["deleted"] == 1
     assert r["groups"][0]["kept"] == a

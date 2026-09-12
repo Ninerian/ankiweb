@@ -195,6 +195,8 @@ async def find_models_by_name(rt, modelNames=None):
 )
 async def model_name_from_id(rt, modelId=None):
     def fn(col):
+        if modelId is None:
+            raise Exception("modelId is required")
         m = col.models.get(int(modelId))
         if m is None:
             raise Exception("model was not found: " + str(modelId))
@@ -403,7 +405,9 @@ async def model_template_reposition(rt, modelName=None, templateName=None, index
     def fn(col):
         m = _model_or_raise(col, modelName)
         col.models.reposition_template(
-            m, _template_or_raise(m, templateName), int(index)
+            m,
+            _template_or_raise(m, templateName),
+            int(index if index is not None else 0),
         )
         return None, col.models.update_dict(m)
 
@@ -465,7 +469,9 @@ async def model_field_rename(rt, modelName=None, oldFieldName=None, newFieldName
 async def model_field_reposition(rt, modelName=None, fieldName=None, index=None):
     def fn(col):
         m = _model_or_raise(col, modelName)
-        col.models.reposition_field(m, _field_or_raise(m, fieldName), int(index))
+        col.models.reposition_field(
+            m, _field_or_raise(m, fieldName), int(index if index is not None else 0)
+        )
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)

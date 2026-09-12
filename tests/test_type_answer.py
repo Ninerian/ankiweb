@@ -50,7 +50,7 @@ def test_non_type_card_leaves_type_correct_none(col):
     col.add_note(n, col.decks.id("Default"))
     s = ReviewerSession()
     s.type_correct = "stale"
-    info = load_question(col, s)
+    _info = load_question(col, s)
     assert s.type_correct in (None, "Paris")  # reset per card; never the stale value
 
 

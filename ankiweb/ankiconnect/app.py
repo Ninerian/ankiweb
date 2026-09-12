@@ -64,7 +64,7 @@ def create_ankiconnect_app(
         try:
             yield
         finally:
-            if owns_service:
+            if owns_service and svc is not None:
                 await svc.close()
 
     app = FastAPI(

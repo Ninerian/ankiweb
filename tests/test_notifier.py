@@ -4,11 +4,9 @@ from pathlib import Path
 import pytest
 from ankiweb.notifier import (
     NotifyConfig,
-    NotifyStatus,
     NotifierState,
     DeckNotifier,
     learnable,
-    counts_sig,
     diff_changes,
     build_payload,
     eval_response,
@@ -16,11 +14,11 @@ from ankiweb.notifier import (
 )
 
 
-def _counts(n=0, l=0, r=0, did=1, leaf=True):
+def _counts(n=0, learn=0, r=0, did=1, leaf=True):
     return {
         "deck_id": did,
         "new_count": n,
-        "learn_count": l,
+        "learn_count": learn,
         "review_count": r,
         "is_leaf": leaf,
     }
@@ -29,7 +27,9 @@ def _counts(n=0, l=0, r=0, did=1, leaf=True):
 # ----- pure logic -----
 def test_learnable():
     assert (
-        learnable(_counts(n=1)) and learnable(_counts(l=1)) and learnable(_counts(r=1))
+        learnable(_counts(n=1))
+        and learnable(_counts(learn=1))
+        and learnable(_counts(r=1))
     )
     assert not learnable(_counts())
 
@@ -68,7 +68,7 @@ def test_diff_changes_count_change_while_still_learnable():
 
 def test_diff_changes_bucket_shift_same_total():
     # a new->learn shift keeps the total (5) but the tuple changes -> notify
-    current = {"A": _counts(n=4, l=1, did=10)}
+    current = {"A": _counts(n=4, learn=1, did=10)}
     assert diff_changes(current, {"A": (5, 0, 0)})[0]["deck"] == "A"
 
 
@@ -404,7 +404,10 @@ async def test_run_scope_change_resyncs(tmp_path):
     n = DeckNotifier(state, fetch=lambda: _async(snap), post=post, now=lambda: 0.0)
     task = asyncio.create_task(n.run())
     await asyncio.sleep(0.05)
-    seen = lambda: {c["deck"] for call in post.calls for c in call["changes"]}
+
+    def seen():
+        return {c["deck"] for call in post.calls for c in call["changes"]}
+
     assert seen() == {"P::C"}  # leaf scope: parent not pushed
     state.update(
         NotifyConfig(

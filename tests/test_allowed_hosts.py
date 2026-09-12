@@ -56,7 +56,6 @@ def test_ws_lan_host_allowed_when_configured(tmp_path: Path):
 
 def test_ws_lan_host_rejected_by_default(tmp_path: Path):
     import websockets  # noqa
-    from starlette.websockets import WebSocketDisconnect as WSD
 
     with _client(tmp_path, ()) as c:
         with pytest.raises(Exception):

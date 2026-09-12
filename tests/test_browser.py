@@ -222,8 +222,6 @@ def test_changedeck_moves_card(client):
 
 
 def test_add_and_remove_tag(client):
-    from conftest import parse_datastar_events
-
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
     nid = _run(client, lambda col: col.get_card(cid).nid)
     client.post(
