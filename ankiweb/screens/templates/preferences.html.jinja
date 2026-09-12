@@ -122,10 +122,10 @@
       }}
     </fieldset>
     <div style="margin-top:10px;">
-      <button type="button" id="save" onclick="savePrefs()">
+      <button type="button" id="save" data-on:click__prevent="const payload = buildPrefsPayload(); @post('/preferences/savePrefs', {payload: payload})">
         {{ tr.actions_save() }}
       </button>
-      <button type="button" onclick="pycmd('cancel')">
+      <button type="button" data-on:click__prevent="@post('/preferences/cancel')">
         {{ tr.actions_cancel() }}
       </button>
     </div>
@@ -145,9 +145,9 @@
       return document.getElementById(id).value;
   }
 
-  function savePrefs() {
+  function buildPrefsPayload() {
       document.getElementById('err').textContent = '';
-      var p = {
+      return {
           rollover: num('rollover'),
           learn_ahead_mins: num('learn_ahead_mins'),
           new_review_mix: parseInt(document.getElementById('new_review_mix').value),
@@ -171,9 +171,5 @@
           monthly: num('monthly'),
           minimum_interval_mins: num('minimum_interval_mins')
       };
-      pycmd('savePrefs:' + JSON.stringify(p));
   }
-  window.ankiwebPrefsError = function(m) {
-      document.getElementById('err').textContent = m;
-  };
 </script>

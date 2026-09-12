@@ -1,13 +1,15 @@
 from __future__ import annotations
-
+from typing import Callable
+from fastapi import APIRouter
+from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
 
-
 def render_tools_html(col) -> str:
     """Server-rendered Tools page: Check Database, Check Media, Empty Cards (each a
-    button + an empty result <div> filled by the WS handler via ankiwebToolsResult),
-    plus a link to Manage Note Types. Mirrors the E4/E5 server-rendered screens."""
+    button + an empty result <div> patched in place by the corresponding /tools/*
+    Datastar route), plus a link to Manage Note Types. Mirrors the E4/E5
+    server-rendered screens."""
     return templating.render(
         "tools.html.jinja",
         checkdb_label=tr.database_check_title(),
@@ -47,63 +49,59 @@ def _emptycards_result_html(report: str, cids: list) -> str:
 def _emptycards_deleted_html(n: int) -> str:
     return templating.render("tools_emptycards_deleted.html.jinja", n=n)
 
-
-def make_tools_handler(service, hub):
-    """WS handler for the Tools page. A per-handler `state` dict stashes the last
-    check's results so the matching delete acts on that report rather than recomputing
-    and deleting blindly."""
+def make_tools_routes(get_service: Callable) -> APIRouter:
+    router = APIRouter(prefix="/tools")
     state: dict = {}
 
-    async def _push_media(mc):
+    def _push_media(mc):
         state["unused"] = list(mc.unused)
-        await hub.push_call("tools", "ankiwebToolsResult", ["media", _media_result_html(mc)])
+        res_html = f'<div id="res-media">{_media_result_html(mc)}</div>'
+        return DatastarResponse(SSE.patch_elements(res_html, selector="#res-media"))
 
-    async def handler(arg: str):
-        cmd, _, rest = arg.partition(":")
+    @router.post("/checkdb")
+    async def check_db():
+        service = get_service()
+        report, ok = await service.run(lambda col: col.fix_integrity())
+        res_html = f'<div id="res-db">{_db_result_html(report)}</div>'
+        return DatastarResponse(SSE.patch_elements(res_html, selector="#res-db"))
 
-        if cmd == "checkdb":
-            report, ok = await service.run(lambda col: col.fix_integrity())
-            await hub.push_call(
-                "tools", "ankiwebToolsResult",
-                ["db", _db_result_html(report)])
-            return None
+    @router.post("/checkmedia")
+    async def check_media():
+        service = get_service()
+        mc = await service.run(lambda col: col.media.check())
+        return _push_media(mc)
 
-        if cmd == "checkmedia":
-            mc = await service.run(lambda col: col.media.check())
-            await _push_media(mc)
-            return None
+    @router.post("/deleteunused")
+    async def delete_unused():
+        service = get_service()
+        un = state.get("unused") or []
+        if un:
+            await service.run(
+                lambda col: (col.media.trash_files(un), col.media.empty_trash()))
+        state["unused"] = []
+        mc = await service.run(lambda col: col.media.check())
+        return _push_media(mc)
 
-        if cmd == "deleteunused":
-            un = state.get("unused") or []
-            if un:
-                await service.run(
-                    lambda col: (col.media.trash_files(un), col.media.empty_trash()))
-            state["unused"] = []
-            # Re-run the check so the displayed count reflects the deletion.
-            mc = await service.run(lambda col: col.media.check())
-            await _push_media(mc)
-            return None
+    @router.post("/emptycards")
+    async def empty_cards():
+        service = get_service()
+        rep = await service.run(lambda col: col.get_empty_cards())
+        cids = [cid for n in rep.notes for cid in n.card_ids]
+        state["empty"] = cids
+        res_html = f'<div id="res-empty">{_emptycards_result_html(rep.report, cids)}</div>'
+        return DatastarResponse(SSE.patch_elements(res_html, selector="#res-empty"))
 
-        if cmd == "emptycards":
-            rep = await service.run(lambda col: col.get_empty_cards())
-            cids = [cid for n in rep.notes for cid in n.card_ids]
-            state["empty"] = cids
-            await hub.push_call("tools", "ankiwebToolsResult", ["empty", _emptycards_result_html(rep.report, cids)])
-            return None
+    @router.post("/emptycards_delete")
+    async def emptycards_delete():
+        service = get_service()
+        cids = state.get("empty") or []
+        if cids:
+            await service.run_op(
+                lambda col: col.remove_cards_and_orphaned_notes(cids),
+                initiator="tools")
+        n = len(cids)
+        state["empty"] = []
+        res_html = f'<div id="res-empty">{_emptycards_deleted_html(n)}</div>'
+        return DatastarResponse(SSE.patch_elements(res_html, selector="#res-empty"))
 
-        if cmd == "emptycards_delete":
-            cids = state.get("empty") or []
-            if cids:
-                await service.run_op(
-                    lambda col: col.remove_cards_and_orphaned_notes(cids),
-                    initiator="tools")
-            n = len(cids)
-            state["empty"] = []
-            await hub.push_call(
-                "tools", "ankiwebToolsResult",
-                ["empty", _emptycards_deleted_html(n)])
-            return None
-
-        return None
-
-    return handler
+    return router

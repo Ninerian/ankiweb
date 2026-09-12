@@ -47,16 +47,16 @@
       <textarea id="css" rows="8" style="width:100%;">{{ css }}</textarea>
     </div>
     <div style="margin-top:10px;">
-      <button type="button" id="save" onclick="saveLayout()">
+      <button type="button" id="save" data-on:click__prevent="const payload = buildLayoutPayload(); @post('/card-layout/savelayout', {payload: payload})">
         {{ tr.actions_save() }}
       </button>
-      <button type="button" onclick="pycmd('cancel')">
+      <button type="button" data-on:click__prevent="@post('/card-layout/cancel')">
         {{ tr.actions_cancel() }}
       </button>
       <button
         type="button"
         id="preview"
-        onclick="pycmd('previewlayout:' + document.getElementById('ntid').value)"
+        data-on:click__prevent="@post('/card-layout/previewlayout/' + document.getElementById('ntid').value)"
       >
         {{ tr.actions_preview() }}
       </button>
@@ -91,7 +91,7 @@
       if (next) b.parentNode.insertBefore(next, b);
   }
 
-  function saveLayout() {
+  function buildLayoutPayload() {
       document.getElementById('err').textContent = '';
       var blocks = Array.prototype.slice.call(
           document.querySelectorAll('#tmplblocks .tmpl-block'));
@@ -104,14 +104,10 @@
               afmt: b.querySelector('.tmpl-afmt').value
           };
       });
-      var payload = {
+      return {
           notetypeId: parseInt(document.getElementById('ntid').value),
           css: document.getElementById('css').value,
           templates: templates
       };
-      pycmd('savelayout:' + JSON.stringify(payload));
   }
-  window.ankiwebCardLayoutError = function(m) {
-      document.getElementById('err').textContent = m;
-  };
 </script>

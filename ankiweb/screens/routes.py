@@ -8,28 +8,36 @@ from starlette.background import BackgroundTask
 _MIME_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif",
              "image/webp": ".webp", "image/svg+xml": ".svg", "image/bmp": ".bmp"}
 from ankiweb.screens.page import render_page
-from ankiweb.screens.deckbrowser import render_deckbrowser_html, make_deckbrowser_handler
-from ankiweb.screens.overview import render_overview_html, make_overview_handler
+from ankiweb.screens.deckbrowser import render_deckbrowser_html, make_deckbrowser_routes
+from ankiweb.screens.overview import render_overview_html, make_overview_routes
 from ankiweb.screens.reviewer import reviewer_page_body, make_reviewer_handler
-from ankiweb.screens.browser import render_browser_html, make_browser_handler
+from ankiweb.screens.browser import render_browser_html, make_browser_routes
 from ankiweb.screens.editor import editor_page_body, make_editor_handler
 from ankiweb.screens.add import render_add_html, make_add_handler
-from ankiweb.screens.custom_study import render_custom_study_html, make_custom_study_handler
+from ankiweb.screens.custom_study import render_custom_study_html, make_custom_study_routes
 from ankiweb.screens.about import render_about_html
-from ankiweb.screens.filtered_deck import render_filtered_deck_html, make_filtered_deck_handler
+from ankiweb.screens.filtered_deck import render_filtered_deck_html, make_filtered_deck_routes
 from ankiweb.screens.export import render_export_html
-from ankiweb.screens.preferences import render_preferences_html, make_preferences_handler
+from ankiweb.screens.preferences import render_preferences_html, make_preferences_routes
 from ankiweb.screens.preview import render_preview_html
-from ankiweb.screens.fields import render_fields_html, make_fields_handler
-from ankiweb.screens.card_layout import render_card_layout_html, make_card_layout_handler
-from ankiweb.screens.tools import render_tools_html, make_tools_handler
-from ankiweb.screens.notetypes import render_notetypes_html, make_notetypes_handler
+from ankiweb.screens.fields import render_fields_html, make_fields_routes
+from ankiweb.screens.card_layout import render_card_layout_html, make_card_layout_routes
+from ankiweb.screens.tools import render_tools_html, make_tools_routes
+from ankiweb.screens.notetypes import render_notetypes_html, make_notetypes_routes
 from ankiweb.screens.notify import render_notify_html, config_from_form, header_safe
 
-
-def build_screen_router(get_service, get_notifier=None) -> APIRouter:
+def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRouter:
     router = APIRouter()
-
+    router.include_router(make_deckbrowser_routes(get_service))
+    router.include_router(make_overview_routes(get_service))
+    router.include_router(make_custom_study_routes(get_service))
+    router.include_router(make_filtered_deck_routes(get_service))
+    router.include_router(make_preferences_routes(get_service))
+    router.include_router(make_fields_routes(get_service))
+    router.include_router(make_card_layout_routes(get_service))
+    router.include_router(make_tools_routes(get_service))
+    router.include_router(make_notetypes_routes(get_service))
+    router.include_router(make_browser_routes(get_service, get_hub))
     @router.get("/", response_class=HTMLResponse)
     @router.get("/deckbrowser", response_class=HTMLResponse)
     async def deckbrowser_page():
@@ -274,17 +282,6 @@ def build_screen_router(get_service, get_notifier=None) -> APIRouter:
 
 
 def register_screen_handlers(service, hub) -> None:
-    hub.set_handler("deckbrowser", make_deckbrowser_handler(service, hub))
-    hub.set_handler("overview", make_overview_handler(service, hub))
-    hub.set_handler("customstudy", make_custom_study_handler(service, hub))
-    hub.set_handler("filtereddeck", make_filtered_deck_handler(service, hub))
-    hub.set_handler("preferences", make_preferences_handler(service, hub))
-    hub.set_handler("fields", make_fields_handler(service, hub))
-    hub.set_handler("cardlayout", make_card_layout_handler(service, hub))
-    hub.set_handler("tools", make_tools_handler(service, hub))
-    hub.set_handler("notetypes", make_notetypes_handler(service, hub))
-
     hub.set_handler("reviewer", make_reviewer_handler(service, hub))
-    hub.set_handler("browser", make_browser_handler(service, hub))
     hub.set_handler("editor", make_editor_handler(service, hub))
     hub.set_handler("add", make_add_handler(service, hub))

@@ -21,23 +21,23 @@
       id="study"
       class="but"
       autofocus
-      onclick="pycmd('study'); return false"
+      data-on:click__prevent="@post('/overview/study')"
     >
       {{ tr.studying_study_now() }}
     </button>
   </div>
   <div class="bottom-buttons">
-    <button type="button" onclick='pycmd("opts")'>
+    <button type="button" data-on:click__prevent="@post('/overview/opts')">
       {{ tr.actions_options() }}
     </button>
-    {% if is_dyn %}<button type="button" onclick='pycmd("refresh")'>
+    {% if is_dyn %}<button type="button" data-on:click__prevent="@post('/overview/refresh')">
         {{ tr.actions_rebuild() }}
-      </button><button type="button" onclick='pycmd("empty")'>
+      </button><button type="button" data-on:click__prevent="@post('/overview/empty')">
         {{ tr.studying_empty() }}
-      </button>{% else %}<button type="button" onclick='pycmd("studymore")'>
+      </button>{% else %}<button type="button" data-on:click__prevent="@post('/overview/studymore')">
         {{ tr.actions_custom_study() }}
       </button>{% endif %}
-    {% if have_buried %}<button type="button" onclick='pycmd("unbury")'>
+    {% if have_buried %}<button type="button" data-on:click__prevent="@post('/overview/unbury')">
         {{ tr.studying_unbury() }}
       </button>{% endif %}
     <button
@@ -46,7 +46,7 @@
     >
       {{ tr.studying_edit() }} {{ tr.fields_description() }}
     </button>
-    <button type="button" onclick='pycmd("decks")'>
+    <button type="button" data-on:click__prevent="@post('/overview/decks')">
       {{ tr.actions_decks() }}
     </button>
   </div>
@@ -60,7 +60,7 @@
         {% endif %}
       > Render as markdown</label><br><button
       type="button"
-      onclick="saveDesc()"
+      data-on:click__prevent="const d = document.getElementById('descbox').value; const m = document.getElementById('descmd').checked; @post('/overview/setdesc', {payload: {desc: d, md: m}})"
     >
       {{ tr.actions_save() }}
     </button>
@@ -71,14 +71,4 @@
       {{ tr.actions_cancel() }}
     </button>
   </div>
-  <script>
-    function saveDesc() {
-        var d = document.getElementById('descbox').value,
-            m = document.getElementById('descmd').checked;
-        pycmd('setdesc:' + JSON.stringify({
-            desc: d,
-            md: m
-        }));
-    }
-  </script>
 </center>

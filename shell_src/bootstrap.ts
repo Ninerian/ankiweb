@@ -37,12 +37,6 @@ bridge.registerCalls({
   },
 });
 
-// Client-side helper for the "Create Deck" button (prompt then send create:<name>).
-(window as any).ankiwebCreateDeck = () => {
-  const name = window.prompt("Deck name:");
-  if (name) (window as any).pycmd("create:" + name);
-};
-
 (window as any).ankiwebImportFile = () => {
   const input = document.createElement("input");
   input.type = "file";

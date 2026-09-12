@@ -1,8 +1,10 @@
 from __future__ import annotations
-import json
+import html
+from typing import Callable
+from fastapi import APIRouter
+from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
-
 
 def render_preferences_html(col) -> str:
     """Server-rendered Preferences form over col.get_preferences()/set_preferences().
@@ -26,18 +28,19 @@ def render_preferences_html(col) -> str:
         mix_opts=mix_opts,
     )
 
-def make_preferences_handler(service, hub):
-    async def handler(arg: str):
-        cmd, _, rest = arg.partition(":")
-        if cmd == "cancel":
-            await hub.push_call("preferences", "ankiwebNavigate", ["/deckbrowser"])
-            return None
-        if cmd != "savePrefs":
-            return None
-        try:
-            p = json.loads(rest)
-        except Exception:
-            return None
+def make_preferences_routes(get_service: Callable) -> APIRouter:
+    router = APIRouter(prefix="/preferences")
+
+    @router.post("/cancel")
+    async def cancel():
+        return DatastarResponse(SSE.redirect("/deckbrowser"))
+
+    @router.post("/savePrefs")
+    async def save_prefs(payload: ReadSignals):
+        service = get_service()
+        if not payload or not isinstance(payload, dict):
+            return DatastarResponse()
+        p = payload
 
         def apply(col):
             # Merge onto a FRESH get_preferences() and resend all 4 sections — set_preferences
@@ -74,9 +77,9 @@ def make_preferences_handler(service, hub):
         try:
             await service.run_op(apply, initiator="preferences")
         except Exception as exc:
-            await hub.push_call("preferences", "ankiwebPrefsError", [str(exc)])
-            return None
-        await hub.push_call("preferences", "ankiwebNavigate", ["/deckbrowser"])
-        return None
+            err_html = f'<div id="err" style="color:#c00;margin-top:8px;">{html.escape(str(exc))}</div>'
+            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
-    return handler
+        return DatastarResponse(SSE.redirect("/deckbrowser"))
+
+    return router

@@ -30,10 +30,7 @@ document.addEventListener('paste', function(e) {
             } else if (html) {
                 window.pasteHTML(html, false, false);
             } else {
-                var s = text.replace(/&/g, '&amp;').replace(/ <
-                    /g,'&lt;').replace( / >
-                    /g,'&gt;')
-                    .replace(/\n/g, ' <
-                        br >
-                        ');window.pasteHTML(s,false,false);}
-                    }, true);
+                var s = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+                window.pasteHTML(s, false, false);
+            }
+        }, true);

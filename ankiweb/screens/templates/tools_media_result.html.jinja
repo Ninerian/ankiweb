@@ -1,6 +1,6 @@
 <pre>{{ report }}</pre>{% if unused %}<button
     type="button"
-    onclick="pycmd('deleteunused')"
+    data-on:click__prevent="@post('/tools/deleteunused')"
   >
     {{ delete_label }} ({{ unused|length }})
   </button><div class="unused-list">

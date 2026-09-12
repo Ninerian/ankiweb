@@ -40,6 +40,7 @@
     %}
     {% for j in js_files %}<script src="/_anki/{{ j }}"></script>{% endfor %}
     <script src="/shell/static/bootstrap.js"></script>
+    <script type="module" src="/shell/static/datastar.js"></script>
   </head>
   <body>
     {% if toolbar %}{% include "_toolbar.html.jinja" %}{% endif %}{{
