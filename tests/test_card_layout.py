@@ -4,29 +4,14 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from ankiweb.config import Settings
 from ankiweb.app import create_app
-from ankiweb.collection_service import CollectionService
-from ankiweb.screens.card_layout import make_card_layout_handler
 from ankiweb.screens.editor import editor_links_js
+from conftest import parse_datastar_events
 
 
 @pytest.fixture
 def client(tmp_path: Path):
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
         yield c
-
-
-class _Hub:
-    def __init__(self):
-        self.calls = []
-
-    async def push_call(self, ctx, fn, args):
-        self.calls.append((fn, args))
-
-
-async def _svc(tmp_path):
-    svc = CollectionService(Settings(collection_path=tmp_path / "c.anki2"))
-    await svc.open()
-    return svc
 
 
 def _basic_id(col):
@@ -45,8 +30,8 @@ def _add_note(col, ntid):
     """Add a Basic note so previews / card generation have something to work with."""
     m = col.models.get(ntid)
     note = col.new_note(m)
-    note.fields[0] = "front text"
-    note.fields[1] = "back text"
+    note["Front"] = "Hello"
+    note["Back"] = "World"
     col.add_note(note, col.decks.id("Default"))
     return note.id
 
@@ -54,184 +39,182 @@ def _add_note(col, ntid):
 # (a) route renders the Card 1 qfmt/afmt + css textarea + Add card type + Save
 def test_card_layout_route_renders(client):
     ntid = client.portal.call(
-        client.app.state.service.run, lambda col: col.models.by_name("Basic")["id"])
+        client.app.state.service.run,
+        lambda col: col.models.by_name("Basic")["id"])
     r = client.get(f"/card-layout/{ntid}")
     assert r.status_code == 200
-    assert 'window.__ankiwebContext="cardlayout"' in r.text
-    # Basic Card 1 qfmt is "{{Front}}" and afmt references FrontSide + Back
-    assert "{{Front}}" in r.text
-    assert "{{Back}}" in r.text
-    assert "id='css'" in r.text
+    assert "Card Types" in r.text
+    assert "Front Template" in r.text
+    assert "Back Template" in r.text
+    assert "Styling" in r.text
     assert "Add Card Type" in r.text
     assert "Save" in r.text
 
 
 # (b) edit qfmt/afmt persists
-async def test_edit_qfmt_afmt_persists(tmp_path: Path):
-    svc = await _svc(tmp_path)
-    hub = _Hub()
-    handler = make_card_layout_handler(svc, hub)
-    ntid = await svc.run(_basic_id)
+def test_edit_qfmt_afmt_persists(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
     payload = {
         "notetypeId": ntid,
-        "css": ".card{}",
+        "css": "",
         "templates": [
-            {"orig": 0, "name": "Card 1", "qfmt": "Q: {{Front}}", "afmt": "A: {{Back}}"},
+            {"orig": 0, "name": "Card 1", "qfmt": "{{Front}}<hr>custom", "afmt": "{{FrontSide}}<hr id=answer>{{Back}}<br>extra"},
         ],
     }
-    await handler("savelayout:" + json.dumps(payload))
-
-    def read(col):
-        t = _tmpls(col, ntid)[0]
-        return (t["qfmt"], t["afmt"])
-    assert await svc.run(read) == ("Q: {{Front}}", "A: {{Back}}")
-    assert ("ankiwebNavigate", ["/deckbrowser"]) in hub.calls
-    await svc.close()
+    r = client.post("/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/deckbrowser'" in data for _, data in events)
+    t0 = client.portal.call(client.app.state.service.run, lambda col: _tmpls(col, ntid)[0])
+    assert t0["qfmt"] == "{{Front}}<hr>custom"
+    assert t0["afmt"] == "{{FrontSide}}<hr id=answer>{{Back}}<br>extra"
 
 
 # (c) edit css persists
-async def test_edit_css_persists(tmp_path: Path):
-    svc = await _svc(tmp_path)
-    hub = _Hub()
-    handler = make_card_layout_handler(svc, hub)
-    ntid = await svc.run(_basic_id)
+def test_edit_css_persists(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
     payload = {
         "notetypeId": ntid,
-        "css": ".card { color: red; }",
+        "css": ".card { font-family: monospace; font-size: 24px; }",
         "templates": [
-            {"orig": 0, "name": "Card 1", "qfmt": "{{Front}}", "afmt": "{{FrontSide}}{{Back}}"},
+            {"orig": 0, "name": "Card 1", "qfmt": "{{Front}}", "afmt": "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}"},
         ],
     }
-    await handler("savelayout:" + json.dumps(payload))
-    assert await svc.run(lambda col: col.models.get(ntid)["css"]) == ".card { color: red; }"
-    await svc.close()
+    r = client.post("/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/deckbrowser'" in data for _, data in events)
+    m = client.portal.call(client.app.state.service.run, lambda col: col.models.get(ntid))
+    assert ".card { font-family: monospace;" in m["css"]
 
 
 # (d) rename a template persists
-async def test_rename_template_persists(tmp_path: Path):
-    svc = await _svc(tmp_path)
-    hub = _Hub()
-    handler = make_card_layout_handler(svc, hub)
-    ntid = await svc.run(_basic_id)
+def test_rename_template_persists(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
     payload = {
         "notetypeId": ntid,
         "css": "",
         "templates": [
-            {"orig": 0, "name": "Renamed", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
+            {"orig": 0, "name": "Recognition", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
         ],
     }
-    await handler("savelayout:" + json.dumps(payload))
-    assert await svc.run(lambda col: _tmpl_names(col, ntid)) == ["Renamed"]
-    await svc.close()
+    r = client.post("/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/deckbrowser'" in data for _, data in events)
+    names = client.portal.call(client.app.state.service.run, lambda col: _tmpl_names(col, ntid))
+    assert names == ["Recognition"]
 
 
 # (e) add a template persists (count up)
-async def test_add_template_persists(tmp_path: Path):
-    svc = await _svc(tmp_path)
-    hub = _Hub()
-    handler = make_card_layout_handler(svc, hub)
-    ntid = await svc.run(_basic_id)
-    before = await svc.run(lambda col: len(_tmpls(col, ntid)))
+def test_add_template_persists(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    before = client.portal.call(client.app.state.service.run, lambda col: len(_tmpls(col, ntid)))
     payload = {
         "notetypeId": ntid,
         "css": "",
         "templates": [
-            {"orig": 0, "name": "Card 1", "qfmt": "{{Front}}", "afmt": "{{FrontSide}}{{Back}}"},
-            {"orig": None, "name": "Card 2", "qfmt": "{{Back}}", "afmt": "{{FrontSide}}{{Front}}"},
+            {"orig": 0, "name": "Card 1", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
+            {"orig": None, "name": "Card 2", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
         ],
     }
-    await handler("savelayout:" + json.dumps(payload))
-    names = await svc.run(lambda col: _tmpl_names(col, ntid))
-    assert names == ["Card 1", "Card 2"]
-    assert len(names) == before + 1
-    await svc.close()
+    r = client.post("/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/deckbrowser'" in data for _, data in events)
+    after = client.portal.call(client.app.state.service.run, lambda col: len(_tmpls(col, ntid)))
+    assert after == before + 1
 
 
 # (f) reposition swap persists
-async def test_reposition_persists(tmp_path: Path):
-    svc = await _svc(tmp_path)
-    hub = _Hub()
-    handler = make_card_layout_handler(svc, hub)
-    ntid = await svc.run(_basic_id)
+def test_reposition_persists(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
     # first add a second template so there is something to swap
-    await handler("savelayout:" + json.dumps({
+    p1 = {
         "notetypeId": ntid, "css": "",
         "templates": [
-            {"orig": 0, "name": "Card 1", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
-            {"orig": None, "name": "Card 2", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
+            {"orig": 0, "name": "First", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
+            {"orig": None, "name": "Second", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
         ],
-    }))
-    ords = await svc.run(lambda col: [(t["name"], t["ord"]) for t in _tmpls(col, ntid)])
-    name_to_ord = dict(ords)
-    # now swap them
-    await handler("savelayout:" + json.dumps({
+    }
+    client.post("/card-layout/savelayout", json=p1, headers={"Datastar-Request": "true"})
+    # swap positions
+    p2 = {
         "notetypeId": ntid, "css": "",
         "templates": [
-            {"orig": name_to_ord["Card 2"], "name": "Card 2", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
-            {"orig": name_to_ord["Card 1"], "name": "Card 1", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
+            {"orig": 1, "name": "Second", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
+            {"orig": 0, "name": "First", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
         ],
-    }))
-    assert await svc.run(lambda col: _tmpl_names(col, ntid)) == ["Card 2", "Card 1"]
-    await svc.close()
+    }
+    r = client.post("/card-layout/savelayout", json=p2, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/deckbrowser'" in data for _, data in events)
+    names = client.portal.call(client.app.state.service.run, lambda col: _tmpl_names(col, ntid))
+    assert names == ["Second", "First"]
 
 
 # (g) delete a template persists (count down)
-async def test_delete_template_persists(tmp_path: Path):
-    svc = await _svc(tmp_path)
-    hub = _Hub()
-    handler = make_card_layout_handler(svc, hub)
-    ntid = await svc.run(_basic_id)
+def test_delete_template_persists(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
     # add a second template first
-    await handler("savelayout:" + json.dumps({
+    p1 = {
         "notetypeId": ntid, "css": "",
         "templates": [
-            {"orig": 0, "name": "Card 1", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
-            {"orig": None, "name": "Card 2", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
+            {"orig": 0, "name": "T1", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
+            {"orig": None, "name": "T2", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
         ],
-    }))
-    before = await svc.run(lambda col: len(_tmpls(col, ntid)))
-    assert before == 2
-    ords = await svc.run(lambda col: dict((t["name"], t["ord"]) for t in _tmpls(col, ntid)))
-    # keep only Card 1
-    await handler("savelayout:" + json.dumps({
+    }
+    client.post("/card-layout/savelayout", json=p1, headers={"Datastar-Request": "true"})
+    before = client.portal.call(client.app.state.service.run, lambda col: len(_tmpls(col, ntid)))
+    # drop T2
+    p2 = {
         "notetypeId": ntid, "css": "",
         "templates": [
-            {"orig": ords["Card 1"], "name": "Card 1", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
+            {"orig": 0, "name": "T1", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
         ],
-    }))
-    names = await svc.run(lambda col: _tmpl_names(col, ntid))
-    assert names == ["Card 1"]
-    assert len(names) == before - 1
-    await svc.close()
+    }
+    r = client.post("/card-layout/savelayout", json=p2, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/deckbrowser'" in data for _, data in events)
+    after = client.portal.call(client.app.state.service.run, lambda col: len(_tmpls(col, ntid)))
+    assert after == before - 1
 
 
-# (h) deleting all templates -> ankiwebCardLayoutError + no navigate
-async def test_delete_all_templates_errors(tmp_path: Path):
-    svc = await _svc(tmp_path)
-    hub = _Hub()
-    handler = make_card_layout_handler(svc, hub)
-    ntid = await svc.run(_basic_id)
-    before = await svc.run(lambda col: _tmpl_names(col, ntid))
-    await handler("savelayout:" + json.dumps({
-        "notetypeId": ntid, "css": "", "templates": [],
-    }))
-    fns = [c[0] for c in hub.calls]
-    assert "ankiwebCardLayoutError" in fns
-    assert "ankiwebNavigate" not in fns
-    assert await svc.run(lambda col: _tmpl_names(col, ntid)) == before
-    await svc.close()
+# (h) deleting all templates -> err fragment + no navigate
+def test_delete_all_templates_errors(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    before = client.portal.call(client.app.state.service.run, lambda col: _tmpl_names(col, ntid))
+    payload = {
+        "notetypeId": ntid,
+        "css": "",
+        "templates": [],
+    }
+    r = client.post("/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("needs at least one card type" in data for _, data in events)
+    assert not any("window.location = '/deckbrowser'" in data for _, data in events)
+    after = client.portal.call(client.app.state.service.run, lambda col: _tmpl_names(col, ntid))
+    assert after == before
 
 
-# (i) previewlayout with an existing note -> ankiwebNavigate to /preview/<nid>
-async def test_previewlayout_navigates(tmp_path: Path):
-    svc = await _svc(tmp_path)
-    hub = _Hub()
-    handler = make_card_layout_handler(svc, hub)
-    ntid = await svc.run(_basic_id)
-    nid = await svc.run(lambda col: _add_note(col, ntid))
-    await handler("previewlayout")
-    assert ("ankiwebNavigate", [f"/preview/{nid}"]) in hub.calls
-    await svc.close()
+# (i) previewlayout with an existing note -> redirect to /preview/<nid>
+def test_previewlayout_navigates(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    nid = client.portal.call(client.app.state.service.run, lambda col: _add_note(col, ntid))
+    r = client.post(f"/card-layout/previewlayout/{ntid}")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any(f"window.location = '/preview/{nid}'" in data for _, data in events)
+
+
+def test_cancel_navigates(client):
+    r = client.post("/card-layout/cancel")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/deckbrowser'" in data for _, data in events)
 
 
 # (j) editor_links_js() contains the cards branch + /card-layout/

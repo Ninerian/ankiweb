@@ -20,3 +20,18 @@ def temp_collection(tmp_path: Path):
     col = Collection(str(tmp_path / "collection.anki2"))
     yield col
     col.close()
+
+def parse_datastar_events(text: str) -> list[tuple[str | None, str]]:
+    """Parse a DatastarResponse SSE body into (event-type, joined-data-lines) pairs."""
+    events = []
+    for block in text.replace("\r\n", "\n").strip("\n").split("\n\n"):
+        if not block.strip():
+            continue
+        etype, data = None, []
+        for line in block.splitlines():
+            if line.startswith("event: "):
+                etype = line[len("event: "):]
+            elif line.startswith("data: "):
+                data.append(line[len("data: "):])
+        events.append((etype, "\n".join(data)))
+    return events

@@ -44,7 +44,7 @@ def test_notify_scope_selector_defaults_leaf(client):
     c, _ = client
     html = c.get("/notify").text
     assert "Scope" in html and "Leaf only" in html and "All levels" in html
-    assert "value='leaf' selected" in html  # leaf is the default selection
+    assert "value='leaf' selected" in html or 'value="leaf" selected' in html
 
 
 def test_notify_save_scope_all(client):

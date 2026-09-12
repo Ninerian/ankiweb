@@ -78,6 +78,7 @@ def test_image_persists_after_temp_deleted(client):
 def test_browser_routes_io_note_to_io_editor(client):
     import anki.image_occlusion_pb2 as iopb
     from ankiweb import import_tmp
+    from conftest import parse_datastar_events
     svc = client.app.state.service
     p = import_tmp.io_allocate(svc.settings, ".png")
     p.write_bytes(PNG)
@@ -90,18 +91,15 @@ def test_browser_routes_io_note_to_io_editor(client):
         return col.find_cards('note:"Image Occlusion"')[0], col.find_cards("note:Basic")[0]
     io_cid, normal_cid = client.portal.call(svc.run, seed_normal)
 
-    with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{io_cid}"})
-        m = ws.receive_json()
-        while not (m["type"] == "call" and m["fn"] == "ankiwebSetDetail"):
-            m = ws.receive_json()
-        assert "/image-occlusion/" in m["args"][0]
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{normal_cid}"})
-        m = ws.receive_json()
-        while not (m["type"] == "call" and m["fn"] == "ankiwebSetDetail"):
-            m = ws.receive_json()
-        assert "/edit?nid=" in m["args"][0]
+    r1 = client.post("/browse/select", json={"cids": [io_cid]}, headers={"Datastar-Request": "true"})
+    assert r1.status_code == 200
+    events1 = parse_datastar_events(r1.text)
+    assert any("/image-occlusion/" in data for _, data in events1)
 
+    r2 = client.post("/browse/select", json={"cids": [normal_cid]}, headers={"Datastar-Request": "true"})
+    assert r2.status_code == 200
+    events2 = parse_datastar_events(r2.text)
+    assert any("/edit?nid=" in data for _, data in events2)
 
 def test_deckbrowser_has_image_occlusion_button(client):
     r = client.get("/deckbrowser")

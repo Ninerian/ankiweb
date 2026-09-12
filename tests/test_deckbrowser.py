@@ -26,8 +26,7 @@ def test_renders_default_deck_with_counts(col):
     assert "new-count" in html
     assert "studiedToday" in html
     # open command wired
-    assert f'pycmd(\'open:{did}\')' in html or f'open:{did}' in html
-
+    assert f"@post('/deckbrowser/open/{did}')" in html
 
 def test_subdeck_indented_and_nested(col):
     pid = col.decks.id("Parent")

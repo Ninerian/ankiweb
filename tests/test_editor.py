@@ -34,10 +34,10 @@ def test_edit_route_renders(client):
     nid = _nid(client)
     r = client.get(f"/edit?nid={nid}")
     assert r.status_code == 200
-    assert 'window.__ankiwebContext="editor"' in r.text
+    assert 'window.__ankiwebContext = "editor"' in r.text
     assert "/_anki/js/editor.js" in r.text
     assert "/_anki/css/editor.css" in r.text
-    assert "setupEditor" in r.text and f"window.__ankiwebEditNid={nid}" in r.text
+    assert "setupEditor" in r.text and (f"window.__ankiwebEditNid={nid}" in r.text or f"window.__ankiwebEditNid = {nid}" in r.text)
 
 
 def test_editor_load_pushes_note(client):

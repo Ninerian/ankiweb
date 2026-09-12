@@ -23,7 +23,7 @@ def test_root_serves_deckbrowser(client):
     r = client.get("/")
     assert r.status_code == 200
     assert "Default" in r.text
-    assert 'window.__ankiwebContext="deckbrowser"' in r.text
+    assert 'window.__ankiwebContext = "deckbrowser"' in r.text
     assert "/_anki/css/deckbrowser.css" in r.text
 
 
@@ -34,55 +34,41 @@ def test_deckbrowser_route(client):
 
 
 def test_open_command_sets_current_and_navigates(client):
+    from conftest import parse_datastar_events
     did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"open:{did}"})
-        # A run_op-backed command may also broadcast an {type:opchanges} frame; drain
-        # until the navigate call (set_current is all-False so usually no opchanges frame,
-        # but this is robust for any run_op-backed command).
-        msg = ws.receive_json()
-        while msg["type"] != "call":
-            msg = ws.receive_json()
-        assert msg["fn"] == "ankiwebNavigate"
-        assert msg["args"] == ["/overview"]
-    # current deck is now Default
+    r = client.post(f"/deckbrowser/open/{did}")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/overview'" in data for _, data in events)
     cur = client.portal.call(client.app.state.service.run, lambda col: col.decks.get_current_id())
     assert cur == did
-
 
 def test_overview_route(client):
     did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
     client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
     r = client.get("/overview")
-    assert r.status_code == 200
-    assert 'window.__ankiwebContext="overview"' in r.text
+    assert 'window.__ankiwebContext = "overview"' in r.text
     assert "/_anki/css/overview.css" in r.text
 
-
 def test_overview_study_navigates_to_reviewer(client):
-    with client.websocket_connect("/ws?context=overview") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "overview", "arg": "study"})
-        msg = ws.receive_json()
-        while msg["type"] != "call":
-            msg = ws.receive_json()
-        assert msg["fn"] == "ankiwebNavigate"
-        assert msg["args"] == ["/reviewer"]
+    from conftest import parse_datastar_events
+    r = client.post("/overview/study")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/reviewer'" in data for _, data in events)
 
 
 def test_overview_decks_navigates_home(client):
-    with client.websocket_connect("/ws?context=overview") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "overview", "arg": "decks"})
-        msg = ws.receive_json()
-        while msg["type"] != "call":
-            msg = ws.receive_json()
-        assert msg["fn"] == "ankiwebNavigate"
-        assert msg["args"] == ["/deckbrowser"]
-
+    from conftest import parse_datastar_events
+    r = client.post("/overview/decks")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/deckbrowser'" in data for _, data in events)
 
 def test_reviewer_route_serves_real_page(client):
     r = client.get("/reviewer")
     assert r.status_code == 200
-    assert 'window.__ankiwebContext="reviewer"' in r.text
+    assert 'window.__ankiwebContext = "reviewer"' in r.text
     assert "/_anki/js/reviewer.js" in r.text          # real reviewer bundle loaded
     assert "/_anki/css/reviewer.css" in r.text
     assert "id='qa'" in r.text or 'id="qa"' in r.text

@@ -19,9 +19,8 @@ def test_overview_shows_counts_and_study_button(col):
     html = render_overview_html(col)
     assert "Default" in html               # deck name heading
     assert "Study Now" in html
-    assert 'pycmd(\'study\')' in html or "study" in html
+    assert "@post('/overview/study')" in html
     assert "new-count" in html             # one new card shown
-
 
 def test_overview_finished_shows_congrats(col):
     # empty Default deck → counts all zero → congrats

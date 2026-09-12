@@ -1,4 +1,3 @@
-import json
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -35,30 +34,30 @@ def test_custom_study_route_renders_form(client):
     assert 'id="spin"' in body
 
 
-def _drain_for(ws, fn):
-    m = ws.receive_json()
-    while not (m["type"] == "call" and m["fn"] == fn):
-        m = ws.receive_json()
-    return m
-
-
 def test_custom_study_new_limit_navigates_and_broadcasts(client):
+    from conftest import parse_datastar_events
     _seed(client)
-    with client.websocket_connect("/ws?context=customstudy") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "customstudy",
-                      "arg": "submit:" + json.dumps({"radio": 1, "value": 5})})
-        m = _drain_for(ws, "ankiwebNavigate")
-        assert m["args"] == ["/overview"]
+    r = client.post(
+        "/custom-study/submit",
+        json={"radio": 1, "value": 5},
+        headers={"Datastar-Request": "true"},
+    )
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/overview'" in data for _, data in events)
 
 
 def test_custom_study_cram_creates_filtered_deck(client):
+    from conftest import parse_datastar_events
     _seed(client)
-    with client.websocket_connect("/ws?context=customstudy") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "customstudy",
-                      "arg": "submit:" + json.dumps(
-                          {"radio": 6, "value": 50, "cram_kind": 1,
-                           "include": [], "exclude": []})})
-        _drain_for(ws, "ankiwebNavigate")
+    r = client.post(
+        "/custom-study/submit",
+        json={"radio": 6, "value": 50, "cram_kind": 1, "include": [], "exclude": []},
+        headers={"Datastar-Request": "true"},
+    )
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/overview'" in data for _, data in events)
     cur = client.portal.call(
         client.app.state.service.run,
         lambda col: (col.decks.get(col.decks.get_current_id())["name"],
@@ -68,34 +67,32 @@ def test_custom_study_cram_creates_filtered_deck(client):
 
 
 def test_custom_study_error_when_no_cards_match(client):
+    from conftest import parse_datastar_events
     _seed(client)
-    with client.websocket_connect("/ws?context=customstudy") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "customstudy",
-                      "arg": "submit:" + json.dumps({"radio": 3, "value": 1})})
-        m = ws.receive_json()
-        seen_err = False
-        for _ in range(10):
-            if m["type"] == "call" and m["fn"] == "ankiwebCustomStudyError":
-                seen_err = True
-                assert "matched" in m["args"][0].lower() or "card" in m["args"][0].lower()
-                break
-            if m["type"] == "call" and m["fn"] == "ankiwebNavigate":
-                pytest.fail("navigated despite CustomStudyError")
-            m = ws.receive_json()
-        assert seen_err
+    r = client.post(
+        "/custom-study/submit",
+        json={"radio": 3, "value": 1},
+        headers={"Datastar-Request": "true"},
+    )
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("matched" in data.lower() or "card" in data.lower() for _, data in events)
+    assert not any("window.location = '/overview'" in data for _, data in events)
 
 
 def test_overview_studymore_navigates_to_custom_study(client):
+    from conftest import parse_datastar_events
     _seed(client)
-    with client.websocket_connect("/ws?context=overview") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "overview", "arg": "studymore"})
-        m = _drain_for(ws, "ankiwebNavigate")
-        assert m["args"] == ["/custom-study"]
+    r = client.post("/overview/studymore")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/custom-study'" in data for _, data in events)
 
 
 def test_overview_opts_navigates_to_deck_options(client):
+    from conftest import parse_datastar_events
     did = _seed(client)
-    with client.websocket_connect("/ws?context=overview") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "overview", "arg": "opts"})
-        m = _drain_for(ws, "ankiwebNavigate")
-        assert m["args"] == [f"/deck-options/{did}"]
+    r = client.post("/overview/opts")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any(f"window.location = '/deck-options/{did}'" in data for _, data in events)

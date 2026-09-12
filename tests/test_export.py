@@ -31,8 +31,8 @@ def test_export_route_renders_form(client):
     body = r.text
     assert "Whole Collection" in body
     assert "Default" in body
-    assert "value='apkg'" in body and "value='colpkg'" in body
-    assert "value='notes_csv'" in body and "value='cards_csv'" in body
+    assert ("value='apkg'" in body or 'value="apkg"' in body) and ("value='colpkg'" in body or 'value="colpkg"' in body)
+    assert ("value='notes_csv'" in body or 'value="notes_csv"' in body) and ("value='cards_csv'" in body or 'value="cards_csv"' in body)
 
 
 def _assert_download(r, ext):
