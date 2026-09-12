@@ -9,12 +9,12 @@
           <td><a href="/fields/{{ r.id }}">{{ L_fields }}</a></td>
           <td><a href="/card-layout/{{ r.id }}">{{ L_cards }}</a></td>
           <td>
-            <button type="button" onclick="ntRename({{ r.id }})">
+            <button type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); const name = prompt('New name:', cur); if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}})">
               {{ L_rename }}
             </button>
           </td>
           <td>
-            <button type="button" onclick="ntDelete({{ r.id }}, {{ r.count }})">
+            <button type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; if (confirm('Delete this note type and its {{ r.count }} note(s)?')) @post('/notetypes/delete/{{ r.id }}')">
               {{ L_delete }}
             </button>
           </td>
@@ -33,34 +33,7 @@
         endfor
       %}
     </select>
-    <button type="button" onclick="ntAdd()">{{ L_add }}</button>
+    <button type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const name = document.getElementById('ntnewname').value; const base = document.getElementById('ntbase').value; if (name && base) @post('/notetypes/add/' + base, {payload: {name: name}})">{{ L_add }}</button>
   </div>
   <div id="err" style="color:#c00;margin-top:8px;"></div>
 </div>
-<script>
-  function ntRename(id) {
-      document.getElementById('err').textContent = '';
-      var row = document.querySelector(".nt-row[data-id='" + id + "']");
-      var cur = row ? row.getAttribute('data-name') : '';
-      var name = window.prompt("New name:", cur);
-      if (name) pycmd('rename:' + id + ':' + name);
-  }
-
-  function ntDelete(id, count) {
-      document.getElementById('err').textContent = '';
-      var msg = "Delete this note type and its " + count + " note(s)?";
-      if (window.confirm(msg)) pycmd('delete:' + id);
-  }
-
-  function ntAdd() {
-      document.getElementById('err').textContent = '';
-      var name = document.getElementById('ntnewname').value;
-      var base = document.getElementById('ntbase').value;
-      if (name && base) pycmd('add:' + base + ':' + name);
-  }
-  window.ankiwebNotetypesError = function(m) {
-      var e = document.getElementById('err');
-      if (e) e.textContent = m;
-      else alert(m);
-  };
-</script>

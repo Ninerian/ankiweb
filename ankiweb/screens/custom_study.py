@@ -1,5 +1,9 @@
 from __future__ import annotations
+import html
 import json
+from typing import Callable
+from fastapi import APIRouter
+from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
 
@@ -49,18 +53,19 @@ def render_custom_study_html(col) -> str:
     )
 
 
-def make_custom_study_handler(service, hub):
-    async def handler(arg: str):
-        cmd, _, rest = arg.partition(":")
-        if cmd == "cancel":
-            await hub.push_call("customstudy", "ankiwebNavigate", ["/overview"])
-            return None
-        if cmd != "submit":
-            return None
-        try:
-            p = json.loads(rest)
-        except Exception:
-            return None
+def make_custom_study_routes(get_service: Callable) -> APIRouter:
+    router = APIRouter(prefix="/custom-study")
+
+    @router.post("/cancel")
+    async def cancel():
+        return DatastarResponse(SSE.redirect("/overview"))
+
+    @router.post("/submit")
+    async def submit(payload: ReadSignals):
+        service = get_service()
+        if not payload or not isinstance(payload, dict):
+            return DatastarResponse()
+        p = payload
         radio = int(p.get("radio", 1))
         value = int(p.get("value", 0))
 
@@ -90,9 +95,9 @@ def make_custom_study_handler(service, hub):
         except Exception as e:
             from anki.errors import CustomStudyError
             msg = str(e) if isinstance(e, CustomStudyError) else "Could not create a custom study session."
-            await hub.push_call("customstudy", "ankiwebCustomStudyError", [msg])
-            return None
-        await hub.push_call("customstudy", "ankiwebNavigate", ["/overview"])
-        return None
+            err_html = f'<div id="err" style="color:#c00;margin-top:8px;">{html.escape(msg)}</div>'
+            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
-    return handler
+        return DatastarResponse(SSE.redirect("/overview"))
+
+    return router

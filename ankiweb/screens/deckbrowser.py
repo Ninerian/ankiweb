@@ -1,4 +1,7 @@
 from __future__ import annotations
+from typing import Callable
+from fastapi import APIRouter
+from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
 from ankiweb.screens import templating
 
 
@@ -14,44 +17,56 @@ def render_deckbrowser_html(col) -> str:
     )
 
 
-def make_deckbrowser_handler(service, hub):
-    """Returns an async bridge handler(arg) for the 'deckbrowser' context."""
-    async def handler(arg: str):
-        cmd, _, rest = arg.partition(":")
-        if cmd == "open" or cmd == "select":
-            did = int(rest)
-            await service.run_op(lambda col: col.decks.set_current(did), initiator="deckbrowser")
-            if cmd == "open":
-                await hub.push_call("deckbrowser", "ankiwebNavigate", ["/overview"])
-            else:
-                await hub.push_call("deckbrowser", "ankiwebReload", [])
-        elif cmd == "collapse":
-            did = int(rest)
+def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
+    router = APIRouter(prefix="/deckbrowser")
 
-            def toggle(col):
-                from anki.decks import DeckCollapseScope
-                # Read persisted state from the deck dict, NOT the due-tree node:
-                # deck_due_tree() prunes empty decks, so a node may be missing.
-                collapsed = bool(col.decks.get(did).get("collapsed", False))
-                return col.decks.set_collapsed(did, not collapsed, DeckCollapseScope.REVIEWER)
+    @router.post("/open/{did}")
+    async def open_deck(did: int):
+        service = get_service()
+        await service.run_op(lambda col: col.decks.set_current(did), initiator="deckbrowser")
+        return DatastarResponse(SSE.redirect("/overview"))
 
-            await service.run_op(toggle, initiator="deckbrowser")
-            await hub.push_call("deckbrowser", "ankiwebReload", [])
-        elif cmd == "create":
-            name = rest.strip()
-            if name:
-                await service.run_op(
-                    lambda col: col.decks.add_normal_deck_with_name(name),
-                    initiator="deckbrowser",
-                )
-                await hub.push_call("deckbrowser", "ankiwebReload", [])
-        elif cmd == "opts":
-            did = int(rest)
-            is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
-            path = (f"/filtered-deck/{did}") if is_dyn else (f"/deck-options/{did}")
-            await hub.push_call("deckbrowser", "ankiwebNavigate", [path])
-        elif cmd == "createfiltered":
-            await hub.push_call("deckbrowser", "ankiwebNavigate", ["/filtered-deck"])
-        return None
+    @router.post("/select/{did}")
+    async def select_deck(did: int):
+        service = get_service()
+        await service.run_op(lambda col: col.decks.set_current(did), initiator="deckbrowser")
+        return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
-    return handler
+    @router.post("/collapse/{did}")
+    async def collapse_deck(did: int):
+        service = get_service()
+
+        def toggle(col):
+            from anki.decks import DeckCollapseScope
+            collapsed = bool(col.decks.get(did).get("collapsed", False))
+            return col.decks.set_collapsed(did, not collapsed, DeckCollapseScope.REVIEWER)
+
+        await service.run_op(toggle, initiator="deckbrowser")
+        return DatastarResponse(SSE.execute_script("window.location.reload()"))
+
+    @router.post("/create")
+    async def create_deck(payload: ReadSignals):
+        service = get_service()
+        name = ""
+        if payload and isinstance(payload, dict):
+            name = str(payload.get("name", "")).strip()
+        if name:
+            await service.run_op(
+                lambda col: col.decks.add_normal_deck_with_name(name),
+                initiator="deckbrowser",
+            )
+            return DatastarResponse(SSE.execute_script("window.location.reload()"))
+        return DatastarResponse()
+
+    @router.post("/opts/{did}")
+    async def opts_deck(did: int):
+        service = get_service()
+        is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
+        path = f"/filtered-deck/{did}" if is_dyn else f"/deck-options/{did}"
+        return DatastarResponse(SSE.redirect(path))
+
+    @router.post("/createfiltered")
+    async def create_filtered():
+        return DatastarResponse(SSE.redirect("/filtered-deck"))
+
+    return router

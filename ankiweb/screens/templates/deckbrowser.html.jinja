@@ -7,13 +7,13 @@
       {{ ("&nbsp;" * 6 * (node.level - 1)) | safe }}{% if node.children %}<a
           class="collapse"
           href="#"
-          onclick='return pycmd("collapse:{{ node.deck_id }}")'
+          data-on:click__prevent="@post('/deckbrowser/collapse/{{ node.deck_id }}')"
         >{{ "+" if node.collapsed else "−" }}</a>{% else %}<span
           class="collapse"
         ></span>{% endif %}<a
         class='deck{{ " filtered" if node.filtered else "" }}'
         href="#"
-        onclick="return pycmd('open:{{ node.deck_id }}')"
+        data-on:click__prevent="@post('/deckbrowser/open/{{ node.deck_id }}')"
       >{{ node.name }}</a>
     </td>
     <td align="right" class="count">
@@ -35,7 +35,7 @@
       <a
         class="opts"
         href="#"
-        onclick='return pycmd("opts:{{ node.deck_id }}")'
+        data-on:click__prevent="@post('/deckbrowser/opts/{{ node.deck_id }}')"
       >
         <img src="/_anki/imgs/gears.svg" class="gears" alt="">
       </a>
@@ -58,10 +58,10 @@
   </table>
   <div id="studiedToday"><span>{{ studied_today }}</span></div>
   <div class="dyn-buttons">
-    <button type="button" onclick="ankiwebCreateDeck()">
+    <button type="button" data-on:click__prevent="const name = prompt('Deck name:'); if (name) @post('/deckbrowser/create', {payload: {name: name}})">
       {{ tr.decks_create_deck() }}
     </button>
-    <button type="button" onclick='pycmd("createfiltered")'>
+    <button type="button" data-on:click__prevent="@post('/deckbrowser/createfiltered')">
       {{ tr.qt_misc_create_filtered_deck() }}
     </button>
     <button type="button" onclick="ankiwebImportFile()">

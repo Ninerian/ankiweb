@@ -78,10 +78,10 @@
       </button>
     </div>
     <div style="margin-top:10px;">
-      <button type="button" id="save" onclick="saveFields()">
+      <button type="button" id="save" data-on:click__prevent="const payload = buildFieldsPayload(); @post('/fields/savefields', {payload: payload})">
         {{ save_label }}
       </button>
-      <button type="button" onclick="pycmd('cancel')">
+      <button type="button" data-on:click__prevent="@post('/fields/cancel')">
         {{ cancel_label }}
       </button>
     </div>
@@ -115,7 +115,7 @@
       if (next) tr.parentNode.insertBefore(next, tr);
   }
 
-  function saveFields() {
+  function buildFieldsPayload() {
       document.getElementById('err').textContent = '';
       var rows = Array.prototype.slice.call(
           document.querySelectorAll('#fieldrows .field-row'));
@@ -132,14 +132,10 @@
               description: tr.querySelector('.fld-desc').value
           };
       });
-      var payload = {
+      return {
           notetypeId: parseInt(document.getElementById('ntid').value),
           sortf: sortf,
           fields: fields
       };
-      pycmd('savefields:' + JSON.stringify(payload));
   }
-  window.ankiwebFieldsError = function(m) {
-      document.getElementById('err').textContent = m;
-  };
 </script>

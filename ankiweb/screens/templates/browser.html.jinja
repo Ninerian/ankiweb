@@ -5,7 +5,7 @@
       class="side-item"
       title="{{ d.name }}"
       href="#"
-      onclick="return pycmd('searchdeck:{{ d.id }}')"
+      data-on:click__prevent="@post('/browse/searchdeck/{{ d.id }}')"
     >{{ d.name }}</a>
   {% endfor %}
   <div class="side-section">{{ tr.editing_tags() }}</div>
@@ -14,7 +14,7 @@
       class="side-item"
       title="{{ t }}"
       href="#"
-      onclick="return pycmd('searchtag:{{ t }}')"
+      data-on:click__prevent="@post('/browse/searchtag', {payload: {tag: '{{ t }}'}})"
     >{{ t }}</a>
   {% endfor %}
 {% endmacro %}
@@ -129,39 +129,42 @@
       placeholder="{{ tr.actions_search() }}…"
       value="{{ query }}"
       onkeydown="if (event.key === 'Enter') {
-                              window.pycmd('search:' + this.value);
+                              document.getElementById('search-trigger').click();
                           }"
     >
-    <span id="browser-status"></span>
+    <span id="browser-status">{{ initial_count }} cards</span>
     <div id="browser-actions">
-      <button type="button" onclick="ankiwebAct('suspend')">
+      <button id="search-trigger" style="display:none" data-on:click__prevent="const q = document.getElementById('search').value; @post('/browse/search', {payload: {query: q}})"></button>
+      <button id="refresh-trigger" style="display:none" data-on:click__prevent="@post('/browse/refresh')"></button>
+      <button id="select-trigger" style="display:none" data-on:click__prevent="const cids = window.__ankiwebGetSel(); @post('/browse/select', {payload: {cids: cids}})"></button>
+      <button type="button" data-on:click__prevent="@post('/browse/suspend')">
         {{ tr.studying_suspend() }}
       </button>
-      <button type="button" onclick="ankiwebAct('unsuspend')">Unsuspend</button>
-      <button type="button" onclick="ankiwebAct('forget')">
+      <button type="button" data-on:click__prevent="@post('/browse/unsuspend')">Unsuspend</button>
+      <button type="button" data-on:click__prevent="@post('/browse/forget')">
         {{ tr.actions_forget_card() }}
       </button>
       <button
         type="button"
-        onclick="ankiwebActP('setdue', 'Due in days (e.g. 0, 3, 1-7):')"
+        data-on:click__prevent="const x = prompt('Due in days (e.g. 0, 3, 1-7):'); if (x !== null && x !== '') @post('/browse/setdue', {payload: {value: x}})"
       >
         {{ tr.actions_set_due_date() }}
       </button>
       <button
         type="button"
-        onclick="ankiwebActP('changedeck', 'Move to deck:')"
+        data-on:click__prevent="const x = prompt('Move to deck:'); if (x !== null && x !== '') @post('/browse/changedeck', {payload: {deck: x}})"
       >
         {{ tr.browsing_change_deck() }}
       </button>
-      <button type="button" onclick="ankiwebActP('addtag','Add tag:')">
+      <button type="button" data-on:click__prevent="const x = prompt('Add tag:'); if (x !== null && x !== '') @post('/browse/addtag', {payload: {tag: x}})">
         Add Tag
       </button>
-      <button type="button" onclick="ankiwebActP('removetag', 'Remove tag:')">
+      <button type="button" data-on:click__prevent="const x = prompt('Remove tag:'); if (x !== null && x !== '') @post('/browse/removetag', {payload: {tag: x}})">
         {{ tr.actions_remove_tag() }}
       </button>
       <button
         type="button"
-        onclick="if (confirm('Delete selected notes?')) ankiwebAct('delete')"
+        data-on:click__prevent="if (confirm('Delete selected notes?')) @post('/browse/delete')"
       >
         {{ tr.actions_delete() }}
       </button>
@@ -181,7 +184,7 @@
             <th>{{ tr.statistics_due_date() }}</th>
           </tr>
         </thead>
-        <tbody id="results-body"></tbody>
+        <tbody id="results-body">{{ initial_rows | safe }}</tbody>
       </table>
     </div>
     <div id="detail"></div>
@@ -189,12 +192,21 @@
 </div>
 <script>
   (function() {
-      var b = window.__ankiwebBridge;
       window.__ankiwebOnOpchanges = function() {
-          window.pycmd('refresh');
+          var btn = document.getElementById('refresh-trigger');
+          if (btn) btn.click();
       };
       var _sel = [],
           _anchor = null;
+
+      window.__ankiwebGetSel = function() {
+          return _sel.map(function(x) { return parseInt(x); });
+      };
+
+      window.__ankiwebResetSel = function() {
+          _sel = [];
+          _anchor = null;
+      };
 
       function _rows() {
           return Array.prototype.slice.call(
@@ -208,8 +220,9 @@
       }
 
       function _selChanged() {
-          window.pycmd('select:' + _sel.join(','));
           _hl();
+          var btn = document.getElementById('select-trigger');
+          if (btn) btn.click();
       }
 
       function _click(tr, e) {
@@ -240,42 +253,9 @@
           }
           _selChanged();
       }
-      window.ankiwebAct = function(v) {
-          window.pycmd(v);
-      };
       window.ankiwebCardInfo = function() {
           if (_sel.length) window.open('/card-info/' + _sel[0], '_blank');
       };
-      window.ankiwebShowEditor = function(nid) {
-          var d = document.getElementById('detail');
-          var f = document.getElementById('editor-frame');
-          if (f && f.contentWindow) {
-              f.contentWindow.postMessage({
-                  type: 'ankiwebLoadNid',
-                  nid: nid
-              }, '*');
-          } else {
-              d.innerHTML = "<iframe id='editor-frame' class='editor-frame' src='/edit?nid=" + nid + "'></iframe>";
-          }
-      };
-      window.ankiwebActP = function(v, m) {
-          var x = prompt(m);
-          if (x !== null && x !== '') window.pycmd(v + ':' + x);
-      };
-      b.registerCalls({
-          ankiwebSetRows: function(h, n) {
-              document.getElementById('results-body').innerHTML = String(h);
-              document.getElementById('browser-status').textContent = (n || 0) + ' cards';
-              _sel = [];
-              _anchor = null;
-          },
-          ankiwebSetDetail: function(h) {
-              document.getElementById('detail').innerHTML = String(h);
-          },
-          ankiwebEditNote: function(nid) {
-              window.ankiwebShowEditor(nid);
-          }
-      });
       document.getElementById('results-body').addEventListener('click', function(e) {
           var tr = e.target.closest('tr');
           if (tr && tr.dataset.cid) {
@@ -290,9 +270,6 @@
                   _click(tr, e);
               }
           }
-      });
-      window.addEventListener('load', function() {
-          window.pycmd('search:' + {{ query | tojson }});
       });
   })();
 </script>

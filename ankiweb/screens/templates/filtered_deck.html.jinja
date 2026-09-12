@@ -136,8 +136,8 @@
         > {{ tr.decks_create_even_if_empty() }}</label>
     </div>
     <div style="margin-top:10px;">
-      <button type="button" id="go" onclick="submitFd()">{{ oklabel }}</button>
-      <button type="button" onclick="pycmd('cancel')">
+      <button type="button" id="go" data-on:click__prevent="const payload = buildFdPayload(); @post('/filtered-deck/submit', {payload: payload})">{{ oklabel }}</button>
+      <button type="button" data-on:click__prevent="@post('/filtered-deck/cancel')">
         {{ tr.actions_cancel() }}
       </button>
     </div>
@@ -165,9 +165,9 @@
       document.getElementById('previewblock').style.display = chk('resched') ? 'none' : '';
   }
 
-  function submitFd() {
+  function buildFdPayload() {
       document.getElementById('err').textContent = '';
-      var p = {
+      return {
           id: parseInt(val('did')),
           name: val('name'),
           reschedule: chk('resched'),
@@ -183,9 +183,5 @@
           preview_good: num('preview_good'),
           allow_empty: chk('allow_empty')
       };
-      pycmd('submit:' + JSON.stringify(p));
   }
-  window.ankiwebFilteredDeckError = function(msg) {
-      document.getElementById('err').textContent = msg;
-  };
 </script>

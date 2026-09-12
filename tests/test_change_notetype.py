@@ -90,6 +90,7 @@ def test_change_notetype_falls_back_to_all_notes_when_no_selection(client):
 
 
 def test_browser_change_notetype_navigates(client):
+    from conftest import parse_datastar_events
     old, _new = _basic_cloze(client)
     svc = client.app.state.service
 
@@ -98,10 +99,8 @@ def test_browser_change_notetype_navigates(client):
         col.add_note(n, col.decks.id("Default"))
         return col.find_cards("")[0]
     cid = client.portal.call(svc.run, seed)
-    with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"})
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "changenotetype:"})
-        m = ws.receive_json()
-        while not (m["type"] == "call" and m["fn"] == "ankiwebNavigate"):
-            m = ws.receive_json()
-        assert m["args"] == [f"/change-notetype/{old}"]
+    client.post("/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"})
+    r = client.post("/browse/changenotetype")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any(f"window.location = '/change-notetype/{old}'" in data for _, data in events)

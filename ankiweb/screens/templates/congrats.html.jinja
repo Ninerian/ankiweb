@@ -5,9 +5,9 @@
       minute(s).
     </p>{% endif %}
   {% if show_unbury %}<p>
-      <button type="button" onclick='pycmd("unbury")'>
+      <button type="button" data-on:click__prevent="@post('/overview/unbury')">
         {{ tr.studying_unbury() }}
       </button> buried cards.
     </p>{% endif %}
-  <p><button type="button" onclick='pycmd("decks")'>Back to Decks</button></p>
+  <p><button type="button" data-on:click__prevent="@post('/overview/decks')">Back to Decks</button></p>
 </center>

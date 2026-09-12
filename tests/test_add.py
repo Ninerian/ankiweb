@@ -26,10 +26,10 @@ def _drain_call(ws, fn, tries=8):
 def test_add_route_renders(client):
     r = client.get("/add")
     assert r.status_code == 200
-    assert 'window.__ankiwebContext="add"' in r.text
+    assert 'window.__ankiwebContext = "add"' in r.text
     assert "/_anki/js/editor.js" in r.text
     assert "setupEditor" in r.text and "addnote:" in r.text
-    assert "id='add-deck'" in r.text and "id='add-notetype'" in r.text
+    assert ("id='add-deck'" in r.text or 'id="add-deck"' in r.text) and ("id='add-notetype'" in r.text or 'id="add-notetype"' in r.text)
     assert "Default" in r.text and "Basic" in r.text
 
 

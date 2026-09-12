@@ -1,5 +1,8 @@
 from __future__ import annotations
-import json
+import html
+from typing import Callable
+from fastapi import APIRouter
+from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
 
@@ -48,18 +51,19 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
     )
 
 
-def make_filtered_deck_handler(service, hub):
-    async def handler(arg: str):
-        cmd, _, rest = arg.partition(":")
-        if cmd == "cancel":
-            await hub.push_call("filtereddeck", "ankiwebNavigate", ["/overview"])
-            return None
-        if cmd != "submit":
-            return None
-        try:
-            p = json.loads(rest)
-        except Exception:
-            return None
+def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
+    router = APIRouter(prefix="/filtered-deck")
+
+    @router.post("/cancel")
+    async def cancel():
+        return DatastarResponse(SSE.redirect("/overview"))
+
+    @router.post("/submit")
+    async def submit(payload: ReadSignals):
+        service = get_service()
+        if not payload or not isinstance(payload, dict):
+            return DatastarResponse()
+        p = payload
 
         def build_and_run(col):
             import anki.decks_pb2 as dp
@@ -90,9 +94,9 @@ def make_filtered_deck_handler(service, hub):
         except Exception as e:
             from anki.errors import FilteredDeckError
             msg = str(e) if isinstance(e, FilteredDeckError) else "Could not build the filtered deck."
-            await hub.push_call("filtereddeck", "ankiwebFilteredDeckError", [msg])
-            return None
-        await hub.push_call("filtereddeck", "ankiwebNavigate", ["/overview"])
-        return None
+            err_html = f'<div id="err" style="color:#c00;margin-top:8px;">{html.escape(msg)}</div>'
+            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
-    return handler
+        return DatastarResponse(SSE.redirect("/overview"))
+
+    return router

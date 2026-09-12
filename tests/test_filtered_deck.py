@@ -1,4 +1,3 @@
-import json
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -36,13 +35,6 @@ def _make_filtered(client, search="deck:Default", limit=10):
     return client.portal.call(client.app.state.service.run, mk)
 
 
-def _drain_for(ws, fn):
-    m = ws.receive_json()
-    while not (m["type"] == "call" and m["fn"] == fn):
-        m = ws.receive_json()
-    return m
-
-
 def test_filtered_deck_new_route_renders(client):
     _seed(client)
     r = client.get("/filtered-deck")
@@ -64,17 +56,17 @@ def test_filtered_deck_edit_route_renders(client):
 
 
 def test_filtered_deck_create_saves_and_navigates(client):
+    from conftest import parse_datastar_events
     _seed(client)
     payload = {"id": 0, "name": "NewFiltered", "reschedule": True,
                "search1": "deck:Default", "limit1": 10, "order1": 1,
                "second": False, "search2": "", "limit2": 20, "order2": 5,
                "preview_again": 60, "preview_hard": 600, "preview_good": 0,
                "allow_empty": False}
-    with client.websocket_connect("/ws?context=filtereddeck") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "filtereddeck",
-                      "arg": "submit:" + json.dumps(payload)})
-        m = _drain_for(ws, "ankiwebNavigate")
-        assert m["args"] == ["/overview"]
+    r = client.post("/filtered-deck/submit", json=payload, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/overview'" in data for _, data in events)
     info = client.portal.call(
         client.app.state.service.run,
         lambda col: (col.decks.by_name("NewFiltered") is not None,
@@ -83,6 +75,7 @@ def test_filtered_deck_create_saves_and_navigates(client):
 
 
 def test_filtered_deck_edit_renames(client):
+    from conftest import parse_datastar_events
     _seed(client)
     did = _make_filtered(client)
     payload = {"id": did, "name": "Renamed", "reschedule": True,
@@ -90,68 +83,65 @@ def test_filtered_deck_edit_renames(client):
                "second": False, "search2": "", "limit2": 20, "order2": 5,
                "preview_again": 60, "preview_hard": 600, "preview_good": 0,
                "allow_empty": True}
-    with client.websocket_connect("/ws?context=filtereddeck") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "filtereddeck",
-                      "arg": "submit:" + json.dumps(payload)})
-        _drain_for(ws, "ankiwebNavigate")
+    r = client.post("/filtered-deck/submit", json=payload, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location = '/overview'" in data for _, data in events)
     name = client.portal.call(client.app.state.service.run,
                               lambda col: col.decks.get(did)["name"])
     assert name == "Renamed"
 
 
 def test_filtered_deck_error_when_no_match(client):
+    from conftest import parse_datastar_events
     _seed(client)
     payload = {"id": 0, "name": "Empty", "reschedule": True,
                "search1": "tag:__nonexistent__", "limit1": 10, "order1": 1,
                "second": False, "search2": "", "limit2": 20, "order2": 5,
                "preview_again": 60, "preview_hard": 600, "preview_good": 0,
                "allow_empty": False}
-    with client.websocket_connect("/ws?context=filtereddeck") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "filtereddeck",
-                      "arg": "submit:" + json.dumps(payload)})
-        m = ws.receive_json()
-        seen = False
-        for _ in range(10):
-            if m["type"] == "call" and m["fn"] == "ankiwebFilteredDeckError":
-                seen = True
-                break
-            if m["type"] == "call" and m["fn"] == "ankiwebNavigate":
-                pytest.fail("navigated despite FilteredDeckError")
-            m = ws.receive_json()
-        assert seen
+    r = client.post("/filtered-deck/submit", json=payload, headers={"Datastar-Request": "true"})
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("err" in data for _, data in events)
+    assert not any("window.location = '/overview'" in data for _, data in events)
 
 
 def test_deckbrowser_gear_dyn_opens_filtered(client):
+    from conftest import parse_datastar_events
     _seed(client)
     did = _make_filtered(client)
-    with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"opts:{did}"})
-        m = _drain_for(ws, "ankiwebNavigate")
-        assert m["args"] == [f"/filtered-deck/{did}"]
+    r = client.post(f"/deckbrowser/opts/{did}")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any(f"window.location = '/filtered-deck/{did}'" in data for _, data in events)
 
 
 def test_deckbrowser_gear_normal_opens_deck_options(client):
+    from conftest import parse_datastar_events
     did = _seed(client)
-    with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"opts:{did}"})
-        m = _drain_for(ws, "ankiwebNavigate")
-        assert m["args"] == [f"/deck-options/{did}"]
+    r = client.post(f"/deckbrowser/opts/{did}")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any(f"window.location = '/deck-options/{did}'" in data for _, data in events)
 
 
 def test_deckbrowser_create_filtered_entry(client):
+    from conftest import parse_datastar_events
     _seed(client)
     r = client.get("/deckbrowser")
     assert "createfiltered" in r.text
-    with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": "createfiltered"})
-        m = _drain_for(ws, "ankiwebNavigate")
-        assert m["args"] == ["/filtered-deck"]
+    r2 = client.post("/deckbrowser/createfiltered")
+    assert r2.status_code == 200
+    events = parse_datastar_events(r2.text)
+    assert any("window.location = '/filtered-deck'" in data for _, data in events)
 
 
 def test_overview_opts_dyn_opens_filtered(client):
+    from conftest import parse_datastar_events
     _seed(client)
     did = _make_filtered(client)   # add_or_update selects it as current
-    with client.websocket_connect("/ws?context=overview") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "overview", "arg": "opts"})
-        m = _drain_for(ws, "ankiwebNavigate")
-        assert m["args"] == [f"/filtered-deck/{did}"]
+    r = client.post("/overview/opts")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any(f"window.location = '/filtered-deck/{did}'" in data for _, data in events)

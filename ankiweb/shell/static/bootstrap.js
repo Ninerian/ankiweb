@@ -96,10 +96,6 @@
       location.reload();
     }
   });
-  window.ankiwebCreateDeck = () => {
-    const name = window.prompt("Deck name:");
-    if (name) window.pycmd("create:" + name);
-  };
   window.ankiwebImportFile = () => {
     const input = document.createElement("input");
     input.type = "file";

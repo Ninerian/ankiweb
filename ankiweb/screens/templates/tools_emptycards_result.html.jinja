@@ -1,6 +1,6 @@
 <pre>{{ report }}</pre>{% if cids %}<button
     type="button"
-    onclick="pycmd('emptycards_delete')"
+    data-on:click__prevent="@post('/tools/emptycards_delete')"
   >
     {{ delete_label }} ({{ cids|length }})
   </button>{% endif %}

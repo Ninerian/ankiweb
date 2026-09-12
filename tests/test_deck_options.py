@@ -75,10 +75,9 @@ def test_update_deck_configs_persists_and_broadcasts(client):
 
 
 def test_gear_menu_navigates_to_deck_options(client):
+    from conftest import parse_datastar_events
     did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"opts:{did}"})
-        m = ws.receive_json()
-        while m["type"] != "call" or m["fn"] != "ankiwebNavigate":
-            m = ws.receive_json()
-        assert m["args"] == [f"/deck-options/{did}"]
+    r = client.post(f"/deckbrowser/opts/{did}")
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any(f"window.location = '/deck-options/{did}'" in data for _, data in events)

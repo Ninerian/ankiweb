@@ -8,11 +8,10 @@ from ankiweb.screens.page import render_page
 
 def test_render_page_includes_toolbar_by_default():
     html = render_page("deckbrowser", "<div>x</div>")
-    assert "id='ankiweb-toolbar'" in html
+    assert 'id="ankiweb-toolbar"' in html or "id='ankiweb-toolbar'" in html
     for label, href in [("Decks", "/deckbrowser"), ("Add", "/add"),
                         ("Browse", "/browse"), ("Stats", "/graphs")]:
-        assert f"href='{href}'>{label}<" in html
-
+        assert f"href='{href}'>{label}<" in html or f'href="{href}">{label}<' in html
 
 def test_render_page_toolbar_can_be_disabled():
     html = render_page("editor", "<div>x</div>", toolbar=False)
@@ -41,7 +40,7 @@ def test_server_screens_have_toolbar(client, path):
     _seed(client)
     r = client.get(path)
     assert r.status_code == 200
-    assert "id='ankiweb-toolbar'" in r.text
+    assert 'id="ankiweb-toolbar"' in r.text or "id='ankiweb-toolbar'" in r.text
 
 
 def test_edit_iframe_has_no_toolbar(client):

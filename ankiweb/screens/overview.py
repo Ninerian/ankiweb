@@ -1,59 +1,86 @@
 from __future__ import annotations
+from typing import Callable
+from fastapi import APIRouter
+from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
 from ankiweb.screens import templating
 from ankiweb.screens.congrats import render_congrats_html
 
 
-def make_overview_handler(service, hub):
-    async def handler(arg: str):
-        if arg == "study":
-            await service.run(lambda col: col.startTimebox())
-            await hub.push_call("overview", "ankiwebNavigate", ["/reviewer"])
-        elif arg == "decks":
-            await hub.push_call("overview", "ankiwebNavigate", ["/deckbrowser"])
-        elif arg == "unbury":
-            def unbury(col):
-                from anki.scheduler.base import UnburyDeck
-                return col.sched.unbury_deck(col.decks.get_current_id(), UnburyDeck.Mode.ALL)
-            await service.run_op(unbury, initiator="overview")
-            await hub.push_call("overview", "ankiwebReload", [])
-        elif arg in ("refresh", "empty"):
-            did = await service.run(lambda col: col.decks.get_current_id())
-            is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
-            if is_dyn:  # rebuild/empty raise FilteredDeckError on a normal deck
-                if arg == "refresh":
-                    await service.run_op(lambda col: col.sched.rebuild_filtered_deck(did),
-                                         initiator="overview")
-                else:
-                    await service.run_op(lambda col: col.sched.empty_filtered_deck(did),
-                                         initiator="overview")
-                await hub.push_call("overview", "ankiwebReload", [])
-        elif arg == "studymore":
-            await hub.push_call("overview", "ankiwebNavigate", ["/custom-study"])
-        elif arg == "opts":
-            did = await service.run(lambda col: col.decks.get_current_id())
-            is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
-            path = (f"/filtered-deck/{did}") if is_dyn else (f"/deck-options/{did}")
-            await hub.push_call("overview", "ankiwebNavigate", [path])
-        elif arg.startswith("setdesc:"):
-            import json
-            try:
-                p = json.loads(arg[len("setdesc:"):])
-            except Exception:
-                return None
+def make_overview_routes(get_service: Callable) -> APIRouter:
+    router = APIRouter(prefix="/overview")
 
-            def save_desc(col):
-                did = col.decks.get_current_id()
-                d = col.decks.get(did)
-                d["desc"] = p.get("desc", "")
-                d["md"] = bool(p.get("md", False))
-                return col.decks.update_dict(d)
+    @router.post("/study")
+    async def study():
+        service = get_service()
+        await service.run(lambda col: col.startTimebox())
+        return DatastarResponse(SSE.redirect("/reviewer"))
 
-            await service.run_op(save_desc, initiator="overview")
-            await hub.push_call("overview", "ankiwebReload", [])
-        return None
+    @router.post("/decks")
+    async def decks():
+        return DatastarResponse(SSE.redirect("/deckbrowser"))
 
-    return handler
+    @router.post("/unbury")
+    async def unbury():
+        service = get_service()
 
+        def do_unbury(col):
+            from anki.scheduler.base import UnburyDeck
+            return col.sched.unbury_deck(col.decks.get_current_id(), UnburyDeck.Mode.ALL)
+
+        await service.run_op(do_unbury, initiator="overview")
+        return DatastarResponse(SSE.execute_script("window.location.reload()"))
+
+    @router.post("/refresh")
+    async def refresh():
+        service = get_service()
+        did = await service.run(lambda col: col.decks.get_current_id())
+        is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
+        if is_dyn:
+            await service.run_op(lambda col: col.sched.rebuild_filtered_deck(did), initiator="overview")
+            return DatastarResponse(SSE.execute_script("window.location.reload()"))
+        return DatastarResponse()
+
+    @router.post("/empty")
+    async def empty():
+        service = get_service()
+        did = await service.run(lambda col: col.decks.get_current_id())
+        is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
+        if is_dyn:
+            await service.run_op(lambda col: col.sched.empty_filtered_deck(did), initiator="overview")
+            return DatastarResponse(SSE.execute_script("window.location.reload()"))
+        return DatastarResponse()
+
+    @router.post("/studymore")
+    async def studymore():
+        return DatastarResponse(SSE.redirect("/custom-study"))
+
+    @router.post("/opts")
+    async def opts():
+        service = get_service()
+        did = await service.run(lambda col: col.decks.get_current_id())
+        is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
+        path = f"/filtered-deck/{did}" if is_dyn else f"/deck-options/{did}"
+        return DatastarResponse(SSE.redirect(path))
+
+    @router.post("/setdesc")
+    async def setdesc(payload: ReadSignals):
+        service = get_service()
+        if not payload or not isinstance(payload, dict):
+            return DatastarResponse()
+
+        p = payload
+
+        def save_desc(col):
+            did = col.decks.get_current_id()
+            d = col.decks.get(did)
+            d["desc"] = p.get("desc", "")
+            d["md"] = bool(p.get("md", False))
+            return col.decks.update_dict(d)
+
+        await service.run_op(save_desc, initiator="overview")
+        return DatastarResponse(SSE.execute_script("window.location.reload()"))
+
+    return router
 
 def render_overview_html(col) -> str:
     deck = col.decks.current()

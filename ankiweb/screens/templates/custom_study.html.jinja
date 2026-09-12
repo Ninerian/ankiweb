@@ -54,10 +54,10 @@
       </div>
     </div>
     <div style="margin-top:10px;">
-      <button type="button" id="go" onclick="submitCs()">
+      <button type="button" id="go" data-on:click__prevent="const payload = buildCsPayload(); @post('/custom-study/submit', {payload: payload})">
         {{ tr.custom_study_ok() }}
       </button>
-      <button type="button" onclick="pycmd('cancel')">
+      <button type="button" data-on:click__prevent="@post('/custom-study/cancel')">
         {{ tr.actions_cancel() }}
       </button>
     </div>
@@ -92,7 +92,7 @@
       return out;
   }
 
-  function submitCs() {
+  function buildCsPayload() {
       document.getElementById('err').textContent = '';
       var r = selectedRadio();
       var payload = {
@@ -104,10 +104,7 @@
           payload.include = multiVals('inc');
           payload.exclude = multiVals('exc');
       }
-      pycmd('submit:' + JSON.stringify(payload));
+      return payload;
   }
-  window.ankiwebCustomStudyError = function(msg) {
-      document.getElementById('err').textContent = msg;
-  };
   onRadio();
 </script>

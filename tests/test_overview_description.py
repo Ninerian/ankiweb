@@ -28,18 +28,21 @@ def test_overview_renders_description_editor(client):
     _seed(client)
     r = client.get("/overview")
     assert "Edit Description" in r.text
-    assert "id='descbox'" in r.text
-    assert "setdesc:" in r.text
+    assert "id='descbox'" in r.text or 'id="descbox"' in r.text
+    assert "@post('/overview/setdesc'" in r.text
 
 
 def test_setdesc_persists_and_reloads(client):
+    from conftest import parse_datastar_events
     did = _seed(client)
-    with client.websocket_connect("/ws?context=overview") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "overview",
-                      "arg": "setdesc:" + json.dumps({"desc": "Hello **world**", "md": True})})
-        m = ws.receive_json()
-        while not (m["type"] == "call" and m["fn"] == "ankiwebReload"):
-            m = ws.receive_json()
+    r = client.post(
+        "/overview/setdesc",
+        json={"desc": "Hello **world**", "md": True},
+        headers={"Datastar-Request": "true"},
+    )
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert any("window.location.reload()" in data for _, data in events)
     deck = client.portal.call(client.app.state.service.run, lambda col: col.decks.get(did))
     assert deck["desc"] == "Hello **world**"
     assert deck["md"] is True
