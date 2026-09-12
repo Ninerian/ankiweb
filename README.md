@@ -72,10 +72,13 @@ conda run -n ankiweb pip install -e ".[dev]"
 #    _aqt/data/web/ into ankiweb/web_assets/ — gitignored). Required.
 conda run -n ankiweb python tools/fetch_web_assets.py
 
-# 2. Build the shell bridge bundle (shell_src/bootstrap.ts -> ankiweb/shell/static/bootstrap.js)
+# 2. Vendor the Datastar frontend bundle (downloads datastar.js into ankiweb/shell/static/ — gitignored). Required.
+conda run -n ankiweb python tools/fetch_datastar.py
+
+# 3. Build the shell bridge bundle (shell_src/bootstrap.ts -> ankiweb/shell/static/bootstrap.js)
 npm install && npm run build
 
-# 3. (optional) for the Playwright integration tests
+# 4. (optional) for the Playwright integration tests
 conda run -n ankiweb python -m playwright install chromium
 ```
 
