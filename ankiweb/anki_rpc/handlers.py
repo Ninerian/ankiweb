@@ -20,6 +20,7 @@ async def update_deck_configs(service, body: bytes, hub=None) -> bytes:
     try:
         from anki.collection_pb2 import OpChanges
         from ankiweb.collection_service import op_changes_to_flags
+
         op = OpChanges()
         op.ParseFromString(bytes(out))
         flags = op_changes_to_flags(op)
@@ -44,17 +45,25 @@ async def change_notetype(service, body: bytes, hub=None) -> bytes:
     (Qt injects them server-side from the dialog's selection); inject the browser's
     current selection here, falling back to ALL notes of the old notetype."""
     import anki.notetypes_pb2 as nt
+
     req = nt.ChangeNotetypeRequest()
     req.ParseFromString(bytes(body))
     if not list(req.note_ids):
-        nids = list(getattr(hub.ui_state, "selected_note_ids", []) or []) if hub is not None else []
+        nids = (
+            list(getattr(hub.ui_state, "selected_note_ids", []) or [])
+            if hub is not None
+            else []
+        )
         if not nids:
-            nids = await service.run(lambda col: list(col.models.nids(req.old_notetype_id)))
+            nids = await service.run(
+                lambda col: list(col.models.nids(req.old_notetype_id))
+            )
         req.note_ids.extend(nids)
     out = await service.backend_raw("change_notetype", req.SerializeToString())
     try:
         from anki.collection_pb2 import OpChanges
         from ankiweb.collection_service import op_changes_to_flags
+
         op = OpChanges()
         op.ParseFromString(bytes(out))
         flags = op_changes_to_flags(op)
@@ -72,6 +81,7 @@ async def _emit_import_changes(service, out: bytes) -> None:
     try:
         import anki.import_export_pb2 as ie
         from ankiweb.collection_service import op_changes_to_flags
+
         resp = ie.ImportResponse()
         resp.ParseFromString(bytes(out))
         flags = op_changes_to_flags(resp.changes)
@@ -84,6 +94,7 @@ async def _emit_import_changes(service, out: bytes) -> None:
 async def get_csv_metadata(service, body: bytes, hub) -> bytes:
     import anki.import_export_pb2 as ie
     from ankiweb import import_tmp
+
     req = ie.CsvMetadataRequest()
     req.ParseFromString(bytes(body))
     if req.path and not import_tmp.is_within(service.settings, req.path):
@@ -94,6 +105,7 @@ async def get_csv_metadata(service, body: bytes, hub) -> bytes:
 async def import_csv(service, body: bytes, hub) -> bytes:
     import anki.import_export_pb2 as ie
     from ankiweb import import_tmp
+
     req = ie.ImportCsvRequest()
     req.ParseFromString(bytes(body))
     if not import_tmp.is_within(service.settings, req.path):
@@ -106,6 +118,7 @@ async def import_csv(service, body: bytes, hub) -> bytes:
 async def import_anki_package(service, body: bytes, hub) -> bytes:
     import anki.import_export_pb2 as ie
     from ankiweb import import_tmp
+
     req = ie.ImportAnkiPackageRequest()
     req.ParseFromString(bytes(body))
     if not import_tmp.is_within(service.settings, req.package_path):
@@ -126,6 +139,7 @@ async def _emit_opchanges(service, out: bytes) -> None:
     try:
         from anki.collection_pb2 import OpChanges
         from ankiweb.collection_service import op_changes_to_flags
+
         op = OpChanges()
         op.ParseFromString(bytes(out))
         flags = op_changes_to_flags(op)
@@ -139,6 +153,7 @@ async def get_image_for_occlusion(service, body: bytes, hub) -> bytes:
     import os
     import anki.image_occlusion_pb2 as iopb
     from ankiweb import import_tmp
+
     req = iopb.GetImageForOcclusionRequest()
     req.ParseFromString(bytes(body))
     if req.path and not import_tmp.is_within(service.settings, req.path):
@@ -155,6 +170,7 @@ async def get_image_for_occlusion(service, body: bytes, hub) -> bytes:
 async def add_image_occlusion_note(service, body: bytes, hub) -> bytes:
     import anki.image_occlusion_pb2 as iopb
     from ankiweb import import_tmp
+
     req = iopb.AddImageOcclusionNoteRequest()
     req.ParseFromString(bytes(body))
     if not import_tmp.is_within(service.settings, req.image_path):

@@ -16,10 +16,14 @@ def _build_load(col, nid: int) -> dict:
     model = note.note_type()
     flds = model["flds"]
     return {
-        "fields": [[f["name"], col.media.escape_media_filenames(note.fields[i])]
-                   for i, f in enumerate(flds)],
-        "fonts": [[f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
-                  for f in flds],
+        "fields": [
+            [f["name"], col.media.escape_media_filenames(note.fields[i])]
+            for i, f in enumerate(flds)
+        ],
+        "fonts": [
+            [f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
+            for f in flds
+        ],
         "io": False,
         "noteId": nid,
         "meta": {"id": model["id"], "modTime": model.get("mod", 0)},
@@ -73,8 +77,10 @@ def make_editor_handler(service, hub):
             if len(parts) == 3:
                 ord_, nid, htmlval = int(parts[0]), int(parts[1]), parts[2]
                 if head == "blur":
-                    await service.run_op(lambda col: _save_field(col, nid, ord_, htmlval),
-                                         initiator="editor")
+                    await service.run_op(
+                        lambda col: _save_field(col, nid, ord_, htmlval),
+                        initiator="editor",
+                    )
                 else:
                     await service.run(lambda col: _save_field(col, nid, ord_, htmlval))
         elif head == "saveTags":
@@ -86,6 +92,7 @@ def make_editor_handler(service, hub):
                     n = col.get_note(nid)
                     n.tags = list(tags)
                     return col.update_note(n, skip_undo_entry=True)
+
                 await service.run_op(fn, initiator="editor")
         return None
 

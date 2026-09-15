@@ -2,9 +2,14 @@ from __future__ import annotations
 import html
 from typing import Callable
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
+from datastar_py.fastapi import (
+    DatastarResponse,
+    ServerSentEventGenerator as SSE,
+    ReadSignals,
+)
 from ankiweb.i18n import tr
 from ankiweb.screens import templating
+
 
 def render_preferences_html(col) -> str:
     """Server-rendered Preferences form over col.get_preferences()/set_preferences().
@@ -27,6 +32,7 @@ def render_preferences_html(col) -> str:
         b=b,
         mix_opts=mix_opts,
     )
+
 
 def make_preferences_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/preferences")
@@ -59,9 +65,13 @@ def make_preferences_routes(get_service: Callable) -> APIRouter:
             r.show_intervals_on_buttons = bool(p["show_intervals_on_buttons"])
             r.time_limit_secs = int(p["time_limit_mins"]) * 60  # form is in minutes
             r.load_balancer_enabled = bool(p["load_balancer_enabled"])
-            r.fsrs_short_term_with_steps_enabled = bool(p["fsrs_short_term_with_steps_enabled"])
+            r.fsrs_short_term_with_steps_enabled = bool(
+                p["fsrs_short_term_with_steps_enabled"]
+            )
             ed = prefs.editing
-            ed.adding_defaults_to_current_deck = bool(p["adding_defaults_to_current_deck"])
+            ed.adding_defaults_to_current_deck = bool(
+                p["adding_defaults_to_current_deck"]
+            )
             ed.paste_images_as_png = bool(p["paste_images_as_png"])
             ed.paste_strips_formatting = bool(p["paste_strips_formatting"])
             ed.default_search_text = str(p["default_search_text"])

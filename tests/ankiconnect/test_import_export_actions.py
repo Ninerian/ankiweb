@@ -8,7 +8,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -28,16 +30,36 @@ def test_export_package_unknown_deck_returns_false(client, tmp_path):
 
 def test_export_package_writes_file(client, tmp_path):
     for i in range(2):
-        _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-              "fields": {"Front": f"f{i}", "Back": f"b{i}"}})
+        _call(
+            client,
+            "addNote",
+            note={
+                "deckName": "Default",
+                "modelName": "Basic",
+                "fields": {"Front": f"f{i}", "Back": f"b{i}"},
+            },
+        )
     out = str(tmp_path / "deck.apkg")
-    assert _call(client, "exportPackage", deck="Default", path=out, includeSched=False) is True
+    assert (
+        _call(client, "exportPackage", deck="Default", path=out, includeSched=False)
+        is True
+    )
     assert os.path.exists(out) and os.path.getsize(out) > 0
 
 
 def test_export_then_reimport_restores_notes(client, tmp_path):
-    nids = [_call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                  "fields": {"Front": f"f{i}", "Back": f"b{i}"}}) for i in range(2)]
+    nids = [
+        _call(
+            client,
+            "addNote",
+            note={
+                "deckName": "Default",
+                "modelName": "Basic",
+                "fields": {"Front": f"f{i}", "Back": f"b{i}"},
+            },
+        )
+        for i in range(2)
+    ]
     out = str(tmp_path / "deck.apkg")
     assert _call(client, "exportPackage", deck="Default", path=out) is True
     # delete the notes, then re-import the package to restore them

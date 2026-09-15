@@ -5,11 +5,12 @@ Watches deck *learnability* (does a deck have cards to study right now) via the 
 live from the web UI (Extras menu), persisted to a `notify.json` sidecar. See
 docs/superpowers/specs/2026-06-04-deck-push-notifier-design.md.
 """
+
 from __future__ import annotations
 import asyncio
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional
 
@@ -19,14 +20,16 @@ from typing import Any, Awaitable, Callable, Optional
 class NotifyConfig:
     enabled: bool = False
     url: str = ""
-    token: str = ""           # bearer token; omitted from the request when empty
-    poll_sec: float = 60.0    # deck_due_tree() refresh cadence
-    retry_sec: float = 30.0   # resend cadence after a failed POST
-    scope: str = "leaf"       # "leaf" = only decks with no subdecks; "all" = every level
+    token: str = ""  # bearer token; omitted from the request when empty
+    poll_sec: float = 60.0  # deck_due_tree() refresh cadence
+    retry_sec: float = 30.0  # resend cadence after a failed POST
+    scope: str = "leaf"  # "leaf" = only decks with no subdecks; "all" = every level
 
     def active(self) -> bool:
         """The notifier acts only when fully configured."""
-        return bool(self.enabled and self.url and self.poll_sec > 0 and self.retry_sec > 0)
+        return bool(
+            self.enabled and self.url and self.poll_sec > 0 and self.retry_sec > 0
+        )
 
     @classmethod
     def load(cls, path: Path) -> "NotifyConfig":
@@ -50,10 +53,19 @@ class NotifyConfig:
             return cls()
 
     def save(self, path: Path) -> None:
-        Path(path).write_text(json.dumps({
-            "enabled": self.enabled, "url": self.url, "token": self.token,
-            "poll_sec": self.poll_sec, "retry_sec": self.retry_sec, "scope": self.scope,
-        }, indent=2))
+        Path(path).write_text(
+            json.dumps(
+                {
+                    "enabled": self.enabled,
+                    "url": self.url,
+                    "token": self.token,
+                    "poll_sec": self.poll_sec,
+                    "retry_sec": self.retry_sec,
+                    "scope": self.scope,
+                },
+                indent=2,
+            )
+        )
 
 
 @dataclass
@@ -61,9 +73,9 @@ class NotifyStatus:
     last_attempt_ts: Optional[float] = None
     last_success_ts: Optional[float] = None
     last_error: str = ""
-    watching: int = 0     # decks currently tracked
-    learnable: int = 0    # of those, how many are learnable now
-    pending: int = 0      # decks whose change is not yet acknowledged
+    watching: int = 0  # decks currently tracked
+    learnable: int = 0  # of those, how many are learnable now
+    pending: int = 0  # decks whose change is not yet acknowledged
 
 
 class NotifierState:
@@ -72,10 +84,14 @@ class NotifierState:
 
     def __init__(self, config_path: Path, config: Optional[NotifyConfig] = None):
         self.config_path = Path(config_path)
-        self.config = config if config is not None else NotifyConfig.load(self.config_path)
+        self.config = (
+            config if config is not None else NotifyConfig.load(self.config_path)
+        )
         self.status = NotifyStatus()
         self.changed = asyncio.Event()  # set by update() to wake the runner immediately
-        self.resync_pending = False     # set by request_resync() -> runner drops its baseline
+        self.resync_pending = (
+            False  # set by request_resync() -> runner drops its baseline
+        )
 
     def update(self, config: NotifyConfig) -> None:
         self.config = config
@@ -90,8 +106,11 @@ class NotifierState:
 
 # ---------------------------------------------------------------------------- pure logic
 def learnable(counts: dict) -> bool:
-    return (counts.get("new_count", 0) + counts.get("learn_count", 0)
-            + counts.get("review_count", 0)) > 0
+    return (
+        counts.get("new_count", 0)
+        + counts.get("learn_count", 0)
+        + counts.get("review_count", 0)
+    ) > 0
 
 
 def header_safe(token: str) -> bool:
@@ -107,8 +126,11 @@ def header_safe(token: str) -> bool:
 def counts_sig(counts: dict) -> tuple:
     """The (new, learn, review) tuple — the value a deck's notification state is keyed on.
     A change in ANY of the three (incl. bucket shifts that keep the total) triggers a notify."""
-    return (counts.get("new_count", 0), counts.get("learn_count", 0),
-            counts.get("review_count", 0))
+    return (
+        counts.get("new_count", 0),
+        counts.get("learn_count", 0),
+        counts.get("review_count", 0),
+    )
 
 
 def snapshot(col) -> dict:
@@ -121,8 +143,10 @@ def snapshot(col) -> dict:
         did = node.deck_id
         if did:
             out[col.decks.name(did)] = {
-                "deck_id": did, "new_count": node.new_count,
-                "learn_count": node.learn_count, "review_count": node.review_count,
+                "deck_id": did,
+                "new_count": node.new_count,
+                "learn_count": node.learn_count,
+                "review_count": node.review_count,
                 "is_leaf": not node.children,  # a deck with no subdecks
             }
         for child in node.children:
@@ -141,11 +165,16 @@ def diff_changes(current: dict, last_notified: dict) -> list:
     for name, counts in current.items():
         sig = counts_sig(counts)
         if sig != last_notified.get(name, (0, 0, 0)):
-            changes.append({
-                "deck": name, "deckId": counts["deck_id"], "learnable": sum(sig) > 0,
-                "new_count": counts["new_count"], "learn_count": counts["learn_count"],
-                "review_count": counts["review_count"],
-            })
+            changes.append(
+                {
+                    "deck": name,
+                    "deckId": counts["deck_id"],
+                    "learnable": sum(sig) > 0,
+                    "new_count": counts["new_count"],
+                    "learn_count": counts["learn_count"],
+                    "review_count": counts["review_count"],
+                }
+            )
     return changes
 
 
@@ -164,16 +193,23 @@ def eval_response(status_code: int, body: Any) -> tuple:
 
 # ---------------------------------------------------------------------------- async runner
 class DeckNotifier:
-    def __init__(self, state: NotifierState,
-                 fetch: Callable[[], Awaitable[dict]],
-                 post: Optional[Callable[[NotifyConfig, dict], Awaitable[tuple]]] = None,
-                 now: Callable[[], float] = time.time):
+    def __init__(
+        self,
+        state: NotifierState,
+        fetch: Callable[[], Awaitable[dict]],
+        post: Optional[Callable[[NotifyConfig, dict], Awaitable[tuple]]] = None,
+        now: Callable[[], float] = time.time,
+    ):
         self.state = state
-        self._fetch = fetch                    # async () -> snapshot dict
-        self._post = post or self._http_post   # async (cfg, payload) -> (ok, error)
+        self._fetch = fetch  # async () -> snapshot dict
+        self._post = post or self._http_post  # async (cfg, payload) -> (ok, error)
         self._now = now
-        self.last_notified: dict[str, tuple] = {}  # deck name -> acknowledged (new, learn, review)
-        self._last_sig = None  # (url, scope): a change re-syncs the receiver from scratch
+        self.last_notified: dict[
+            str, tuple
+        ] = {}  # deck name -> acknowledged (new, learn, review)
+        self._last_sig = (
+            None  # (url, scope): a change re-syncs the receiver from scratch
+        )
 
     async def run(self) -> None:
         try:
@@ -183,12 +219,14 @@ class DeckNotifier:
                     self.last_notified = {}
                     self._last_sig = None
                     st = self.state.status
-                    st.watching = st.learnable = st.pending = 0  # don't show stale counts
+                    st.watching = st.learnable = st.pending = (
+                        0  # don't show stale counts
+                    )
                     await self._wait(None)  # idle until the config changes
                     continue
                 sig = (cfg.url, cfg.scope)
                 if sig != self._last_sig or self.state.resync_pending:
-                    self.last_notified = {}   # (re)pointed, scope changed, or manual resync
+                    self.last_notified = {}  # (re)pointed, scope changed, or manual resync
                     self._last_sig = sig
                     self.state.resync_pending = False
                 try:
@@ -218,9 +256,16 @@ class DeckNotifier:
         # Decks already acknowledged at (0,0,0) just drop silently.
         gone = set(self.last_notified) - set(current)
         gone_changes = [
-            {"deck": name, "deckId": 0, "learnable": False,
-             "new_count": 0, "learn_count": 0, "review_count": 0}
-            for name in gone if self.last_notified[name] != (0, 0, 0)
+            {
+                "deck": name,
+                "deckId": 0,
+                "learnable": False,
+                "new_count": 0,
+                "learn_count": 0,
+                "review_count": 0,
+            }
+            for name in gone
+            if self.last_notified[name] != (0, 0, 0)
         ]
         for name in gone:
             if self.last_notified[name] == (0, 0, 0):
@@ -264,6 +309,7 @@ class DeckNotifier:
 
     async def _http_post(self, cfg: NotifyConfig, payload: dict) -> tuple:
         import httpx
+
         headers = {"Authorization": "Bearer " + cfg.token} if cfg.token else {}
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.post(cfg.url, json=payload, headers=headers)

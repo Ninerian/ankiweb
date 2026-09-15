@@ -80,11 +80,14 @@ def test_upload_csv_returns_route_and_temp_path(client):
     assert p.exists() and p.read_bytes() == b"front,back\na,b\n"
     # the temp file is inside the managed import dir
     from ankiweb import import_tmp
+
     assert import_tmp.is_within(client.app.state.service.settings, str(p))
 
 
 def test_upload_apkg_routes_to_anki_package(client):
-    files = {"file": ("deck.apkg", io.BytesIO(b"PK\x03\x04stub"), "application/octet-stream")}
+    files = {
+        "file": ("deck.apkg", io.BytesIO(b"PK\x03\x04stub"), "application/octet-stream")
+    }
     r = client.post("/import/upload", files=files)
     assert r.status_code == 200
     assert r.json()["route"] == "import-anki-package"
@@ -112,6 +115,7 @@ def test_import_anki_package_route_serves_spa_shell(client):
 def test_gc_removes_old_files(client, tmp_path):
     import os, time
     from ankiweb import import_tmp
+
     s = client.app.state.service.settings
     p = import_tmp.allocate(s, ".csv")
     p.write_bytes(b"x")
@@ -184,33 +188,42 @@ def gc(settings, ttl_seconds: int = 3600) -> None:
 
 - [ ] **Step 6: Add the upload endpoint** — in `ankiweb/screens/routes.py` `build_screen_router`, add (mirror the existing `/upload_media`):
 ```python
-    @router.post("/import/upload")
-    async def import_upload(file: UploadFile):
-        from fastapi.responses import JSONResponse
-        from ankiweb import import_tmp
-        service = get_service()
-        import_tmp.gc(service.settings)  # lazy TTL sweep
-        name = (file.filename or "").lower()
-        ext = "." + name.rsplit(".", 1)[-1] if "." in name else ""
-        routes = {".csv": "import-csv", ".tsv": "import-csv", ".txt": "import-csv",
-                  ".apkg": "import-anki-package", ".zip": "import-anki-package"}
-        route = routes.get(ext)
-        if route is None:
-            return JSONResponse({"error": f"unsupported file type: {ext or '(none)'}"}, status_code=400)
-        dest = import_tmp.allocate(service.settings, ext)
-        dest.write_bytes(await file.read())
-        return {"route": route, "path": str(dest)}
+@router.post("/import/upload")
+async def import_upload(file: UploadFile):
+    from fastapi.responses import JSONResponse
+    from ankiweb import import_tmp
+
+    service = get_service()
+    import_tmp.gc(service.settings)  # lazy TTL sweep
+    name = (file.filename or "").lower()
+    ext = "." + name.rsplit(".", 1)[-1] if "." in name else ""
+    routes = {
+        ".csv": "import-csv",
+        ".tsv": "import-csv",
+        ".txt": "import-csv",
+        ".apkg": "import-anki-package",
+        ".zip": "import-anki-package",
+    }
+    route = routes.get(ext)
+    if route is None:
+        return JSONResponse(
+            {"error": f"unsupported file type: {ext or '(none)'}"}, status_code=400
+        )
+    dest = import_tmp.allocate(service.settings, ext)
+    dest.write_bytes(await file.read())
+    return {"route": route, "path": str(dest)}
 ```
 
 - [ ] **Step 7: Add the import SPA routes** — in `ankiweb/assets.py` `build_sveltekit_router`, next to the other page routes:
 ```python
-    @router.get("/import-csv/{path:path}")
-    def import_csv_page(path: str) -> Response:
-        return FileResponse(index, media_type="text/html")
+@router.get("/import-csv/{path:path}")
+def import_csv_page(path: str) -> Response:
+    return FileResponse(index, media_type="text/html")
 
-    @router.get("/import-anki-package/{path:path}")
-    def import_anki_package_page(path: str) -> Response:
-        return FileResponse(index, media_type="text/html")
+
+@router.get("/import-anki-package/{path:path}")
+def import_anki_package_page(path: str) -> Response:
+    return FileResponse(index, media_type="text/html")
 ```
 
 - [ ] **Step 8: Add the Import button JS** — in `shell_src/bootstrap.ts`, after `ankiwebCreateDeck`:
@@ -236,10 +249,12 @@ Then recompile: `node tools/build_shell.mjs` (regenerates the git-tracked `ankiw
 
 - [ ] **Step 9: Add the deck-browser Import button** — in `ankiweb/screens/deckbrowser.py` `render_deckbrowser_html`, extend the `create` line:
 ```python
-    create = ("<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
-              " <button onclick='pycmd(\"createfiltered\")'>Create Filtered Deck</button>"
-              " <button onclick='ankiwebImportFile()'>Import</button>"
-              " <a href='/graphs'>Stats</a>")
+create = (
+    "<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
+    " <button onclick='pycmd(\"createfiltered\")'>Create Filtered Deck</button>"
+    " <button onclick='ankiwebImportFile()'>Import</button>"
+    " <a href='/graphs'>Stats</a>"
+)
 ```
 
 - [ ] **Step 10: Run to verify pass** — `conda run -n ankiweb python -m pytest tests/test_import_upload.py -v`, then regression: `conda run -n ankiweb python -m pytest tests/test_deckbrowser.py tests/test_graphs.py tests/test_screen_routes.py -q`.
@@ -280,6 +295,7 @@ def client(tmp_path: Path):
 def test_passthrough_and_custom_registered():
     from ankiweb.anki_rpc.passthrough import PASSTHROUGH
     from ankiweb.anki_rpc.handlers import CUSTOM
+
     for m in ("get_deck_names", "get_field_names", "get_import_anki_package_presets"):
         assert m in PASSTHROUGH, m
     for m in ("getCsvMetadata", "importCsv", "importAnkiPackage", "importDone"):
@@ -287,13 +303,15 @@ def test_passthrough_and_custom_registered():
 
 
 def test_import_done_is_noop_204(client):
-    r = client.post("/_anki/importDone", content=b"",
-                    headers={"content-type": "application/binary"})
+    r = client.post(
+        "/_anki/importDone", content=b"", headers={"content-type": "application/binary"}
+    )
     assert r.status_code == 204
 
 
 def _write_csv_in_tmp(client, text=b"front,back\nhello,world\nfoo,bar\n"):
     from ankiweb import import_tmp
+
     p = import_tmp.allocate(client.app.state.service.settings, ".csv")
     p.write_bytes(text)
     return str(p)
@@ -301,31 +319,45 @@ def _write_csv_in_tmp(client, text=b"front,back\nhello,world\nfoo,bar\n"):
 
 def test_get_csv_metadata_rejects_path_outside_tmp(client):
     import anki.import_export_pb2 as ie
+
     req = ie.CsvMetadataRequest(path="/etc/hostname")
-    r = client.post("/_anki/getCsvMetadata", content=req.SerializeToString(),
-                    headers={"content-type": "application/binary"})
-    assert r.status_code == 500   # rejected before the backend (path not allowed)
+    r = client.post(
+        "/_anki/getCsvMetadata",
+        content=req.SerializeToString(),
+        headers={"content-type": "application/binary"},
+    )
+    assert r.status_code == 500  # rejected before the backend (path not allowed)
 
 
 def test_get_csv_metadata_accepts_path_in_tmp(client):
     import anki.import_export_pb2 as ie
+
     path = _write_csv_in_tmp(client)
     req = ie.CsvMetadataRequest(path=path)
-    r = client.post("/_anki/getCsvMetadata", content=req.SerializeToString(),
-                    headers={"content-type": "application/binary"})
+    r = client.post(
+        "/_anki/getCsvMetadata",
+        content=req.SerializeToString(),
+        headers={"content-type": "application/binary"},
+    )
     assert r.status_code == 200
 
 
 def test_import_csv_round_trip_imports_notes(client):
     import anki.import_export_pb2 as ie
+
     svc = client.app.state.service
     path = _write_csv_in_tmp(client)
     before = client.portal.call(svc.run, lambda col: col.note_count())
-    meta = client.portal.call(svc.run, lambda col: col.get_csv_metadata(path=path, delimiter=None))
+    meta = client.portal.call(
+        svc.run, lambda col: col.get_csv_metadata(path=path, delimiter=None)
+    )
     del meta.preview[:]
     req = ie.ImportCsvRequest(path=path, metadata=meta)
-    r = client.post("/_anki/importCsv", content=req.SerializeToString(),
-                    headers={"content-type": "application/binary"})
+    r = client.post(
+        "/_anki/importCsv",
+        content=req.SerializeToString(),
+        headers={"content-type": "application/binary"},
+    )
     assert r.status_code == 200
     after = client.portal.call(svc.run, lambda col: col.note_count())
     assert after > before
@@ -333,9 +365,13 @@ def test_import_csv_round_trip_imports_notes(client):
 
 def test_import_csv_rejects_path_outside_tmp(client):
     import anki.import_export_pb2 as ie
+
     req = ie.ImportCsvRequest(path="/etc/passwd", metadata=ie.CsvMetadata())
-    r = client.post("/_anki/importCsv", content=req.SerializeToString(),
-                    headers={"content-type": "application/binary"})
+    r = client.post(
+        "/_anki/importCsv",
+        content=req.SerializeToString(),
+        headers={"content-type": "application/binary"},
+    )
     assert r.status_code == 500
 ```
 
@@ -343,7 +379,11 @@ def test_import_csv_rejects_path_outside_tmp(client):
 
 - [ ] **Step 3: Extend the passthrough** — in `ankiweb/anki_rpc/passthrough.py`, add to `PASSTHROUGH`:
 ```python
-    "get_deck_names", "get_field_names", "get_import_anki_package_presets",
+(
+    "get_deck_names",
+    "get_field_names",
+    "get_import_anki_package_presets",
+)
 ```
 
 - [ ] **Step 4: Add the CUSTOM import handlers** — in `ankiweb/anki_rpc/handlers.py`:
@@ -352,6 +392,7 @@ async def _emit_import_changes(service, out: bytes) -> None:
     try:
         import anki.import_export_pb2 as ie
         from ankiweb.collection_service import op_changes_to_flags
+
         resp = ie.ImportResponse()
         resp.ParseFromString(bytes(out))
         flags = op_changes_to_flags(resp.changes)
@@ -364,6 +405,7 @@ async def _emit_import_changes(service, out: bytes) -> None:
 async def get_csv_metadata(service, body: bytes, hub) -> bytes:
     import anki.import_export_pb2 as ie
     from ankiweb import import_tmp
+
     req = ie.CsvMetadataRequest()
     req.ParseFromString(bytes(body))
     if req.path and not import_tmp.is_within(service.settings, req.path):
@@ -374,6 +416,7 @@ async def get_csv_metadata(service, body: bytes, hub) -> bytes:
 async def import_csv(service, body: bytes, hub) -> bytes:
     import anki.import_export_pb2 as ie
     from ankiweb import import_tmp
+
     req = ie.ImportCsvRequest()
     req.ParseFromString(bytes(body))
     if not import_tmp.is_within(service.settings, req.path):
@@ -386,6 +429,7 @@ async def import_csv(service, body: bytes, hub) -> bytes:
 async def import_anki_package(service, body: bytes, hub) -> bytes:
     import anki.import_export_pb2 as ie
     from ankiweb import import_tmp
+
     req = ie.ImportAnkiPackageRequest()
     req.ParseFromString(bytes(body))
     if not import_tmp.is_within(service.settings, req.package_path):
@@ -447,8 +491,11 @@ def live_server_imp(tmp_path: Path):
     csv = tmp_dir / "notes.csv"
     csv.write_text("front,back\nhello,world\nfoo,bar\n")
     settings = Settings(collection_path=col_path, port=8135, import_tmp_dir=tmp_dir)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8135, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8135, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10
@@ -468,15 +515,34 @@ def test_import_csv_spa_boots(live_server_imp):
         page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on("requestfailed",
-                lambda r: errors.append("REQFAIL " + r.url) if ("/_app/" in r.url or "/_anki/" in r.url) else None)
+        page.on(
+            "requestfailed",
+            lambda r: (
+                errors.append("REQFAIL " + r.url)
+                if ("/_app/" in r.url or "/_anki/" in r.url)
+                else None
+            ),
+        )
         posts = []
-        page.on("request", lambda r: posts.append(r.url) if r.method == "POST" and "/_anki/" in r.url else None)
+        page.on(
+            "request",
+            lambda r: (
+                posts.append(r.url)
+                if r.method == "POST" and "/_anki/" in r.url
+                else None
+            ),
+        )
         page.goto(f"{url}/import-csv/{quote(csv_path, safe='')}")
-        page.wait_for_function("document.querySelectorAll('select,button,table,input').length>2", timeout=10000)
+        page.wait_for_function(
+            "document.querySelectorAll('select,button,table,input').length>2",
+            timeout=10000,
+        )
         page.wait_for_function("document.body.innerText.length>30", timeout=10000)
         assert not errors, errors
-        assert any("get_csv_metadata" in u.lower() or "getcsvmetadata" in u.lower() for u in posts), posts
+        assert any(
+            "get_csv_metadata" in u.lower() or "getcsvmetadata" in u.lower()
+            for u in posts
+        ), posts
         browser.close()
 ```
 (NOTE: pick the most stable mount selector by inspecting the rendered import-csv page — it has the field-mapping table + notetype/deck `<select>`s + an import button. Load-bearing asserts: no `/_app/`-or-`/_anki/` request failed, no page error, and the `getCsvMetadata` POST fired through our route. If a benign error appears, narrow the filter with a comment; never weaken the load-bearing asserts.)

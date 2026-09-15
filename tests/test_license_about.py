@@ -1,5 +1,4 @@
 from pathlib import Path
-import pytest
 from fastapi.testclient import TestClient
 from ankiweb.config import Settings
 from ankiweb.app import create_app
@@ -30,11 +29,17 @@ def test_about_shows_configured_source(tmp_path: Path):
 
 def test_toolbar_has_source_link():
     html = render_page("deckbrowser", "<div>x</div>")
-    assert ("href='/about'" in html or 'href="/about"' in html) and ">Source</a>" in html
+    assert (
+        "href='/about'" in html or 'href="/about"' in html
+    ) and ">Source</a>" in html
 
 
 def test_license_files_present():
     root = Path(__file__).resolve().parent.parent
-    assert (root / "LICENSE").read_text().startswith("                    GNU AFFERO GENERAL PUBLIC LICENSE")
+    assert (
+        (root / "LICENSE")
+        .read_text()
+        .startswith("                    GNU AFFERO GENERAL PUBLIC LICENSE")
+    )
     assert (root / "LICENSES" / "GPL-3.0-or-later.txt").exists()
     assert "AGPL-3.0-or-later" in (root / "THIRD-PARTY-NOTICES.md").read_text()

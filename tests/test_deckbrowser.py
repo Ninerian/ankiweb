@@ -1,4 +1,5 @@
-import tempfile, os
+import tempfile
+import os
 import pytest
 from anki.collection import Collection
 from anki.decks import DeckCollapseScope
@@ -14,7 +15,8 @@ def col():
 
 def test_renders_default_deck_with_counts(col):
     # add one new card to the Default deck
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "q"
     col.add_note(n, col.decks.id("Default"))
     html = render_deckbrowser_html(col)
     assert "Default" in html
@@ -27,6 +29,7 @@ def test_renders_default_deck_with_counts(col):
     assert "studiedToday" in html
     # open command wired
     assert f"@post('/deckbrowser/open/{did}')" in html
+
 
 def test_subdeck_indented_and_nested(col):
     pid = col.decks.id("Parent")

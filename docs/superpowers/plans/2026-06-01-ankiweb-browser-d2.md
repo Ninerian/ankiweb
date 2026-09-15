@@ -38,20 +38,28 @@ def test_select_then_suspend(client):
     hub = client.app.state.hub
     cids = _run(client, lambda col: list(col.find_cards("")))
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser",
-                      "arg": "select:" + ",".join(str(c) for c in cids)})
-        _drain_call(ws, "ankiwebSetDetail")          # 2 selected -> empty detail
+        ws.send_json(
+            {
+                "type": "cmd",
+                "id": None,
+                "ctx": "browser",
+                "arg": "select:" + ",".join(str(c) for c in cids),
+            }
+        )
+        _drain_call(ws, "ankiwebSetDetail")  # 2 selected -> empty detail
         assert hub.ui_state.selected_card_ids == cids
         assert len(hub.ui_state.selected_note_ids) == 2
         ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "suspend"})
-        _drain_call(ws, "ankiwebSetRows")            # reload (tolerates the opchanges frame)
+        _drain_call(ws, "ankiwebSetRows")  # reload (tolerates the opchanges frame)
     assert all(_run(client, lambda col, c=c: col.get_card(c).queue) == -1 for c in cids)
 
 
 def test_select_one_pushes_detail(client):
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"}
+        )
         detail = _drain_call(ws, "ankiwebSetDetail")[0]
         assert "DOG" in detail
 
@@ -60,7 +68,9 @@ def test_delete_removes_notes(client):
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
     before = _run(client, lambda col: len(col.find_notes("")))
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"}
+        )
         _drain_call(ws, "ankiwebSetDetail")
         ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "delete"})
         _drain_call(ws, "ankiwebSetRows")
@@ -70,9 +80,13 @@ def test_delete_removes_notes(client):
 def test_changedeck_moves_card(client):
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"}
+        )
         _drain_call(ws, "ankiwebSetDetail")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "changedeck:Spanish"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": "changedeck:Spanish"}
+        )
         _drain_call(ws, "ankiwebSetRows")
     did = _run(client, lambda col: col.get_card(cid).did)
     assert did == _run(client, lambda col: col.decks.id("Spanish"))
@@ -82,15 +96,23 @@ def test_add_and_remove_tag(client):
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
     nid = _run(client, lambda col: col.get_card(cid).nid)
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"}
+        )
         _drain_call(ws, "ankiwebSetDetail")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "addtag:marked"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": "addtag:marked"}
+        )
         _drain_call(ws, "ankiwebSetRows")
     assert "marked" in _run(client, lambda col: col.get_note(nid).tags)
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"}
+        )
         _drain_call(ws, "ankiwebSetDetail")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "removetag:marked"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": "removetag:marked"}
+        )
         _drain_call(ws, "ankiwebSetRows")
     assert "marked" not in _run(client, lambda col: col.get_note(nid).tags)
 
@@ -98,10 +120,12 @@ def test_add_and_remove_tag(client):
 def test_setdue_runs(client):
     cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"select:{cid}"}
+        )
         _drain_call(ws, "ankiwebSetDetail")
         ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "setdue:0"})
-        _drain_call(ws, "ankiwebSetRows")            # reload pushed, no crash
+        _drain_call(ws, "ankiwebSetRows")  # reload pushed, no crash
 ```
 (The D1 `_seed` already creates a "Spanish" deck? It does NOT — D1's fixture only adds cards to Default. **Update the D1 `_seed` in this file to also create the Spanish deck:** add `col.decks.id("Spanish")` at the end of `_seed`.)
 
@@ -122,7 +146,8 @@ def _rows_html(rows) -> str:
         text = html.escape(_TAG_STRIP.sub("", sort))[:200]
         out.append(
             f"<tr class='browser-row' data-cid='{cid}'>"
-            f"<td>{text}</td><td>{html.escape(deck)}</td><td>{due}</td></tr>")
+            f"<td>{text}</td><td>{html.escape(deck)}</td><td>{due}</td></tr>"
+        )
     return "".join(out)
 ```
 
@@ -130,8 +155,7 @@ def _rows_html(rows) -> str:
 ```python
 def render_browser_html(col) -> str:
     return (
-        _STYLE +
-        "<div id='browser'>"
+        _STYLE + "<div id='browser'>"
         "<div id='browser-top'>"
         "<input id='search' type='text' autofocus placeholder='Search…' "
         "onkeydown=\"if(event.key==='Enter'){window.pycmd('search:'+this.value);}\">"
@@ -190,6 +214,7 @@ def render_browser_html(col) -> str:
 ```python
 def make_browser_handler(service, hub):
     """Bridge handler for the 'browser' context."""
+
     async def _do_search(query: str):
         def run(col):
             try:
@@ -197,10 +222,14 @@ def make_browser_handler(service, hub):
             except Exception:
                 return None, ""
             return cids, _rows_html(_row_data(col, cids[:_LIMIT]))
+
         cids, rows_html = await service.run(run)
         if cids is None:
-            await hub.push_call("browser", "ankiwebSetRows",
-                                ["<tr><td colspan='3'>invalid search</td></tr>", 0])
+            await hub.push_call(
+                "browser",
+                "ankiwebSetRows",
+                ["<tr><td colspan='3'>invalid search</td></tr>", 0],
+            )
             return
         hub.ui_state.browser_open = True
         hub.ui_state.last_browse_query = query
@@ -235,12 +264,17 @@ def make_browser_handler(service, hub):
         elif cmd == "searchtag":
             await _do_search(f'tag:"{rest}"')
         elif cmd in ("select", "open"):
-            cids = [int(c) for c in rest.split(",") if c] if cmd == "select" else [int(rest)]
+            cids = (
+                [int(c) for c in rest.split(",") if c]
+                if cmd == "select"
+                else [int(rest)]
+            )
 
             def fn(col):
                 nids = _selected_nids(col, cids)
                 detail = _detail_html(col, cids[0]) if len(cids) == 1 else ""
                 return nids, detail
+
             nids, detail = await service.run(fn)
             hub.ui_state.selected_card_ids = cids
             hub.ui_state.selected_note_ids = nids
@@ -249,17 +283,23 @@ def make_browser_handler(service, hub):
             cids = list(hub.ui_state.selected_card_ids or [])
             if cids:
                 if cmd == "suspend":
-                    await service.run_op(lambda col: col.sched.suspend_cards(cids),
-                                         initiator="browser")
+                    await service.run_op(
+                        lambda col: col.sched.suspend_cards(cids), initiator="browser"
+                    )
                 elif cmd == "unsuspend":
-                    await service.run_op(lambda col: col.sched.unsuspend_cards(cids),
-                                         initiator="browser")
+                    await service.run_op(
+                        lambda col: col.sched.unsuspend_cards(cids), initiator="browser"
+                    )
                 elif cmd == "forget":
-                    await service.run_op(lambda col: col.sched.schedule_cards_as_new(cids),
-                                         initiator="browser")
+                    await service.run_op(
+                        lambda col: col.sched.schedule_cards_as_new(cids),
+                        initiator="browser",
+                    )
                 else:  # delete the notes of the selected cards
+
                     def dele(col):
                         return col.remove_notes(_selected_nids(col, cids))
+
                     await service.run_op(dele, initiator="browser")
                 hub.ui_state.selected_card_ids = []
                 hub.ui_state.selected_note_ids = []
@@ -267,24 +307,29 @@ def make_browser_handler(service, hub):
         elif cmd == "setdue":
             cids = list(hub.ui_state.selected_card_ids or [])
             if cids and rest:
-                await service.run_op(lambda col: col.sched.set_due_date(cids, rest),
-                                     initiator="browser")
+                await service.run_op(
+                    lambda col: col.sched.set_due_date(cids, rest), initiator="browser"
+                )
                 await _reload()
         elif cmd == "changedeck":
             cids = list(hub.ui_state.selected_card_ids or [])
             if cids and rest:
+
                 def mv(col):
-                    return col.set_deck(cids, col.decks.id(rest))   # id() get-or-creates
+                    return col.set_deck(cids, col.decks.id(rest))  # id() get-or-creates
+
                 await service.run_op(mv, initiator="browser")
                 await _reload()
         elif cmd in ("addtag", "removetag"):
             cids = list(hub.ui_state.selected_card_ids or [])
             if cids and rest:
+
                 def tag(col):
                     nids = _selected_nids(col, cids)
                     if cmd == "addtag":
                         return col.tags.bulk_add(nids, rest)
                     return col.tags.bulk_remove(nids, rest)
+
                 await service.run_op(tag, initiator="browser")
                 await _reload()
         return None
@@ -321,17 +366,22 @@ def test_select_all_and_suspend(live_server_browse):
         page = browser.new_page()
         page.goto(f"{live_server_browse}/browse")
         page.wait_for_function(
-            "document.getElementById('results-body').children.length>=2", timeout=6000)
+            "document.getElementById('results-body').children.length>=2", timeout=6000
+        )
         # click first row, ctrl+click second -> two selected
         rows = page.locator(".browser-row")
         rows.nth(0).click()
         rows.nth(1).click(modifiers=["Control"])
         page.wait_for_function(
-            "document.querySelectorAll('#results-body tr.selected').length===2", timeout=6000)
+            "document.querySelectorAll('#results-body tr.selected').length===2",
+            timeout=6000,
+        )
         # Suspend the selection (no crash; rows reload and selection clears)
         page.click("#browser-actions >> text=Suspend")
         page.wait_for_function(
-            "document.querySelectorAll('#results-body tr.selected').length===0", timeout=6000)
+            "document.querySelectorAll('#results-body tr.selected').length===0",
+            timeout=6000,
+        )
         browser.close()
 ```
 

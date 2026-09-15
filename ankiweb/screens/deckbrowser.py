@@ -1,7 +1,11 @@
 from __future__ import annotations
 from typing import Callable
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
+from datastar_py.fastapi import (
+    DatastarResponse,
+    ServerSentEventGenerator as SSE,
+    ReadSignals,
+)
 from ankiweb.screens import templating
 
 
@@ -23,13 +27,17 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
     @router.post("/open/{did}")
     async def open_deck(did: int):
         service = get_service()
-        await service.run_op(lambda col: col.decks.set_current(did), initiator="deckbrowser")
+        await service.run_op(
+            lambda col: col.decks.set_current(did), initiator="deckbrowser"
+        )
         return DatastarResponse(SSE.redirect("/overview"))
 
     @router.post("/select/{did}")
     async def select_deck(did: int):
         service = get_service()
-        await service.run_op(lambda col: col.decks.set_current(did), initiator="deckbrowser")
+        await service.run_op(
+            lambda col: col.decks.set_current(did), initiator="deckbrowser"
+        )
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
     @router.post("/collapse/{did}")
@@ -38,8 +46,11 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
 
         def toggle(col):
             from anki.decks import DeckCollapseScope
+
             collapsed = bool(col.decks.get(did).get("collapsed", False))
-            return col.decks.set_collapsed(did, not collapsed, DeckCollapseScope.REVIEWER)
+            return col.decks.set_collapsed(
+                did, not collapsed, DeckCollapseScope.REVIEWER
+            )
 
         await service.run_op(toggle, initiator="deckbrowser")
         return DatastarResponse(SSE.execute_script("window.location.reload()"))

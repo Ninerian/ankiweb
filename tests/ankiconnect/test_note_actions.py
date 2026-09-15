@@ -7,7 +7,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -20,7 +22,12 @@ def _call(client, action, **params):
 
 
 def _basic(front="Q1", back="A1", deck="Default", **extra):
-    return {"deckName": deck, "modelName": "Basic", "fields": {"Front": front, "Back": back}, **extra}
+    return {
+        "deckName": deck,
+        "modelName": "Basic",
+        "fields": {"Front": front, "Back": back},
+        **extra,
+    }
 
 
 def test_add_note_returns_id(client):
@@ -30,21 +37,40 @@ def test_add_note_returns_id(client):
 
 
 def test_add_note_case_insensitive_fields(client):
-    nid = _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                                         "fields": {"front": "x", "BACK": "y"}})
+    nid = _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"front": "x", "BACK": "y"},
+        },
+    )
     assert isinstance(nid, int)
 
 
 def test_add_note_empty_first_field_errors(client):
-    r = client.post("/", json={"action": "addNote", "version": 6, "params": {"note": _basic(front="")}})
+    r = client.post(
+        "/",
+        json={"action": "addNote", "version": 6, "params": {"note": _basic(front="")}},
+    )
     assert "empty" in (r.json()["error"] or "").lower()
 
 
 def test_add_note_duplicate_errors_unless_allowed(client):
     _call(client, "addNote", note=_basic(front="dup"))
-    r = client.post("/", json={"action": "addNote", "version": 6, "params": {"note": _basic(front="dup")}})
+    r = client.post(
+        "/",
+        json={
+            "action": "addNote",
+            "version": 6,
+            "params": {"note": _basic(front="dup")},
+        },
+    )
     assert "duplicate" in (r.json()["error"] or "").lower()
-    nid = _call(client, "addNote", note=_basic(front="dup", options={"allowDuplicate": True}))
+    nid = _call(
+        client, "addNote", note=_basic(front="dup", options={"allowDuplicate": True})
+    )
     assert isinstance(nid, int)
 
 
@@ -64,8 +90,14 @@ def test_add_notes_success_returns_ids(client):
 
 
 def test_add_notes_errors_and_rolls_back_on_any_failure(client):
-    r = client.post("/", json={"action": "addNotes", "version": 6,
-                               "params": {"notes": [_basic(front="g1"), _basic(front="")]}})
+    r = client.post(
+        "/",
+        json={
+            "action": "addNotes",
+            "version": 6,
+            "params": {"notes": [_basic(front="g1"), _basic(front="")]},
+        },
+    )
     assert r.json()["error"] is not None
     assert _call(client, "findNotes", query="deck:Default") == []
 
@@ -82,8 +114,12 @@ def _err(client, action, **params):
 
 def test_update_note_fields_and_tags(client):
     nid = _call(client, "addNote", note=_basic(front="u1"))
-    assert _call(client, "updateNoteFields",
-                 note={"id": nid, "fields": {"Back": "newback"}}) is None
+    assert (
+        _call(
+            client, "updateNoteFields", note={"id": nid, "fields": {"Back": "newback"}}
+        )
+        is None
+    )
     info = _call(client, "notesInfo", notes=[nid])[0]
     assert info["fields"]["Back"]["value"] == "newback"
     assert _call(client, "updateNote", note={"id": nid, "tags": ["x", "y"]}) is None

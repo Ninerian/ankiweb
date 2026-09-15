@@ -12,7 +12,9 @@ from ankiweb.notifier import NotifierState, DeckNotifier, snapshot
 
 async def _serve() -> None:
     settings = Settings.from_env()
-    ac_config = AnkiConnectConfig.load(settings.collection_path.parent / "ankiconnect.json")
+    ac_config = AnkiConnectConfig.load(
+        settings.collection_path.parent / "ankiconnect.json"
+    )
     service = CollectionService(settings)
     await service.open()
     hub = BridgeHub()
@@ -20,12 +22,17 @@ async def _serve() -> None:
     web = create_app(settings, service=service, hub=hub, notifier=notifier_state)
     # Same NotifierState instance, so /extra_actions/setNotifyConfig on :8765 edits the live
     # config that the web form (:8000) and the running notifier task share.
-    api = create_ankiconnect_app(settings, service=service, config=ac_config, hub=hub,
-                                 notifier=notifier_state)
-    web_server = uvicorn.Server(uvicorn.Config(web, host=settings.host, port=settings.port,
-                                               log_level="info"))
-    api_server = uvicorn.Server(uvicorn.Config(api, host=ac_config.bind_address,
-                                               port=ac_config.bind_port, log_level="info"))
+    api = create_ankiconnect_app(
+        settings, service=service, config=ac_config, hub=hub, notifier=notifier_state
+    )
+    web_server = uvicorn.Server(
+        uvicorn.Config(web, host=settings.host, port=settings.port, log_level="info")
+    )
+    api_server = uvicorn.Server(
+        uvicorn.Config(
+            api, host=ac_config.bind_address, port=ac_config.bind_port, log_level="info"
+        )
+    )
     # Background deck-learnability push notifier (idle unless configured via the Extras menu).
     notifier = DeckNotifier(notifier_state, fetch=lambda: service.run(snapshot))
     notifier_task = asyncio.create_task(notifier.run())

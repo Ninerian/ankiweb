@@ -8,6 +8,7 @@ from ankiweb.screens.reviewer import make_reviewer_handler
 
 class _Hub:
     """Records push_call(fn, args) and carries a real UiState (the handler writes to it)."""
+
     def __init__(self):
         self.calls = []
         self.ui_state = UiState()
@@ -37,6 +38,7 @@ async def _svc(tmp_path, n_cards=3):
             note["Front"] = f"Q{i}"
             note["Back"] = f"A{i}"
             col.add_note(note, did)
+
     await svc.run(setup)
     return svc
 
@@ -49,6 +51,7 @@ async def _make(tmp_path, n_cards=3):
 
 
 # ---- (a) mark toggles the note's 'marked' tag + pushes _drawMark -------------
+
 
 async def test_mark_toggles_tag_and_draws(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
@@ -69,6 +72,7 @@ async def test_mark_toggles_tag_and_draws(tmp_path: Path):
 
 # ---- (b) setflag sets the card's user flag + pushes _drawFlag ----------------
 
+
 async def test_setflag_sets_user_flag_and_draws(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
@@ -88,6 +92,7 @@ async def test_setflag_sets_user_flag_and_draws(tmp_path: Path):
 
 # ---- (c) buryc advances ------------------------------------------------------
 
+
 async def test_buryc_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
@@ -96,11 +101,12 @@ async def test_buryc_advances(tmp_path: Path):
     await handler("buryc")
     after = await svc.run(lambda col: sum(col.sched.counts()))
     assert hub.ui_state.current_card_id != first  # advanced to a different card
-    assert after < before                          # one fewer card in today's queue
+    assert after < before  # one fewer card in today's queue
     await svc.close()
 
 
 # ---- (d) suspendc suspends + advances ---------------------------------------
+
 
 async def test_suspendc_suspends_and_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
@@ -114,6 +120,7 @@ async def test_suspendc_suspends_and_advances(tmp_path: Path):
 
 
 # ---- buryn / suspendn act on all of the note's cards -------------------------
+
 
 async def test_suspendn_suspends_note_and_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
@@ -140,6 +147,7 @@ async def test_buryn_buries_note_and_advances(tmp_path: Path):
 
 # ---- (e) forget resets the card to new --------------------------------------
 
+
 async def test_forget_resets_card(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
@@ -157,7 +165,7 @@ async def test_forget_resets_card(tmp_path: Path):
 async def test_forget_branch_runs_and_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    first = hub.ui_state.current_card_id
+    _first = hub.ui_state.current_card_id
     await handler("forget")
     # forget on a new card keeps it new but the branch advances to the next card
     assert "_showQuestion" in hub.fns()
@@ -166,6 +174,7 @@ async def test_forget_branch_runs_and_advances(tmp_path: Path):
 
 
 # ---- (f) deletenote removes the note + advances -----------------------------
+
 
 async def test_deletenote_removes_and_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
@@ -181,6 +190,7 @@ async def test_deletenote_removes_and_advances(tmp_path: Path):
 
 # ---- (g) setdue reschedules without error -----------------------------------
 
+
 async def test_setdue_reschedules_without_error(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
@@ -193,6 +203,7 @@ async def test_setdue_reschedules_without_error(tmp_path: Path):
 
 
 # ---- (h) undo after an ease answer restores without crashing ----------------
+
 
 async def test_undo_after_answer_restores(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
@@ -219,6 +230,7 @@ async def test_undo_when_empty_pushes_error(tmp_path: Path):
                 await svc.run(lambda col: col.undo())
             except anki.errors.UndoEmpty:
                 return
+
     await _drain()
     hub.calls.clear()
     await handler("undo")  # now truly nothing to undo
@@ -227,6 +239,7 @@ async def test_undo_when_empty_pushes_error(tmp_path: Path):
 
 
 # ---- (i) cardinfo navigates to /card-info/<cid> -----------------------------
+
 
 async def test_cardinfo_navigates(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
@@ -239,11 +252,22 @@ async def test_cardinfo_navigates(tmp_path: Path):
 
 # ---- (j) every new branch is a no-op when there is no current card ----------
 
+
 async def test_actions_are_noops_without_card(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     # do NOT send "show" first → session.card is None
-    for arg in ("mark", "setflag:2", "buryc", "buryn", "suspendc", "suspendn",
-                "setdue:0", "forget", "deletenote", "cardinfo"):
+    for arg in (
+        "mark",
+        "setflag:2",
+        "buryc",
+        "buryn",
+        "suspendc",
+        "suspendn",
+        "setdue:0",
+        "forget",
+        "deletenote",
+        "cardinfo",
+    ):
         res = await handler(arg)
         assert res is None
     # none of these should have pushed any call
@@ -253,8 +277,10 @@ async def test_actions_are_noops_without_card(tmp_path: Path):
 
 # ---- (k) reviewer_page_body() wires the actions bar + new shortcuts ---------
 
+
 def test_reviewer_body_has_actions_bar_and_shortcuts():
     from ankiweb.screens.reviewer import reviewer_page_body
+
     body = reviewer_page_body()
     assert "rev-actions" in body
     # buttons issue the new pycmds
@@ -264,9 +290,9 @@ def test_reviewer_body_has_actions_bar_and_shortcuts():
     assert "_drawMark" in body and "_drawFlag" in body
     assert "ankiwebReviewerError" in body
     # new keyboard cases (existing ones still present)
-    assert "'*'" in body          # mark
-    assert "ctrlKey" in body       # Ctrl+1..4 flag
-    assert "'i'" in body or '"i"' in body   # card info
-    assert "'u'" in body or '"u"' in body   # undo
+    assert "'*'" in body  # mark
+    assert "ctrlKey" in body  # Ctrl+1..4 flag
+    assert "'i'" in body or '"i"' in body  # card info
+    assert "'u'" in body or '"u"' in body  # undo
     # existing shortcuts intact
     assert "typeans" in body and "ease" in body

@@ -45,7 +45,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -65,16 +67,36 @@ def test_export_package_unknown_deck_returns_false(client, tmp_path):
 
 def test_export_package_writes_file(client, tmp_path):
     for i in range(2):
-        _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-              "fields": {"Front": f"f{i}", "Back": f"b{i}"}})
+        _call(
+            client,
+            "addNote",
+            note={
+                "deckName": "Default",
+                "modelName": "Basic",
+                "fields": {"Front": f"f{i}", "Back": f"b{i}"},
+            },
+        )
     out = str(tmp_path / "deck.apkg")
-    assert _call(client, "exportPackage", deck="Default", path=out, includeSched=False) is True
+    assert (
+        _call(client, "exportPackage", deck="Default", path=out, includeSched=False)
+        is True
+    )
     assert os.path.exists(out) and os.path.getsize(out) > 0
 
 
 def test_export_then_reimport_restores_notes(client, tmp_path):
-    nids = [_call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                  "fields": {"Front": f"f{i}", "Back": f"b{i}"}}) for i in range(2)]
+    nids = [
+        _call(
+            client,
+            "addNote",
+            note={
+                "deckName": "Default",
+                "modelName": "Basic",
+                "fields": {"Front": f"f{i}", "Back": f"b{i}"},
+            },
+        )
+        for i in range(2)
+    ]
     out = str(tmp_path / "deck.apkg")
     assert _call(client, "exportPackage", deck="Default", path=out) is True
     # delete the notes, then re-import the package to restore them
@@ -99,18 +121,24 @@ async def export_package(rt, deck=None, path=None, includeSched=False):
     """Export a deck to a .apkg at a server-side path. Returns True, or False if the
     deck name is unknown (faithful to AnkiConnect). Uses the modern backend export
     (the legacy AnkiPackageImporter crashes headless; the exporter contract is identical)."""
+
     def fn(col):
         import anki.import_export_pb2 as ie
+
         d = col.decks.by_name(deck)
         if d is None:
             return False
         lim = ie.ExportLimit()
         lim.deck_id = d["id"]
         opts = ie.ExportAnkiPackageOptions(
-            with_scheduling=bool(includeSched), with_media=True,
-            with_deck_configs=False, legacy=True)
+            with_scheduling=bool(includeSched),
+            with_media=True,
+            with_deck_configs=False,
+            legacy=True,
+        )
         col.export_anki_package(out_path=path, options=opts, limit=lim)
         return True
+
     return await rt.service.run(fn)
 
 
@@ -119,16 +147,28 @@ async def import_package(rt, path=None):
     """Import a .apkg from a server-side path. Returns True; broadcasts the import's
     OpChanges so an open web UI refreshes. Uses the modern backend import (the legacy
     AnkiPackageImporter.run() raises on the headless backend — anki.lang.current_i18n is None)."""
+
     def fn(col):
         import anki.import_export_pb2 as ie
+
         resp = col.import_anki_package(ie.ImportAnkiPackageRequest(package_path=path))
         return True, resp
+
     return await run_emit(rt, fn)
 ```
 
 - [ ] **Step 4: Register the module** — in `ankiweb/ankiconnect/actions/__init__.py`, add `import_export` to the import line:
 ```python
-from ankiweb.ankiconnect.actions import meta, decks, notes, cards, models, media, gui, import_export  # noqa: F401
+from ankiweb.ankiconnect.actions import (
+    meta,
+    decks,
+    notes,
+    cards,
+    models,
+    media,
+    gui,
+    import_export,
+)  # noqa: F401
 ```
 
 - [ ] **Step 5: Run to verify pass** — `conda run -n ankiweb python -m pytest tests/ankiconnect/test_import_export_actions.py -v`, then regression: `conda run -n ankiweb python -m pytest tests/ankiconnect/ -q`.

@@ -47,7 +47,9 @@ def client(tmp_path: Path):
 
 def _seed(col):
     for q in ("dog", "cat"):
-        n = col.new_note(col.models.by_name("Basic")); n["Front"] = q; n["Back"] = q.upper()
+        n = col.new_note(col.models.by_name("Basic"))
+        n["Front"] = q
+        n["Back"] = q.upper()
         col.add_note(n, col.decks.id("Default"))
     col.tags.bulk_add(col.find_notes(""), "animals")
 
@@ -66,8 +68,8 @@ def test_browse_route_renders(client):
     assert 'window.__ankiwebContext="browser"' in r.text
     assert "id='results'" in r.text or 'id="results"' in r.text
     assert "id='search'" in r.text or 'id="search"' in r.text
-    assert "Default" in r.text          # sidebar deck
-    assert "animals" in r.text          # sidebar tag
+    assert "Default" in r.text  # sidebar deck
+    assert "animals" in r.text  # sidebar tag
 
 
 def test_browse_search_pushes_rows_and_mirrors_ui_state(client):
@@ -76,30 +78,40 @@ def test_browse_search_pushes_rows_and_mirrors_ui_state(client):
         ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "search:dog"})
         args = _drain_call(ws, "ankiwebSetRows")
         assert "dog" in args[0] and "cat" not in args[0]
-        assert args[1] == 1               # count
+        assert args[1] == 1  # count
     assert hub.ui_state.browser_open is True
     assert hub.ui_state.last_browse_query == "dog"
     assert len(hub.ui_state.matched_card_ids) == 1
 
 
 def test_browse_searchdeck_and_searchtag(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"searchdeck:{did}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"searchdeck:{did}"}
+        )
         rows = _drain_call(ws, "ankiwebSetRows")[0]
         assert "dog" in rows and "cat" in rows
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "searchtag:animals"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": "searchtag:animals"}
+        )
         rows = _drain_call(ws, "ankiwebSetRows")[0]
         assert "dog" in rows and "cat" in rows
 
 
 def test_browse_open_pushes_detail_and_selection(client):
-    cid = client.portal.call(client.app.state.service.run, lambda col: list(col.find_cards("dog"))[0])
+    cid = client.portal.call(
+        client.app.state.service.run, lambda col: list(col.find_cards("dog"))[0]
+    )
     hub = client.app.state.hub
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": f"open:{cid}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": f"open:{cid}"}
+        )
         detail = _drain_call(ws, "ankiwebSetDetail")[0]
-        assert "DOG" in detail            # the Back field value
+        assert "DOG" in detail  # the Back field value
         assert "Front" in detail and "Back" in detail
     assert hub.ui_state.selected_card_ids == [cid]
     assert len(hub.ui_state.selected_note_ids) == 1
@@ -107,9 +119,11 @@ def test_browse_open_pushes_detail_and_selection(client):
 
 def test_browse_invalid_search_does_not_crash(client):
     with client.websocket_connect("/ws?context=browser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "search:deck:((("})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "browser", "arg": "search:deck:((("}
+        )
         args = _drain_call(ws, "ankiwebSetRows")
-        assert args[1] == 0               # invalid -> 0 count, socket survives
+        assert args[1] == 0  # invalid -> 0 count, socket survives
 ```
 
 - [ ] **Step 2: Run to verify failure** — `conda run -n ankiweb python -m pytest tests/test_browser.py -v` → FAIL (no `/browse`, no `browser` handler).
@@ -149,19 +163,20 @@ def _sidebar_html(col) -> str:
     for d in col.decks.all_names_and_ids():
         parts.append(
             f"<a class='side-item' href='#' onclick=\"return pycmd('searchdeck:{d.id}')\">"
-            f"{html.escape(d.name)}</a>")
+            f"{html.escape(d.name)}</a>"
+        )
     parts.append("<div class='side-section'>Tags</div>")
     for t in col.tags.all():
         parts.append(
             f"<a class='side-item' href='#' onclick=\"return pycmd('searchtag:{html.escape(t)}')\">"
-            f"{html.escape(t)}</a>")
+            f"{html.escape(t)}</a>"
+        )
     return "".join(parts)
 
 
 def render_browser_html(col) -> str:
     return (
-        _STYLE +
-        "<div id='browser'>"
+        _STYLE + "<div id='browser'>"
         "<div id='browser-top'>"
         "<input id='search' type='text' autofocus placeholder='Search…' "
         "onkeydown=\"if(event.key==='Enter'){window.pycmd('search:'+this.value);}\">"
@@ -196,7 +211,11 @@ def _row_data(col, cids):
         note = card.note()
         model = note.note_type()
         sf = model.get("sortf", 0)
-        sort = note.fields[sf] if sf < len(note.fields) else (note.fields[0] if note.fields else "")
+        sort = (
+            note.fields[sf]
+            if sf < len(note.fields)
+            else (note.fields[0] if note.fields else "")
+        )
         rows.append((cid, sort, col.decks.name(card.did), card.due))
     return rows
 
@@ -207,7 +226,8 @@ def _rows_html(rows) -> str:
         text = html.escape(_TAG_STRIP.sub("", sort))[:200]
         out.append(
             f"<tr class='browser-row' onclick=\"window.pycmd('open:{cid}')\">"
-            f"<td>{text}</td><td>{html.escape(deck)}</td><td>{due}</td></tr>")
+            f"<td>{text}</td><td>{html.escape(deck)}</td><td>{due}</td></tr>"
+        )
     return "".join(out)
 
 
@@ -218,14 +238,18 @@ def _detail_html(col, cid) -> str:
     flds = "".join(
         f"<div class='fld'><div class='fldname'>{html.escape(f['name'])}</div>"
         f"<div class='fldval'>{note.fields[i]}</div></div>"
-        for i, f in enumerate(model["flds"]))
+        for i, f in enumerate(model["flds"])
+    )
     tags = html.escape(" ".join(note.tags))
-    return (f"<div class='detail-meta'><b>Deck:</b> {html.escape(col.decks.name(card.did))}"
-            f" &nbsp; <b>Tags:</b> {tags}</div>{flds}")
+    return (
+        f"<div class='detail-meta'><b>Deck:</b> {html.escape(col.decks.name(card.did))}"
+        f" &nbsp; <b>Tags:</b> {tags}</div>{flds}"
+    )
 
 
 def make_browser_handler(service, hub):
     """Bridge handler for the 'browser' context."""
+
     async def _do_search(query: str):
         def run(col):
             try:
@@ -233,10 +257,14 @@ def make_browser_handler(service, hub):
             except Exception:
                 return None, ""
             return cids, _rows_html(_row_data(col, cids[:_LIMIT]))
+
         cids, rows_html = await service.run(run)
-        if cids is None:   # invalid search → empty, socket survives
-            await hub.push_call("browser", "ankiwebSetRows",
-                                ["<tr><td colspan='3'>invalid search</td></tr>", 0])
+        if cids is None:  # invalid search → empty, socket survives
+            await hub.push_call(
+                "browser",
+                "ankiwebSetRows",
+                ["<tr><td colspan='3'>invalid search</td></tr>", 0],
+            )
             return
         hub.ui_state.browser_open = True
         hub.ui_state.last_browse_query = query
@@ -257,6 +285,7 @@ def make_browser_handler(service, hub):
 
             def fetch(col):
                 return _detail_html(col, cid), col.get_card(cid).nid
+
             detail, nid = await service.run(fetch)
             hub.ui_state.selected_card_ids = [cid]
             hub.ui_state.selected_note_ids = [nid]
@@ -320,21 +349,28 @@ def live_server_browse(tmp_path: Path):
     col = Collection(str(col_path))
     try:
         for q in ("dogword", "catword"):
-            n = col.new_note(col.models.by_name("Basic")); n["Front"] = q; n["Back"] = q.upper()
+            n = col.new_note(col.models.by_name("Basic"))
+            n["Front"] = q
+            n["Back"] = q.upper()
             col.add_note(n, col.decks.id("Default"))
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8127)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8127, log_level="warning"))
-    t = threading.Thread(target=server.run, daemon=True); t.start()
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8127, log_level="warning"
+        )
+    )
+    t = threading.Thread(target=server.run, daemon=True)
+    t.start()
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
             raise RuntimeError("server did not start")
         time.sleep(0.05)
     yield "http://127.0.0.1:8127"
-    server.should_exit = True; t.join(timeout=5)
+    server.should_exit = True
+    t.join(timeout=5)
 
 
 def test_browse_search_and_open(live_server_browse):
@@ -344,17 +380,21 @@ def test_browse_search_and_open(live_server_browse):
         page.goto(f"{live_server_browse}/browse")
         # initial empty search loads all rows
         page.wait_for_function(
-            "document.getElementById('results-body').children.length>=2", timeout=6000)
+            "document.getElementById('results-body').children.length>=2", timeout=6000
+        )
         # narrow the search
         page.fill("#search", "dogword")
         page.keyboard.press("Enter")
         page.wait_for_function(
-            "document.getElementById('results-body').children.length===1", timeout=6000)
+            "document.getElementById('results-body').children.length===1", timeout=6000
+        )
         assert "dogword" in page.inner_text("#results-body")
         # click the row -> detail pane shows the field value
         page.click(".browser-row")
         page.wait_for_function(
-            "document.getElementById('detail').textContent.includes('DOGWORD')", timeout=6000)
+            "document.getElementById('detail').textContent.includes('DOGWORD')",
+            timeout=6000,
+        )
         browser.close()
 ```
 

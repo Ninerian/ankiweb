@@ -43,7 +43,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -56,8 +58,15 @@ def _call(client, action, **params):
 
 
 def _seed_card(client):
-    nid = _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                "fields": {"Front": "q", "Back": "a"}})
+    nid = _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"Front": "q", "Back": "a"},
+        },
+    )
     return _call(client, "findCards", query=f"nid:{nid}")[0]
 
 
@@ -68,7 +77,7 @@ def _revlog_row(cid):
 
 def test_insert_reviews_and_latest_and_today(client):
     cid = _seed_card(client)
-    assert _call(client, "getLatestReviewID", deck="Default") == 0   # no reviews yet
+    assert _call(client, "getLatestReviewID", deck="Default") == 0  # no reviews yet
     row = _revlog_row(cid)
     _call(client, "insertReviews", reviews=[row])
     assert _call(client, "getLatestReviewID", deck="Default") == row[0]
@@ -80,7 +89,7 @@ def test_card_reviews(client):
     row = _revlog_row(cid)
     _call(client, "insertReviews", reviews=[row])
     rows = _call(client, "cardReviews", deck="Default", startID=0)
-    assert any(r[0] == row[0] and r[1] == cid for r in rows)   # id, cid, … (9 cols)
+    assert any(r[0] == row[0] and r[1] == cid for r in rows)  # id, cid, … (9 cols)
     assert len(rows[0]) == 9
 
 
@@ -89,16 +98,27 @@ def test_get_reviews_of_cards(client):
     row = _revlog_row(cid)
     _call(client, "insertReviews", reviews=[row])
     res = _call(client, "getReviewsOfCards", cards=[cid])
-    revs = res[str(cid)]                                       # JSON int key → str
+    revs = res[str(cid)]  # JSON int key → str
     assert revs and revs[0]["id"] == row[0] and revs[0]["ease"] == 3
-    assert set(revs[0].keys()) == {"id", "usn", "ease", "ivl", "lastIvl", "factor", "time", "type"}
+    assert set(revs[0].keys()) == {
+        "id",
+        "usn",
+        "ease",
+        "ivl",
+        "lastIvl",
+        "factor",
+        "time",
+        "type",
+    }
 
 
 def test_reviewed_by_day(client):
     cid = _seed_card(client)
     _call(client, "insertReviews", reviews=[_revlog_row(cid)])
     by_day = _call(client, "getNumCardsReviewedByDay")
-    assert isinstance(by_day, list) and by_day and len(by_day[0]) == 2   # [day_str, count]
+    assert (
+        isinstance(by_day, list) and by_day and len(by_day[0]) == 2
+    )  # [day_str, count]
     assert isinstance(by_day[0][0], str) and by_day[0][1] >= 1
 
 
@@ -129,8 +149,11 @@ _REVLOG_COLS = "id, cid, usn, ease, ivl, lastIvl, factor, time, type"
 @action("getNumCardsReviewedToday")
 async def get_num_cards_reviewed_today(rt):
     def fn(col):
-        return col.db.scalar("select count() from revlog where id > ?",
-                             (col.sched.day_cutoff - 86400) * 1000)
+        return col.db.scalar(
+            "select count() from revlog where id > ?",
+            (col.sched.day_cutoff - 86400) * 1000,
+        )
+
     return await rt.service.run(fn)
 
 
@@ -140,7 +163,10 @@ async def get_num_cards_reviewed_by_day(rt):
         offset = int(time.strftime("%H", time.localtime(col.sched.day_cutoff))) * 3600
         return col.db.all(
             'select date(id/1000 - ?, "unixepoch", "localtime") as day, count() '
-            "from revlog group by day order by day desc", offset)
+            "from revlog group by day order by day desc",
+            offset,
+        )
+
     return await rt.service.run(fn)
 
 
@@ -153,6 +179,7 @@ async def get_collection_stats_html(rt, wholeCollection=True):
         except Exception:
             pass
         return stats.report()
+
     return await rt.service.run(fn)
 
 
@@ -162,7 +189,10 @@ async def card_reviews(rt, deck=None, startID=0):
         return col.db.all(
             f"select {_REVLOG_COLS} from revlog "
             "where id > ? and cid in (select id from cards where did = ?)",
-            startID, col.decks.id(deck))
+            startID,
+            col.decks.id(deck),
+        )
+
     return await rt.service.run(fn)
 
 
@@ -173,22 +203,33 @@ async def get_reviews_of_cards(rt, cards=None):
 
     def fn(col):
         cid_to_reviews = {}
-        for i in range(0, len(cards), 999):   # sqlite var limit
-            batch = cards[i:i + 999]
+        for i in range(0, len(cards), 999):  # sqlite var limit
+            batch = cards[i : i + 999]
             ph = ",".join("?" * len(batch))
             for rev in col.db.all(
-                    "select {} from revlog where cid in ({})".format(", ".join(cols), ph), *batch):
+                "select {} from revlog where cid in ({})".format(", ".join(cols), ph),
+                *batch,
+            ):
                 cid_to_reviews.setdefault(rev[0], []).append(rev[1:])
-        return {c: [dict(zip(cols[1:], rev)) for rev in cid_to_reviews.get(c, [])] for c in cards}
+        return {
+            c: [dict(zip(cols[1:], rev)) for rev in cid_to_reviews.get(c, [])]
+            for c in cards
+        }
+
     return await rt.service.run(fn)
 
 
 @action("getLatestReviewID")
 async def get_latest_review_id(rt, deck=None):
     def fn(col):
-        return col.db.scalar(
-            "select max(id) from revlog where cid in (select id from cards where did = ?)",
-            col.decks.id(deck)) or 0
+        return (
+            col.db.scalar(
+                "select max(id) from revlog where cid in (select id from cards where did = ?)",
+                col.decks.id(deck),
+            )
+            or 0
+        )
+
     return await rt.service.run(fn)
 
 
@@ -199,9 +240,11 @@ async def insert_reviews(rt, reviews=None):
     def fn(col):
         if rows:
             col.db.executemany(
-                f"insert into revlog({_REVLOG_COLS}) values (?,?,?,?,?,?,?,?,?)", rows)
+                f"insert into revlog({_REVLOG_COLS}) values (?,?,?,?,?,?,?,?,?)", rows
+            )
             col.save()
         return None
+
     return await rt.service.run(fn)
 
 
@@ -212,8 +255,13 @@ def _collect_deck_tree(node, out):
 
 
 def _deck_stats_json(node):
-    d = {"deck_id": node.deck_id, "name": node.name, "new_count": node.new_count,
-         "learn_count": node.learn_count, "review_count": node.review_count}
+    d = {
+        "deck_id": node.deck_id,
+        "name": node.name,
+        "new_count": node.new_count,
+        "learn_count": node.learn_count,
+        "review_count": node.review_count,
+    }
     if hasattr(node, "total_in_deck"):
         d["total_in_deck"] = node.total_in_deck
     return d
@@ -227,14 +275,29 @@ async def get_deck_stats(rt, decks=None):
         deck_ids = [col.decks.id(d) for d in names]
         nodes = {}
         _collect_deck_tree(col.sched.deck_due_tree(), nodes)
-        return {did: _deck_stats_json(node) for did, node in nodes.items() if did in deck_ids}
+        return {
+            did: _deck_stats_json(node)
+            for did, node in nodes.items()
+            if did in deck_ids
+        }
+
     return await rt.service.run(fn)
 ```
 (NOTE: `cardReviews`/`getReviewsOfCards` use an f-string only for the FIXED column-name constant `_REVLOG_COLS`/`cols` (no user input) + parameterized `?` placeholders for all values — no SQL injection. `insertReviews` uses parameterized `executemany` (safer than AnkiConnect's string-concat, identical effect) + `col.save()` to persist the raw revlog write. `col.db.all` returns lists; `cardReviews` returns 9-col rows; `getReviewsOfCards` returns `{cid: [dict,…]}`.)
 
 - [ ] **Step 4: Register the module** — in `ankiweb/ankiconnect/actions/__init__.py`, add `stats` to the import line:
 ```python
-from ankiweb.ankiconnect.actions import meta, decks, notes, cards, models, media, gui, import_export, stats  # noqa: F401
+from ankiweb.ankiconnect.actions import (
+    meta,
+    decks,
+    notes,
+    cards,
+    models,
+    media,
+    gui,
+    import_export,
+    stats,
+)  # noqa: F401
 ```
 
 - [ ] **Step 5: Run to verify pass** — `conda run -n ankiweb python -m pytest tests/ankiconnect/test_stats_actions.py -v`, then regression: `conda run -n ankiweb python -m pytest tests/ankiconnect/ -q`.

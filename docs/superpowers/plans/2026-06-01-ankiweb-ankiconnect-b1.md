@@ -64,7 +64,11 @@ def test_defaults_when_no_file(tmp_path: Path):
 
 def test_loads_overrides(tmp_path: Path):
     p = tmp_path / "ac.json"
-    p.write_text(json.dumps({"apiKey": "secret", "webCorsOriginList": ["*"], "webBindPort": 9000}))
+    p.write_text(
+        json.dumps(
+            {"apiKey": "secret", "webCorsOriginList": ["*"], "webBindPort": 9000}
+        )
+    )
     cfg = AnkiConnectConfig.load(p)
     assert cfg.api_key == "secret"
     assert cfg.cors_origin_list == ["*"]
@@ -123,10 +127,11 @@ from typing import Any
 @dataclass
 class Runtime:
     """Context passed to every AnkiConnect action handler."""
-    service: Any                 # CollectionService
-    config: Any                  # AnkiConnectConfig
-    hub: Any = None              # BridgeHub (for gui* in B4)
-    ui_state: Any = None         # reviewer/browser UI mirror (B4)
+
+    service: Any  # CollectionService
+    config: Any  # AnkiConnectConfig
+    hub: Any = None  # BridgeHub (for gui* in B4)
+    ui_state: Any = None  # reviewer/browser UI mirror (B4)
 ```
 
 - [ ] **Step 4: Run to verify pass**
@@ -176,21 +181,27 @@ def _register():
     @action("echo")
     async def echo(rt, value=None):
         return value
+
     @action("boom")
     async def boom(rt):
         raise ValueError("kaboom")
+
     yield
     ACTIONS.pop("echo", None)
     ACTIONS.pop("boom", None)
 
 
 async def test_v6_success_enveloped(rt):
-    reply = await dispatch_one(rt, {"action": "echo", "version": 6, "params": {"value": 7}})
+    reply = await dispatch_one(
+        rt, {"action": "echo", "version": 6, "params": {"value": 7}}
+    )
     assert reply == {"result": 7, "error": None}
 
 
 async def test_v4_success_is_bare(rt):
-    reply = await dispatch_one(rt, {"action": "echo", "version": 4, "params": {"value": 7}})
+    reply = await dispatch_one(
+        rt, {"action": "echo", "version": 4, "params": {"value": 7}}
+    )
     assert reply == 7
 
 
@@ -210,19 +221,32 @@ async def test_unknown_action_errors(rt):
 
 
 async def test_multi_returns_list_of_replies(rt):
-    reply = await dispatch_one(rt, {"action": "multi", "version": 6, "params": {"actions": [
-        {"action": "echo", "version": 6, "params": {"value": 1}},
-        {"action": "boom", "version": 6},
-    ]}})
+    reply = await dispatch_one(
+        rt,
+        {
+            "action": "multi",
+            "version": 6,
+            "params": {
+                "actions": [
+                    {"action": "echo", "version": 6, "params": {"value": 1}},
+                    {"action": "boom", "version": 6},
+                ]
+            },
+        },
+    )
     assert reply["result"][0] == {"result": 1, "error": None}
     assert reply["result"][1] == {"result": None, "error": "kaboom"}
 
 
 async def test_apikey_gate(rt):
     rt.config.api_key = "s3cret"
-    bad = await dispatch_one(rt, {"action": "echo", "version": 6, "key": "wrong", "params": {"value": 1}})
+    bad = await dispatch_one(
+        rt, {"action": "echo", "version": 6, "key": "wrong", "params": {"value": 1}}
+    )
     assert bad["result"] is None and "key" in bad["error"].lower()
-    ok = await dispatch_one(rt, {"action": "echo", "version": 6, "key": "s3cret", "params": {"value": 1}})
+    ok = await dispatch_one(
+        rt, {"action": "echo", "version": 6, "key": "s3cret", "params": {"value": 1}}
+    )
     assert ok == {"result": 1, "error": None}
 ```
 
@@ -246,6 +270,7 @@ def action(name: str):
     def deco(fn):
         ACTIONS[name] = fn
         return fn
+
     return deco
 ```
 
@@ -274,7 +299,9 @@ async def dispatch_one(rt, req: dict) -> Any:
             if req.get("key") != rt.config.api_key:
                 raise Exception("valid api key must be provided")
         if action_name == "multi":
-            result = [await dispatch_one(rt, sub) for sub in (params.get("actions") or [])]
+            result = [
+                await dispatch_one(rt, sub) for sub in (params.get("actions") or [])
+            ]
         elif action_name in ACTIONS:
             result = await ACTIONS[action_name](rt, **params)
         else:
@@ -381,14 +408,20 @@ def test_empty_get_is_probe(client):
 
 
 def test_disallowed_origin_403(client):
-    r = client.post("/", json={"action": "version", "version": 6},
-                    headers={"Origin": "https://evil.example"})
+    r = client.post(
+        "/",
+        json={"action": "version", "version": 6},
+        headers={"Origin": "https://evil.example"},
+    )
     assert r.status_code == 403
 
 
 def test_localhost_origin_ok_with_acao(client):
-    r = client.post("/", json={"action": "version", "version": 6},
-                    headers={"Origin": "http://localhost"})
+    r = client.post(
+        "/",
+        json={"action": "version", "version": 6},
+        headers={"Origin": "http://localhost"},
+    )
     assert r.status_code == 200
     assert r.headers["access-control-allow-origin"] == "http://localhost"
 
@@ -410,7 +443,11 @@ Expected: FAIL (`ModuleNotFoundError`).
 ```python
 from __future__ import annotations
 
-_EXTENSION_SCHEMES = ("chrome-extension://", "moz-extension://", "safari-web-extension://")
+_EXTENSION_SCHEMES = (
+    "chrome-extension://",
+    "moz-extension://",
+    "safari-web-extension://",
+)
 
 
 def allow_origin(origin: str | None, cors_list: list) -> tuple[bool, str]:
@@ -423,8 +460,14 @@ def allow_origin(origin: str | None, cors_list: list) -> tuple[bool, str]:
         return True, origin
     if "http://localhost" in cors_list:
         # AnkiConnect treats localhost and 127.0.0.1 symmetrically, any scheme/port.
-        if origin.startswith(("http://localhost", "https://localhost",
-                              "http://127.0.0.1", "https://127.0.0.1")):
+        if origin.startswith(
+            (
+                "http://localhost",
+                "https://localhost",
+                "http://127.0.0.1",
+                "https://127.0.0.1",
+            )
+        ):
             return True, origin
         if origin.startswith(_EXTENSION_SCHEMES):
             return True, origin
@@ -481,8 +524,10 @@ def create_ankiconnect_app(
 
     def _cors_headers(origin):
         allowed, header = allow_origin(origin, config.cors_origin_list)
-        return allowed, {"Access-Control-Allow-Origin": header,
-                         "Access-Control-Allow-Headers": "*"}
+        return allowed, {
+            "Access-Control-Allow-Origin": header,
+            "Access-Control-Allow-Headers": "*",
+        }
 
     @app.options("/")
     async def preflight(request: Request):
@@ -507,9 +552,14 @@ def create_ankiconnect_app(
             return JSONResponse({"apiVersion": "AnkiConnect v.6"}, headers=headers)
         action_name = req.get("action") or ""
         if not allowed and action_name != "requestPermission":
-            return JSONResponse({"result": None, "error": "origin not allowed"},
-                                status_code=403, headers=headers)
-        rt = Runtime(service=app.state.service, config=app.state.config, hub=app.state.hub)
+            return JSONResponse(
+                {"result": None, "error": "origin not allowed"},
+                status_code=403,
+                headers=headers,
+            )
+        rt = Runtime(
+            service=app.state.service, config=app.state.config, hub=app.state.hub
+        )
         if action_name == "requestPermission":  # inject CORS result + origin
             req.setdefault("params", {})
             req["params"]["allowed"] = allowed
@@ -577,7 +627,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -602,8 +654,11 @@ def test_api_reflect_lists_actions(client):
 
 
 def test_request_permission_granted_for_localhost(client):
-    r = client.post("/", json={"action": "requestPermission", "version": 6},
-                    headers={"Origin": "http://localhost"})
+    r = client.post(
+        "/",
+        json={"action": "requestPermission", "version": 6},
+        headers={"Origin": "http://localhost"},
+    )
     res = r.json()["result"]
     assert res["permission"] == "granted"
 
@@ -658,9 +713,11 @@ async def request_permission(rt, allowed=False, origin=None):
     # CORS result is injected by the app. Single-user local → auto-grant when allowed.
     if not allowed:
         return {"permission": "denied"}
-    return {"permission": "granted",
-            "requireApikey": rt.config.api_key is not None,
-            "version": 6}
+    return {
+        "permission": "granted",
+        "requireApikey": rt.config.api_key is not None,
+        "version": 6,
+    }
 
 
 @action("reloadCollection")
@@ -729,7 +786,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -767,8 +826,10 @@ def test_delete_decks(client):
 
 def test_delete_decks_requires_cards_too(client):
     _call(client, "createDeck", deck="Temp2")
-    r = client.post("/", json={"action": "deleteDecks", "version": 6,
-                               "params": {"decks": ["Temp2"]}})
+    r = client.post(
+        "/",
+        json={"action": "deleteDecks", "version": 6, "params": {"decks": ["Temp2"]}},
+    )
     assert r.json()["error"] is not None  # cardsToo must be true
 
 
@@ -800,7 +861,9 @@ def test_remove_unknown_or_default_config_returns_false(client):
 
 def test_get_deck_config_missing_deck_does_not_create(client):
     assert _call(client, "getDeckConfig", deck="NoSuchDeck") is False
-    assert "NoSuchDeck" not in _call(client, "deckNames")  # a read query must not create it
+    assert "NoSuchDeck" not in _call(
+        client, "deckNames"
+    )  # a read query must not create it
 ```
 
 - [ ] **Step 2: Run to verify failure**
@@ -828,13 +891,16 @@ def _config_exists(col, conf_id) -> bool:
 
 @action("deckNames")
 async def deck_names(rt):
-    return await rt.service.run(lambda col: [d.name for d in col.decks.all_names_and_ids()])
+    return await rt.service.run(
+        lambda col: [d.name for d in col.decks.all_names_and_ids()]
+    )
 
 
 @action("deckNamesAndIds")
 async def deck_names_and_ids(rt):
     return await rt.service.run(
-        lambda col: {d.name: d.id for d in col.decks.all_names_and_ids()})
+        lambda col: {d.name: d.id for d in col.decks.all_names_and_ids()}
+    )
 
 
 @action("getDecks")
@@ -847,6 +913,7 @@ async def get_decks(rt, cards=None):
             name = col.decks.name(col.get_card(cid).did)
             out.setdefault(name, []).append(cid)
         return out
+
     return await rt.service.run(fn)
 
 
@@ -863,6 +930,7 @@ async def change_deck(rt, cards=None, deck=None):
     def fn(col):
         did = col.decks.id(deck)  # create target if missing
         return col.set_deck(cards, did)
+
     await rt.service.run_op(fn, initiator="ankiconnect")
     return None
 
@@ -870,13 +938,16 @@ async def change_deck(rt, cards=None, deck=None):
 @action("deleteDecks")
 async def delete_decks(rt, decks=None, cardsToo=False):
     if not cardsToo:
-        raise Exception("deleteDecks requires cardsToo=true (ankiweb won't keep orphan cards)")
+        raise Exception(
+            "deleteDecks requires cardsToo=true (ankiweb won't keep orphan cards)"
+        )
     decks = decks or []
 
     def fn(col):
         ids = [col.decks.id_for_name(name) for name in decks]  # read-only: don't create
         ids = [i for i in ids if i is not None]
         return col.decks.remove(ids)
+
     await rt.service.run_op(fn, initiator="ankiconnect")
     return None
 
@@ -888,6 +959,7 @@ async def get_deck_config(rt, deck=None):
         if did is None:
             return False
         return col.decks.config_dict_for_deck_id(did)
+
     return await rt.service.run(fn)
 
 
@@ -898,6 +970,7 @@ async def save_deck_config(rt, config=None):
             return False
         col.decks.update_config(config)
         return True
+
     return await rt.service.run(fn)
 
 
@@ -916,6 +989,7 @@ async def set_deck_config_id(rt, decks=None, configId=None):
             d["conf"] = int(configId)
             col.decks.save(d)
         return True
+
     return await rt.service.run(fn)
 
 
@@ -926,6 +1000,7 @@ async def clone_deck_config_id(rt, name=None, cloneFrom="1"):
             return False
         clone = col.decks.get_config(int(cloneFrom))
         return col.decks.add_config_returning_id(name, clone)
+
     return await rt.service.run(fn)
 
 
@@ -937,6 +1012,7 @@ async def remove_deck_config_id(rt, configId=None):
             return False
         col.decks.remove_config(int(configId))
         return True
+
     return await rt.service.run(fn)
 
 
@@ -955,14 +1031,25 @@ async def get_deck_stats(rt, decks=None):
                 continue
             node = col.decks.find_deck_in_tree(tree, did)
             if node is None:  # exists but pruned from the due-tree (e.g. empty) → zeros
-                out[str(did)] = {"deck_id": did, "name": name, "new_count": 0,
-                                 "learn_count": 0, "review_count": 0, "total_in_deck": 0}
+                out[str(did)] = {
+                    "deck_id": did,
+                    "name": name,
+                    "new_count": 0,
+                    "learn_count": 0,
+                    "review_count": 0,
+                    "total_in_deck": 0,
+                }
             else:
-                out[str(did)] = {"deck_id": did, "name": name,
-                                 "new_count": node.new_count, "learn_count": node.learn_count,
-                                 "review_count": node.review_count,
-                                 "total_in_deck": node.total_in_deck}
+                out[str(did)] = {
+                    "deck_id": did,
+                    "name": name,
+                    "new_count": node.new_count,
+                    "learn_count": node.learn_count,
+                    "review_count": node.review_count,
+                    "total_in_deck": node.total_in_deck,
+                }
         return out
+
     return await rt.service.run(fn)
 
 
@@ -1026,9 +1113,11 @@ async def test_both_layers_share_one_service(tmp_path: Path):
     await service.open()
     try:
         rt = Runtime(service=service, config=AnkiConnectConfig())
-        did = await create_deck(rt, deck="Shared")          # AnkiConnect action layer
+        did = await create_deck(rt, deck="Shared")  # AnkiConnect action layer
         assert isinstance(did, int)
-        html = await service.run(render_deckbrowser_html)    # web UI renderer, same service
+        html = await service.run(
+            render_deckbrowser_html
+        )  # web UI renderer, same service
         assert "Shared" in html
     finally:
         await service.close()
@@ -1055,8 +1144,9 @@ Expected: FAIL (`create_app()` doesn't accept `service=`).
 
 In `ankiweb/app.py`, change `create_app` to accept an optional shared service/hub and only own them when not injected. Replace the signature + lifespan:
 ```python
-def create_app(settings: Settings | None = None, service: CollectionService | None = None,
-               hub=None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, service: CollectionService | None = None, hub=None
+) -> FastAPI:
     settings = settings or Settings.from_env()
     owns = service is None
 
@@ -1079,6 +1169,7 @@ def create_app(settings: Settings | None = None, service: CollectionService | No
         finally:
             if owns:
                 await svc.close()
+
     ...
 ```
 (Keep the rest of `create_app` — middleware, routes, includes — unchanged. The only changes are the signature, the `owns`/injected service, and a hub created if not supplied. Note: when a service is injected and shared, the subscribe-binding registers an additional OpChanges subscriber each time an app is created — acceptable here since the test creates each app once; the entrypoint creates each once too.)
@@ -1100,16 +1191,22 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 async def _serve() -> None:
     settings = Settings.from_env()
-    ac_config = AnkiConnectConfig.load(settings.collection_path.parent / "ankiconnect.json")
+    ac_config = AnkiConnectConfig.load(
+        settings.collection_path.parent / "ankiconnect.json"
+    )
     service = CollectionService(settings)
     await service.open()
     hub = BridgeHub()
     web = create_app(settings, service=service, hub=hub)
     api = create_ankiconnect_app(settings, service=service, config=ac_config, hub=hub)
-    web_server = uvicorn.Server(uvicorn.Config(web, host=settings.host, port=settings.port,
-                                               log_level="info"))
-    api_server = uvicorn.Server(uvicorn.Config(api, host=ac_config.bind_address,
-                                               port=ac_config.bind_port, log_level="info"))
+    web_server = uvicorn.Server(
+        uvicorn.Config(web, host=settings.host, port=settings.port, log_level="info")
+    )
+    api_server = uvicorn.Server(
+        uvicorn.Config(
+            api, host=ac_config.bind_address, port=ac_config.bind_port, log_level="info"
+        )
+    )
     try:
         await asyncio.gather(web_server.serve(), api_server.serve())
     finally:

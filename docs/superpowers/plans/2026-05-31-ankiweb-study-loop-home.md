@@ -44,9 +44,11 @@ def test_op_changes_to_flags():
     from ankiweb.collection_service import op_changes_to_flags
     from anki.collection import Collection
     import tempfile, os
+
     col = Collection(os.path.join(tempfile.mkdtemp(), "c.anki2"))
     try:
-        n = col.new_note(col.models.by_name("Basic")); n["Front"] = "x"
+        n = col.new_note(col.models.by_name("Basic"))
+        n["Front"] = "x"
         res = col.add_note(n, col.decks.id("Default"))  # OpChangesWithCount
         flags = op_changes_to_flags(res.changes)
         assert flags["note"] is True
@@ -61,11 +63,12 @@ async def test_run_op_emits_flags(service):
     service.subscribe(lambda flags, initiator: seen.append((flags, initiator)))
 
     def add(col):
-        n = col.new_note(col.models.by_name("Basic")); n["Front"] = "y"
+        n = col.new_note(col.models.by_name("Basic"))
+        n["Front"] = "y"
         return col.add_note(n, col.decks.id("Default"))
 
     res = await service.run_op(add, initiator="deckbrowser")
-    assert res.count == 1                      # OpChangesWithCount passthrough return
+    assert res.count == 1  # OpChangesWithCount passthrough return
     assert len(seen) == 1
     flags, initiator = seen[0]
     assert initiator == "deckbrowser"
@@ -94,15 +97,19 @@ def op_changes_to_flags(changes) -> dict:
 ```
 Add this method to `CollectionService` (after `run`):
 ```python
-    async def run_op(self, fn: Callable[[Collection], T], initiator: str | None = None) -> T:
-        """Run a mutating op (fn returns OpChanges or an OpChanges* wrapper), then
-        broadcast the change flags on the bus. Returns the op result unchanged."""
-        result = await self.run(fn)
-        changes = getattr(result, "changes", result)
-        flags = op_changes_to_flags(changes)
-        if any(flags.values()):  # skip no-op broadcasts (e.g. set_current returns all-False)
-            await self.emit(flags, initiator)
-        return result
+async def run_op(
+    self, fn: Callable[[Collection], T], initiator: str | None = None
+) -> T:
+    """Run a mutating op (fn returns OpChanges or an OpChanges* wrapper), then
+    broadcast the change flags on the bus. Returns the op result unchanged."""
+    result = await self.run(fn)
+    changes = getattr(result, "changes", result)
+    flags = op_changes_to_flags(changes)
+    if any(
+        flags.values()
+    ):  # skip no-op broadcasts (e.g. set_current returns all-False)
+        await self.emit(flags, initiator)
+    return result
 ```
 
 - [ ] **Step 4: Run to verify pass**
@@ -222,8 +229,8 @@ def test_render_page_structure():
     html = render_page("deckbrowser", "<div id=body>hi</div>", ["css/deckbrowser.css"])
     assert "<!doctype html>" in html.lower()
     assert 'window.__ankiwebContext="deckbrowser"' in html
-    assert '/_anki/css/deckbrowser.css' in html
-    assert '/shell/static/bootstrap.js' in html
+    assert "/_anki/css/deckbrowser.css" in html
+    assert "/shell/static/bootstrap.js" in html
     assert "<div id=body>hi</div>" in html
     # context script must come before the bootstrap script so the Bridge picks it up
     assert html.index("__ankiwebContext") < html.index("bootstrap.js")
@@ -253,9 +260,7 @@ def render_page(context: str, body: str, css_files: Sequence[str] = ()) -> str:
     Sets window.__ankiwebContext BEFORE loading bootstrap.js so the Bridge connects
     to /ws?context=<context>. Links the given vendored CSS (paths relative to /_anki/).
     """
-    links = "".join(
-        f'<link rel="stylesheet" href="/_anki/{c}">' for c in css_files
-    )
+    links = "".join(f'<link rel="stylesheet" href="/_anki/{c}">' for c in css_files)
     return (
         "<!doctype html>\n"
         '<html><head><meta charset="utf-8">'
@@ -307,7 +312,8 @@ def col():
 
 def test_renders_default_deck_with_counts(col):
     # add one new card to the Default deck
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "q"
     col.add_note(n, col.decks.id("Default"))
     html = render_deckbrowser_html(col)
     assert "Default" in html
@@ -319,7 +325,7 @@ def test_renders_default_deck_with_counts(col):
     assert "new-count" in html
     assert "studiedToday" in html
     # open command wired
-    assert f'pycmd(\'open:{did}\')' in html or f'open:{did}' in html
+    assert f"pycmd('open:{did}')" in html or f"open:{did}" in html
 
 
 def test_subdeck_indented_and_nested(col):
@@ -348,7 +354,9 @@ import html
 
 
 def _count_span(n: int, cls: str) -> str:
-    return f"<span class='{cls}'>{n}</span>" if n else "<span class='zero-count'>0</span>"
+    return (
+        f"<span class='{cls}'>{n}</span>" if n else "<span class='zero-count'>0</span>"
+    )
 
 
 def _render_node(node, current_id: int, out: list) -> None:
@@ -356,15 +364,21 @@ def _render_node(node, current_id: int, out: list) -> None:
     row_class = "deck current" if node.deck_id == current_id else "deck"
     if node.children:
         prefix = "+" if node.collapsed else "−"  # − minus sign
-        collapse = (f"<a class='collapse' href='#' "
-                    f"onclick='return pycmd(\"collapse:{node.deck_id}\")'>{prefix}</a>")
+        collapse = (
+            f"<a class='collapse' href='#' "
+            f"onclick='return pycmd(\"collapse:{node.deck_id}\")'>{prefix}</a>"
+        )
     else:
         collapse = "<span class='collapse'></span>"
     filtered = " filtered" if node.filtered else ""
-    name = (f"<a class='deck{filtered}' href='#' "
-            f"onclick=\"return pycmd('open:{node.deck_id}')\">{html.escape(node.name)}</a>")
-    gears = (f"<a class='opts' href='#' onclick='return pycmd(\"opts:{node.deck_id}\")'>"
-             f"<img src='/_anki/imgs/gears.svg' class='gears'></a>")
+    name = (
+        f"<a class='deck{filtered}' href='#' "
+        f"onclick=\"return pycmd('open:{node.deck_id}')\">{html.escape(node.name)}</a>"
+    )
+    gears = (
+        f"<a class='opts' href='#' onclick='return pycmd(\"opts:{node.deck_id}\")'>"
+        f"<img src='/_anki/imgs/gears.svg' class='gears'></a>"
+    )
     out.append(
         f"<tr class='{row_class}' id='{node.deck_id}'>"
         f"<td class='decktd'>{indent}{collapse}{name}</td>"
@@ -390,8 +404,14 @@ def render_deckbrowser_html(col) -> str:
     if tree is not None:
         for child in tree.children:
             _render_node(child, current_id, rows)
-    table = "<table cellspacing='0' cellpadding='3' class='decks'>" + "".join(rows) + "</table>"
-    studied = f"<div id='studiedToday'><span>{html.escape(col.studied_today())}</span></div>"
+    table = (
+        "<table cellspacing='0' cellpadding='3' class='decks'>"
+        + "".join(rows)
+        + "</table>"
+    )
+    studied = (
+        f"<div id='studiedToday'><span>{html.escape(col.studied_today())}</span></div>"
+    )
     create = "<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
     return f"<center>{table}{studied}<div class='dyn-buttons'>{create}</div></center>"
 ```
@@ -440,7 +460,8 @@ def client(tmp_path: Path):
 
 
 def _seed(col):
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "q"
     col.add_note(n, col.decks.id("Default"))
 
 
@@ -459,9 +480,13 @@ def test_deckbrowser_route(client):
 
 
 def test_open_command_sets_current_and_navigates(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"open:{did}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "deckbrowser", "arg": f"open:{did}"}
+        )
         # A run_op-backed command may also broadcast an {type:opchanges} frame; drain
         # until the navigate call (set_current is all-False so usually no opchanges frame,
         # but this is robust for any run_op-backed command).
@@ -471,7 +496,9 @@ def test_open_command_sets_current_and_navigates(client):
         assert msg["fn"] == "ankiwebNavigate"
         assert msg["args"] == ["/overview"]
     # current deck is now Default
-    cur = client.portal.call(client.app.state.service.run, lambda col: col.decks.get_current_id())
+    cur = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.get_current_id()
+    )
     assert cur == did
 ```
 
@@ -486,11 +513,14 @@ Append to `ankiweb/screens/deckbrowser.py`:
 ```python
 def make_deckbrowser_handler(service, hub):
     """Returns an async bridge handler(arg) for the 'deckbrowser' context."""
+
     async def handler(arg: str):
         cmd, _, rest = arg.partition(":")
         if cmd == "open" or cmd == "select":
             did = int(rest)
-            await service.run_op(lambda col: col.decks.set_current(did), initiator="deckbrowser")
+            await service.run_op(
+                lambda col: col.decks.set_current(did), initiator="deckbrowser"
+            )
             if cmd == "open":
                 await hub.push_call("deckbrowser", "ankiwebNavigate", ["/overview"])
             else:
@@ -500,10 +530,13 @@ def make_deckbrowser_handler(service, hub):
 
             def toggle(col):
                 from anki.decks import DeckCollapseScope
+
                 # Read persisted state from the deck dict, NOT the due-tree node:
                 # deck_due_tree() prunes empty decks, so a node may be missing.
                 collapsed = bool(col.decks.get(did).get("collapsed", False))
-                return col.decks.set_collapsed(did, not collapsed, DeckCollapseScope.REVIEWER)
+                return col.decks.set_collapsed(
+                    did, not collapsed, DeckCollapseScope.REVIEWER
+                )
 
             await service.run_op(toggle, initiator="deckbrowser")
             await hub.push_call("deckbrowser", "ankiwebReload", [])
@@ -529,7 +562,10 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 from ankiweb.screens.page import render_page
-from ankiweb.screens.deckbrowser import render_deckbrowser_html, make_deckbrowser_handler
+from ankiweb.screens.deckbrowser import (
+    render_deckbrowser_html,
+    make_deckbrowser_handler,
+)
 
 
 def build_screen_router(get_service) -> APIRouter:
@@ -556,7 +592,9 @@ In `ankiweb/app.py`:
 2. In the lifespan, after `app.state.hub = hub`, add: `register_screen_handlers(service, hub)`.
 3. Register the screen router **before** the media catch-all (place the line just above the `build_media_router` include):
 ```python
-    app.include_router(build_screen_router(lambda: app.state.service))  # GET / and /deckbrowser
+app.include_router(
+    build_screen_router(lambda: app.state.service)
+)  # GET / and /deckbrowser
 ```
 
 - [ ] **Step 6: Run to verify pass**
@@ -598,14 +636,15 @@ def col():
 
 
 def test_overview_shows_counts_and_study_button(col):
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "q"
     col.add_note(n, col.decks.id("Default"))
     col.decks.set_current(col.decks.id("Default"))
     html = render_overview_html(col)
-    assert "Default" in html               # deck name heading
+    assert "Default" in html  # deck name heading
     assert "Study Now" in html
-    assert 'pycmd(\'study\')' in html or "study" in html
-    assert "new-count" in html             # one new card shown
+    assert "pycmd('study')" in html or "study" in html
+    assert "new-count" in html  # one new card shown
 
 
 def test_overview_finished_shows_congrats(col):
@@ -636,14 +675,16 @@ import html
 def render_congrats_html(col) -> str:
     """Simple server-rendered finished screen (the real SvelteKit congrats is a later plan)."""
     info = col.sched.congratulations_info()
-    lines = ["<h1>Congratulations!</h1>",
-             "<p>You have finished this deck for now.</p>"]
+    lines = ["<h1>Congratulations!</h1>", "<p>You have finished this deck for now.</p>"]
     if info.learn_remaining:
         mins = max(1, info.secs_until_next_learn // 60)
-        lines.append(f"<p>The next learning card will be ready in {mins} minute(s).</p>")
+        lines.append(
+            f"<p>The next learning card will be ready in {mins} minute(s).</p>"
+        )
     if info.have_user_buried or info.have_sched_buried:
-        lines.append("<p><button onclick='pycmd(\"unbury\")'>Unbury</button> "
-                     "buried cards.</p>")
+        lines.append(
+            "<p><button onclick='pycmd(\"unbury\")'>Unbury</button> buried cards.</p>"
+        )
     back = "<p><button onclick='pycmd(\"decks\")'>Back to Decks</button></p>"
     return "<center class='congrats'>" + "".join(lines) + back + "</center>"
 ```
@@ -685,8 +726,10 @@ def render_overview_html(col) -> str:
         f"{_number_cell(review, 'review-count')}"
         "</tr></table>"
     )
-    study = ("<button id='study' class='but' autofocus "
-             "onclick=\"pycmd('study');return false;\">Study Now</button>")
+    study = (
+        "<button id='study' class='but' autofocus "
+        "onclick=\"pycmd('study');return false;\">Study Now</button>"
+    )
 
     bottom = ["<button onclick='pycmd(\"opts\")'>Options</button>"]
     if deck.get("dyn"):
@@ -731,8 +774,12 @@ git commit -m "feat: overview + server-rendered congrats generators"
 
 ```python
 def test_overview_route(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     r = client.get("/overview")
     assert r.status_code == 200
     assert 'window.__ankiwebContext="overview"' in r.text
@@ -773,9 +820,14 @@ def make_overview_handler(service, hub):
         elif arg == "decks":
             await hub.push_call("overview", "ankiwebNavigate", ["/deckbrowser"])
         elif arg == "unbury":
+
             def unbury(col):
                 from anki.scheduler.base import UnburyDeck
-                return col.sched.unbury_deck(col.decks.get_current_id(), UnburyDeck.Mode.ALL)
+
+                return col.sched.unbury_deck(
+                    col.decks.get_current_id(), UnburyDeck.Mode.ALL
+                )
+
             await service.run_op(unbury, initiator="overview")
             await hub.push_call("overview", "ankiwebReload", [])
         elif arg in ("refresh", "empty"):
@@ -783,11 +835,15 @@ def make_overview_handler(service, hub):
             is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
             if is_dyn:  # rebuild/empty raise FilteredDeckError on a normal deck
                 if arg == "refresh":
-                    await service.run_op(lambda col: col.sched.rebuild_filtered_deck(did),
-                                         initiator="overview")
+                    await service.run_op(
+                        lambda col: col.sched.rebuild_filtered_deck(did),
+                        initiator="overview",
+                    )
                 else:
-                    await service.run_op(lambda col: col.sched.empty_filtered_deck(did),
-                                         initiator="overview")
+                    await service.run_op(
+                        lambda col: col.sched.empty_filtered_deck(did),
+                        initiator="overview",
+                    )
                 await hub.push_call("overview", "ankiwebReload", [])
         # 'opts' (deck options), 'studymore' (custom study), 'description' deferred to later plans.
         return None
@@ -849,20 +905,24 @@ Expected: FAIL (no /reviewer route).
 
 In `ankiweb/screens/routes.py`, inside `build_screen_router` (before `return router`):
 ```python
-    @router.get("/reviewer", response_class=HTMLResponse)
-    async def reviewer_page():
-        body = ("<center><h2>Reviewer</h2>"
-                "<p>The study screen arrives in the next milestone.</p>"
-                "<button onclick='pycmd(\"decks\")'>Back to Decks</button></center>")
-        return HTMLResponse(render_page("reviewer", body, ["css/reviewer.css"]))
+@router.get("/reviewer", response_class=HTMLResponse)
+async def reviewer_page():
+    body = (
+        "<center><h2>Reviewer</h2>"
+        "<p>The study screen arrives in the next milestone.</p>"
+        "<button onclick='pycmd(\"decks\")'>Back to Decks</button></center>"
+    )
+    return HTMLResponse(render_page("reviewer", body, ["css/reviewer.css"]))
 ```
 In `register_screen_handlers`, add a minimal reviewer handler so "Back to Decks" works:
 ```python
-    async def reviewer_nav(arg: str):
-        if arg == "decks":
-            await hub.push_call("reviewer", "ankiwebNavigate", ["/deckbrowser"])
-        return None
-    hub.set_handler("reviewer", reviewer_nav)
+async def reviewer_nav(arg: str):
+    if arg == "decks":
+        await hub.push_call("reviewer", "ankiwebNavigate", ["/deckbrowser"])
+    return None
+
+
+hub.set_handler("reviewer", reviewer_nav)
 ```
 
 - [ ] **Step 4: Run to verify pass**
@@ -916,8 +976,11 @@ def live_server(tmp_path: Path):
         col.close()
 
     settings = Settings(collection_path=col_path, port=8124)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8124, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8124, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10

@@ -21,9 +21,11 @@ async def test_both_layers_share_one_service(tmp_path: Path):
     await service.open()
     try:
         rt = Runtime(service=service, config=AnkiConnectConfig())
-        did = await create_deck(rt, deck="Shared")          # AnkiConnect action layer
+        did = await create_deck(rt, deck="Shared")  # AnkiConnect action layer
         assert isinstance(did, int)
-        html = await service.run(render_deckbrowser_html)    # web UI renderer, same service
+        html = await service.run(
+            render_deckbrowser_html
+        )  # web UI renderer, same service
         assert "Shared" in html
     finally:
         await service.close()

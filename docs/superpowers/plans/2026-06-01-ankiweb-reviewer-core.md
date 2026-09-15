@@ -51,7 +51,10 @@ import tempfile, os
 import pytest
 from anki.collection import Collection
 from ankiweb.screens.reviewer import (
-    ReviewerSession, load_question, render_answer, answer_current,
+    ReviewerSession,
+    load_question,
+    render_answer,
+    answer_current,
 )
 
 
@@ -59,7 +62,9 @@ from ankiweb.screens.reviewer import (
 def col():
     c = Collection(os.path.join(tempfile.mkdtemp(), "c.anki2"))
     for i in range(2):
-        n = c.new_note(c.models.by_name("Basic")); n["Front"] = f"Q{i}"; n["Back"] = f"A{i}"
+        n = c.new_note(c.models.by_name("Basic"))
+        n["Front"] = f"Q{i}"
+        n["Back"] = f"A{i}"
         c.add_note(n, c.decks.id("Default"))
     yield c
     c.close()
@@ -69,7 +74,7 @@ def test_load_question_returns_html_and_sets_session(col):
     s = ReviewerSession()
     info = load_question(col, s)
     assert info is not None
-    assert "Q0" in info["q"] or "Q1" in info["q"]   # one of the two cards' fronts
+    assert "Q0" in info["q"] or "Q1" in info["q"]  # one of the two cards' fronts
     assert info["bodyclass"].startswith("card card")
     assert s.card is not None and s.states is not None
 
@@ -87,18 +92,18 @@ def test_render_answer_has_answer_and_four_labels(col):
     s = ReviewerSession()
     load_question(col, s)
     info = render_answer(col, s)
-    assert info["a"]                       # answer HTML present
-    assert len(info["labels"]) == 4        # Again/Hard/Good/Easy interval labels
+    assert info["a"]  # answer HTML present
+    assert len(info["labels"]) == 4  # Again/Hard/Good/Easy interval labels
 
 
 def test_answer_advances_queue(col):
     s = ReviewerSession()
     load_question(col, s)
-    before = col.sched.counts()            # (new, learn, review)
-    changes = answer_current(col, s, 3)    # rate Good
+    before = col.sched.counts()  # (new, learn, review)
+    changes = answer_current(col, s, 3)  # rate Good
     assert changes.study_queues is True
     after = col.sched.counts()
-    assert after != before                 # answering moved the card
+    assert after != before  # answering moved the card
 ```
 
 - [ ] **Step 2: Run to verify failure**
@@ -118,9 +123,10 @@ from dataclasses import dataclass
 class ReviewerSession:
     """Holds the in-flight card (timer started) and its scheduling states between
     show-question, show-answer, and answer. Single-user → one session per reviewer."""
-    card: object = None      # anki.cards.Card with start_timer() already called
-    states: object = None    # SchedulingStates from the queue
-    context: object = None   # SchedulingContext
+
+    card: object = None  # anki.cards.Card with start_timer() already called
+    states: object = None  # SchedulingStates from the queue
+    context: object = None  # SchedulingContext
 
 
 def load_question(col, session: ReviewerSession) -> dict | None:
@@ -136,7 +142,11 @@ def load_question(col, session: ReviewerSession) -> dict | None:
     session.card = card
     session.states = top.states
     session.context = top.context
-    return {"q": card.question(), "a": card.answer(), "bodyclass": f"card card{card.ord + 1}"}
+    return {
+        "q": card.question(),
+        "a": card.answer(),
+        "bodyclass": f"card card{card.ord + 1}",
+    }
 
 
 def render_answer(col, session: ReviewerSession) -> dict:
@@ -150,9 +160,12 @@ def render_answer(col, session: ReviewerSession) -> dict:
 def answer_current(col, session: ReviewerSession, ease: int):
     """Answer the in-flight card with ease 1..4. Returns OpChanges."""
     from anki.scheduler.v3 import CardAnswer
+
     rating_map = {
-        1: CardAnswer.Rating.AGAIN, 2: CardAnswer.Rating.HARD,
-        3: CardAnswer.Rating.GOOD, 4: CardAnswer.Rating.EASY,
+        1: CardAnswer.Rating.AGAIN,
+        2: CardAnswer.Rating.HARD,
+        3: CardAnswer.Rating.GOOD,
+        4: CardAnswer.Rating.EASY,
     }
     answer = col.sched.build_answer(
         card=session.card, states=session.states, rating=rating_map[ease]
@@ -194,6 +207,7 @@ Report: Status, test results (pytest summary), files changed, self-review findin
 ```python
 def test_show_answer_bar():
     from ankiweb.screens.reviewer import show_answer_bar
+
     html = show_answer_bar()
     assert "Show Answer" in html
     assert "pycmd('ans')" in html
@@ -201,6 +215,7 @@ def test_show_answer_bar():
 
 def test_ease_buttons_bar():
     from ankiweb.screens.reviewer import ease_buttons_bar
+
     html = ease_buttons_bar(["<1m", "<6m", "<10m", "3d"])
     for name in ("Again", "Hard", "Good", "Easy"):
         assert name in html
@@ -270,9 +285,11 @@ Report: Status, test results, files changed, self-review, commit SHA, concerns.
 ```python
 def test_render_page_injects_js_files_before_bootstrap():
     from ankiweb.screens.page import render_page
-    html = render_page("reviewer", "<div id=qa></div>",
-                       ["css/reviewer.css"], ["js/reviewer.js"])
-    assert '/_anki/js/reviewer.js' in html
+
+    html = render_page(
+        "reviewer", "<div id=qa></div>", ["css/reviewer.css"], ["js/reviewer.js"]
+    )
+    assert "/_anki/js/reviewer.js" in html
     # vendored js must load before the shell bootstrap so window._showQuestion exists
     assert html.index("/_anki/js/reviewer.js") < html.index("bootstrap.js")
     # and after the context var
@@ -350,6 +367,7 @@ Append to `tests/test_reviewer.py`:
 ```python
 def test_reviewer_page_body_loads_qa_and_registers():
     from ankiweb.screens.reviewer import reviewer_page_body
+
     body = reviewer_page_body()
     assert "id='qa'" in body or 'id="qa"' in body
     assert "ankiweb-answer" in body
@@ -364,7 +382,7 @@ def test_reviewer_route_serves_real_page(client):
     r = client.get("/reviewer")
     assert r.status_code == 200
     assert 'window.__ankiwebContext="reviewer"' in r.text
-    assert "/_anki/js/reviewer.js" in r.text          # real reviewer bundle loaded
+    assert "/_anki/js/reviewer.js" in r.text  # real reviewer bundle loaded
     assert "/_anki/css/reviewer.css" in r.text
     assert "id='qa'" in r.text or 'id="qa"' in r.text
 
@@ -372,12 +390,18 @@ def test_reviewer_route_serves_real_page(client):
 def test_reviewer_show_pushes_question(client):
     # seed a card and select Default
     client.portal.call(client.app.state.service.run, _seed)
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
         msgs = {}
-        for _ in range(2):  # expect _showQuestion + ankiwebSetAnswerBar (order not guaranteed)
+        for _ in range(
+            2
+        ):  # expect _showQuestion + ankiwebSetAnswerBar (order not guaranteed)
             m = ws.receive_json()
             if m["type"] == "call":
                 msgs[m["fn"]] = m["args"]
@@ -388,12 +412,17 @@ def test_reviewer_show_pushes_question(client):
 
 def test_reviewer_ease_answers_and_shows_next(client):
     # The client fixture already seeds exactly ONE Basic card (do NOT seed again).
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
         # drain the two pushes from show (_showQuestion + ankiwebSetAnswerBar)
-        ws.receive_json(); ws.receive_json()
+        ws.receive_json()
+        ws.receive_json()
         # answer Easy (ease4): a new card graduates to review (multi-day) → today's queue empties
         # → reviewer navigates to /overview. (Good/ease3 would move it to learning, which
         # may still be queued, so use Easy for a deterministic "finished".)
@@ -402,7 +431,8 @@ def test_reviewer_ease_answers_and_shows_next(client):
         for _ in range(5):  # tolerate an intervening opchanges broadcast frame
             m = ws.receive_json()
             if m["type"] == "call" and m["fn"] == "ankiwebNavigate":
-                nav = m["args"]; break
+                nav = m["args"]
+                break
         assert nav == ["/overview"]
 ```
 (Note: the Plan-2 `client` fixture in `tests/test_screen_routes.py` already seeds exactly ONE Basic card via `_seed`. `test_reviewer_ease_answers_and_shows_next` therefore must NOT seed again — it answers that single card with Easy (ease4), which graduates it out of today's queue so the reviewer finishes and navigates to `/overview`. The `for _ in range(5)` loop only needs to tolerate one intervening `opchanges` broadcast frame (from the `run_op` answer) before the `ankiwebNavigate` call. `test_reviewer_show_pushes_question` calls `_seed` once more, which is fine — it only needs a card to show.)
@@ -446,8 +476,9 @@ def make_reviewer_handler(service, hub):
         if info is None:  # finished → overview (which renders Congrats)
             await hub.push_call("reviewer", "ankiwebNavigate", ["/overview"])
             return
-        await hub.push_call("reviewer", "_showQuestion",
-                            [info["q"], info["a"], info["bodyclass"]])
+        await hub.push_call(
+            "reviewer", "_showQuestion", [info["q"], info["a"], info["bodyclass"]]
+        )
         await hub.push_call("reviewer", "ankiwebSetAnswerBar", [show_answer_bar()])
 
     async def handler(arg: str):
@@ -456,12 +487,14 @@ def make_reviewer_handler(service, hub):
         elif arg == "ans":
             info = await service.run(lambda col: render_answer(col, session))
             await hub.push_call("reviewer", "_showAnswer", [info["a"]])
-            await hub.push_call("reviewer", "ankiwebSetAnswerBar",
-                                [ease_buttons_bar(info["labels"])])
+            await hub.push_call(
+                "reviewer", "ankiwebSetAnswerBar", [ease_buttons_bar(info["labels"])]
+            )
         elif arg in ("ease1", "ease2", "ease3", "ease4"):
             ease = int(arg[4:])
-            await service.run_op(lambda col: answer_current(col, session, ease),
-                                 initiator="reviewer")
+            await service.run_op(
+                lambda col: answer_current(col, session, ease), initiator="reviewer"
+            )
             await _show_next()
         elif arg == "decks":
             await hub.push_call("reviewer", "ankiwebNavigate", ["/deckbrowser"])
@@ -476,15 +509,21 @@ def make_reviewer_handler(service, hub):
 1. Add import: `from ankiweb.screens.reviewer import reviewer_page_body, make_reviewer_handler`.
 2. Replace the placeholder `/reviewer` route's body. The route becomes:
 ```python
-    @router.get("/reviewer", response_class=HTMLResponse)
-    async def reviewer_page():
-        return HTMLResponse(render_page(
+@router.get("/reviewer", response_class=HTMLResponse)
+async def reviewer_page():
+    return HTMLResponse(
+        render_page(
             "reviewer",
             reviewer_page_body(),
             ["css/reviewer.css"],
-            ["js/vendor/jquery.min.js", "js/mathjax.js",
-             "js/vendor/mathjax/tex-chtml-full.js", "js/reviewer.js"],
-        ))
+            [
+                "js/vendor/jquery.min.js",
+                "js/mathjax.js",
+                "js/vendor/mathjax/tex-chtml-full.js",
+                "js/reviewer.js",
+            ],
+        )
+    )
 ```
 3. In `register_screen_handlers`, REPLACE the placeholder `reviewer_nav` registration with:
 ```python
@@ -539,22 +578,29 @@ def live_server(tmp_path: Path):
     col_path = tmp_path / "collection.anki2"
     col = Collection(str(col_path))
     try:
-        n = col.new_note(col.models.by_name("Basic")); n["Front"] = "CapitalFrance"; n["Back"] = "Paris"
+        n = col.new_note(col.models.by_name("Basic"))
+        n["Front"] = "CapitalFrance"
+        n["Back"] = "Paris"
         col.add_note(n, col.decks.id("Default"))
         col.decks.set_current(col.decks.id("Default"))
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8125)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8125, log_level="warning"))
-    t = threading.Thread(target=server.run, daemon=True); t.start()
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8125, log_level="warning"
+        )
+    )
+    t = threading.Thread(target=server.run, daemon=True)
+    t.start()
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
             raise RuntimeError("server did not start")
         time.sleep(0.05)
     yield "http://127.0.0.1:8125"
-    server.should_exit = True; t.join(timeout=5)
+    server.should_exit = True
+    t.join(timeout=5)
 
 
 def test_study_one_card(live_server):
@@ -564,12 +610,15 @@ def test_study_one_card(live_server):
         page.on("pageerror", lambda e: print("PAGEERROR:", e))
         page.goto(f"{live_server}/reviewer")
         # real reviewer.js renders the question into #qa
-        page.wait_for_function("document.getElementById('qa').textContent.includes('CapitalFrance')",
-                               timeout=6000)
+        page.wait_for_function(
+            "document.getElementById('qa').textContent.includes('CapitalFrance')",
+            timeout=6000,
+        )
         # Show Answer
         page.click("#ansbut")
-        page.wait_for_function("document.getElementById('qa').textContent.includes('Paris')",
-                               timeout=6000)
+        page.wait_for_function(
+            "document.getElementById('qa').textContent.includes('Paris')", timeout=6000
+        )
         # four ease buttons appear with interval labels
         page.wait_for_selector(".ease[data-ease='4']")
         assert page.locator(".ease").count() == 4

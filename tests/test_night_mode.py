@@ -24,7 +24,12 @@ def test_deckbrowser_has_night_toggle(client):
 
 
 def test_bootstrap_js_has_night_toggle_and_persistence():
-    js = (Path(__file__).resolve().parent.parent
-          / "ankiweb" / "shell" / "static" / "bootstrap.js").read_text()
+    js = (
+        Path(__file__).resolve().parent.parent
+        / "ankiweb"
+        / "shell"
+        / "static"
+        / "bootstrap.js"
+    ).read_text()
     assert "ankiwebToggleNight" in js
-    assert "ankiweb-night" in js          # localStorage key (persisted preference)
+    assert "ankiweb-night" in js  # localStorage key (persisted preference)

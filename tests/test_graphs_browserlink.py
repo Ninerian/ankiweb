@@ -26,11 +26,14 @@ def test_browse_q_prefills_and_searches(client):
     def seed(col):
         other = col.decks.id("Other")
         n1 = col.new_note(col.models.by_name("Basic"))
-        n1["Front"] = "defaultword"; n1["Back"] = "x"
+        n1["Front"] = "defaultword"
+        n1["Back"] = "x"
         col.add_note(n1, col.decks.id("Default"))
         n2 = col.new_note(col.models.by_name("Basic"))
-        n2["Front"] = "otherword"; n2["Back"] = "x"
+        n2["Front"] = "otherword"
+        n2["Back"] = "x"
         col.add_note(n2, other)
+
     client.portal.call(client.app.state.service.run, seed)
 
     r = client.get("/browse?q=deck:Other")

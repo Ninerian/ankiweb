@@ -20,8 +20,11 @@ async def _run(rt, name, params):
 
 
 def _gui(client, action, **params):
-    rt = Runtime(service=client.app.state.service, config=AnkiConnectConfig(),
-                 hub=client.app.state.hub)
+    rt = Runtime(
+        service=client.app.state.service,
+        config=AnkiConnectConfig(),
+        hub=client.app.state.hub,
+    )
     return client.portal.call(_run, rt, action, params)
 
 
@@ -33,15 +36,21 @@ def _drain(ws, fn):
 
 
 def test_set_data_errors_when_add_not_open(client):
-    res = _gui(client, "guiAddNoteSetData",
-               note={"modelName": "Basic", "fields": {"Front": "x"}})
+    res = _gui(
+        client,
+        "guiAddNoteSetData",
+        note={"modelName": "Basic", "fields": {"Front": "x"}},
+    )
     assert res == {"error": "Add Note dialog is not open", "code": 1}
 
 
 def test_set_data_prefills_open_add(client):
     with client.websocket_connect("/ws?context=add") as ws:
-        res = _gui(client, "guiAddNoteSetData",
-                   note={"modelName": "Basic", "fields": {"Front": "PF", "Back": "PB"}})
+        res = _gui(
+            client,
+            "guiAddNoteSetData",
+            note={"modelName": "Basic", "fields": {"Front": "PF", "Back": "PB"}},
+        )
         assert res is None
         m = _drain(ws, "ankiwebLoadNote")
         fields = dict(m["args"][0]["fields"])
@@ -50,9 +59,16 @@ def test_set_data_prefills_open_add(client):
 
 def test_gui_add_cards_prefills_open_add(client):
     with client.websocket_connect("/ws?context=add") as ws:
-        nid = _gui(client, "guiAddCards",
-                   note={"deckName": "Default", "modelName": "Basic",
-                         "fields": {"Front": "A", "Back": "B"}, "tags": ["t1"]})
+        nid = _gui(
+            client,
+            "guiAddCards",
+            note={
+                "deckName": "Default",
+                "modelName": "Basic",
+                "fields": {"Front": "A", "Back": "B"},
+                "tags": ["t1"],
+            },
+        )
         assert isinstance(nid, int)
         m = _drain(ws, "ankiwebLoadNote")
         d = m["args"][0]

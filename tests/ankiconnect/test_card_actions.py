@@ -7,7 +7,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -20,8 +22,15 @@ def _call(client, action, **params):
 
 
 def _add(client, front="Q"):
-    return _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                                          "fields": {"Front": front, "Back": "A"}})
+    return _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"Front": front, "Back": "A"},
+        },
+    )
 
 
 def test_find_cards(client):
@@ -38,7 +47,7 @@ def test_cards_info_shape(client):
     assert info["deckName"] == "Default"
     assert info["modelName"] == "Basic"
     assert "question" in info and "answer" in info and "fields" in info
-    assert info["queue"] == 0 and info["type"] == 0   # new card
+    assert info["queue"] == 0 and info["type"] == 0  # new card
     assert isinstance(info["nextReviews"], list)
 
 
@@ -85,19 +94,32 @@ def test_set_ease_factors_invalid_id(client):
     _add(client, "easebad")
     cid = _call(client, "findCards", query="deck:Default")[0]
     # valid card -> True, missing card -> False (AnkiConnect appends False for NotFoundError)
-    assert _call(client, "setEaseFactors",
-                 cards=[cid, 99999], easeFactors=[2500, 2500]) == [True, False]
+    assert _call(
+        client, "setEaseFactors", cards=[cid, 99999], easeFactors=[2500, 2500]
+    ) == [True, False]
 
 
 def test_set_specific_value_of_card_invalid_id(client):
     # missing card -> the whole call returns False (AnkiConnect returns False on NotFoundError)
-    assert _call(client, "setSpecificValueOfCard", card=99999,
-                 keys=["flags"], newValues=[1], warning_check=True) is False
+    assert (
+        _call(
+            client,
+            "setSpecificValueOfCard",
+            card=99999,
+            keys=["flags"],
+            newValues=[1],
+            warning_check=True,
+        )
+        is False
+    )
 
 
 def test_answer_cards_invalid_id(client):
     _add(client, "ansbad")
     cid = _call(client, "findCards", query="deck:Default")[0]
-    res = _call(client, "answerCards",
-                answers=[{"cardId": cid, "ease": 3}, {"cardId": 99999, "ease": 3}])
+    res = _call(
+        client,
+        "answerCards",
+        answers=[{"cardId": cid, "ease": 3}, {"cardId": 99999, "ease": 3}],
+    )
     assert res == [True, False]

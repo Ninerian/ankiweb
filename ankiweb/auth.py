@@ -5,6 +5,7 @@ If set, every web request needs a valid session cookie; the cookie value is a ha
 the password (not the password itself). Single-user, local-first — a light gate, not a
 hardened auth system. The AnkiConnect server (:8765) keeps its own `apiKey`, separate.
 """
+
 from __future__ import annotations
 import hashlib
 import hmac

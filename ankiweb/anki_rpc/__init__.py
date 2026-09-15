@@ -19,6 +19,7 @@ def build_router(get_service, get_hub=None) -> APIRouter:
         snake = camel_to_snake(method)
 
         from ankiweb.anki_rpc.handlers import CUSTOM
+
         hub = get_hub() if get_hub is not None else None
         try:
             if method in CUSTOM:

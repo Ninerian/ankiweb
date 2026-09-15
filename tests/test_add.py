@@ -29,7 +29,9 @@ def test_add_route_renders(client):
     assert 'window.__ankiwebContext = "add"' in r.text
     assert "/_anki/js/editor.js" in r.text
     assert "setupEditor" in r.text and "addnote:" in r.text
-    assert ("id='add-deck'" in r.text or 'id="add-deck"' in r.text) and ("id='add-notetype'" in r.text or 'id="add-notetype"' in r.text)
+    assert ("id='add-deck'" in r.text or 'id="add-deck"' in r.text) and (
+        "id='add-notetype'" in r.text or 'id="add-notetype"' in r.text
+    )
     assert "Default" in r.text and "Basic" in r.text
 
 
@@ -48,7 +50,14 @@ def test_addnote_creates_note(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["Hello","World"]'})
+        ws.send_json(
+            {
+                "type": "cmd",
+                "id": None,
+                "ctx": "add",
+                "arg": 'addnote:["Hello","World"]',
+            }
+        )
         _drain_call(ws, "ankiwebToast")
     assert _run(client, lambda col: len(col.find_notes(""))) == before + 1
     note = _run(client, lambda col: col.get_note(list(col.find_notes("Hello"))[0]))
@@ -60,7 +69,9 @@ def test_addnote_empty_rejected(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["<br>",""]'})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["<br>",""]'}
+        )
         toast = _drain_call(ws, "ankiwebToast")[0]
         assert "empty" in toast.lower()
     assert _run(client, lambda col: len(col.find_notes(""))) == before
@@ -71,7 +82,9 @@ def test_setnotetype_reloads_fields(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": f"setnotetype:{cloze_id}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": f"setnotetype:{cloze_id}"}
+        )
         data = _drain_call(ws, "ankiwebLoadNote")[0]
         assert "Text" in [f[0] for f in data["fields"]]
 
@@ -81,9 +94,15 @@ def test_setdeck_and_tags_applied(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": f"setdeck:{other}"})
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": 'saveTags:["mytag"]'})
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["Q","A"]'})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": f"setdeck:{other}"}
+        )
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": 'saveTags:["mytag"]'}
+        )
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["Q","A"]'}
+        )
         _drain_call(ws, "ankiwebToast")
     nid = _run(client, lambda col: list(col.find_notes("Q"))[0])
     note = _run(client, lambda col: col.get_note(nid))
@@ -93,5 +112,6 @@ def test_setdeck_and_tags_applied(client):
 
 def test_add_body_has_paste_handler(client):
     from ankiweb.screens.add import render_add_html
+
     body = client.portal.call(client.app.state.service.run, render_add_html)
     assert "pasteHTML" in body and "/upload_media" in body

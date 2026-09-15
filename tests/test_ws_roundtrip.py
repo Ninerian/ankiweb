@@ -16,6 +16,7 @@ def test_cmd_with_callback_roundtrip(client):
     # register a handler for ctx "t" that echoes the arg uppercased
     async def handler(arg: str):
         return arg.upper()
+
     client.app.state.hub.set_handler("t", handler)
 
     with client.websocket_connect("/ws?context=t") as ws:
@@ -28,7 +29,8 @@ def test_opchanges_broadcast_reaches_socket(client):
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
         # Drive the broadcast on the app's own loop via the TestClient portal.
         client.portal.call(
-            client.app.state.hub.broadcast_opchanges, {"study_queues": True}, "init1")
+            client.app.state.hub.broadcast_opchanges, {"study_queues": True}, "init1"
+        )
         msg = ws.receive_json()
         assert msg["type"] == "opchanges"
         assert msg["flags"] == {"study_queues": True}

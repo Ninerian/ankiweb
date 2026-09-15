@@ -2,8 +2,11 @@ from __future__ import annotations
 import html
 from typing import Callable
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
-from ankiweb.i18n import tr
+from datastar_py.fastapi import (
+    DatastarResponse,
+    ServerSentEventGenerator as SSE,
+    ReadSignals,
+)
 from ankiweb.screens import templating
 
 
@@ -25,6 +28,7 @@ def render_card_layout_html(col, ntid: int) -> str:
         css=css,
         ntid=int(ntid),
     )
+
 
 def make_card_layout_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/card-layout")
@@ -73,7 +77,11 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
             payload_templates = p["templates"]
             kept = {t["orig"] for t in payload_templates if t.get("orig") is not None}
             deletes = [t for t in cur if t["ord"] not in kept]
-            remaining = len(cur) - len(deletes) + sum(1 for t in payload_templates if t.get("orig") is None)
+            remaining = (
+                len(cur)
+                - len(deletes)
+                + sum(1 for t in payload_templates if t.get("orig") is None)
+            )
             if len(payload_templates) == 0 or remaining < 1:
                 raise Exception("a notetype needs at least one card type")
             for t in deletes:

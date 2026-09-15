@@ -1,4 +1,5 @@
 """Scheduling extra actions."""
+
 from __future__ import annotations
 from ankiweb.ankiconnect.registry import extra_action
 from ankiweb.ankiconnect.actions._helpers import run_emit
@@ -15,8 +16,11 @@ def _find_node(node, did):
     return None
 
 
-@extra_action("extendCardLimits", params=ExtendCardLimitsParams,
-              summary="Add to/subtract from today's new/review card limits for a deck")
+@extra_action(
+    "extendCardLimits",
+    params=ExtendCardLimitsParams,
+    summary="Add to/subtract from today's new/review card limits for a deck",
+)
 async def extend_card_limits(rt, deck=None, deckId=None, new=0, review=0):
     """Temporarily change today's new and/or review card limits for a deck — the API form of
     Custom Study's 'Increase today's … card limit' (negative reduces). Returns the deck's
@@ -26,8 +30,11 @@ async def extend_card_limits(rt, deck=None, deckId=None, new=0, review=0):
     def fn(col):
         # default=False is REQUIRED: col.decks.get(id) otherwise returns the Default deck for
         # ANY unknown id, so a bogus deckId would silently adjust the wrong deck's limits.
-        did = deckId if (deckId is not None
-                         and col.decks.get(deckId, default=False) is not None) else None
+        did = (
+            deckId
+            if (deckId is not None and col.decks.get(deckId, default=False) is not None)
+            else None
+        )
         if did is None and deck:
             d = col.decks.by_name(deck)
             did = d["id"] if d is not None else None
@@ -36,16 +43,20 @@ async def extend_card_limits(rt, deck=None, deckId=None, new=0, review=0):
         last_op = None
         if new:
             last_op = col.sched.custom_study(
-                sp.CustomStudyRequest(deck_id=did, new_limit_delta=int(new)))
+                sp.CustomStudyRequest(deck_id=did, new_limit_delta=int(new))
+            )
         if review:
             last_op = col.sched.custom_study(
-                sp.CustomStudyRequest(deck_id=did, review_limit_delta=int(review)))
+                sp.CustomStudyRequest(deck_id=did, review_limit_delta=int(review))
+            )
         node = _find_node(col.sched.deck_due_tree(), did)
         result = {
-            "deck": col.decks.name(did), "deckId": did,
+            "deck": col.decks.name(did),
+            "deckId": did,
             "new_count": node.new_count if node else 0,
             "learn_count": node.learn_count if node else 0,
             "review_count": node.review_count if node else 0,
         }
         return result, last_op
+
     return await run_emit(rt, fn)

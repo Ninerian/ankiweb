@@ -14,9 +14,11 @@ def client(tmp_path: Path):
 def _add_card(client):
     def fn(col):
         n = col.new_note(col.models.by_name("Basic"))
-        n["Front"] = "q"; n["Back"] = "a"
+        n["Front"] = "q"
+        n["Back"] = "a"
         col.add_note(n, col.decks.id("Default"))
         return n.cards()[0].id
+
     return client.portal.call(client.app.state.service.run, fn)
 
 
@@ -38,6 +40,7 @@ def test_card_info_serves_spa_shell_two_ids(client):
 def test_card_stats_rpc_passthrough(client):
     # the card-info SPA fetches these; they must be reachable
     from ankiweb.anki_rpc.passthrough import PASSTHROUGH
+
     assert "card_stats" in PASSTHROUGH
     assert "get_review_logs" in PASSTHROUGH
 

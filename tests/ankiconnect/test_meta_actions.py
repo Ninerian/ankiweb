@@ -7,7 +7,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -32,8 +34,11 @@ def test_api_reflect_lists_actions(client):
 
 
 def test_request_permission_granted_for_localhost(client):
-    r = client.post("/", json={"action": "requestPermission", "version": 6},
-                    headers={"Origin": "http://localhost"})
+    r = client.post(
+        "/",
+        json={"action": "requestPermission", "version": 6},
+        headers={"Origin": "http://localhost"},
+    )
     res = r.json()["result"]
     assert res["permission"] == "granted"
 

@@ -38,6 +38,7 @@ Append to `tests/test_shell_build.py` (READ it first to match its style — it r
 ```python
 def test_bootstrap_has_opchanges_optout():
     from pathlib import Path
+
     js = Path("ankiweb/shell/static/bootstrap.js").read_text()
     assert "__ankiwebOnOpchanges" in js
 ```
@@ -55,7 +56,7 @@ def test_browse_refresh_repushes_rows(client):
         _drain_call(ws, "ankiwebSetRows")
         ws.send_json({"type": "cmd", "id": None, "ctx": "browser", "arg": "refresh"})
         args = _drain_call(ws, "ankiwebSetRows")
-        assert "dog" in args[0]            # re-ran the last query; rows only (no detail push)
+        assert "dog" in args[0]  # re-ran the last query; rows only (no detail push)
 ```
 (For `test_browse_open_pushes_detail_and_selection`, the `open:<cid>` path also now pushes an iframe; update its detail assert the same way. The `open` arg carries a card id; the handler resolves the note id for `/edit?nid=`.)
 
@@ -86,8 +87,9 @@ Then REBUILD: `node tools/build_shell.mjs` (regenerates `ankiweb/shell/static/bo
 
 (a) In `_STYLE`, widen the detail pane and style the iframe — add before `</style>`:
 ```python
-    "#detail{width:46%}"
-    ".editor-frame{width:100%;height:78vh;border:0}"
+"#detail{width:46%}"
+
+".editor-frame{width:100%;height:78vh;border:0}"
 ```
 (the existing `#detail{width:280px;...}` rule stays; the later `#detail{width:46%}` overrides the width — or edit the existing rule to `width:46%`. Make the detail pane wide enough for the editor.)
 
@@ -138,12 +140,19 @@ Status, pytest summaries, files changed (incl. the rebuilt bootstrap.js), self-r
 - [ ] **Step 1: Write the failing test** — append to `tests/test_screen_routes.py` (mirror its reviewer WS tests: seed a card, set current deck, connect `/ws?context=reviewer`, send `show`, drain, then `edit`):
 ```python
 def test_reviewer_edit_navigates_to_editor(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
-    nid = client.portal.call(client.app.state.service.run, lambda col: list(col.find_notes(""))[0])
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
+    nid = client.portal.call(
+        client.app.state.service.run, lambda col: list(col.find_notes(""))[0]
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
-        ws.receive_json(); ws.receive_json()          # drain the show pushes
+        ws.receive_json()
+        ws.receive_json()  # drain the show pushes
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "edit"})
         m = ws.receive_json()
         while m["type"] != "call" or m["fn"] != "ankiwebNavigate":
@@ -154,8 +163,9 @@ Also append a unit assert to `tests/test_reviewer.py` that the keydown handler m
 ```python
 def test_reviewer_body_has_edit_shortcut():
     from ankiweb.screens.reviewer import reviewer_page_body
+
     body = reviewer_page_body()
-    assert "'edit'" in body or '"edit"' in body    # the e-key -> pycmd('edit')
+    assert "'edit'" in body or '"edit"' in body  # the e-key -> pycmd('edit')
 ```
 
 - [ ] **Step 2: Run to verify failure** — `conda run -n ankiweb python -m pytest tests/test_screen_routes.py::test_reviewer_edit_navigates_to_editor tests/test_reviewer.py::test_reviewer_body_has_edit_shortcut -v` → FAIL.
@@ -211,28 +221,34 @@ _DEEP_TEXT = """
 def test_browse_single_select_embeds_editor(live_server_edit):
     url, nid = live_server_edit
     with sync_playwright() as p:
-        browser = p.chromium.launch(); page = browser.new_page()
+        browser = p.chromium.launch()
+        page = browser.new_page()
         page.goto(f"{url}/browse")
         page.wait_for_function(
-            "document.getElementById('results-body').children.length>=1", timeout=6000)
-        page.locator(".browser-row").first.click()           # single-select -> embed editor
+            "document.getElementById('results-body').children.length>=1", timeout=6000
+        )
+        page.locator(".browser-row").first.click()  # single-select -> embed editor
         page.wait_for_selector("#detail iframe.editor-frame", timeout=6000)
         frame = page.frame_locator("#detail iframe.editor-frame")
         # the editor inside the iframe mounts and loads the note's field
         page.wait_for_function(
             "() => { const f=document.querySelector('#detail iframe'); "
             "return f && f.contentDocument && f.contentDocument.querySelector('.note-editor')!==null; }",
-            timeout=8000)
+            timeout=8000,
+        )
         browser.close()
 
 
 def test_reviewer_e_opens_editor(live_server_edit):
     url, nid = live_server_edit
     with sync_playwright() as p:
-        browser = p.chromium.launch(); page = browser.new_page()
+        browser = p.chromium.launch()
+        page = browser.new_page()
         page.goto(f"{url}/reviewer")
         page.wait_for_function(
-            "document.getElementById('qa').textContent.includes('CapitalFrance')", timeout=8000)
+            "document.getElementById('qa').textContent.includes('CapitalFrance')",
+            timeout=8000,
+        )
         page.keyboard.press("e")
         page.wait_for_url("**/edit?nid=*", timeout=6000)
         browser.close()

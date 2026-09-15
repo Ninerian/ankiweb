@@ -52,13 +52,17 @@ def client(tmp_path: Path):
 
 
 def _seed(col):
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "CapitalFrance"; n["Back"] = "Paris"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "CapitalFrance"
+    n["Back"] = "Paris"
     n.tags = ["geo"]
     col.add_note(n, col.decks.id("Default"))
 
 
 def _nid(client):
-    return client.portal.call(client.app.state.service.run, lambda col: list(col.find_notes(""))[0])
+    return client.portal.call(
+        client.app.state.service.run, lambda col: list(col.find_notes(""))[0]
+    )
 
 
 def _drain_call(ws, fn, tries=6):
@@ -85,7 +89,9 @@ def test_editor_load_pushes_note(client):
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         data = _drain_call(ws, "ankiwebLoadNote")[0]
         assert data["noteId"] == nid
-        assert data["fields"][0][0] == "Front" and data["fields"][0][1] == "CapitalFrance"
+        assert (
+            data["fields"][0][0] == "Front" and data["fields"][0][1] == "CapitalFrance"
+        )
         assert data["fields"][1][1] == "Paris"
         assert len(data["fonts"]) == len(data["fields"])
         assert data["fonts"][0][0] and isinstance(data["fonts"][0][1], int)
@@ -99,13 +105,19 @@ def test_editor_blur_saves_field(client):
     with client.websocket_connect("/ws?context=editor") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"blur:1:{nid}:Lyon"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "editor", "arg": f"blur:1:{nid}:Lyon"}
+        )
         # re-load to confirm the save landed (sequential WS processing guarantees order)
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         data = _drain_call(ws, "ankiwebLoadNote")[0]
         assert data["fields"][1][1] == "Lyon"
-    assert client.portal.call(client.app.state.service.run,
-                              lambda col: col.get_note(nid).fields[1]) == "Lyon"
+    assert (
+        client.portal.call(
+            client.app.state.service.run, lambda col: col.get_note(nid).fields[1]
+        )
+        == "Lyon"
+    )
 
 
 def test_editor_key_saves_field(client):
@@ -113,7 +125,9 @@ def test_editor_key_saves_field(client):
     with client.websocket_connect("/ws?context=editor") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"key:0:{nid}:Berlin"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "editor", "arg": f"key:0:{nid}:Berlin"}
+        )
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         data = _drain_call(ws, "ankiwebLoadNote")[0]
         assert data["fields"][0][1] == "Berlin"
@@ -124,7 +138,9 @@ def test_editor_blur_munges_bare_br(client):
     with client.websocket_connect("/ws?context=editor") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"blur:1:{nid}:<br>"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "editor", "arg": f"blur:1:{nid}:<br>"}
+        )
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         data = _drain_call(ws, "ankiwebLoadNote")[0]
         assert data["fields"][1][1] == ""
@@ -135,7 +151,9 @@ def test_editor_savetags(client):
     with client.websocket_connect("/ws?context=editor") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": 'saveTags:["x","y"]'})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "editor", "arg": 'saveTags:["x","y"]'}
+        )
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         data = _drain_call(ws, "ankiwebLoadNote")[0]
         assert data["tags"] == ["x", "y"]
@@ -162,11 +180,15 @@ def _build_load(col, nid: int) -> dict:
     model = note.note_type()
     flds = model["flds"]
     return {
-        "fields": [[f["name"], col.media.escape_media_filenames(note.fields[i])]
-                   for i, f in enumerate(flds)],
-        "fonts": [[f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
-                  for f in flds],
-        "io": False,                                   # image-occlusion deferred
+        "fields": [
+            [f["name"], col.media.escape_media_filenames(note.fields[i])]
+            for i, f in enumerate(flds)
+        ],
+        "fonts": [
+            [f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
+            for f in flds
+        ],
+        "io": False,  # image-occlusion deferred
         "noteId": nid,
         "meta": {"id": model["id"], "modTime": model.get("mod", 0)},
         "tags": list(note.tags),
@@ -192,8 +214,8 @@ def editor_page_body(nid: int) -> str:
         "b.registerCalls({ankiwebLoadNote:function(d){"
         "require('anki/ui').loaded.then(function(){"
         "window.setFields(d.fields);"
-        "window.setIsImageOcclusion(d.io);"            # MANDATORY before fields render
-        "window.setFonts(d.fonts);"                    # load-bearing
+        "window.setIsImageOcclusion(d.io);"  # MANDATORY before fields render
+        "window.setFonts(d.fonts);"  # load-bearing
         "window.setNotetypeMeta(d.meta);"
         "window.setNoteId(d.noteId);"
         "window.setTags(d.tags);"
@@ -219,13 +241,15 @@ def make_editor_handler(service, hub):
             data = await service.run(lambda col: _build_load(col, nid))
             await hub.push_call("editor", "ankiwebLoadNote", [data])
         elif head in ("blur", "key"):
-            parts = rest.split(":", 2)               # ord:nid:html  (html keeps its colons)
+            parts = rest.split(":", 2)  # ord:nid:html  (html keeps its colons)
             if len(parts) == 3:
                 ord_, nid, htmlval = int(parts[0]), int(parts[1]), parts[2]
-                if head == "blur":                   # final save → broadcast (other screens refresh)
-                    await service.run_op(lambda col: _save_field(col, nid, ord_, htmlval),
-                                         initiator="editor")
-                else:                                # debounced keystroke → save silently
+                if head == "blur":  # final save → broadcast (other screens refresh)
+                    await service.run_op(
+                        lambda col: _save_field(col, nid, ord_, htmlval),
+                        initiator="editor",
+                    )
+                else:  # debounced keystroke → save silently
                     await service.run(lambda col: _save_field(col, nid, ord_, htmlval))
         elif head == "saveTags":
             if state["nid"] is not None:
@@ -236,6 +260,7 @@ def make_editor_handler(service, hub):
                     n = col.get_note(nid)
                     n.tags = list(tags)
                     return col.update_note(n, skip_undo_entry=True)
+
                 await service.run_op(fn, initiator="editor")
         # focus:/editorState:/setTagsCollapsed:/toolbar buttons → ignored (D4/later)
         return None
@@ -247,12 +272,16 @@ def make_editor_handler(service, hub):
 1. Add import: `from ankiweb.screens.editor import editor_page_body, make_editor_handler`.
 2. In `build_screen_router`, add (the `nid` query param is required):
 ```python
-    @router.get("/edit", response_class=HTMLResponse)
-    async def edit_page(nid: int):
-        return HTMLResponse(render_page(
-            "editor", editor_page_body(nid),
+@router.get("/edit", response_class=HTMLResponse)
+async def edit_page(nid: int):
+    return HTMLResponse(
+        render_page(
+            "editor",
+            editor_page_body(nid),
             ["css/editor.css", "css/editable.css"],
-            ["js/mathjax.js", "js/editor.js"]))
+            ["js/mathjax.js", "js/editor.js"],
+        )
+    )
 ```
 3. In `register_screen_handlers`, add: `hub.set_handler("editor", make_editor_handler(service, hub))`.
 
@@ -297,22 +326,28 @@ def live_server_edit(tmp_path: Path):
     col = Collection(str(col_path))
     try:
         n = col.new_note(col.models.by_name("Basic"))
-        n["Front"] = "CapitalFrance"; n["Back"] = "Paris"
+        n["Front"] = "CapitalFrance"
+        n["Back"] = "Paris"
         col.add_note(n, col.decks.id("Default"))
         nid = n.id
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8128)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8128, log_level="warning"))
-    t = threading.Thread(target=server.run, daemon=True); t.start()
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8128, log_level="warning"
+        )
+    )
+    t = threading.Thread(target=server.run, daemon=True)
+    t.start()
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
             raise RuntimeError("server did not start")
         time.sleep(0.05)
     yield "http://127.0.0.1:8128", nid
-    server.should_exit = True; t.join(timeout=5)
+    server.should_exit = True
+    t.join(timeout=5)
 
 
 def test_editor_mounts_and_loads(live_server_edit):
@@ -324,12 +359,15 @@ def test_editor_mounts_and_loads(live_server_edit):
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(f"{url}/edit?nid={nid}")
         # the real editor.js mounts its Svelte app
-        page.wait_for_function("document.querySelector('.note-editor')!==null", timeout=8000)
+        page.wait_for_function(
+            "document.querySelector('.note-editor')!==null", timeout=8000
+        )
         # the server's load: -> ankiwebLoadNote -> setFields populated the first field
         page.wait_for_function(
             "Array.from(document.querySelectorAll('[contenteditable]'))"
             ".some(function(e){return e.textContent.indexOf('CapitalFrance')>=0;})",
-            timeout=8000)
+            timeout=8000,
+        )
         assert not errors, errors
         browser.close()
 ```

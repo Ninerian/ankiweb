@@ -16,16 +16,15 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim-bookworm AS builder
 WORKDIR /src
-RUN python -m venv /opt/venv
-ENV PATH=/opt/venv/bin:$PATH
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-COPY pyproject.toml ./
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/opt/venv
+COPY pyproject.toml uv.lock ./
 COPY ankiweb/ ankiweb/
-RUN pip install --no-cache-dir .
+RUN uv sync --frozen --no-dev --no-editable
 
 COPY tools/*.py tools/
-RUN python tools/fetch_web_assets.py
-RUN python tools/fetch_datastar.py
+RUN uv run python tools/fetch_web_assets.py
+RUN uv run python tools/fetch_datastar.py
 
 # ---------------------------------------------------------------------------
 # runtime: minimal image with the venv, vendored assets, and app source

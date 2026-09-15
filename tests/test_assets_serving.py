@@ -41,7 +41,9 @@ def test_sveltekit_spa_fallback(client):
 
 def test_mathjax_font_has_long_cache(client):
     # MathJax CHTML glyph fonts must be cached hard, else they re-download every card render
-    r = client.get("/_anki/js/vendor/mathjax/output/chtml/fonts/woff-v2/MathJax_Main-Regular.woff")
+    r = client.get(
+        "/_anki/js/vendor/mathjax/output/chtml/fonts/woff-v2/MathJax_Main-Regular.woff"
+    )
     assert r.status_code == 200
     assert "max-age=31536000" in r.headers.get("cache-control", "")
 

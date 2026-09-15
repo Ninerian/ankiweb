@@ -8,8 +8,9 @@ from ankiweb.app import create_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    settings = Settings(collection_path=tmp_path / "c.anki2",
-                        import_tmp_dir=tmp_path / "import-tmp")
+    settings = Settings(
+        collection_path=tmp_path / "c.anki2", import_tmp_dir=tmp_path / "import-tmp"
+    )
     with TestClient(create_app(settings)) as c:
         yield c
 
@@ -33,11 +34,14 @@ def test_upload_csv_returns_route_and_temp_path(client):
     assert p.exists() and p.read_bytes() == b"front,back\na,b\n"
     # the temp file is inside the managed import dir
     from ankiweb import import_tmp
+
     assert import_tmp.is_within(client.app.state.service.settings, str(p))
 
 
 def test_upload_apkg_routes_to_anki_package(client):
-    files = {"file": ("deck.apkg", io.BytesIO(b"PK\x03\x04stub"), "application/octet-stream")}
+    files = {
+        "file": ("deck.apkg", io.BytesIO(b"PK\x03\x04stub"), "application/octet-stream")
+    }
     r = client.post("/import/upload", files=files)
     assert r.status_code == 200
     assert r.json()["route"] == "import-anki-package"
@@ -63,8 +67,10 @@ def test_import_anki_package_route_serves_spa_shell(client):
 
 
 def test_gc_removes_old_files(client, tmp_path):
-    import os, time
+    import os
+    import time
     from ankiweb import import_tmp
+
     s = client.app.state.service.settings
     p = import_tmp.allocate(s, ".csv")
     p.write_bytes(b"x")

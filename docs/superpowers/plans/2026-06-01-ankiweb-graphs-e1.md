@@ -57,12 +57,14 @@ def test_graphs_serves_spa_shell(client):
     r = client.get("/graphs")
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/html")
-    assert "_app/immutable/entry" in r.text       # the SPA shell imports the entry
+    assert "_app/immutable/entry" in r.text  # the SPA shell imports the entry
 
 
 def test_app_asset_served_as_js_module_with_cache(client):
-    entry = next(_APP.glob("immutable/entry/start.*.mjs"))   # glob the hashed name from disk
-    rel = entry.relative_to(_APP).as_posix()                 # immutable/entry/start.<hash>.mjs
+    entry = next(
+        _APP.glob("immutable/entry/start.*.mjs")
+    )  # glob the hashed name from disk
+    rel = entry.relative_to(_APP).as_posix()  # immutable/entry/start.<hash>.mjs
     r = client.get(f"/_app/{rel}")
     assert r.status_code == 200
     assert r.headers["content-type"] in ("application/javascript", "text/javascript")
@@ -88,8 +90,11 @@ def test_favicon(client):
 
 def test_graphs_rpc_passthrough(client):
     # the graphs page POSTs protobuf to /_anki/<method>; get_graph_preferences takes an empty body
-    r = client.post("/_anki/get_graph_preferences", content=b"",
-                    headers={"content-type": "application/binary"})
+    r = client.post(
+        "/_anki/get_graph_preferences",
+        content=b"",
+        headers={"content-type": "application/binary"},
+    )
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("application/binary")
 
@@ -117,7 +122,7 @@ def build_sveltekit_router(assets_dir: Path) -> APIRouter:
 
     @router.get("/_app/{path:path}")
     def app_asset(path: str) -> Response:
-        rel = _resolve("_app/" + path)                       # -> sveltekit/_app/<path>
+        rel = _resolve("_app/" + path)  # -> sveltekit/_app/<path>
         target = (assets_dir / rel).resolve()
         try:
             target.relative_to(assets_dir.resolve())
@@ -140,15 +145,17 @@ def build_sveltekit_router(assets_dir: Path) -> APIRouter:
 
 - [ ] **Step 4: Wire it into `ankiweb/app.py`** — import `build_sveltekit_router` and `include_router` it BEFORE the media catch-all. READ the router-include order in `create_app`; add the line right before `app.include_router(build_media_router(...))`:
 ```python
-    app.include_router(build_sveltekit_router(settings.assets_dir))   # SvelteKit SPA at root
-    app.include_router(build_media_router(lambda: app.state.service))  # GET /{path} — LAST
+app.include_router(build_sveltekit_router(settings.assets_dir))  # SvelteKit SPA at root
+app.include_router(build_media_router(lambda: app.state.service))  # GET /{path} — LAST
 ```
 (Update the existing assets import line to also import `build_sveltekit_router`.)
 
 - [ ] **Step 5: Add a "Stats" link in `ankiweb/screens/deckbrowser.py`** — in `render_deckbrowser_html`, add a plain link next to the "Create Deck" button (full-page navigation; no bridge needed):
 ```python
-    create = ("<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
-              " <a href='/graphs'>Stats</a>")
+create = (
+    "<button onclick='ankiwebCreateDeck()'>Create Deck</button>"
+    " <a href='/graphs'>Stats</a>"
+)
 ```
 (Match the existing `create = ...` line; keep the Create Deck button.)
 
@@ -193,41 +200,62 @@ def live_server_graphs(tmp_path: Path):
     col = Collection(str(col_path))
     try:
         for q in ("a", "b", "c"):
-            n = col.new_note(col.models.by_name("Basic")); n["Front"] = q; n["Back"] = q
+            n = col.new_note(col.models.by_name("Basic"))
+            n["Front"] = q
+            n["Back"] = q
             col.add_note(n, col.decks.id("Default"))
         from anki.scheduler.v3 import CardAnswer
+
         queued = col.sched.get_queued_cards(fetch_limit=1)
         if queued.cards:
-            top = queued.cards[0]; c = col.get_card(top.card.id); c.start_timer()
-            ans = col.sched.build_answer(card=c, states=top.states, rating=CardAnswer.Rating.GOOD)
+            top = queued.cards[0]
+            c = col.get_card(top.card.id)
+            c.start_timer()
+            ans = col.sched.build_answer(
+                card=c, states=top.states, rating=CardAnswer.Rating.GOOD
+            )
             col.sched.answer_card(ans)
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8130)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8130, log_level="warning"))
-    t = threading.Thread(target=server.run, daemon=True); t.start()
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8130, log_level="warning"
+        )
+    )
+    t = threading.Thread(target=server.run, daemon=True)
+    t.start()
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
             raise RuntimeError("server did not start")
         time.sleep(0.05)
     yield "http://127.0.0.1:8130"
-    server.should_exit = True; t.join(timeout=5)
+    server.should_exit = True
+    t.join(timeout=5)
 
 
 def test_graphs_spa_boots(live_server_graphs):
     with sync_playwright() as p:
-        browser = p.chromium.launch(); page = browser.new_page()
+        browser = p.chromium.launch()
+        page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on("requestfailed",
-                lambda r: errors.append("REQFAIL " + r.url) if ("/_app/" in r.url or "/_anki/" in r.url) else None)
+        page.on(
+            "requestfailed",
+            lambda r: (
+                errors.append("REQFAIL " + r.url)
+                if ("/_app/" in r.url or "/_anki/" in r.url)
+                else None
+            ),
+        )
         page.goto(f"{live_server_graphs}/graphs")
         # the real graphs SvelteKit page renders its container + at least one svg chart
         page.wait_for_selector(".graphs-container", timeout=10000)
         page.wait_for_function(
-            "document.querySelectorAll('.graphs-container svg').length>=1", timeout=10000)
+            "document.querySelectorAll('.graphs-container svg').length>=1",
+            timeout=10000,
+        )
         assert not errors, errors
         browser.close()
 ```

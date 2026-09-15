@@ -67,7 +67,7 @@ def test_add_route_renders(client):
     assert "/_anki/js/editor.js" in r.text
     assert "setupEditor" in r.text and "addnote:" in r.text
     assert "id='add-deck'" in r.text and "id='add-notetype'" in r.text
-    assert "Default" in r.text and "Basic" in r.text     # picker options
+    assert "Default" in r.text and "Basic" in r.text  # picker options
 
 
 def test_add_ready_pushes_empty_fields(client):
@@ -85,8 +85,15 @@ def test_addnote_creates_note(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["Hello","World"]'})
-        _drain_call(ws, "ankiwebToast")               # "Added"
+        ws.send_json(
+            {
+                "type": "cmd",
+                "id": None,
+                "ctx": "add",
+                "arg": 'addnote:["Hello","World"]',
+            }
+        )
+        _drain_call(ws, "ankiwebToast")  # "Added"
     assert _run(client, lambda col: len(col.find_notes(""))) == before + 1
     note = _run(client, lambda col: col.get_note(list(col.find_notes("Hello"))[0]))
     assert note.fields == ["Hello", "World"]
@@ -97,10 +104,12 @@ def test_addnote_empty_rejected(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["<br>",""]'})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["<br>",""]'}
+        )
         toast = _drain_call(ws, "ankiwebToast")[0]
         assert "empty" in toast.lower()
-    assert _run(client, lambda col: len(col.find_notes(""))) == before    # nothing added
+    assert _run(client, lambda col: len(col.find_notes(""))) == before  # nothing added
 
 
 def test_setnotetype_reloads_fields(client):
@@ -108,9 +117,11 @@ def test_setnotetype_reloads_fields(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": f"setnotetype:{cloze_id}"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": f"setnotetype:{cloze_id}"}
+        )
         data = _drain_call(ws, "ankiwebLoadNote")[0]
-        assert "Text" in [f[0] for f in data["fields"]]   # Cloze's fields
+        assert "Text" in [f[0] for f in data["fields"]]  # Cloze's fields
 
 
 def test_setdeck_and_tags_applied(client):
@@ -118,9 +129,15 @@ def test_setdeck_and_tags_applied(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})
         _drain_call(ws, "ankiwebLoadNote")
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": f"setdeck:{other}"})
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": 'saveTags:["mytag"]'})
-        ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["Q","A"]'})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": f"setdeck:{other}"}
+        )
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": 'saveTags:["mytag"]'}
+        )
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["Q","A"]'}
+        )
         _drain_call(ws, "ankiwebToast")
     nid = _run(client, lambda col: list(col.find_notes("Q"))[0])
     note = _run(client, lambda col: col.get_note(nid))
@@ -154,8 +171,10 @@ def _empty_load(col, ntid: int) -> dict:
     flds = model["flds"]
     return {
         "fields": [[f["name"], ""] for f in flds],
-        "fonts": [[f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
-                  for f in flds],
+        "fonts": [
+            [f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
+            for f in flds
+        ],
         "io": False,
         "noteId": 0,
         "meta": {"id": model["id"], "modTime": model.get("mod", 0)},
@@ -165,12 +184,15 @@ def _empty_load(col, ntid: int) -> dict:
 
 def add_page_body(deck_opts: str, nt_opts: str) -> str:
     return (
-        _STYLE +
-        "<div id='add-chrome'>"
+        _STYLE + "<div id='add-chrome'>"
         "<label>Deck <select id='add-deck' "
-        "onchange=\"window.pycmd('setdeck:'+this.value)\">" + deck_opts + "</select></label>"
+        "onchange=\"window.pycmd('setdeck:'+this.value)\">"
+        + deck_opts
+        + "</select></label>"
         "<label>Type <select id='add-notetype' "
-        "onchange=\"window.pycmd('setnotetype:'+this.value)\">" + nt_opts + "</select></label>"
+        "onchange=\"window.pycmd('setnotetype:'+this.value)\">"
+        + nt_opts
+        + "</select></label>"
         "<button id='add-btn' onclick='ankiwebAddNote()'>Add Note</button>"
         "<a href='/deckbrowser'>Close</a><span id='add-toast'></span>"
         "</div>"
@@ -202,10 +224,12 @@ def render_add_html(col) -> str:
     cur_did = col.decks.get_current_id()
     decks = "".join(
         f"<option value='{d.id}'{' selected' if d.id == cur_did else ''}>{html.escape(d.name)}</option>"
-        for d in col.decks.all_names_and_ids())
+        for d in col.decks.all_names_and_ids()
+    )
     nts = "".join(
         f"<option value='{m.id}'{' selected' if m.id == cur_nt else ''}>{html.escape(m.name)}</option>"
-        for m in col.models.all_names_and_ids())
+        for m in col.models.all_names_and_ids()
+    )
     return add_page_body(decks, nts)
 
 
@@ -215,10 +239,12 @@ def make_add_handler(service, hub):
     async def handler(arg: str):
         head, _, rest = arg.partition(":")
         if head == "addReady":
+
             def init(col):
                 ntid = col.models.current()["id"]
                 did = col.decks.get_current_id()
                 return ntid, did, _empty_load(col, ntid)
+
             ntid, did, data = await service.run(init)
             state.update(notetype_id=ntid, deck_id=did, tags=[])
             await hub.push_call("add", "ankiwebLoadNote", [data])
@@ -234,7 +260,11 @@ def make_add_handler(service, hub):
             state["tags"] = json.loads(rest)
         elif head == "addnote":
             fields = json.loads(rest)
-            ntid, did, tags = state["notetype_id"], state["deck_id"], list(state["tags"])
+            ntid, did, tags = (
+                state["notetype_id"],
+                state["deck_id"],
+                list(state["tags"]),
+            )
 
             def add(col):
                 model = col.models.get(ntid)
@@ -248,6 +278,7 @@ def make_add_handler(service, hub):
                     return (None, err), None
                 op = col.add_note(note, did)
                 return (note.id, None), op
+
             (nid, err), op = await service.run(add)
             if op is not None:
                 flags = op_changes_to_flags(getattr(op, "changes", op))
@@ -257,7 +288,9 @@ def make_add_handler(service, hub):
                 await hub.push_call("add", "ankiwebToast", [err])
             else:
                 data = await service.run(lambda col: _empty_load(col, ntid))
-                await hub.push_call("add", "ankiwebLoadNote", [data])     # reset for next note
+                await hub.push_call(
+                    "add", "ankiwebLoadNote", [data]
+                )  # reset for next note
                 await hub.push_call("add", "ankiwebToast", ["Added"])
         # blur/key/focus/editorState ignored — fields are captured by the Add button's deep-read
         return None
@@ -269,13 +302,18 @@ def make_add_handler(service, hub):
 1. Add import: `from ankiweb.screens.add import render_add_html, make_add_handler`.
 2. In `build_screen_router`:
 ```python
-    @router.get("/add", response_class=HTMLResponse)
-    async def add_page():
-        service = get_service()
-        body = await service.run(render_add_html)
-        return HTMLResponse(render_page(
-            "add", body, ["css/editor.css", "css/editable.css"],
-            ["js/mathjax.js", "js/editor.js"]))
+@router.get("/add", response_class=HTMLResponse)
+async def add_page():
+    service = get_service()
+    body = await service.run(render_add_html)
+    return HTMLResponse(
+        render_page(
+            "add",
+            body,
+            ["css/editor.css", "css/editable.css"],
+            ["js/mathjax.js", "js/editor.js"],
+        )
+    )
 ```
 3. In `register_screen_handlers`, add: `hub.set_handler("add", make_add_handler(service, hub))`.
 
@@ -317,29 +355,38 @@ from playwright.sync_api import sync_playwright
 @pytest.fixture
 def live_server_add(tmp_path: Path):
     col_path = tmp_path / "add.anki2"
-    Collection(str(col_path)).close()           # empty collection
+    Collection(str(col_path)).close()  # empty collection
     settings = Settings(collection_path=col_path, port=8129)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8129, log_level="warning"))
-    t = threading.Thread(target=server.run, daemon=True); t.start()
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8129, log_level="warning"
+        )
+    )
+    t = threading.Thread(target=server.run, daemon=True)
+    t.start()
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
             raise RuntimeError("server did not start")
         time.sleep(0.05)
     yield "http://127.0.0.1:8129", settings
-    server.should_exit = True; t.join(timeout=5)
+    server.should_exit = True
+    t.join(timeout=5)
 
 
 def test_add_note_via_ui(live_server_add):
     url, settings = live_server_add
     with sync_playwright() as p:
-        browser = p.chromium.launch(); page = browser.new_page()
+        browser = p.chromium.launch()
+        page = browser.new_page()
         page.goto(f"{url}/add")
         # editor mounts (add mode) with empty fields
-        page.wait_for_function("document.querySelector('.note-editor')!==null", timeout=8000)
         page.wait_for_function(
-            "document.querySelectorAll('.field-container').length>=2", timeout=8000)
+            "document.querySelector('.note-editor')!==null", timeout=8000
+        )
+        page.wait_for_function(
+            "document.querySelectorAll('.field-container').length>=2", timeout=8000
+        )
         # focus field 0 via the editor API, type, then field 1
         page.evaluate("window.focusField(0)")
         page.keyboard.type("FrontText")
@@ -347,7 +394,9 @@ def test_add_note_via_ui(live_server_add):
         page.keyboard.type("BackText")
         page.click("#add-btn")
         page.wait_for_function(
-            "document.getElementById('add-toast').textContent.includes('Added')", timeout=8000)
+            "document.getElementById('add-toast').textContent.includes('Added')",
+            timeout=8000,
+        )
         browser.close()
     # the note really landed in the collection
     col = Collection(str(settings.collection_path))

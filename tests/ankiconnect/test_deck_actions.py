@@ -7,7 +7,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -43,8 +45,10 @@ def test_delete_decks(client):
 
 def test_delete_decks_requires_cards_too(client):
     _call(client, "createDeck", deck="Temp2")
-    r = client.post("/", json={"action": "deleteDecks", "version": 6,
-                               "params": {"decks": ["Temp2"]}})
+    r = client.post(
+        "/",
+        json={"action": "deleteDecks", "version": 6, "params": {"decks": ["Temp2"]}},
+    )
     assert r.json()["error"] is not None  # cardsToo must be true
 
 
@@ -76,16 +80,32 @@ def test_get_deck_config_missing_deck_does_not_create(client):
 
 
 def test_get_decks_groups_by_deck(client):
-    _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                                    "fields": {"Front": "gd", "Back": "A"}})
+    _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"Front": "gd", "Back": "A"},
+        },
+    )
     cid = _call(client, "findCards", query="deck:Default")[0]
     assert _call(client, "getDecks", cards=[cid]) == {"Default": [cid]}
 
 
 def test_get_decks_invalid_id(client):
-    _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                                    "fields": {"Front": "gdbad", "Back": "A"}})
+    _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"Front": "gdbad", "Back": "A"},
+        },
+    )
     cid = _call(client, "findCards", query="deck:Default")[0]
     # missing card id buckets under "Default" (faithful to AnkiConnect), never an error envelope
     assert _call(client, "getDecks", cards=[cid, 99999]) == {"Default": [cid, 99999]}
-    assert "NoSuchDeck" not in _call(client, "deckNames")  # a read query must not create it
+    assert "NoSuchDeck" not in _call(
+        client, "deckNames"
+    )  # a read query must not create it

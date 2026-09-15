@@ -24,8 +24,11 @@ def live_server_dopts(tmp_path: Path):
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8131)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8131, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8131, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10
@@ -45,14 +48,31 @@ def test_deck_options_spa_boots(live_server_dopts):
         page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on("requestfailed",
-                lambda r: errors.append("REQFAIL " + r.url) if ("/_app/" in r.url or "/_anki/" in r.url) else None)
+        page.on(
+            "requestfailed",
+            lambda r: (
+                errors.append("REQFAIL " + r.url)
+                if ("/_app/" in r.url or "/_anki/" in r.url)
+                else None
+            ),
+        )
         posts = []
-        page.on("request", lambda r: posts.append(r.url) if r.method == "POST" and "/_anki/" in r.url else None)
+        page.on(
+            "request",
+            lambda r: (
+                posts.append(r.url)
+                if r.method == "POST" and "/_anki/" in r.url
+                else None
+            ),
+        )
         page.goto(f"{url}/deck-options/{did}")
-        page.wait_for_function("document.querySelectorAll('input,button').length>3", timeout=10000)
+        page.wait_for_function(
+            "document.querySelectorAll('input,button').length>3", timeout=10000
+        )
         page.wait_for_function("document.body.innerText.length>50", timeout=10000)
         assert not errors, errors
-        assert any("get_deck_configs_for_update" in u or "getDeckConfigsForUpdate" in u
-                   for u in posts), posts
+        assert any(
+            "get_deck_configs_for_update" in u or "getDeckConfigsForUpdate" in u
+            for u in posts
+        ), posts
         browser.close()

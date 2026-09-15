@@ -59,33 +59,30 @@ card-template editors (one of the Tools-menu screens ankiweb rebuilds for the we
 - `anki==25.9.4` (pinned — the vendored frontend must match this version; the exact upstream
   Anki/AnkiConnect commits this port was built against are recorded in [UPSTREAM.md](UPSTREAM.md))
 - Node.js (only to build the ~2 KB shell bundle)
-- A conda env is recommended: installing `anki` pulls a newer `protobuf` that can clash
-  with other global packages, so keep it isolated.
+- [uv](https://docs.astral.sh/uv/) for Python package and environment management.
 
 ## Setup
 
 ```bash
-conda create -n ankiweb python=3.12 -y
-conda run -n ankiweb pip install -e ".[dev]"
+uv sync --extra dev
 
 # 1. Vendor Anki's compiled frontend (downloads the aqt 25.9.4 wheel, extracts
 #    _aqt/data/web/ into ankiweb/web_assets/ — gitignored). Required.
-conda run -n ankiweb python tools/fetch_web_assets.py
+uv run python tools/fetch_web_assets.py
 
 # 2. Vendor the Datastar frontend bundle (downloads datastar.js into ankiweb/shell/static/ — gitignored). Required.
-conda run -n ankiweb python tools/fetch_datastar.py
+uv run python tools/fetch_datastar.py
 
 # 3. Build the shell bridge bundle (shell_src/bootstrap.ts -> ankiweb/shell/static/bootstrap.js)
 npm install && npm run build
 
 # 4. (optional) for the Playwright integration tests
-conda run -n ankiweb python -m playwright install chromium
-```
+uv run python -m playwright install chromium
 
 ## Run
 
 ```bash
-conda run -n ankiweb python -m ankiweb
+uv run python -m ankiweb
 ```
 
 This starts **two servers in one process**:
@@ -145,7 +142,7 @@ To reach the UI from another device, bind to all interfaces **and** allow your h
 
 ```bash
 ANKIWEB_HOST=0.0.0.0 ANKIWEB_ALLOWED_HOSTS=192.168.1.50:8000 \
-  conda run -n ankiweb python -m ankiweb
+  uv run python -m ankiweb
 ```
 
 `ANKIWEB_ALLOWED_HOSTS` accepts the value with or without a port (`192.168.1.50` matches
@@ -159,7 +156,7 @@ reused Anki frontend (graphs / deck options / reviewer / editor …) and ankiweb
 hand-written screens (deck browser, browser, Add, Preferences, etc.):
 
 ```bash
-ANKIWEB_LANG=zh-CN conda run -n ankiweb python -m ankiweb
+ANKIWEB_LANG=zh-CN uv run python -m ankiweb
 ```
 
 The language is fixed at startup (it's applied before the collection is opened); there is
@@ -172,7 +169,7 @@ By default the web UI is open (no login) — it's a single-user, local-first app
 password, set `ANKIWEB_PASSWORD`:
 
 ```bash
-ANKIWEB_PASSWORD=mysecret conda run -n ankiweb python -m ankiweb
+ANKIWEB_PASSWORD=mysecret uv run python -m ankiweb
 ```
 
 Visitors then get a `/login` page; the correct password sets an httponly session cookie and
@@ -298,7 +295,7 @@ opened from there; use the browser's back button to return.
 ## Test
 
 ```bash
-conda run -n ankiweb python -m pytest            # full suite (Playwright tests skip if chromium absent)
+uv run pytest            # full suite (Playwright tests skip if chromium absent)
 ```
 
 Integration tests use Playwright + real Chromium against a live uvicorn server; install the

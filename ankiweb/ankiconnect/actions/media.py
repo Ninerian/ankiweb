@@ -5,8 +5,11 @@ import hashlib
 import os
 from ankiweb.ankiconnect.registry import action
 from ankiweb.ankiconnect.schemas.media import (
-    StoreMediaFileParams, RetrieveMediaFileParams, GetMediaFilesNamesParams,
-    GetMediaDirPathParams, DeleteMediaFileParams,
+    StoreMediaFileParams,
+    RetrieveMediaFileParams,
+    GetMediaFilesNamesParams,
+    GetMediaDirPathParams,
+    DeleteMediaFileParams,
 )
 
 
@@ -18,11 +21,14 @@ def _fetch_bytes(data=None, path=None, url=None):
             return f.read()
     if url is not None:
         import httpx
+
         return httpx.get(url, follow_redirects=True, timeout=30).content
     raise Exception("storeMediaFile requires one of data/path/url")
 
 
-def _store(col, filename, data=None, path=None, url=None, skipHash=None, deleteExisting=True):
+def _store(
+    col, filename, data=None, path=None, url=None, skipHash=None, deleteExisting=True
+):
     """Returns the stored filename (possibly renamed), or None if skipHash matched."""
     raw = _fetch_bytes(data, path, url)
     if skipHash is not None and hashlib.md5(raw).hexdigest() == skipHash:
@@ -33,35 +39,57 @@ def _store(col, filename, data=None, path=None, url=None, skipHash=None, deleteE
 
 
 @action("storeMediaFile", params=StoreMediaFileParams, summary="Store a media file")
-async def store_media_file(rt, filename=None, data=None, path=None, url=None,
-                           skipHash=None, deleteExisting=True):
+async def store_media_file(
+    rt,
+    filename=None,
+    data=None,
+    path=None,
+    url=None,
+    skipHash=None,
+    deleteExisting=True,
+):
     return await rt.service.run(
-        lambda col: _store(col, filename, data, path, url, skipHash, deleteExisting))
+        lambda col: _store(col, filename, data, path, url, skipHash, deleteExisting)
+    )
 
 
-@action("retrieveMediaFile", params=RetrieveMediaFileParams, summary="Retrieve a media file")
+@action(
+    "retrieveMediaFile", params=RetrieveMediaFileParams, summary="Retrieve a media file"
+)
 async def retrieve_media_file(rt, filename=None):
     def fn(col):
-        safe = os.path.basename(filename or "")   # ref normalizes; prevents '../' traversal
+        safe = os.path.basename(
+            filename or ""
+        )  # ref normalizes; prevents '../' traversal
         full = os.path.join(col.media.dir(), safe)
         if not safe or not os.path.exists(full):
             return False
         with open(full, "rb") as f:
             return base64.b64encode(f.read()).decode()
+
     return await rt.service.run(fn)
 
 
-@action("getMediaFilesNames", params=GetMediaFilesNamesParams, returns=list[str],
-        summary="List media filenames by pattern")
+@action(
+    "getMediaFilesNames",
+    params=GetMediaFilesNamesParams,
+    returns=list[str],
+    summary="List media filenames by pattern",
+)
 async def get_media_files_names(rt, pattern="*"):
     def fn(col):
         names = os.listdir(col.media.dir())
         return [n for n in names if fnmatch.fnmatch(n, pattern)]
+
     return await rt.service.run(fn)
 
 
-@action("getMediaDirPath", params=GetMediaDirPathParams, returns=str,
-        summary="Get the media folder path")
+@action(
+    "getMediaDirPath",
+    params=GetMediaDirPathParams,
+    returns=str,
+    summary="Get the media folder path",
+)
 async def get_media_dir_path(rt):
     return await rt.service.run(lambda col: col.media.dir())
 
@@ -80,14 +108,25 @@ def attach_media(col, spec):
     fields = spec.setdefault("fields", {})
     model = col.models.by_name(spec.get("modelName", ""))
     valid = set(col.models.field_names(model)) if model else None
-    for kind, tmpl in (("picture", '<img src="%s">'), ("audio", "[sound:%s]"),
-                       ("video", "[sound:%s]")):
+    for kind, tmpl in (
+        ("picture", '<img src="%s">'),
+        ("audio", "[sound:%s]"),
+        ("video", "[sound:%s]"),
+    ):
         media_list = spec.get(kind) or []
-        if isinstance(media_list, dict):   # AnkiConnect accepts a single object too (ref 773-776)
+        if isinstance(
+            media_list, dict
+        ):  # AnkiConnect accepts a single object too (ref 773-776)
             media_list = [media_list]
         for media in media_list:
-            stored = _store(col, media["filename"], media.get("data"), media.get("path"),
-                            media.get("url"), media.get("skipHash"))
+            stored = _store(
+                col,
+                media["filename"],
+                media.get("data"),
+                media.get("path"),
+                media.get("url"),
+                media.get("skipHash"),
+            )
             fname = stored if stored is not None else media["filename"]
             html = tmpl % fname
             for field_name in media.get("fields") or []:

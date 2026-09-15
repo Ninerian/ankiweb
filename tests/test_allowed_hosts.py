@@ -14,7 +14,9 @@ def test_host_allowed_unit():
     assert not host_allowed("192.168.1.50:8000", ())
     # explicit allow, with or without port
     assert host_allowed("192.168.1.50:8000", ("192.168.1.50:8000",))
-    assert host_allowed("192.168.1.50:8000", ("192.168.1.50",))   # bare host matches :port
+    assert host_allowed(
+        "192.168.1.50:8000", ("192.168.1.50",)
+    )  # bare host matches :port
     assert not host_allowed("192.168.1.99:8000", ("192.168.1.50",))
     # wildcard disables the check
     assert host_allowed("anything.example.com", ("*",))
@@ -42,8 +44,9 @@ def test_lan_host_allowed_when_configured(tmp_path: Path):
 def test_ws_lan_host_allowed_when_configured(tmp_path: Path):
     with _client(tmp_path, ("192.168.1.50:8000",)) as c:
         # WS upgrade carries the same Host header; configured → accepted
-        with c.websocket_connect("/ws?context=deckbrowser",
-                                 headers={"host": "192.168.1.50:8000"}) as ws:
+        with c.websocket_connect(
+            "/ws?context=deckbrowser", headers={"host": "192.168.1.50:8000"}
+        ) as ws:
             ws.send_json({"type": "cmd", "id": 1, "ctx": "deckbrowser", "arg": "noop:"})
             m = ws.receive_json()
             while m.get("type") != "result":
@@ -53,9 +56,10 @@ def test_ws_lan_host_allowed_when_configured(tmp_path: Path):
 
 def test_ws_lan_host_rejected_by_default(tmp_path: Path):
     import websockets  # noqa
-    from starlette.websockets import WebSocketDisconnect as WSD
+
     with _client(tmp_path, ()) as c:
         with pytest.raises(Exception):
-            with c.websocket_connect("/ws?context=deckbrowser",
-                                     headers={"host": "192.168.1.50:8000"}) as ws:
+            with c.websocket_connect(
+                "/ws?context=deckbrowser", headers={"host": "192.168.1.50:8000"}
+            ) as ws:
                 ws.receive_json()

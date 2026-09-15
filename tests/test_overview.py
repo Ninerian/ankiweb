@@ -1,4 +1,5 @@
-import tempfile, os
+import tempfile
+import os
 import pytest
 from anki.collection import Collection
 from ankiweb.screens.overview import render_overview_html
@@ -13,14 +14,16 @@ def col():
 
 
 def test_overview_shows_counts_and_study_button(col):
-    n = col.new_note(col.models.by_name("Basic")); n["Front"] = "q"
+    n = col.new_note(col.models.by_name("Basic"))
+    n["Front"] = "q"
     col.add_note(n, col.decks.id("Default"))
     col.decks.set_current(col.decks.id("Default"))
     html = render_overview_html(col)
-    assert "Default" in html               # deck name heading
+    assert "Default" in html  # deck name heading
     assert "Study Now" in html
     assert "@post('/overview/study')" in html
-    assert "new-count" in html             # one new card shown
+    assert "new-count" in html  # one new card shown
+
 
 def test_overview_finished_shows_congrats(col):
     # empty Default deck → counts all zero → congrats

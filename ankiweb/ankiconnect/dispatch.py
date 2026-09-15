@@ -25,7 +25,10 @@ async def dispatch_one(rt, req: dict, actions: dict = ACTIONS) -> Any:
             if req.get("key") != rt.config.api_key:
                 raise Exception("valid api key must be provided")
         if action_name == "multi":
-            result = [await dispatch_one(rt, sub, actions) for sub in (params.get("actions") or [])]
+            result = [
+                await dispatch_one(rt, sub, actions)
+                for sub in (params.get("actions") or [])
+            ]
         elif action_name in actions:
             result = await actions[action_name](rt, **params)
         else:

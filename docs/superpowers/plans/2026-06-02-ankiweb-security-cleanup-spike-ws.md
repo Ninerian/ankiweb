@@ -67,7 +67,7 @@ def client(tmp_path: Path):
 
 def test_bad_json_then_valid_cmd_survives(client):
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_text("this is not json{{{")          # malformed → must be skipped, not fatal
+        ws.send_text("this is not json{{{")  # malformed → must be skipped, not fatal
         # the socket is still alive: a valid cmd with an id still gets a result
         ws.send_json({"type": "cmd", "id": 1, "ctx": "deckbrowser", "arg": "noop:"})
         m = ws.receive_json()
@@ -78,7 +78,7 @@ def test_bad_json_then_valid_cmd_survives(client):
 
 def test_non_object_frame_skipped(client):
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json([1, 2, 3])                        # JSON array, not an object
+        ws.send_json([1, 2, 3])  # JSON array, not an object
         ws.send_json({"type": "cmd", "id": 2, "ctx": "deckbrowser", "arg": "noop:"})
         m = ws.receive_json()
         while m.get("type") != "result":
@@ -88,7 +88,9 @@ def test_non_object_frame_skipped(client):
 
 def test_result_frame_missing_id_skipped(client):
     with client.websocket_connect("/ws?context=deckbrowser") as ws:
-        ws.send_json({"type": "result", "value": "x"})  # no 'id' → must not KeyError/drop
+        ws.send_json(
+            {"type": "result", "value": "x"}
+        )  # no 'id' → must not KeyError/drop
         ws.send_json({"type": "cmd", "id": 3, "ctx": "deckbrowser", "arg": "noop:"})
         m = ws.receive_json()
         while m.get("type") != "result":
@@ -100,36 +102,38 @@ def test_result_frame_missing_id_skipped(client):
 - [ ] **Step 2** — run → FAIL (bad JSON drops the connection → `receive_json` raises).
 - [ ] **Step 3** — in `ankiweb/bridge/ws.py`, harden the loop:
 ```python
-        from fastapi import WebSocketDisconnect
+from fastapi import WebSocketDisconnect
+
+try:
+    while True:
         try:
-            while True:
-                try:
-                    msg = await websocket.receive_json()
-                except WebSocketDisconnect:
-                    raise
-                except Exception:
-                    continue  # malformed JSON frame — skip, keep the socket alive
-                if not isinstance(msg, dict):
-                    continue
-                mtype = msg.get("type")
-                if mtype == "cmd":
-                    try:
-                        result = await hub.dispatch_cmd(context, msg.get("arg", ""))
-                    except Exception:
-                        result = None  # a handler error must not drop the session
-                    if msg.get("id") is not None:
-                        await websocket.send_json(
-                            {"type": "result", "id": msg["id"], "value": result})
-                elif mtype == "result":
-                    mid = msg.get("id")
-                    if mid is not None:
-                        hub.resolve(mid, msg.get("value"))
-                elif mtype == "ready":
-                    pass
+            msg = await websocket.receive_json()
         except WebSocketDisconnect:
+            raise
+        except Exception:
+            continue  # malformed JSON frame — skip, keep the socket alive
+        if not isinstance(msg, dict):
+            continue
+        mtype = msg.get("type")
+        if mtype == "cmd":
+            try:
+                result = await hub.dispatch_cmd(context, msg.get("arg", ""))
+            except Exception:
+                result = None  # a handler error must not drop the session
+            if msg.get("id") is not None:
+                await websocket.send_json(
+                    {"type": "result", "id": msg["id"], "value": result}
+                )
+        elif mtype == "result":
+            mid = msg.get("id")
+            if mid is not None:
+                hub.resolve(mid, msg.get("value"))
+        elif mtype == "ready":
             pass
-        finally:
-            hub.unregister(context, websocket)
+except WebSocketDisconnect:
+    pass
+finally:
+    hub.unregister(context, websocket)
 ```
 (Keep the existing host-guard + accept + register prologue. The key changes: wrap `receive_json` to skip bad-JSON frames; guard non-dict; guard `dispatch_cmd` so a handler error doesn't drop the socket; `result` frame missing `id` is skipped.)
 

@@ -8,11 +8,12 @@ class UiState:
 
     Written by: the web client/screens (current_screen via dispatch_cmd + WS connect;
     current_card_id/side by the reviewer handler) and the gui* actions (browse/selection)."""
-    current_screen: str | None = None        # 'deckbrowser'|'overview'|'reviewer'|'congrats'
-    current_card_id: int | None = None        # reviewer's in-flight card
-    side: str | None = None                   # 'question'|'answer'|None
-    browser_open: bool = False                # set True by guiBrowse (degraded "Browser window")
-    last_browse_query: str | None = None      # the last guiBrowse query (may be None)
+
+    current_screen: str | None = None  # 'deckbrowser'|'overview'|'reviewer'|'congrats'
+    current_card_id: int | None = None  # reviewer's in-flight card
+    side: str | None = None  # 'question'|'answer'|None
+    browser_open: bool = False  # set True by guiBrowse (degraded "Browser window")
+    last_browse_query: str | None = None  # the last guiBrowse query (may be None)
     matched_card_ids: list = field(default_factory=list)
     selected_card_ids: list = field(default_factory=list)
     selected_note_ids: list = field(default_factory=list)

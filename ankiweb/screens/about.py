@@ -9,6 +9,7 @@ def render_about_html(settings) -> str:
     """The AGPL §13 Corresponding-Source offer, shown to every user of the running app."""
     try:
         from importlib.metadata import version
+
         ver = version("ankiweb")
     except Exception:
         ver = "0.1.0"

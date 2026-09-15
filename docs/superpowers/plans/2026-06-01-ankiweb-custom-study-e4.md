@@ -60,9 +60,11 @@ def _seed(client, n=3):
         col.decks.set_current(did)
         for i in range(n):
             note = col.new_note(col.models.by_name("Basic"))
-            note["Front"] = f"f{i}"; note["Back"] = f"b{i}"
+            note["Front"] = f"f{i}"
+            note["Back"] = f"b{i}"
             col.add_note(note, did)
         return did
+
     return client.portal.call(client.app.state.service.run, seed)
 
 
@@ -73,8 +75,8 @@ def test_custom_study_route_renders_form(client):
     body = r.text
     assert "Increase today's new card limit" in body
     assert "Study by card state or tag" in body
-    assert 'name="r"' in body          # the radio group
-    assert 'id="spin"' in body         # the number input
+    assert 'name="r"' in body  # the radio group
+    assert 'id="spin"' in body  # the number input
 
 
 def _drain_for(ws, fn):
@@ -87,8 +89,14 @@ def _drain_for(ws, fn):
 def test_custom_study_new_limit_navigates_and_broadcasts(client):
     _seed(client)
     with client.websocket_connect("/ws?context=customstudy") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "customstudy",
-                      "arg": "submit:" + json.dumps({"radio": 1, "value": 5})})
+        ws.send_json(
+            {
+                "type": "cmd",
+                "id": None,
+                "ctx": "customstudy",
+                "arg": "submit:" + json.dumps({"radio": 1, "value": 5}),
+            }
+        )
         m = _drain_for(ws, "ankiwebNavigate")
         assert m["args"] == ["/overview"]
 
@@ -96,30 +104,54 @@ def test_custom_study_new_limit_navigates_and_broadcasts(client):
 def test_custom_study_cram_creates_filtered_deck(client):
     _seed(client)
     with client.websocket_connect("/ws?context=customstudy") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "customstudy",
-                      "arg": "submit:" + json.dumps(
-                          {"radio": 6, "value": 50, "cram_kind": 1,
-                           "include": [], "exclude": []})})
+        ws.send_json(
+            {
+                "type": "cmd",
+                "id": None,
+                "ctx": "customstudy",
+                "arg": "submit:"
+                + json.dumps(
+                    {
+                        "radio": 6,
+                        "value": 50,
+                        "cram_kind": 1,
+                        "include": [],
+                        "exclude": [],
+                    }
+                ),
+            }
+        )
         _drain_for(ws, "ankiwebNavigate")
     cur = client.portal.call(
         client.app.state.service.run,
-        lambda col: (col.decks.get(col.decks.get_current_id())["name"],
-                     bool(col.decks.get(col.decks.get_current_id()).get("dyn"))))
-    assert cur[1] is True                       # current deck is now filtered
+        lambda col: (
+            col.decks.get(col.decks.get_current_id())["name"],
+            bool(col.decks.get(col.decks.get_current_id()).get("dyn")),
+        ),
+    )
+    assert cur[1] is True  # current deck is now filtered
     assert cur[0] == "Custom Study Session"
 
 
 def test_custom_study_error_when_no_cards_match(client):
-    _seed(client)   # fresh new cards → none "forgotten"
+    _seed(client)  # fresh new cards → none "forgotten"
     with client.websocket_connect("/ws?context=customstudy") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "customstudy",
-                      "arg": "submit:" + json.dumps({"radio": 3, "value": 1})})
+        ws.send_json(
+            {
+                "type": "cmd",
+                "id": None,
+                "ctx": "customstudy",
+                "arg": "submit:" + json.dumps({"radio": 3, "value": 1}),
+            }
+        )
         m = ws.receive_json()
         seen_err = False
         for _ in range(10):
             if m["type"] == "call" and m["fn"] == "ankiwebCustomStudyError":
                 seen_err = True
-                assert "matched" in m["args"][0].lower() or "card" in m["args"][0].lower()
+                assert (
+                    "matched" in m["args"][0].lower() or "card" in m["args"][0].lower()
+                )
                 break
             if m["type"] == "call" and m["fn"] == "ankiwebNavigate":
                 pytest.fail("navigated despite CustomStudyError")
@@ -172,10 +204,15 @@ def render_custom_study_html(col) -> str:
         for v, t in radios
     )
 
-    kinds = [(1, "New cards only"), (0, "Due cards only"),
-             (2, "All review cards in random order"),
-             (3, "All cards in random order (don't reschedule)")]
-    kind_opts = "".join(f"<option value='{k}'>{html.escape(t)}</option>" for k, t in kinds)
+    kinds = [
+        (1, "New cards only"),
+        (0, "Due cards only"),
+        (2, "All review cards in random order"),
+        (3, "All cards in random order (don't reschedule)"),
+    ]
+    kind_opts = "".join(
+        f"<option value='{k}'>{html.escape(t)}</option>" for k, t in kinds
+    )
     tag_opts = "".join(
         f"<option value='{html.escape(t.name)}'>{html.escape(t.name)}</option>"
         for t in d.tags
@@ -184,7 +221,12 @@ def render_custom_study_html(col) -> str:
     # per-radio config: [label, default, suffix, min]
     cfg = {
         1: ["Increase today's new card limit by", d.extend_new or 0, "cards", -9999],
-        2: ["Increase today's review card limit by", d.extend_review or 0, "cards", -9999],
+        2: [
+            "Increase today's review card limit by",
+            d.extend_review or 0,
+            "cards",
+            -9999,
+        ],
         3: ["Review cards forgotten in the last", 1, "days", 1],
         4: ["Review ahead by", 1, "days", 1],
         5: ["Preview new cards added in the last", 1, "days", 1],
@@ -276,6 +318,7 @@ def make_custom_study_handler(service, hub):
 
         def build_and_run(col):
             import anki.scheduler_pb2 as sp
+
             did = col.decks.get_current_id()
             req = sp.CustomStudyRequest(deck_id=did)
             if radio == 1:
@@ -299,7 +342,12 @@ def make_custom_study_handler(service, hub):
             await service.run_op(build_and_run, initiator="customstudy")
         except Exception as e:
             from anki.errors import CustomStudyError
-            msg = str(e) if isinstance(e, CustomStudyError) else "Could not create a custom study session."
+
+            msg = (
+                str(e)
+                if isinstance(e, CustomStudyError)
+                else "Could not create a custom study session."
+            )
             await hub.push_call("customstudy", "ankiwebCustomStudyError", [msg])
             return None
         await hub.push_call("customstudy", "ankiwebNavigate", ["/overview"])
@@ -376,13 +424,17 @@ def live_server_cs(tmp_path: Path):
         col.decks.set_current(did)
         for i in range(3):
             n = col.new_note(col.models.by_name("Basic"))
-            n["Front"] = f"f{i}"; n["Back"] = f"b{i}"
+            n["Front"] = f"f{i}"
+            n["Back"] = f"b{i}"
             col.add_note(n, did)
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8133)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8133, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8133, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10

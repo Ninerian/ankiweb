@@ -24,8 +24,11 @@ def live_server_cnt(tmp_path: Path):
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8132)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8132, log_level="warning"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8132, log_level="warning"
+        )
+    )
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     deadline = time.monotonic() + 10
@@ -45,17 +48,36 @@ def test_change_notetype_spa_boots(live_server_cnt):
         page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on("requestfailed",
-                lambda r: errors.append("REQFAIL " + r.url) if ("/_app/" in r.url or "/_anki/" in r.url) else None)
+        page.on(
+            "requestfailed",
+            lambda r: (
+                errors.append("REQFAIL " + r.url)
+                if ("/_app/" in r.url or "/_anki/" in r.url)
+                else None
+            ),
+        )
         posts = []
-        page.on("request", lambda r: posts.append(r.url) if r.method == "POST" and "/_anki/" in r.url else None)
+        page.on(
+            "request",
+            lambda r: (
+                posts.append(r.url)
+                if r.method == "POST" and "/_anki/" in r.url
+                else None
+            ),
+        )
         page.goto(f"{url}/change-notetype/{old}")
         # The change-notetype SPA uses Svelte custom dropdowns (role="combobox") for field/template
         # mapping rather than native <select> elements; there are typically 5 comboboxes + 1 Save
         # button rendered once the info loads (no native <select> or <table> in this SPA).
-        page.wait_for_function("document.querySelectorAll('[role=\"combobox\"],button').length>1", timeout=10000)
+        page.wait_for_function(
+            "document.querySelectorAll('[role=\"combobox\"],button').length>1",
+            timeout=10000,
+        )
         page.wait_for_function("document.body.innerText.length>20", timeout=10000)
         assert not errors, errors
-        assert any("get_change_notetype_info" in u.lower() or "getchangenotetypeinfo" in u.lower()
-                   for u in posts), posts
+        assert any(
+            "get_change_notetype_info" in u.lower()
+            or "getchangenotetypeinfo" in u.lower()
+            for u in posts
+        ), posts
         browser.close()

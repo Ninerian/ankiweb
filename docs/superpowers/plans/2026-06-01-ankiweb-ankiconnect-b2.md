@@ -48,7 +48,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -66,7 +68,12 @@ def _err(client, action, **params):
 
 
 def _basic(front="Q1", back="A1", deck="Default", **extra):
-    return {"deckName": deck, "modelName": "Basic", "fields": {"Front": front, "Back": back}, **extra}
+    return {
+        "deckName": deck,
+        "modelName": "Basic",
+        "fields": {"Front": front, "Back": back},
+        **extra,
+    }
 
 
 def test_add_note_returns_id(client):
@@ -76,8 +83,15 @@ def test_add_note_returns_id(client):
 
 
 def test_add_note_case_insensitive_fields(client):
-    nid = _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                                         "fields": {"front": "x", "BACK": "y"}})
+    nid = _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"front": "x", "BACK": "y"},
+        },
+    )
     assert isinstance(nid, int)
 
 
@@ -87,9 +101,13 @@ def test_add_note_empty_first_field_errors(client):
 
 def test_add_note_duplicate_errors_unless_allowed(client):
     _call(client, "addNote", note=_basic(front="dup"))
-    assert "duplicate" in (_err(client, "addNote", note=_basic(front="dup")) or "").lower()
+    assert (
+        "duplicate" in (_err(client, "addNote", note=_basic(front="dup")) or "").lower()
+    )
     # allowDuplicate bypasses
-    nid = _call(client, "addNote", note=_basic(front="dup", options={"allowDuplicate": True}))
+    nid = _call(
+        client, "addNote", note=_basic(front="dup", options={"allowDuplicate": True})
+    )
     assert isinstance(nid, int)
 
 
@@ -110,8 +128,14 @@ def test_add_notes_success_returns_ids(client):
 
 def test_add_notes_errors_and_rolls_back_on_any_failure(client):
     # one good + one empty → faithful AnkiConnect: the WHOLE call errors and rolls back all.
-    r = client.post("/", json={"action": "addNotes", "version": 6,
-                               "params": {"notes": [_basic(front="g1"), _basic(front="")]}})
+    r = client.post(
+        "/",
+        json={
+            "action": "addNotes",
+            "version": 6,
+            "params": {"notes": [_basic(front="g1"), _basic(front="")]},
+        },
+    )
     assert r.json()["error"] is not None
     assert _call(client, "findNotes", query="deck:Default") == []  # rolled back
 
@@ -198,6 +222,7 @@ async def add_note(rt, note=None):
         did = col.decks.id(spec.get("deckName", "Default"))
         res = col.add_note(n, did)
         return n.id, res
+
     return await run_emit(rt, fn)
 
 
@@ -212,6 +237,7 @@ async def can_add_note(rt, note=None):
             return ok
         except Exception:
             return False
+
     return await rt.service.run(fn)
 
 
@@ -226,6 +252,7 @@ async def can_add_note_with_error_detail(rt, note=None):
             return {"canAdd": ok} if ok else {"canAdd": False, "error": err}
         except Exception as exc:
             return {"canAdd": False, "error": str(exc)}
+
     return await rt.service.run(fn)
 
 
@@ -255,7 +282,11 @@ async def add_notes(rt, notes=None):
             if added_ids:
                 col.remove_notes(added_ids)
             raise Exception(str(errs))
-        return added_ids, last_op  # last_op is None for an empty list → run_emit tolerates
+        return (
+            added_ids,
+            last_op,
+        )  # last_op is None for an empty list → run_emit tolerates
+
     return await run_emit(rt, fn)
 
 
@@ -308,8 +339,12 @@ Report: Status, test results, files changed, self-review, commit SHA, concerns.
 ```python
 def test_update_note_fields_and_tags(client):
     nid = _call(client, "addNote", note=_basic(front="u1"))
-    assert _call(client, "updateNoteFields",
-                 note={"id": nid, "fields": {"Back": "newback"}}) is None
+    assert (
+        _call(
+            client, "updateNoteFields", note={"id": nid, "fields": {"Back": "newback"}}
+        )
+        is None
+    )
     info = _call(client, "notesInfo", notes=[nid])[0]
     assert info["fields"]["Back"]["value"] == "newback"
     assert _call(client, "updateNote", note={"id": nid, "tags": ["x", "y"]}) is None
@@ -344,9 +379,12 @@ async def update_note_fields(rt, note=None):
     def fn(col):
         n = col.get_note(spec["id"])
         for name, val in (spec.get("fields") or {}).items():
-            if name in n:  # case-sensitive (AnkiConnect updateNoteFields is case-sensitive)
+            if (
+                name in n
+            ):  # case-sensitive (AnkiConnect updateNoteFields is case-sensitive)
                 n[name] = val
         return None, col.update_note(n, skip_undo_entry=True)
+
     await run_emit(rt, fn)
     return None
 
@@ -359,6 +397,7 @@ async def update_note_tags(rt, note=None, tags=None):
         n = col.get_note(note)
         n.tags = list(tags)
         return None, col.update_note(n)
+
     await run_emit(rt, fn)
     return None
 
@@ -398,6 +437,7 @@ async def update_note_model(rt, note=None):
         if "tags" in spec:
             n.tags = list(spec["tags"])
         return None, col.update_note(n)
+
     await run_emit(rt, fn)
     return None
 
@@ -408,6 +448,7 @@ async def add_tags(rt, notes=None, tags=None, add=True):
 
     def fn(col):
         return None, col.tags.bulk_add(notes, tags or "")
+
     await run_emit(rt, fn)
     return None
 
@@ -418,6 +459,7 @@ async def remove_tags(rt, notes=None, tags=None):
 
     def fn(col):
         return None, col.tags.bulk_remove(notes, tags or "")
+
     await run_emit(rt, fn)
     return None
 
@@ -431,6 +473,7 @@ async def get_tags(rt):
 async def clear_unused_tags(rt):
     def fn(col):
         return None, col.tags.clear_unused_tags()
+
     await run_emit(rt, fn)
     return None
 
@@ -443,9 +486,12 @@ async def replace_tags(rt, notes=None, tag_to_replace=None, replace_with_tag=Non
         for nid in notes:
             n = col.get_note(nid)
             if tag_to_replace in n.tags:
-                n.tags = [replace_with_tag if t == tag_to_replace else t for t in n.tags]
+                n.tags = [
+                    replace_with_tag if t == tag_to_replace else t for t in n.tags
+                ]
                 col.update_note(n)
         return None
+
     await rt.service.run(fn)
     return None
 
@@ -454,6 +500,7 @@ async def replace_tags(rt, notes=None, tag_to_replace=None, replace_with_tag=Non
 async def replace_tags_in_all_notes(rt, tag_to_replace=None, replace_with_tag=None):
     def fn(col):
         return None, col.tags.rename(tag_to_replace, replace_with_tag)
+
     await run_emit(rt, fn)
     return None
 ```
@@ -561,6 +608,7 @@ async def notes_info(rt, notes=None, query=None):
     def fn(col):
         ids = list(notes) if notes is not None else list(col.find_notes(query or ""))
         return [note_to_info(col, col.get_note(nid)) for nid in ids]
+
     return await rt.service.run(fn)
 
 
@@ -568,7 +616,8 @@ async def notes_info(rt, notes=None, query=None):
 async def notes_mod_time(rt, notes=None):
     notes = notes or []
     return await rt.service.run(
-        lambda col: [{"noteId": nid, "mod": col.get_note(nid).mod} for nid in notes])
+        lambda col: [{"noteId": nid, "mod": col.get_note(nid).mod} for nid in notes]
+    )
 
 
 @action("deleteNotes")
@@ -577,6 +626,7 @@ async def delete_notes(rt, notes=None):
 
     def fn(col):
         return None, col.remove_notes(notes)
+
     await run_emit(rt, fn)
     return None
 
@@ -590,6 +640,7 @@ async def remove_empty_notes(rt):
         if nids:
             return None, col.remove_notes(nids)
         return None, None  # run_emit tolerates a None op
+
     await run_emit(rt, fn)
     return None
 
@@ -605,6 +656,7 @@ async def cards_to_notes(rt, cards=None):
             if nid not in seen:
                 seen.append(nid)
         return seen
+
     return await rt.service.run(fn)
 ```
 
@@ -649,7 +701,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -662,8 +716,15 @@ def _call(client, action, **params):
 
 
 def _add(client, front="Q"):
-    return _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                                          "fields": {"Front": front, "Back": "A"}})
+    return _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"Front": front, "Back": "A"},
+        },
+    )
 
 
 def test_find_cards(client):
@@ -680,7 +741,7 @@ def test_cards_info_shape(client):
     assert info["deckName"] == "Default"
     assert info["modelName"] == "Basic"
     assert "question" in info and "answer" in info and "fields" in info
-    assert info["queue"] == 0 and info["type"] == 0   # new card
+    assert info["queue"] == 0 and info["type"] == 0  # new card
     assert isinstance(info["nextReviews"], list)
 
 
@@ -712,12 +773,25 @@ def card_to_info(col, card):
     except Exception:
         next_reviews = []
     return {
-        "cardId": card.id, "note": note.id, "deckName": col.decks.name(card.did),
-        "modelName": model["name"], "fieldOrder": card.ord,
-        "fields": fields, "question": card.question(), "answer": card.answer(),
-        "css": model.get("css", ""), "ord": card.ord, "type": card.type,
-        "queue": card.queue, "due": card.due, "reps": card.reps, "lapses": card.lapses,
-        "left": card.left, "mod": card.mod, "factor": card.factor, "interval": card.ivl,
+        "cardId": card.id,
+        "note": note.id,
+        "deckName": col.decks.name(card.did),
+        "modelName": model["name"],
+        "fieldOrder": card.ord,
+        "fields": fields,
+        "question": card.question(),
+        "answer": card.answer(),
+        "css": model.get("css", ""),
+        "ord": card.ord,
+        "type": card.type,
+        "queue": card.queue,
+        "due": card.due,
+        "reps": card.reps,
+        "lapses": card.lapses,
+        "left": card.left,
+        "mod": card.mod,
+        "factor": card.factor,
+        "interval": card.ivl,
         "nextReviews": next_reviews,
     }
 ```
@@ -738,14 +812,16 @@ async def find_cards(rt, query=""):
 async def cards_info(rt, cards=None):
     cards = cards or []
     return await rt.service.run(
-        lambda col: [card_to_info(col, col.get_card(cid)) for cid in cards])
+        lambda col: [card_to_info(col, col.get_card(cid)) for cid in cards]
+    )
 
 
 @action("cardsModTime")
 async def cards_mod_time(rt, cards=None):
     cards = cards or []
     return await rt.service.run(
-        lambda col: [{"cardId": cid, "mod": col.get_card(cid).mod} for cid in cards])
+        lambda col: [{"cardId": cid, "mod": col.get_card(cid).mod} for cid in cards]
+    )
 ```
 
 - [ ] **Step 4: Run to verify pass**
@@ -824,8 +900,13 @@ async def suspend(rt, cards=None, suspend=True):
     cards = cards or []
 
     def fn(col):
-        op = col.sched.suspend_cards(cards) if suspend else col.sched.unsuspend_cards(cards)
+        op = (
+            col.sched.suspend_cards(cards)
+            if suspend
+            else col.sched.unsuspend_cards(cards)
+        )
         return True, op
+
     return await run_emit(rt, fn)
 
 
@@ -835,6 +916,7 @@ async def unsuspend(rt, cards=None):
 
     def fn(col):
         return None, col.sched.unsuspend_cards(cards)
+
     await run_emit(rt, fn)
     return None
 
@@ -856,6 +938,7 @@ async def are_suspended(rt, cards=None):
             except Exception:
                 out.append(None)
         return out
+
     return await rt.service.run(fn)
 
 
@@ -863,8 +946,11 @@ async def are_suspended(rt, cards=None):
 async def are_due(rt, cards=None):
     cards = cards or []
     return await rt.service.run(
-        lambda col: [cid in set(col.find_cards("is:due")) or
-                     cid in set(col.find_cards("is:new")) for cid in cards])
+        lambda col: [
+            cid in set(col.find_cards("is:due")) or cid in set(col.find_cards("is:new"))
+            for cid in cards
+        ]
+    )
 
 
 @action("getEaseFactors")
@@ -879,6 +965,7 @@ async def get_ease_factors(rt, cards=None):
             except Exception:
                 out.append(None)  # faithful: AnkiConnect appends None for missing cards
         return out
+
     return await rt.service.run(fn)
 
 
@@ -896,15 +983,31 @@ async def set_ease_factors(rt, cards=None, easeFactors=None):
             last_op = col.update_card(c)
             out.append(True)
         return out, last_op
+
     return await run_emit(rt, fn)
 
 
 @action("setSpecificValueOfCard")
-async def set_specific_value_of_card(rt, card=None, keys=None, newValues=None, warning_check=False):
+async def set_specific_value_of_card(
+    rt, card=None, keys=None, newValues=None, warning_check=False
+):
     keys = keys or []
     newValues = newValues or []
-    risky = {"id", "nid", "did", "ord", "mod", "usn", "type", "queue", "due", "odue",
-             "odid", "flags", "data"}
+    risky = {
+        "id",
+        "nid",
+        "did",
+        "ord",
+        "mod",
+        "usn",
+        "type",
+        "queue",
+        "due",
+        "odue",
+        "odid",
+        "flags",
+        "data",
+    }
 
     def fn(col):
         c = col.get_card(card)
@@ -920,6 +1023,7 @@ async def set_specific_value_of_card(rt, card=None, keys=None, newValues=None, w
                 out.append([False, str(exc)])
         op = col.update_card(c)
         return out, op
+
     return await run_emit(rt, fn)
 
 
@@ -927,7 +1031,9 @@ async def set_specific_value_of_card(rt, card=None, keys=None, newValues=None, w
 async def get_intervals(rt, cards=None, complete=False):
     cards = cards or []
     if not complete:
-        return await rt.service.run(lambda col: [col.get_card(cid).ivl for cid in cards])
+        return await rt.service.run(
+            lambda col: [col.get_card(cid).ivl for cid in cards]
+        )
 
     def fn(col):
         out = []
@@ -935,6 +1041,7 @@ async def get_intervals(rt, cards=None, complete=False):
             ivls = col.db.list("select ivl from revlog where cid = ? order by id", cid)
             out.append(ivls)
         return out
+
     return await rt.service.run(fn)
 
 
@@ -944,6 +1051,7 @@ async def forget_cards(rt, cards=None):
 
     def fn(col):
         return None, col.sched.schedule_cards_as_new(cards)
+
     await run_emit(rt, fn)
     return None
 
@@ -956,9 +1064,12 @@ async def relearn_cards(rt, cards=None):
         if not cards:  # avoid invalid "where id in ()"
             return None
         col.db.execute(
-            "update cards set type=3, queue=1 where id in (%s)" %
-            ",".join("?" * len(cards)), *cards)
+            "update cards set type=3, queue=1 where id in (%s)"
+            % ",".join("?" * len(cards)),
+            *cards,
+        )
         return None
+
     await rt.service.run(fn)
     return None
 
@@ -966,9 +1077,14 @@ async def relearn_cards(rt, cards=None):
 @action("answerCards")
 async def answer_cards(rt, answers=None):
     from anki.scheduler.v3 import CardAnswer
+
     answers = answers or []
-    rating_map = {1: CardAnswer.Rating.AGAIN, 2: CardAnswer.Rating.HARD,
-                  3: CardAnswer.Rating.GOOD, 4: CardAnswer.Rating.EASY}
+    rating_map = {
+        1: CardAnswer.Rating.AGAIN,
+        2: CardAnswer.Rating.HARD,
+        3: CardAnswer.Rating.GOOD,
+        4: CardAnswer.Rating.EASY,
+    }
 
     def fn(col):
         out = []
@@ -979,10 +1095,12 @@ async def answer_cards(rt, answers=None):
             card.start_timer()
             states = col._backend.get_scheduling_states(cid)
             answer = col.sched.build_answer(
-                card=card, states=states, rating=rating_map[ease])
+                card=card, states=states, rating=rating_map[ease]
+            )
             last_op = col.sched.answer_card(answer)
             out.append(True)
         return out, last_op
+
     return await run_emit(rt, fn)
 
 
@@ -992,6 +1110,7 @@ async def set_due_date(rt, cards=None, days="0"):
 
     def fn(col):
         return True, col.sched.set_due_date(cards, str(days))
+
     return await run_emit(rt, fn)
 ```
 

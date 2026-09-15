@@ -8,7 +8,9 @@ from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+    with TestClient(
+        create_ankiconnect_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as c:
         yield c
 
 
@@ -21,8 +23,15 @@ def _call(client, action, **params):
 
 
 def _seed_card(client):
-    nid = _call(client, "addNote", note={"deckName": "Default", "modelName": "Basic",
-                "fields": {"Front": "q", "Back": "a"}})
+    nid = _call(
+        client,
+        "addNote",
+        note={
+            "deckName": "Default",
+            "modelName": "Basic",
+            "fields": {"Front": "q", "Back": "a"},
+        },
+    )
     return _call(client, "findCards", query=f"nid:{nid}")[0]
 
 
@@ -33,7 +42,7 @@ def _revlog_row(cid):
 
 def test_insert_reviews_and_latest_and_today(client):
     cid = _seed_card(client)
-    assert _call(client, "getLatestReviewID", deck="Default") == 0   # no reviews yet
+    assert _call(client, "getLatestReviewID", deck="Default") == 0  # no reviews yet
     row = _revlog_row(cid)
     _call(client, "insertReviews", reviews=[row])
     assert _call(client, "getLatestReviewID", deck="Default") == row[0]
@@ -45,7 +54,7 @@ def test_card_reviews(client):
     row = _revlog_row(cid)
     _call(client, "insertReviews", reviews=[row])
     rows = _call(client, "cardReviews", deck="Default", startID=0)
-    assert any(r[0] == row[0] and r[1] == cid for r in rows)   # id, cid, … (9 cols)
+    assert any(r[0] == row[0] and r[1] == cid for r in rows)  # id, cid, … (9 cols)
     assert len(rows[0]) == 9
 
 
@@ -54,16 +63,27 @@ def test_get_reviews_of_cards(client):
     row = _revlog_row(cid)
     _call(client, "insertReviews", reviews=[row])
     res = _call(client, "getReviewsOfCards", cards=[cid])
-    revs = res[str(cid)]                                       # JSON int key → str
+    revs = res[str(cid)]  # JSON int key → str
     assert revs and revs[0]["id"] == row[0] and revs[0]["ease"] == 3
-    assert set(revs[0].keys()) == {"id", "usn", "ease", "ivl", "lastIvl", "factor", "time", "type"}
+    assert set(revs[0].keys()) == {
+        "id",
+        "usn",
+        "ease",
+        "ivl",
+        "lastIvl",
+        "factor",
+        "time",
+        "type",
+    }
 
 
 def test_reviewed_by_day(client):
     cid = _seed_card(client)
     _call(client, "insertReviews", reviews=[_revlog_row(cid)])
     by_day = _call(client, "getNumCardsReviewedByDay")
-    assert isinstance(by_day, list) and by_day and len(by_day[0]) == 2   # [day_str, count]
+    assert (
+        isinstance(by_day, list) and by_day and len(by_day[0]) == 2
+    )  # [day_str, count]
     assert isinstance(by_day[0][0], str) and by_day[0][1] >= 1
 
 

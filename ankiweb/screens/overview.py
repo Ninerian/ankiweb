@@ -1,7 +1,11 @@
 from __future__ import annotations
 from typing import Callable
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
+from datastar_py.fastapi import (
+    DatastarResponse,
+    ServerSentEventGenerator as SSE,
+    ReadSignals,
+)
 from ankiweb.screens import templating
 from ankiweb.screens.congrats import render_congrats_html
 
@@ -25,7 +29,10 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
 
         def do_unbury(col):
             from anki.scheduler.base import UnburyDeck
-            return col.sched.unbury_deck(col.decks.get_current_id(), UnburyDeck.Mode.ALL)
+
+            return col.sched.unbury_deck(
+                col.decks.get_current_id(), UnburyDeck.Mode.ALL
+            )
 
         await service.run_op(do_unbury, initiator="overview")
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
@@ -36,7 +43,9 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
         did = await service.run(lambda col: col.decks.get_current_id())
         is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
         if is_dyn:
-            await service.run_op(lambda col: col.sched.rebuild_filtered_deck(did), initiator="overview")
+            await service.run_op(
+                lambda col: col.sched.rebuild_filtered_deck(did), initiator="overview"
+            )
             return DatastarResponse(SSE.execute_script("window.location.reload()"))
         return DatastarResponse()
 
@@ -46,7 +55,9 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
         did = await service.run(lambda col: col.decks.get_current_id())
         is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
         if is_dyn:
-            await service.run_op(lambda col: col.sched.empty_filtered_deck(did), initiator="overview")
+            await service.run_op(
+                lambda col: col.sched.empty_filtered_deck(did), initiator="overview"
+            )
             return DatastarResponse(SSE.execute_script("window.location.reload()"))
         return DatastarResponse()
 
@@ -81,6 +92,7 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
     return router
+
 
 def render_overview_html(col) -> str:
     deck = col.decks.current()

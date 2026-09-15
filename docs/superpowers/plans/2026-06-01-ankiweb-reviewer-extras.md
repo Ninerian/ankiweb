@@ -48,16 +48,24 @@ def test_media_audio_mime(tmp_path):
     from ankiweb.config import Settings
     from ankiweb.app import create_app
     import os
+
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
         mdir = c.portal.call(c.app.state.service.run, lambda col: col.media.dir())
-        for fname, mime in [("a.mp3", "audio/mpeg"), ("b.ogg", "audio/ogg"),
-                            ("c.wav", "audio/wav"), ("d.m4a", "audio/mp4"),
-                            ("e.webm", "video/webm")]:
+        for fname, mime in [
+            ("a.mp3", "audio/mpeg"),
+            ("b.ogg", "audio/ogg"),
+            ("c.wav", "audio/wav"),
+            ("d.m4a", "audio/mp4"),
+            ("e.webm", "video/webm"),
+        ]:
             with open(os.path.join(mdir, fname), "wb") as f:
                 f.write(b"\x00\x01\x02")
             r = c.get("/" + fname)
             assert r.status_code == 200, fname
-            assert r.headers["content-type"].split(";")[0] == mime, (fname, r.headers["content-type"])
+            assert r.headers["content-type"].split(";")[0] == mime, (
+                fname,
+                r.headers["content-type"],
+            )
 ```
 (Use the existing media-serving test conventions in that file; if it already imports a `client` fixture, reuse it instead of building a new one.)
 
@@ -109,6 +117,7 @@ def client(tmp_path: Path):
 
 def _seed(col):
     import os
+
     m = col.models.new("AudioModel")
     col.models.add_field(m, col.models.new_field("Front"))
     col.models.add_field(m, col.models.new_field("Back"))
@@ -117,7 +126,9 @@ def _seed(col):
     t["afmt"] = "{{FrontSide}}<hr id=answer>{{Back}} [sound:bye.mp3]"
     col.models.add_template(m, t)
     col.models.add_dict(m)
-    n = col.new_note(col.models.by_name("AudioModel")); n["Front"] = "q"; n["Back"] = "a"
+    n = col.new_note(col.models.by_name("AudioModel"))
+    n["Front"] = "q"
+    n["Back"] = "a"
     col.add_note(n, col.decks.id("Default"))
     for fn in ("hello.mp3", "bye.mp3"):
         with open(os.path.join(col.media.dir(), fn), "wb") as f:
@@ -134,11 +145,15 @@ def _calls(ws, n):
 
 
 def test_question_autoplays_and_renders_buttons(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
-        calls = _calls(ws, 3)   # _showQuestion + ankiwebSetAnswerBar + ankiwebPlayAudio
+        calls = _calls(ws, 3)  # _showQuestion + ankiwebSetAnswerBar + ankiwebPlayAudio
         assert "ankiwebPlayAudio" in calls
         assert calls["ankiwebPlayAudio"][0] == [["hello.mp3"]]
         # the [anki:play:q:0] ref was rendered as a replay button, not literal text
@@ -148,13 +163,17 @@ def test_question_autoplays_and_renders_buttons(client):
 
 
 def test_answer_autoplays_and_play_and_replay(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
         _calls(ws, 3)
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "ans"})
-        calls = _calls(ws, 3)   # _showAnswer + ease bar + ankiwebPlayAudio
+        calls = _calls(ws, 3)  # _showAnswer + ease bar + ankiwebPlayAudio
         assert "ankiwebPlayAudio" in calls
         # answer-side AUTOPLAY is answer-only (NOT the question audio) — matches Qt _showAnswer
         assert calls["ankiwebPlayAudio"][0][0] == ["bye.mp3"]
@@ -171,6 +190,7 @@ Append a unit test to `tests/test_reviewer.py`:
 ```python
 def test_render_av_buttons_and_filenames():
     from ankiweb.screens.reviewer import render_av_buttons
+
     html = render_av_buttons("X [anki:play:q:0] Y [anki:play:a:1] Z")
     assert "[anki:play" not in html
     assert html.count("replay-button") == 2
@@ -188,10 +208,14 @@ from anki.sound import SoundOrVideoTag, AV_REF_RE
 
 def render_av_buttons(text: str) -> str:
     """Replace [anki:play:<side>:<N>] refs with inline replay buttons (pycmd('play:..'))."""
+
     def repl(m):
         ref = m.group(1)  # e.g. "play:q:0"
-        return ("<a class='replay-button soundLink' href=# "
-                f"onclick=\"pycmd('{ref}');return false;\"><span>&#9654;</span></a>")
+        return (
+            "<a class='replay-button soundLink' href=# "
+            f"onclick=\"pycmd('{ref}');return false;\"><span>&#9654;</span></a>"
+        )
+
     return AV_REF_RE.sub(repl, text)
 
 
@@ -212,9 +236,11 @@ def answer_side_audio(card) -> list:
 
 In `load_question`, run `render_av_buttons` over the rendered q/a so refs never show as literal text. Change the return to:
 ```python
-    return {"q": render_av_buttons(card.question()),
-            "a": render_av_buttons(card.answer()),
-            "bodyclass": f"card card{card.ord + 1}"}
+return {
+    "q": render_av_buttons(card.question()),
+    "a": render_av_buttons(card.answer()),
+    "bodyclass": f"card card{card.ord + 1}",
+}
 ```
 In `render_answer`, wrap the answer:
 ```python
@@ -223,17 +249,23 @@ In `render_answer`, wrap the answer:
 
 In `make_reviewer_handler._show_next`, after the existing `_showQuestion` + `ankiwebSetAnswerBar` pushes, add the question-side autoplay:
 ```python
-        q_files = await service.run(
-            lambda col: av_sound_filenames(session.card, True) if session.card.autoplay() else [])
-        if q_files:
-            await hub.push_call("reviewer", "ankiwebPlayAudio", [q_files])
+q_files = await service.run(
+    lambda col: (
+        av_sound_filenames(session.card, True) if session.card.autoplay() else []
+    )
+)
+if q_files:
+    await hub.push_call("reviewer", "ankiwebPlayAudio", [q_files])
 ```
 In the handler's `arg == "ans"` branch, after the existing pushes + `hub.ui_state.side = "answer"`, add (autoplay plays ONLY the answer-side tags — Qt's `_showAnswer` does NOT prepend question audio; the `replayq` prepend belongs to the explicit replay path):
 ```python
-            a_files = await service.run(
-                lambda col: av_sound_filenames(session.card, False) if session.card.autoplay() else [])
-            if a_files:
-                await hub.push_call("reviewer", "ankiwebPlayAudio", [a_files])
+a_files = await service.run(
+    lambda col: (
+        av_sound_filenames(session.card, False) if session.card.autoplay() else []
+    )
+)
+if a_files:
+    await hub.push_call("reviewer", "ankiwebPlayAudio", [a_files])
 ```
 Add two new handler branches BEFORE the `elif arg == "decks":` branch:
 ```python
@@ -285,6 +317,7 @@ Status, pytest summaries, files changed, self-review, commit SHA, concerns.
 ```python
 def test_reviewer_body_registers_audio_player():
     from ankiweb.screens.reviewer import reviewer_page_body
+
     body = reviewer_page_body()
     assert "ankiwebPlayAudio" in body
     assert "Audio(" in body or "new Audio" in body
@@ -294,31 +327,42 @@ Append to `tests/test_reviewer_integration.py` a dedicated audio `live_server` f
 @pytest.fixture
 def live_server_audio(tmp_path: Path):
     import os
+
     col_path = tmp_path / "audio.anki2"
     col = Collection(str(col_path))
     try:
         m = col.models.new("AudioM")
         col.models.add_field(m, col.models.new_field("Front"))
-        t = col.models.new_template("C"); t["qfmt"] = "{{Front}} [sound:hello.mp3]"; t["afmt"] = "{{Front}}"
-        col.models.add_template(m, t); col.models.add_dict(m)
+        t = col.models.new_template("C")
+        t["qfmt"] = "{{Front}} [sound:hello.mp3]"
+        t["afmt"] = "{{Front}}"
+        col.models.add_template(m, t)
+        col.models.add_dict(m)
         did = col.decks.id("Default")
-        n = col.new_note(col.models.by_name("AudioM")); n["Front"] = "Q"
-        col.add_note(n, did); col.decks.set_current(did)
+        n = col.new_note(col.models.by_name("AudioM"))
+        n["Front"] = "Q"
+        col.add_note(n, did)
+        col.decks.set_current(did)
         with open(os.path.join(col.media.dir(), "hello.mp3"), "wb") as f:
             f.write(b"\x00")
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8126)
-    server = uvicorn.Server(uvicorn.Config(create_app(settings), host="127.0.0.1",
-                                           port=8126, log_level="warning"))
-    t = threading.Thread(target=server.run, daemon=True); t.start()
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8126, log_level="warning"
+        )
+    )
+    t = threading.Thread(target=server.run, daemon=True)
+    t.start()
     deadline = time.monotonic() + 10
     while not server.started:
         if time.monotonic() > deadline:
             raise RuntimeError("server did not start")
         time.sleep(0.05)
     yield "http://127.0.0.1:8126"
-    server.should_exit = True; t.join(timeout=5)
+    server.should_exit = True
+    t.join(timeout=5)
 
 
 def test_audio_autoplays_on_question(live_server_audio):
@@ -328,9 +372,12 @@ def test_audio_autoplays_on_question(live_server_audio):
         page.add_init_script(
             "window.__played=[];"
             "HTMLMediaElement.prototype.play=function(){window.__played.push(this.src);"
-            "return Promise.resolve();};")
+            "return Promise.resolve();};"
+        )
         page.goto(f"{live_server_audio}/reviewer")
-        page.wait_for_function("document.getElementById('qa').textContent.length>0", timeout=6000)
+        page.wait_for_function(
+            "document.getElementById('qa').textContent.length>0", timeout=6000
+        )
         page.wait_for_function("window.__played.length>0", timeout=6000)
         assert any(s.endswith("/hello.mp3") for s in page.evaluate("window.__played"))
         browser.close()
@@ -379,23 +426,29 @@ Status, pytest summaries (note any Playwright skip), files changed, self-review,
 ```python
 def test_gui_play_audio_pushes_when_reviewing(client):
     import os
+
     # seed an audio card in its own deck and make that deck current, so the reviewer
     # shows exactly this card and 'replay' has a real filename to push.
     def setup(col):
         m = col.models.new("AudioM")
         col.models.add_field(m, col.models.new_field("F"))
-        t = col.models.new_template("C"); t["qfmt"] = "{{F}} [sound:s.mp3]"; t["afmt"] = "{{F}}"
-        col.models.add_template(m, t); col.models.add_dict(m)
+        t = col.models.new_template("C")
+        t["qfmt"] = "{{F}} [sound:s.mp3]"
+        t["afmt"] = "{{F}}"
+        col.models.add_template(m, t)
+        col.models.add_dict(m)
         did = col.decks.id("AudioDeck")
-        n = col.new_note(col.models.by_name("AudioM")); n["F"] = "x"
+        n = col.new_note(col.models.by_name("AudioM"))
+        n["F"] = "x"
         col.add_note(n, did)
         with open(os.path.join(col.media.dir(), "s.mp3"), "wb") as f:
             f.write(b"\x00")
         col.decks.set_current(did)
+
     client.portal.call(client.app.state.service.run, setup)
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
-        for _ in range(3):   # _showQuestion + ankiwebSetAnswerBar + ankiwebPlayAudio
+        for _ in range(3):  # _showQuestion + ankiwebSetAnswerBar + ankiwebPlayAudio
             ws.receive_json()
         assert _gui(client, "guiPlayAudio") is True
         m = ws.receive_json()
@@ -456,10 +509,14 @@ def col():
     c.models.add_field(m, c.models.new_field("Back"))
     t = c.models.new_template("Card1")
     t["qfmt"] = "{{Front}}\n\n{{type:Back}}"
-    t["afmt"] = "{{FrontSide}}<hr id=answer>{{Back}}"   # stock form: the marker comes via {{FrontSide}}
+    t["afmt"] = (
+        "{{FrontSide}}<hr id=answer>{{Back}}"  # stock form: the marker comes via {{FrontSide}}
+    )
     c.models.add_template(m, t)
     c.models.add_dict(m)
-    n = c.new_note(c.models.by_name("TypeM")); n["Front"] = "capital?"; n["Back"] = "Paris"
+    n = c.new_note(c.models.by_name("TypeM"))
+    n["Front"] = "capital?"
+    n["Back"] = "Paris"
     c.add_note(n, c.decks.id("Default"))
     yield c
     c.close()
@@ -479,15 +536,22 @@ def test_non_type_card_leaves_type_correct_none(col):
     m = col.models.new("Plain")
     col.models.add_field(m, col.models.new_field("Front"))
     col.models.add_field(m, col.models.new_field("Back"))
-    t = col.models.new_template("C"); t["qfmt"] = "{{Front}}"; t["afmt"] = "{{Back}}"
-    col.models.add_template(m, t); col.models.add_dict(m)
-    n = col.new_note(col.models.by_name("Plain")); n["Front"] = "x"; n["Back"] = "y"
+    t = col.models.new_template("C")
+    t["qfmt"] = "{{Front}}"
+    t["afmt"] = "{{Back}}"
+    col.models.add_template(m, t)
+    col.models.add_dict(m)
+    n = col.new_note(col.models.by_name("Plain"))
+    n["Front"] = "x"
+    n["Back"] = "y"
     col.add_note(n, col.decks.id("Default"))
     s = ReviewerSession()
     s.type_correct = "stale"
     # answer the first (type) card so the plain card becomes the top, then load
     # (simplest: just call the filter path twice; the second card has no [[type:]])
-    info = load_question(col, s)   # loads a queued card; if it's the type card type_correct set
+    info = load_question(
+        col, s
+    )  # loads a queued card; if it's the type card type_correct set
     # load again after the type card would advance; for the unit we assert the reset semantics:
     assert s.type_correct in (None, "Paris")  # reset per card; never the stale value
 ```
@@ -514,9 +578,13 @@ def _parse_spec(spec: str):
     while changed:
         changed = False
         if spec.startswith("cloze:"):
-            is_cloze = True; spec = spec[len("cloze:"):]; changed = True
+            is_cloze = True
+            spec = spec[len("cloze:") :]
+            changed = True
         if spec.startswith("nc:"):
-            combining = False; spec = spec[len("nc:"):]; changed = True
+            combining = False
+            spec = spec[len("nc:") :]
+            changed = True
     return spec.strip(), is_cloze, combining
 
 
@@ -534,29 +602,41 @@ def type_answer_question_filter(col, card, session, html: str) -> str:
     session.type_combining = True
     session.type_font = "Arial"
     session.type_size = 20
-    session.typed_answer = ""        # reset per card; set later by the "typed:" command
+    session.typed_answer = ""  # reset per card; set later by the "typed:" command
     m = _TYPE_RE.search(html)
     if m is None:
         return html
     field, is_cloze, combining = _parse_spec(m.group(1))
     note = card.note()
     model = note.note_type()
-    if field not in note:   # unknown field → warn, no input (Qt shows a warning); type_correct stays None
+    if (
+        field not in note
+    ):  # unknown field → warn, no input (Qt shows a warning); type_correct stays None
         return _TYPE_RE.sub(
-            "<center><b>Type-answer field not found: " + _html.escape(field) + "</b></center>", html)
+            "<center><b>Type-answer field not found: "
+            + _html.escape(field)
+            + "</b></center>",
+            html,
+        )
     if is_cloze:
         expected = col.extract_cloze_for_typing(note[field], card.ord + 1)
     else:
         expected = note[field]
-    if not expected:        # empty field → drop the marker, no input (Qt removes it); type_correct None
+    if (
+        not expected
+    ):  # empty field → drop the marker, no input (Qt removes it); type_correct None
         return _TYPE_RE.sub("", html)
     session.type_correct = expected
     session.type_combining = combining
     session.type_font, session.type_size = _field_font(model, field)
-    box = (f"<center><input type=text id=typeans onkeypress=\"ankiwebTypeAnsPress(event);\" "
-           f"style=\"font-family:'{session.type_font}';font-size:{session.type_size}px;\">"
-           f"</center>")
-    return _TYPE_RE.sub(box, html)   # replace-all (a qfmt could carry the marker more than once)
+    box = (
+        f'<center><input type=text id=typeans onkeypress="ankiwebTypeAnsPress(event);" '
+        f"style=\"font-family:'{session.type_font}';font-size:{session.type_size}px;\">"
+        f"</center>"
+    )
+    return _TYPE_RE.sub(
+        box, html
+    )  # replace-all (a qfmt could carry the marker more than once)
 ```
 
 In `ankiweb/screens/reviewer.py`, add the new `ReviewerSession` fields and call the filter in `load_question`. Update the dataclass:
@@ -566,19 +646,24 @@ class ReviewerSession:
     card: object = None
     states: object = None
     context: object = None
-    type_correct: object = None     # expected answer string when the card has {{type:Field}}
+    type_correct: object = (
+        None  # expected answer string when the card has {{type:Field}}
+    )
     type_combining: bool = True
     type_font: str = "Arial"
     type_size: int = 20
-    typed_answer: str = ""          # the user's typed value, set by the "typed:" command
+    typed_answer: str = ""  # the user's typed value, set by the "typed:" command
 ```
 In `load_question`, after fetching the card and before returning, run the question filter on the rendered question (combine with the av-button rendering from Task 2):
 ```python
-    from ankiweb.screens.type_answer import type_answer_question_filter
-    q = type_answer_question_filter(col, card, session, card.question())
-    return {"q": render_av_buttons(q),
-            "a": render_av_buttons(card.answer()),
-            "bodyclass": f"card card{card.ord + 1}"}
+from ankiweb.screens.type_answer import type_answer_question_filter
+
+q = type_answer_question_filter(col, card, session, card.question())
+return {
+    "q": render_av_buttons(q),
+    "a": render_av_buttons(card.answer()),
+    "bodyclass": f"card card{card.ord + 1}",
+}
 ```
 (Keep the existing `card.start_timer()` etc. The filter sets `session.type_correct=None` on a non-type card so a stale value never leaks.)
 
@@ -608,9 +693,10 @@ Append a unit test to `tests/test_type_answer.py` (the typed value lives on the 
 ```python
 def test_answer_filter_renders_diff(col):
     from ankiweb.screens.reviewer import ReviewerSession, load_question, render_answer
+
     s = ReviewerSession()
-    load_question(col, s)               # sets s.type_correct = "Paris"
-    s.typed_answer = "Paros"            # set by the "typed:" command in the live flow
+    load_question(col, s)  # sets s.type_correct = "Paris"
+    s.typed_answer = "Paros"  # set by the "typed:" command in the live flow
     info = render_answer(col, s)
     assert "typeans" in info["a"]
     assert "typeBad" in info["a"] or "typeMissed" in info["a"]  # a diff was rendered
@@ -639,22 +725,32 @@ def _seed(col):
     col.models.add_field(m, col.models.new_field("Back"))
     t = col.models.new_template("Card1")
     t["qfmt"] = "{{Front}}\n\n{{type:Back}}"
-    t["afmt"] = "{{FrontSide}}<hr id=answer>{{Back}}"   # stock form: the marker comes via {{FrontSide}}
+    t["afmt"] = (
+        "{{FrontSide}}<hr id=answer>{{Back}}"  # stock form: the marker comes via {{FrontSide}}
+    )
     col.models.add_template(m, t)
     col.models.add_dict(m)
-    n = col.new_note(col.models.by_name("TypeM")); n["Front"] = "capital?"; n["Back"] = "Paris"
+    n = col.new_note(col.models.by_name("TypeM"))
+    n["Front"] = "capital?"
+    n["Back"] = "Paris"
     col.add_note(n, col.decks.id("Default"))
 
 
 def test_type_answer_ws_roundtrip(client):
-    did = client.portal.call(client.app.state.service.run, lambda col: col.decks.id("Default"))
-    client.portal.call(client.app.state.service.run, lambda col: col.decks.set_current(did))
+    did = client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id("Default")
+    )
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.set_current(did)
+    )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
         for _ in range(2):
-            ws.receive_json()                      # drain _showQuestion + ankiwebSetAnswerBar
+            ws.receive_json()  # drain _showQuestion + ankiwebSetAnswerBar
         # the shell sends the typed value, then asks to show the answer (two sequential cmds)
-        ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "typed:Paros"})
+        ws.send_json(
+            {"type": "cmd", "id": None, "ctx": "reviewer", "arg": "typed:Paros"}
+        )
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "ans"})
         diff = None
         for _ in range(6):
@@ -674,11 +770,14 @@ Add the answer filter to `ankiweb/screens/type_answer.py` (reads `session.typed_
 def type_answer_answer_filter(col, session, html: str) -> str:
     """Port of Qt typeAnsAnswerFilter: replace [[type:...]] with the compare_answer diff."""
     if session.type_correct is None:
-        return _TYPE_RE.sub("", html)   # defensive: no expected → drop any marker
-    output = col.compare_answer(session.type_correct, session.typed_answer or "",
-                                session.type_combining)
-    block = (f"<div style=\"font-family:'{session.type_font}';"
-             f"font-size:{session.type_size}px\">{output}</div>")
+        return _TYPE_RE.sub("", html)  # defensive: no expected → drop any marker
+    output = col.compare_answer(
+        session.type_correct, session.typed_answer or "", session.type_combining
+    )
+    block = (
+        f"<div style=\"font-family:'{session.type_font}';"
+        f'font-size:{session.type_size}px">{output}</div>'
+    )
     # replace-all: {{FrontSide}} in an afmt re-includes the question's [[type:]] marker, so the
     # rendered answer can contain the marker more than once — Anki's re.sub replaces all of them.
     return _TYPE_RE.sub(block, html)
@@ -688,12 +787,15 @@ In `ankiweb/screens/reviewer.py`, `render_answer` keeps its signature and reads 
 ```python
 def render_answer(col, session):
     from ankiweb.screens.type_answer import type_answer_answer_filter
+
     # Always run the filter: it compares when type_correct is set, and strips any stray
     # [[type:]] marker (e.g. empty/unknown field) when it is None. Non-type answers have no
     # marker, so it's a no-op for them.
     a = type_answer_answer_filter(col, session, session.card.answer())
-    return {"a": render_av_buttons(a),
-            "labels": list(col.sched.describe_next_states(session.states))}
+    return {
+        "a": render_av_buttons(a),
+        "labels": list(col.sched.describe_next_states(session.states)),
+    }
 ```
 The `arg == "ans"` branch is UNCHANGED from Task 2 (`render_answer(col, session)` now picks up `session.typed_answer`). Add a NEW `typed:` handler branch (the shell sends it right before `ans`); place it before `elif arg == "decks":`:
 ```python
@@ -703,8 +805,10 @@ The `arg == "ans"` branch is UNCHANGED from Task 2 (`render_answer(col, session)
 Change `show_answer_bar()` so the button routes through the shell (to capture the typed value), and add the two shell functions to `reviewer_page_body()`'s inline IIFE:
 ```python
 def show_answer_bar() -> str:
-    return ("<button id='ansbut' class='ansbut' "
-            "onclick=\"ankiwebShowAnswer()\">Show Answer</button>")
+    return (
+        "<button id='ansbut' class='ansbut' "
+        'onclick="ankiwebShowAnswer()">Show Answer</button>'
+    )
 ```
 In `reviewer_page_body()`'s inline `<script>` IIFE, define (and expose on `window`, since the input's inline `onkeypress` and the button's `onclick` run in global scope):
 ```javascript
@@ -743,10 +847,11 @@ Status, pytest summaries, files changed, self-review, commit SHA, concerns.
 ```python
 def test_reviewer_body_has_shortcuts_guarded():
     from ankiweb.screens.reviewer import reviewer_page_body
+
     body = reviewer_page_body()
     assert "keydown" in body
-    assert "typeans" in body          # the input guard
-    assert "ease" in body             # digit -> ease mapping
+    assert "typeans" in body  # the input guard
+    assert "ease" in body  # digit -> ease mapping
 ```
 Append an inline `sync_playwright` test to `tests/test_reviewer_integration.py` (reuse the EXISTING `live_server` fixture — its Basic card needs no audio; NO `page` fixture):
 ```python
@@ -756,11 +861,14 @@ def test_shortcut_space_shows_answer(live_server):
         page = browser.new_page()
         page.goto(f"{live_server}/reviewer")
         page.wait_for_function(
-            "document.getElementById('qa').textContent.includes('CapitalFrance')", timeout=6000)
-        page.keyboard.press("Space")      # question side -> show answer (ankiwebShowAnswer)
+            "document.getElementById('qa').textContent.includes('CapitalFrance')",
+            timeout=6000,
+        )
+        page.keyboard.press("Space")  # question side -> show answer (ankiwebShowAnswer)
         page.wait_for_function(
-            "document.getElementById('qa').textContent.includes('Paris')", timeout=6000)
-        page.wait_for_selector(".ease[data-ease='4']")   # the ease bar appeared
+            "document.getElementById('qa').textContent.includes('Paris')", timeout=6000
+        )
+        page.wait_for_selector(".ease[data-ease='4']")  # the ease bar appeared
         browser.close()
 ```
 (The unit test `test_reviewer_body_has_shortcuts_guarded` is the primary gate; this confirms the keydown actually fires `ankiwebShowAnswer`.)

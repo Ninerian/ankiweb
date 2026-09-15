@@ -2,8 +2,11 @@ from __future__ import annotations
 import re
 from typing import Callable
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
-from ankiweb.i18n import tr
+from datastar_py.fastapi import (
+    DatastarResponse,
+    ServerSentEventGenerator as SSE,
+    ReadSignals,
+)
 from ankiweb.screens import templating
 
 _TAG_STRIP = re.compile(r"<[^>]+>")
@@ -26,6 +29,8 @@ def render_browser_html(col, query: str = "") -> str:
         initial_rows=initial_rows,
         initial_count=len(cids),
     )
+
+
 def _row_data(col, cids):
     rows = []
     for cid in cids:
@@ -36,7 +41,11 @@ def _row_data(col, cids):
         note = card.note()
         model = note.note_type()
         sf = model.get("sortf", 0)
-        sort = note.fields[sf] if sf < len(note.fields) else (note.fields[0] if note.fields else "")
+        sort = (
+            note.fields[sf]
+            if sf < len(note.fields)
+            else (note.fields[0] if note.fields else "")
+        )
         rows.append((cid, sort, col.decks.name(card.did), card.due))
     return rows
 
@@ -58,7 +67,10 @@ def _detail_html(col, cid) -> str:
     card = col.get_card(cid)
     note = card.note()
     model = note.note_type()
-    fields = [{"name": f["name"], "value": note.fields[i]} for i, f in enumerate(model["flds"])]
+    fields = [
+        {"name": f["name"], "value": note.fields[i]}
+        for i, f in enumerate(model["flds"])
+    ]
     tags = " ".join(note.tags)
     return templating.render(
         "browser_detail.html.jinja",
@@ -70,6 +82,7 @@ def _detail_html(col, cid) -> str:
 
 def _io_detail_html(nid) -> str:
     return templating.render("browser_io_detail.html.jinja", nid=nid)
+
 
 def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
     router = APIRouter(prefix="/browse")
@@ -92,15 +105,18 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
                 SSE.patch_elements(err_body, selector="#results-body"),
                 SSE.execute_script(
                     "document.getElementById('browser-status').textContent = '0 cards'; "
-                    "window.__ankiwebResetSel && window.__ankiwebResetSel();"),
+                    "window.__ankiwebResetSel && window.__ankiwebResetSel();"
+                ),
             ]
         if hub:
             hub.ui_state.browser_open = True
             hub.ui_state.last_browse_query = query
             hub.ui_state.matched_card_ids = cids
         body_html = f'<tbody id="results-body">{rows_html}</tbody>'
-        count_js = (f"document.getElementById('browser-status').textContent = '{len(cids)} cards'; "
-                    "window.__ankiwebResetSel && window.__ankiwebResetSel();")
+        count_js = (
+            f"document.getElementById('browser-status').textContent = '{len(cids)} cards'; "
+            "window.__ankiwebResetSel && window.__ankiwebResetSel();"
+        )
         return [
             SSE.patch_elements(body_html, selector="#results-body"),
             SSE.execute_script(count_js),
@@ -171,8 +187,10 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         def _resolve(col):
             ns = _nids(col, cids)
             is_io = bool(
-                len(cids) == 1 and ns
-                and col.models.get(col.get_note(ns[0]).mid).get("originalStockKind") == 6
+                len(cids) == 1
+                and ns
+                and col.models.get(col.get_note(ns[0]).mid).get("originalStockKind")
+                == 6
             )
             return ns, is_io
 
@@ -201,7 +219,9 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             return DatastarResponse(SSE.patch_elements(detail, selector="#detail"))
         else:
             empty_detail = '<div id="detail"></div>'
-            return DatastarResponse(SSE.patch_elements(empty_detail, selector="#detail"))
+            return DatastarResponse(
+                SSE.patch_elements(empty_detail, selector="#detail")
+            )
 
     @router.post("/suspend")
     async def suspend():
@@ -210,7 +230,9 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         cids = list(hub.ui_state.selected_card_ids or []) if hub else []
         if not cids:
             return DatastarResponse()
-        await service.run_op(lambda col: col.sched.suspend_cards(cids), initiator="browser")
+        await service.run_op(
+            lambda col: col.sched.suspend_cards(cids), initiator="browser"
+        )
         if hub:
             hub.ui_state.selected_card_ids = []
             hub.ui_state.selected_note_ids = []
@@ -223,7 +245,9 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         cids = list(hub.ui_state.selected_card_ids or []) if hub else []
         if not cids:
             return DatastarResponse()
-        await service.run_op(lambda col: col.sched.unsuspend_cards(cids), initiator="browser")
+        await service.run_op(
+            lambda col: col.sched.unsuspend_cards(cids), initiator="browser"
+        )
         if hub:
             hub.ui_state.selected_card_ids = []
             hub.ui_state.selected_note_ids = []
@@ -236,7 +260,9 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         cids = list(hub.ui_state.selected_card_ids or []) if hub else []
         if not cids:
             return DatastarResponse()
-        await service.run_op(lambda col: col.sched.schedule_cards_as_new(cids), initiator="browser")
+        await service.run_op(
+            lambda col: col.sched.schedule_cards_as_new(cids), initiator="browser"
+        )
         if hub:
             hub.ui_state.selected_card_ids = []
             hub.ui_state.selected_note_ids = []
@@ -249,7 +275,9 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         cids = list(hub.ui_state.selected_card_ids or []) if hub else []
         if not cids:
             return DatastarResponse()
-        await service.run_op(lambda col: col.remove_notes(_nids(col, cids)), initiator="browser")
+        await service.run_op(
+            lambda col: col.remove_notes(_nids(col, cids)), initiator="browser"
+        )
         if hub:
             hub.ui_state.selected_card_ids = []
             hub.ui_state.selected_note_ids = []
@@ -265,7 +293,9 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             val = str(payload.get("value", "")).strip()
         if not (cids and val):
             return DatastarResponse()
-        await service.run_op(lambda col: col.sched.set_due_date(cids, val), initiator="browser")
+        await service.run_op(
+            lambda col: col.sched.set_due_date(cids, val), initiator="browser"
+        )
         return await _reload()
 
     @router.post("/changedeck")
@@ -278,7 +308,9 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             deck = str(payload.get("deck", "")).strip()
         if not (cids and deck):
             return DatastarResponse()
-        await service.run_op(lambda col: col.set_deck(cids, col.decks.id(deck)), initiator="browser")
+        await service.run_op(
+            lambda col: col.set_deck(cids, col.decks.id(deck)), initiator="browser"
+        )
         return await _reload()
 
     @router.post("/changenotetype")
@@ -291,7 +323,9 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             nids = await service.run(lambda col: _nids(col, cids))
         if nids:
             try:
-                old = await service.run(lambda col: col.models.get_single_notetype_of_notes(nids))
+                old = await service.run(
+                    lambda col: col.models.get_single_notetype_of_notes(nids)
+                )
             except Exception:
                 return DatastarResponse()
             return DatastarResponse(SSE.redirect(f"/change-notetype/{old}"))
@@ -307,9 +341,11 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             tag = str(payload.get("tag", "")).strip()
         if not (cids and tag):
             return DatastarResponse()
+
         def do_tag(col):
             nids = _nids(col, cids)
             return col.tags.bulk_add(nids, tag)
+
         await service.run_op(do_tag, initiator="browser")
         return await _reload()
 
@@ -323,9 +359,11 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             tag = str(payload.get("tag", "")).strip()
         if not (cids and tag):
             return DatastarResponse()
+
         def do_untag(col):
             nids = _nids(col, cids)
             return col.tags.bulk_remove(nids, tag)
+
         await service.run_op(do_untag, initiator="browser")
         return await _reload()
 

@@ -11,10 +11,11 @@ ACTIONS: dict[str, Callable[..., Awaitable]] = {}
 class ActionSpec:
     """Documentation/typing metadata for an action, used to build the typed /actions/<name>
     REST routes and their OpenAPI schemas. Parallel to ACTIONS; never touched by dispatch."""
+
     name: str
     handler: Callable[..., Awaitable]
-    params_model: type | None = None   # a pydantic BaseModel subclass, or None (loose)
-    result_type: Any = None            # python type for the response `result` field, or None
+    params_model: type | None = None  # a pydantic BaseModel subclass, or None (loose)
+    result_type: Any = None  # python type for the response `result` field, or None
     summary: str = ""
     description: str = ""
 
@@ -31,22 +32,53 @@ EXTRA_ACTION_SPECS: dict[str, ActionSpec] = {}
 def _register(actions, specs, name, fn, params, returns, summary, description):
     actions[name] = fn
     specs[name] = ActionSpec(
-        name=name, handler=fn, params_model=params, result_type=returns,
-        summary=summary, description=(description or (fn.__doc__ or "")).strip())
+        name=name,
+        handler=fn,
+        params_model=params,
+        result_type=returns,
+        summary=summary,
+        description=(description or (fn.__doc__ or "")).strip(),
+    )
 
 
-def action(name: str, *, params: type | None = None, returns: Any = None,
-           summary: str = "", description: str = ""):
+def action(
+    name: str,
+    *,
+    params: type | None = None,
+    returns: Any = None,
+    summary: str = "",
+    description: str = "",
+):
     def deco(fn):
-        _register(ACTIONS, ACTION_SPECS, name, fn, params, returns, summary, description)
+        _register(
+            ACTIONS, ACTION_SPECS, name, fn, params, returns, summary, description
+        )
         return fn
+
     return deco
 
 
-def extra_action(name: str, *, params: type | None = None, returns: Any = None,
-                 summary: str = "", description: str = ""):
+def extra_action(
+    name: str,
+    *,
+    params: type | None = None,
+    returns: Any = None,
+    summary: str = "",
+    description: str = "",
+):
     """Like @action, but the action lands ONLY in the extra registry (POST / never sees it)."""
+
     def deco(fn):
-        _register(EXTRA_ACTIONS, EXTRA_ACTION_SPECS, name, fn, params, returns, summary, description)
+        _register(
+            EXTRA_ACTIONS,
+            EXTRA_ACTION_SPECS,
+            name,
+            fn,
+            params,
+            returns,
+            summary,
+            description,
+        )
         return fn
+
     return deco

@@ -28,6 +28,7 @@ def test_ensure_lang_initializes_when_none(monkeypatch):
     monkeypatch.delenv("ANKIWEB_LANG", raising=False)
     anki.lang.current_i18n = None
     from ankiweb.i18n import _ensure_lang
+
     _ensure_lang()
     assert anki.lang.current_i18n is not None
     # English default works without opening a Collection.
@@ -37,6 +38,7 @@ def test_ensure_lang_initializes_when_none(monkeypatch):
 def test_tr_is_callable_without_collection():
     # Importing the module must have self-initialized; tr works with no Collection open.
     from ankiweb.i18n import tr
+
     assert tr.actions_add() == "Add"
 
 
@@ -44,6 +46,7 @@ def test_ensure_lang_honors_env(monkeypatch):
     monkeypatch.setenv("ANKIWEB_LANG", "zh-CN")
     anki.lang.current_i18n = None
     from ankiweb.i18n import _ensure_lang
+
     _ensure_lang()
     assert anki.lang.tr_legacyglobal.actions_add() == "添加"
 
@@ -53,5 +56,6 @@ def test_ensure_lang_is_idempotent_when_already_set(monkeypatch):
     anki.lang.set_lang("zh-CN")
     monkeypatch.setenv("ANKIWEB_LANG", "ja")  # would change it if guard were absent
     from ankiweb.i18n import _ensure_lang
+
     _ensure_lang()
     assert anki.lang.tr_legacyglobal.actions_add() == "添加"  # still zh-CN, not ja

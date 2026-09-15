@@ -29,7 +29,9 @@ class CollectionService:
         # Auxiliary pool for thread-safe Rust backend calls that must run CONCURRENTLY
         # with the main worker (FSRS compute/simulate + latest_progress polling +
         # set_wants_abort) so progress is observable while a long compute runs.
-        self._aux_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="anki-aux")
+        self._aux_executor = ThreadPoolExecutor(
+            max_workers=4, thread_name_prefix="anki-aux"
+        )
         self._lock = asyncio.Lock()
         self._col: Collection | None = None
         self._subscribers: list = []
@@ -83,19 +85,24 @@ class CollectionService:
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(self._executor, lambda: fn(col))
 
-    async def run_op(self, fn: Callable[[Collection], T], initiator: str | None = None) -> T:
+    async def run_op(
+        self, fn: Callable[[Collection], T], initiator: str | None = None
+    ) -> T:
         """Run a mutating op (fn returns OpChanges or an OpChanges* wrapper), then
         broadcast the change flags on the bus. Returns the op result unchanged."""
         result = await self.run(fn)
         changes = getattr(result, "changes", result)
         flags = op_changes_to_flags(changes)
-        if any(flags.values()):  # skip no-op broadcasts (e.g. set_current returns all-False)
+        if any(
+            flags.values()
+        ):  # skip no-op broadcasts (e.g. set_current returns all-False)
             await self.emit(flags, initiator)
         return result
 
     async def backend_raw(self, method: str, data: bytes) -> bytes:
         def fn(col):
             return getattr(col._backend, f"{method}_raw")(data)
+
         return await self.run(fn)
 
     async def backend_raw_concurrent(self, method: str, data: bytes) -> bytes:
