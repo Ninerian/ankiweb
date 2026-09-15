@@ -9,8 +9,8 @@ of how the test collection was opened.
 from __future__ import annotations
 import anki.lang
 from ankiweb.adapters.inbound.http_shared.page import render_page
-from ankiweb.screens.deckbrowser import render_deckbrowser_html
-from ankiweb.screens.custom_study import render_custom_study_html
+from ankiweb.adapters.inbound.http_datastar.deckbrowser import render_deckbrowser_html
+from ankiweb.adapters.inbound.http_datastar.custom_study import render_custom_study_html
 
 
 def test_toolbar_default_english():

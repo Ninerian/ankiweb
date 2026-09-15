@@ -7,7 +7,7 @@ from ankiweb.app import create_app
 from ankiweb.ankiconnect.config import AnkiConnectConfig
 from ankiweb.ankiconnect.runtime import Runtime
 from ankiweb.ankiconnect.actions.decks import create_deck
-from ankiweb.screens.deckbrowser import render_deckbrowser_html
+from ankiweb.adapters.inbound.http_datastar.deckbrowser import render_deckbrowser_html
 
 
 async def test_both_layers_share_one_service(tmp_path: Path):

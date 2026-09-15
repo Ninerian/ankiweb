@@ -6,34 +6,58 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from starlette.background import BackgroundTask
 
 from ankiweb.adapters.inbound.http_shared.page import render_page
-from ankiweb.screens.deckbrowser import render_deckbrowser_html, make_deckbrowser_routes
-from ankiweb.screens.overview import render_overview_html, make_overview_routes
+from ankiweb.adapters.inbound.http_datastar.deckbrowser import (
+    render_deckbrowser_html,
+    make_deckbrowser_routes,
+)
+from ankiweb.adapters.inbound.http_datastar.overview import (
+    render_overview_html,
+    make_overview_routes,
+)
 from ankiweb.adapters.inbound.http_screens.reviewer import (
     reviewer_page_body,
     make_reviewer_handler,
 )
-from ankiweb.screens.browser import render_browser_html, make_browser_routes
+from ankiweb.adapters.inbound.http_datastar.browser import (
+    render_browser_html,
+    make_browser_routes,
+)
 from ankiweb.adapters.inbound.http_screens.editor import (
     editor_page_body,
     make_editor_handler,
 )
 from ankiweb.adapters.inbound.http_screens.add import render_add_html, make_add_handler
-from ankiweb.screens.custom_study import (
+from ankiweb.adapters.inbound.http_datastar.custom_study import (
     render_custom_study_html,
     make_custom_study_routes,
 )
 from ankiweb.adapters.inbound.http_shared.about import render_about_html
-from ankiweb.screens.filtered_deck import (
+from ankiweb.adapters.inbound.http_datastar.filtered_deck import (
     render_filtered_deck_html,
     make_filtered_deck_routes,
 )
 from ankiweb.adapters.inbound.http_shared.export import render_export_html
-from ankiweb.screens.preferences import render_preferences_html, make_preferences_routes
+from ankiweb.adapters.inbound.http_datastar.preferences import (
+    render_preferences_html,
+    make_preferences_routes,
+)
 from ankiweb.adapters.inbound.http_shared.preview import render_preview_html
-from ankiweb.screens.fields import render_fields_html, make_fields_routes
-from ankiweb.screens.card_layout import render_card_layout_html, make_card_layout_routes
-from ankiweb.screens.tools import render_tools_html, make_tools_routes
-from ankiweb.screens.notetypes import render_notetypes_html, make_notetypes_routes
+from ankiweb.adapters.inbound.http_datastar.fields import (
+    render_fields_html,
+    make_fields_routes,
+)
+from ankiweb.adapters.inbound.http_datastar.card_layout import (
+    render_card_layout_html,
+    make_card_layout_routes,
+)
+from ankiweb.adapters.inbound.http_datastar.tools import (
+    render_tools_html,
+    make_tools_routes,
+)
+from ankiweb.adapters.inbound.http_datastar.notetypes import (
+    render_notetypes_html,
+    make_notetypes_routes,
+)
 from ankiweb.adapters.inbound.http_shared.notify import (
     render_notify_html,
     config_from_form,
