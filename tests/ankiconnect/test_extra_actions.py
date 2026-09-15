@@ -17,9 +17,10 @@ def client(tmp_path: Path):
 
 @pytest.fixture
 def nclient(tmp_path: Path):
+    from ankiweb.adapters.outbound import json_config_store
     from ankiweb.notifier import NotifierState
 
-    state = NotifierState(tmp_path / "notify.json")
+    state = NotifierState(tmp_path / "notify.json", store=json_config_store)
     with TestClient(
         create_ankiconnect_app(
             Settings(collection_path=tmp_path / "c.anki2"), notifier=state
@@ -220,9 +221,9 @@ def test_set_notify_config_persists(nclient, tmp_path):
         scope="all",
         token="tok",
     )
-    from ankiweb.notifier import NotifyConfig
+    from ankiweb.adapters.outbound import json_config_store
 
-    saved = NotifyConfig.load(tmp_path / "notify.json")
+    saved = json_config_store.load(tmp_path / "notify.json")
     assert saved.url == "http://x" and saved.scope == "all" and saved.token == "tok"
 
 

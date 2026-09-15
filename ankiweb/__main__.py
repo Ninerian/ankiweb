@@ -7,6 +7,8 @@ from ankiweb.bridge.hub import BridgeHub
 from ankiweb.ankiconnect.config import AnkiConnectConfig
 from ankiweb.app import create_app
 from ankiweb.ankiconnect.app import create_ankiconnect_app
+from ankiweb.adapters.outbound import json_config_store
+from ankiweb.adapters.outbound.httpx_notification_adapter import post as http_post
 from ankiweb.notifier import NotifierState, DeckNotifier, snapshot
 
 
@@ -18,7 +20,9 @@ async def _serve() -> None:
     service = CollectionService(settings)
     await service.open()
     hub = BridgeHub()
-    notifier_state = NotifierState(settings.collection_path.parent / "notify.json")
+    notifier_state = NotifierState(
+        settings.collection_path.parent / "notify.json", store=json_config_store
+    )
     web = create_app(settings, service=service, hub=hub, notifier=notifier_state)
     # Same NotifierState instance, so /extra_actions/setNotifyConfig on :8765 edits the live
     # config that the web form (:8000) and the running notifier task share.
@@ -34,7 +38,9 @@ async def _serve() -> None:
         )
     )
     # Background deck-learnability push notifier (idle unless configured via the Extras menu).
-    notifier = DeckNotifier(notifier_state, fetch=lambda: service.run(snapshot))
+    notifier = DeckNotifier(
+        notifier_state, fetch=lambda: service.run(snapshot), post=http_post
+    )
     notifier_task = asyncio.create_task(notifier.run())
     try:
         await asyncio.gather(web_server.serve(), api_server.serve())

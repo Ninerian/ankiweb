@@ -17,6 +17,7 @@ from ankiweb.assets import (
 from ankiweb.anki_rpc import build_router as build_rpc_router
 from ankiweb.bridge.ws import build_router as build_ws_router
 from ankiweb.screens.routes import build_screen_router, register_screen_handlers
+from ankiweb.adapters.outbound import json_config_store
 from ankiweb.notifier import NotifierState
 
 
@@ -71,7 +72,9 @@ def create_app(
         app.state.notifier = (
             notifier
             if notifier is not None
-            else NotifierState(settings.collection_path.parent / "notify.json")
+            else NotifierState(
+                settings.collection_path.parent / "notify.json", store=json_config_store
+            )
         )
         register_screen_handlers(svc, h)
         try:

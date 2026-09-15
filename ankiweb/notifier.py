@@ -8,7 +8,6 @@ docs/superpowers/specs/2026-06-04-deck-push-notifier-design.md.
 
 from __future__ import annotations
 import asyncio
-import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,42 +30,6 @@ class NotifyConfig:
             self.enabled and self.url and self.poll_sec > 0 and self.retry_sec > 0
         )
 
-    @classmethod
-    def load(cls, path: Path) -> "NotifyConfig":
-        # A missing OR corrupt notify.json must degrade to defaults, never crash startup —
-        # the whole parse (not just json.loads) is guarded, since float()/.get() on bad data
-        # (non-numeric interval, non-dict top level) would otherwise raise.
-        try:
-            data = json.loads(Path(path).read_text())
-            if not isinstance(data, dict):
-                return cls()
-            scope = str(data.get("scope", "leaf"))
-            return cls(
-                enabled=bool(data.get("enabled", False)),
-                url=str(data.get("url", "") or ""),
-                token=str(data.get("token", "") or ""),
-                poll_sec=float(data.get("poll_sec", 60.0) or 0),
-                retry_sec=float(data.get("retry_sec", 30.0) or 0),
-                scope=scope if scope in ("leaf", "all") else "leaf",
-            )
-        except (FileNotFoundError, OSError, ValueError, TypeError):
-            return cls()
-
-    def save(self, path: Path) -> None:
-        Path(path).write_text(
-            json.dumps(
-                {
-                    "enabled": self.enabled,
-                    "url": self.url,
-                    "token": self.token,
-                    "poll_sec": self.poll_sec,
-                    "retry_sec": self.retry_sec,
-                    "scope": self.scope,
-                },
-                indent=2,
-            )
-        )
-
 
 @dataclass
 class NotifyStatus:
@@ -82,11 +45,20 @@ class NotifierState:
     """Shared between the web form (edits config, reads status) and the background runner
     (reads config, writes status). Single process / single event loop, so no locking."""
 
-    def __init__(self, config_path: Path, config: Optional[NotifyConfig] = None):
+    def __init__(
+        self,
+        config_path: Path,
+        config: Optional[NotifyConfig] = None,
+        store: Any | None = None,
+    ):
         self.config_path = Path(config_path)
-        self.config = (
-            config if config is not None else NotifyConfig.load(self.config_path)
-        )
+        self._store = store
+        if config is not None:
+            self.config = config
+        elif store is not None:
+            self.config = store.load(self.config_path)
+        else:
+            self.config = NotifyConfig()
         self.status = NotifyStatus()
         self.changed = asyncio.Event()  # set by update() to wake the runner immediately
         self.resync_pending = (
@@ -95,7 +67,8 @@ class NotifierState:
 
     def update(self, config: NotifyConfig) -> None:
         self.config = config
-        config.save(self.config_path)
+        if self._store is not None:
+            self._store.save(config, self.config_path)
         self.changed.set()
 
     def request_resync(self) -> None:
@@ -197,12 +170,12 @@ class DeckNotifier:
         self,
         state: NotifierState,
         fetch: Callable[[], Awaitable[dict]],
-        post: Optional[Callable[[NotifyConfig, dict], Awaitable[tuple]]] = None,
+        post: Callable[..., Awaitable[tuple]],
         now: Callable[[], float] = time.time,
     ):
         self.state = state
         self._fetch = fetch  # async () -> snapshot dict
-        self._post = post or self._http_post  # async (cfg, payload) -> (ok, error)
+        self._post = post  # async (cfg, payload) -> (ok, error)
         self._now = now
         self.last_notified: dict[
             str, tuple
@@ -306,15 +279,3 @@ class DeckNotifier:
         except asyncio.TimeoutError:
             pass
         self.state.changed.clear()
-
-    async def _http_post(self, cfg: NotifyConfig, payload: dict) -> tuple:
-        import httpx
-
-        headers = {"Authorization": "Bearer " + cfg.token} if cfg.token else {}
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(cfg.url, json=payload, headers=headers)
-        try:
-            body = r.json()
-        except Exception:
-            body = None
-        return eval_response(r.status_code, body)

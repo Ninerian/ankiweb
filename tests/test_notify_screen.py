@@ -3,7 +3,7 @@ import pytest
 from fastapi.testclient import TestClient
 from ankiweb.config import Settings
 from ankiweb.app import create_app
-from ankiweb.notifier import NotifyConfig
+from ankiweb.adapters.outbound import json_config_store
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def test_notify_save_persists_config(client):
     )
     assert r.status_code == 303 and r.headers["location"] == "/notify"
     # persisted to notify.json next to the collection
-    cfg = NotifyConfig.load(tmp_path / "notify.json")
+    cfg = json_config_store.load(tmp_path / "notify.json")
     assert cfg.enabled and cfg.url == "http://hook.example/anki"
     assert cfg.token == "sek" and cfg.poll_sec == 20 and cfg.retry_sec == 8
     # and reflected back in the form on next GET
@@ -68,7 +68,7 @@ def test_notify_save_scope_all(client):
             "scope": "all",
         },
     )
-    assert NotifyConfig.load(tmp_path / "notify.json").scope == "all"
+    assert json_config_store.load(tmp_path / "notify.json").scope == "all"
 
 
 def test_notify_unchecked_enabled_is_false(client):
@@ -77,7 +77,7 @@ def test_notify_unchecked_enabled_is_false(client):
         "/notify",
         data={"action": "save", "url": "http://x", "poll_sec": "5", "retry_sec": "5"},
     )  # no 'enabled' field -> unchecked
-    assert NotifyConfig.load(tmp_path / "notify.json").enabled is False
+    assert json_config_store.load(tmp_path / "notify.json").enabled is False
 
 
 def test_notify_rejects_non_latin1_token(client):  # fix #5
