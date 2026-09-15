@@ -8,7 +8,7 @@ from ankiweb.core.ports import (
     BridgeCommandPort,
     AnkiConnectDispatchPort,
 )
-from ankiweb.collection_service import CollectionService
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.bridge.hub import BridgeHub
 from ankiweb.ankiconnect.dispatch import dispatch_one
 

@@ -7,7 +7,7 @@ from starlette.responses import HTMLResponse, PlainTextResponse, RedirectRespons
 
 from ankiweb.config import Settings, host_allowed
 from ankiweb.auth import COOKIE, auth_token, cookie_ok, password_ok
-from ankiweb.collection_service import CollectionService
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.bridge.hub import BridgeHub
 from ankiweb.assets import (
     build_router as build_assets_router,

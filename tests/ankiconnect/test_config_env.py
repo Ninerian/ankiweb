@@ -36,7 +36,7 @@ def test_collection_parent_dir_created(tmp_path):
     # CollectionService.open() must create a missing parent dir for a custom path
     import anyio
     from ankiweb.config import Settings
-    from ankiweb.collection_service import CollectionService
+    from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 
     nested = tmp_path / "deep" / "sub" / "c.anki2"
     assert not nested.parent.exists()

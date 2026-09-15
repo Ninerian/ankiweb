@@ -5,7 +5,7 @@ from ankiweb.i18n import tr
 from ankiweb.screens import templating
 from ankiweb.screens.editor import _munge, paste_handler_js, editor_links_js
 from ankiweb.ankiconnect.actions._helpers import check_addable
-from ankiweb.collection_service import op_changes_to_flags
+from ankiweb.adapters.outbound.anki_collection_adapter import op_changes_to_flags
 
 
 def _empty_load(col, ntid: int) -> dict:

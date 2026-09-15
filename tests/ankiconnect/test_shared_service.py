@@ -2,7 +2,7 @@ import inspect
 from pathlib import Path
 from fastapi.testclient import TestClient
 from ankiweb.config import Settings
-from ankiweb.collection_service import CollectionService
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.app import create_app
 from ankiweb.ankiconnect.config import AnkiConnectConfig
 from ankiweb.ankiconnect.runtime import Runtime

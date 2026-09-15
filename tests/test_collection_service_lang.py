@@ -1,6 +1,6 @@
 from pathlib import Path
 from ankiweb.config import Settings
-from ankiweb.collection_service import CollectionService
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 
 
 async def test_open_localizes_collection_zh(tmp_path: Path):

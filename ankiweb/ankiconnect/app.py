@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from ankiweb.config import Settings
-from ankiweb.collection_service import CollectionService
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.ankiconnect.config import AnkiConnectConfig
 from ankiweb.bridge.hub import BridgeHub
 from ankiweb.ankiconnect.runtime import Runtime

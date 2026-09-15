@@ -1,5 +1,5 @@
 from __future__ import annotations
-from ankiweb.collection_service import op_changes_to_flags
+from ankiweb.adapters.outbound.anki_collection_adapter import op_changes_to_flags
 
 _EMPTY, _DUPLICATE = 1, 2  # note.fields_check() int states
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 import asyncio
 import uvicorn
 from ankiweb.config import Settings
-from ankiweb.collection_service import CollectionService
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.bridge.hub import BridgeHub
 from ankiweb.ankiconnect.config import AnkiConnectConfig
 from ankiweb.app import create_app

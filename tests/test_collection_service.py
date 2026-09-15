@@ -2,7 +2,7 @@ import asyncio
 import pytest
 from pathlib import Path
 from ankiweb.config import Settings
-from ankiweb.collection_service import CollectionService
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ async def test_opchanges_bus_notifies_subscribers(service):
 
 
 def test_op_changes_to_flags():
-    from ankiweb.collection_service import op_changes_to_flags
+    from ankiweb.adapters.outbound.anki_collection_adapter import op_changes_to_flags
     from anki.collection import Collection
     import tempfile
     import os
