@@ -164,6 +164,25 @@ def eval_response(status_code: int, body: Any) -> tuple:
     return True, ""
 
 
+def adapt_transport(
+    transport: Callable[..., Awaitable[tuple]],
+) -> Callable[..., Awaitable[tuple]]:
+    """Adapt a `NotificationTransportPort`-shaped callable (`async (url, headers, json) ->
+    (status_code, body)`) into the `async (cfg, payload) -> (ok, error)` shape `DeckNotifier.post`
+    expects: builds the `Authorization: Bearer <token>` header from `cfg.token`, then interprets
+    the raw HTTP response via `eval_response`. This is the adapting logic the old, deleted
+    `DeckNotifier._http_post` used to inline alongside its own httpx call — now the raw transport
+    lives in `ankiweb.adapters.outbound.httpx_notification_adapter.post`, and this function is
+    the seam that reconnects it to `DeckNotifier`."""
+
+    async def _post(cfg: NotifyConfig, payload: dict) -> tuple:
+        headers = {"Authorization": "Bearer " + cfg.token} if cfg.token else {}
+        status_code, body = await transport(cfg.url, headers, payload)
+        return eval_response(status_code, body)
+
+    return _post
+
+
 # ---------------------------------------------------------------------------- async runner
 class DeckNotifier:
     def __init__(

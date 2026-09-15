@@ -11,6 +11,7 @@ from ankiweb.core.notify.engine import (
     diff_changes,
     build_payload,
     eval_response,
+    adapt_transport,
     snapshot,
 )
 
@@ -91,6 +92,63 @@ def test_build_payload():
 )
 def test_eval_response(status, body, ok):
     assert eval_response(status, body)[0] is ok
+
+
+def test_adapt_transport_omits_auth_header_without_token():
+    # Boundary case for the header-building conditional adapt_transport restored from the
+    # deleted DeckNotifier._http_post.
+    captured = {}
+
+    async def fake_transport(url, headers, json):
+        captured["url"], captured["headers"], captured["json"] = url, headers, json
+        return 200, {"ok": True}
+
+    cfg = NotifyConfig(enabled=True, url="http://x", token="", poll_sec=1, retry_sec=1)
+    ok, err = asyncio.run(adapt_transport(fake_transport)(cfg, {"changes": []}))
+    assert (ok, err) == (True, "")
+    assert captured == {"url": "http://x", "headers": {}, "json": {"changes": []}}
+
+
+@pytest.mark.asyncio
+async def test_adapt_transport_end_to_end_with_real_httpx_adapter(monkeypatch):
+    """Regression test: DeckNotifier(post=http_post) wired the raw NotificationTransportPort
+    (async (url, headers, json) -> (status_code, body)) directly into DeckNotifier, whose
+    _safe_post calls self._post(cfg, payload) -- a TypeError on every real tick, silently
+    swallowed by _safe_post's except clause, so every user who enabled the deck-push notifier
+    got a permanently-failing, silently-retrying notifier. adapt_transport is the fix: it wraps
+    the raw transport back into the (cfg, payload) -> (ok, error) shape DeckNotifier expects,
+    restoring the Bearer-header-building + eval_response interpretation the deleted
+    DeckNotifier._http_post used to inline. This test exercises the REAL
+    httpx_notification_adapter.post function (not a fake) through a mocked httpx transport, to
+    prove the actual production composition in ankiweb/__main__.py works end-to-end."""
+    import httpx
+    from ankiweb.adapters.outbound.httpx_notification_adapter import post as http_post
+
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["url"] = str(request.url)
+        captured["headers"] = dict(request.headers)
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"ok": True})
+
+    real_client = httpx.AsyncClient
+
+    def mocked_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return real_client(*args, **kwargs)
+
+    monkeypatch.setattr(
+        "ankiweb.adapters.outbound.httpx_notification_adapter.httpx.AsyncClient",
+        mocked_client,
+    )
+
+    ok, err = await adapt_transport(http_post)(CFG, {"changes": []})
+
+    assert (ok, err) == (True, "")
+    assert captured["url"] == CFG.url
+    assert captured["headers"]["authorization"] == "Bearer " + CFG.token
+    assert captured["body"] == {"changes": []}
 
 
 # ----- config persistence -----

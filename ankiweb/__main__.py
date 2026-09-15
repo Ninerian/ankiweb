@@ -9,7 +9,12 @@ from ankiweb.app import create_app
 from ankiweb.ankiconnect.app import create_ankiconnect_app
 from ankiweb.adapters.outbound import json_config_store
 from ankiweb.adapters.outbound.httpx_notification_adapter import post as http_post
-from ankiweb.core.notify.engine import NotifierState, DeckNotifier, snapshot
+from ankiweb.core.notify.engine import (
+    NotifierState,
+    DeckNotifier,
+    snapshot,
+    adapt_transport,
+)
 
 
 async def _serve() -> None:
@@ -39,7 +44,9 @@ async def _serve() -> None:
     )
     # Background deck-learnability push notifier (idle unless configured via the Extras menu).
     notifier = DeckNotifier(
-        notifier_state, fetch=lambda: service.run(snapshot), post=http_post
+        notifier_state,
+        fetch=lambda: service.run(snapshot),
+        post=adapt_transport(http_post),
     )
     notifier_task = asyncio.create_task(notifier.run())
     try:
