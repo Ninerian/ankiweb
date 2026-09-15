@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from ankiweb.config import Settings
 from ankiweb.app import create_app
-from ankiweb.anki_rpc.passthrough import camel_to_snake, snake_to_camel
+from ankiweb.core.rpc.passthrough import camel_to_snake, snake_to_camel
 
 
 @pytest.fixture
@@ -11,6 +11,25 @@ def client(tmp_path: Path):
     settings = Settings(collection_path=tmp_path / "collection.anki2")
     with TestClient(create_app(settings)) as c:
         yield c
+
+
+@pytest.fixture
+async def service(tmp_path: Path):
+    from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
+
+    svc = CollectionService(Settings(collection_path=tmp_path / "collection.anki2"))
+    await svc.open()
+    yield svc
+    await svc.close()
+
+
+async def test_dispatch_backend_rpc_raises_lookup_error_for_unknown_method(service):
+    from ankiweb.core.rpc.dispatch import dispatch_backend_rpc
+
+    with pytest.raises(LookupError):
+        await dispatch_backend_rpc(
+            "totallyUnknownMethod", b"", hub=None, service=service
+        )
 
 
 def test_name_mapping_roundtrip():

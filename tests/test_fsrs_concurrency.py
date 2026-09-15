@@ -37,7 +37,7 @@ def test_concurrent_path_not_blocked_by_busy_main_worker(tmp_path: Path):
 
 
 def test_concurrent_methods_are_segregated():
-    from ankiweb.anki_rpc.passthrough import PASSTHROUGH, CONCURRENT
+    from ankiweb.core.rpc.passthrough import PASSTHROUGH, CONCURRENT
 
     for m in (
         "latest_progress",

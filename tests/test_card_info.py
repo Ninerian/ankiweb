@@ -39,7 +39,7 @@ def test_card_info_serves_spa_shell_two_ids(client):
 
 def test_card_stats_rpc_passthrough(client):
     # the card-info SPA fetches these; they must be reachable
-    from ankiweb.anki_rpc.passthrough import PASSTHROUGH
+    from ankiweb.core.rpc.passthrough import PASSTHROUGH
 
     assert "card_stats" in PASSTHROUGH
     assert "get_review_logs" in PASSTHROUGH

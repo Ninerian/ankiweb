@@ -39,8 +39,8 @@ def test_get_deck_configs_for_update_passthrough(client):
 
 
 def test_passthrough_and_custom_registered():
-    from ankiweb.anki_rpc.passthrough import PASSTHROUGH, CONCURRENT
-    from ankiweb.anki_rpc.handlers import CUSTOM
+    from ankiweb.core.rpc.passthrough import PASSTHROUGH, CONCURRENT
+    from ankiweb.core.rpc.custom_handlers import CUSTOM
 
     assert "get_ignored_before_count" in PASSTHROUGH
     # the long FSRS compute/simulate calls + set_wants_abort run on the concurrent path

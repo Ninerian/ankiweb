@@ -14,7 +14,9 @@ from ankiweb.assets import (
     build_media_router,
     build_sveltekit_router,
 )
-from ankiweb.anki_rpc import build_router as build_rpc_router
+from ankiweb.adapters.inbound.rpc_passthrough.route import (
+    build_router as build_rpc_router,
+)
 from ankiweb.adapters.inbound.ws_bridge.ws import build_router as build_ws_router
 from ankiweb.adapters.inbound.http_shared.routes import (
     build_screen_router,

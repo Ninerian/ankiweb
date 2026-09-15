@@ -34,7 +34,7 @@ def test_change_notetype_serves_spa_shell_two_ids(client):
 
 
 def test_changenotetype_registered_custom():
-    from ankiweb.anki_rpc.handlers import CUSTOM
+    from ankiweb.core.rpc.custom_handlers import CUSTOM
 
     assert "changeNotetype" in CUSTOM
 
