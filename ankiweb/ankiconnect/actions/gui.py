@@ -322,7 +322,7 @@ async def gui_add_note_set_data(rt, note=None, append=False):
     # (append is accepted for contract compatibility; this sets the fields.)
     if _ui(rt).current_screen != "add":
         return {"error": "Add Note dialog is not open", "code": 1}
-    from ankiweb.screens.add import load_data_for_spec
+    from ankiweb.adapters.inbound.http_screens.add import load_data_for_spec
 
     data = await rt.service.run(lambda col: load_data_for_spec(col, note or {}))
     if data is None:
@@ -356,7 +356,7 @@ async def gui_add_cards(rt, note=None):
         return 0  # blank dialog → fresh unsaved note
 
     open_ = _ui(rt).current_screen == "add"
-    from ankiweb.screens.add import load_data_for_spec
+    from ankiweb.adapters.inbound.http_screens.add import load_data_for_spec
 
     def build(col):
         did = col.decks.id_for_name(note.get("deckName", ""))

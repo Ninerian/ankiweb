@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 from anki.sound import SoundOrVideoTag, AV_REF_RE
 from ankiweb.i18n import tr
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 
 def render_av_buttons(text: str) -> str:
@@ -59,7 +59,9 @@ def load_question(col, session: ReviewerSession) -> dict | None:
     session.card = card
     session.states = top.states
     session.context = top.context
-    from ankiweb.screens.type_answer import type_answer_question_filter
+    from ankiweb.adapters.inbound.http_shared.type_answer import (
+        type_answer_question_filter,
+    )
 
     q = type_answer_question_filter(col, card, session, card.question())
     return {
@@ -73,7 +75,9 @@ def render_answer(col, session: ReviewerSession) -> dict:
     """Render the answer side + the 4 ease interval labels [Again, Hard, Good, Easy].
     Always runs the type-answer filter: replaces [[type:...]] with the compare_answer diff
     when type_correct is set, or strips any stray marker when None (no-op for Basic cards)."""
-    from ankiweb.screens.type_answer import type_answer_answer_filter
+    from ankiweb.adapters.inbound.http_shared.type_answer import (
+        type_answer_answer_filter,
+    )
 
     a = type_answer_answer_filter(col, session, session.card.answer())
     return {

@@ -140,7 +140,7 @@ def test_upload_media_derives_extension_from_mime(client):
 
 
 def test_editor_body_has_paste_handler(client):
-    from ankiweb.screens.editor import editor_page_body
+    from ankiweb.adapters.inbound.http_screens.editor import editor_page_body
 
     body = editor_page_body(1)
     assert ("addEventListener('paste'" in body) or ('addEventListener("paste"' in body)

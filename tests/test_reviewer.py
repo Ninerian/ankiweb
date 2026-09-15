@@ -2,7 +2,7 @@ import tempfile
 import os
 import pytest
 from anki.collection import Collection
-from ankiweb.screens.reviewer import (
+from ankiweb.adapters.inbound.http_screens.reviewer import (
     ReviewerSession,
     load_question,
     render_answer,
@@ -59,7 +59,7 @@ def test_answer_advances_queue(col):
 
 
 def test_show_answer_bar():
-    from ankiweb.screens.reviewer import show_answer_bar
+    from ankiweb.adapters.inbound.http_screens.reviewer import show_answer_bar
 
     html = show_answer_bar()
     assert "Show Answer" in html
@@ -67,7 +67,7 @@ def test_show_answer_bar():
 
 
 def test_ease_buttons_bar():
-    from ankiweb.screens.reviewer import ease_buttons_bar
+    from ankiweb.adapters.inbound.http_screens.reviewer import ease_buttons_bar
 
     html = ease_buttons_bar(["<1m", "<6m", "<10m", "3d"])
     for name in ("Again", "Hard", "Good", "Easy"):
@@ -78,7 +78,7 @@ def test_ease_buttons_bar():
 
 
 def test_reviewer_page_body_loads_qa_and_registers():
-    from ankiweb.screens.reviewer import reviewer_page_body
+    from ankiweb.adapters.inbound.http_screens.reviewer import reviewer_page_body
 
     body = reviewer_page_body()
     assert "id='qa'" in body or 'id="qa"' in body
@@ -89,7 +89,7 @@ def test_reviewer_page_body_loads_qa_and_registers():
 
 
 def test_render_av_buttons_and_filenames():
-    from ankiweb.screens.reviewer import render_av_buttons
+    from ankiweb.adapters.inbound.http_screens.reviewer import render_av_buttons
 
     html = render_av_buttons("X [anki:play:q:0] Y [anki:play:a:1] Z")
     assert "[anki:play" not in html
@@ -98,7 +98,7 @@ def test_render_av_buttons_and_filenames():
 
 
 def test_reviewer_body_registers_audio_player():
-    from ankiweb.screens.reviewer import reviewer_page_body
+    from ankiweb.adapters.inbound.http_screens.reviewer import reviewer_page_body
 
     body = reviewer_page_body()
     assert "ankiwebPlayAudio" in body
@@ -106,7 +106,7 @@ def test_reviewer_body_registers_audio_player():
 
 
 def test_reviewer_body_has_shortcuts_guarded():
-    from ankiweb.screens.reviewer import reviewer_page_body
+    from ankiweb.adapters.inbound.http_screens.reviewer import reviewer_page_body
 
     body = reviewer_page_body()
     assert "keydown" in body
@@ -115,7 +115,7 @@ def test_reviewer_body_has_shortcuts_guarded():
 
 
 def test_reviewer_body_has_edit_shortcut():
-    from ankiweb.screens.reviewer import reviewer_page_body
+    from ankiweb.adapters.inbound.http_screens.reviewer import reviewer_page_body
 
     body = reviewer_page_body()
     assert "'edit'" in body or '"edit"' in body

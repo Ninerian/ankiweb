@@ -3,7 +3,7 @@ from typing import Callable
 from fastapi import APIRouter
 from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE
 from ankiweb.i18n import tr
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 
 def render_tools_html(col) -> str:

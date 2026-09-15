@@ -1,4 +1,4 @@
-from ankiweb.screens.page import render_page
+from ankiweb.adapters.inbound.http_shared.page import render_page
 
 
 def test_render_page_structure():
@@ -14,7 +14,7 @@ def test_render_page_structure():
 
 
 def test_render_page_injects_js_files_before_bootstrap():
-    from ankiweb.screens.page import render_page
+    from ankiweb.adapters.inbound.http_shared.page import render_page
 
     html = render_page(
         "reviewer", "<div id=qa></div>", ["css/reviewer.css"], ["js/reviewer.js"]

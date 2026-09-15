@@ -3,7 +3,7 @@ import anki.consts
 from ankiweb.config import Settings
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.bridge.ui_state import UiState
-from ankiweb.screens.reviewer import make_reviewer_handler
+from ankiweb.adapters.inbound.http_screens.reviewer import make_reviewer_handler
 
 
 class _Hub:
@@ -279,7 +279,7 @@ async def test_actions_are_noops_without_card(tmp_path: Path):
 
 
 def test_reviewer_body_has_actions_bar_and_shortcuts():
-    from ankiweb.screens.reviewer import reviewer_page_body
+    from ankiweb.adapters.inbound.http_screens.reviewer import reviewer_page_body
 
     body = reviewer_page_body()
     assert "rev-actions" in body

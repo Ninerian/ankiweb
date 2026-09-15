@@ -3,7 +3,7 @@ import os
 import pytest
 from anki.collection import Collection
 from ankiweb.screens.overview import render_overview_html
-from ankiweb.screens.congrats import render_congrats_html
+from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 
 
 @pytest.fixture

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 _ANKI_SRC = "https://github.com/ankitects/anki"
 _AC_SRC = "https://github.com/FooSoft/anki-connect"

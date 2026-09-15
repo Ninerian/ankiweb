@@ -7,7 +7,7 @@ from __future__ import annotations
 import time
 
 from ankiweb.notifier import NotifyConfig
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 
 def config_from_form(

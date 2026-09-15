@@ -8,7 +8,7 @@ from datastar_py.fastapi import (
     ReadSignals,
 )
 from ankiweb.i18n import tr
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 
 def render_fields_html(col, ntid: int) -> str:

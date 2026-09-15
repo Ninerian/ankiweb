@@ -8,7 +8,7 @@ from datastar_py.fastapi import (
     ReadSignals,
 )
 from ankiweb.i18n import tr
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 
 def render_filtered_deck_html(col, deck_id: int) -> str:

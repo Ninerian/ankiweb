@@ -2,8 +2,12 @@ from __future__ import annotations
 import json
 from typing import Any
 from ankiweb.i18n import tr
-from ankiweb.screens import templating
-from ankiweb.screens.editor import _munge, paste_handler_js, editor_links_js
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.adapters.inbound.http_screens.editor import (
+    _munge,
+    paste_handler_js,
+    editor_links_js,
+)
 from ankiweb.ankiconnect.actions._helpers import check_addable
 from ankiweb.adapters.outbound.anki_collection_adapter import op_changes_to_flags
 

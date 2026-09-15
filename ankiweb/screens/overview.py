@@ -6,8 +6,8 @@ from datastar_py.fastapi import (
     ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.screens import templating
-from ankiweb.screens.congrats import render_congrats_html
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 
 
 def make_overview_routes(get_service: Callable) -> APIRouter:

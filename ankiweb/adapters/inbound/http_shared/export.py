@@ -1,5 +1,5 @@
 from __future__ import annotations
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 
 def render_export_html(col) -> str:

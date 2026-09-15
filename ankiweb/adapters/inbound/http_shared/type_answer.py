@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
 from ankiweb.i18n import tr
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 _TYPE_RE = re.compile(r"\[\[type:(.+?)\]\]")
 

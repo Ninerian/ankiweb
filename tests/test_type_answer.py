@@ -2,7 +2,10 @@ import os
 import tempfile
 import pytest
 from anki.collection import Collection
-from ankiweb.screens.reviewer import ReviewerSession, load_question
+from ankiweb.adapters.inbound.http_screens.reviewer import (
+    ReviewerSession,
+    load_question,
+)
 
 
 @pytest.fixture
@@ -55,7 +58,11 @@ def test_non_type_card_leaves_type_correct_none(col):
 
 
 def test_answer_filter_renders_diff(col):
-    from ankiweb.screens.reviewer import ReviewerSession, load_question, render_answer
+    from ankiweb.adapters.inbound.http_screens.reviewer import (
+        ReviewerSession,
+        load_question,
+        render_answer,
+    )
 
     s = ReviewerSession()
     load_question(col, s)  # sets s.type_correct = "Paris"

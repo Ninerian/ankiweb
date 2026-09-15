@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Sequence
 
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 
 def render_page(

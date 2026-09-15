@@ -8,7 +8,7 @@ of how the test collection was opened.
 
 from __future__ import annotations
 import anki.lang
-from ankiweb.screens.page import render_page
+from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.screens.deckbrowser import render_deckbrowser_html
 from ankiweb.screens.custom_study import render_custom_study_html
 

@@ -15,8 +15,11 @@ from ankiweb.assets import (
     build_sveltekit_router,
 )
 from ankiweb.anki_rpc import build_router as build_rpc_router
-from ankiweb.bridge.ws import build_router as build_ws_router
-from ankiweb.screens.routes import build_screen_router, register_screen_handlers
+from ankiweb.adapters.inbound.ws_bridge.ws import build_router as build_ws_router
+from ankiweb.adapters.inbound.http_shared.routes import (
+    build_screen_router,
+    register_screen_handlers,
+)
 from ankiweb.adapters.outbound import json_config_store
 from ankiweb.notifier import NotifierState
 

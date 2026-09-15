@@ -6,7 +6,7 @@ from datastar_py.fastapi import (
     ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 
 def render_deckbrowser_html(col) -> str:

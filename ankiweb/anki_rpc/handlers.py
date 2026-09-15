@@ -19,7 +19,9 @@ async def update_deck_configs(service, body: bytes, hub=None) -> bytes:
     out = await service.backend_raw("update_deck_configs", body)
     try:
         from anki.collection_pb2 import OpChanges
-        from ankiweb.adapters.outbound.anki_collection_adapter import op_changes_to_flags
+        from ankiweb.adapters.outbound.anki_collection_adapter import (
+            op_changes_to_flags,
+        )
 
         op = OpChanges()
         op.ParseFromString(bytes(out))
@@ -62,7 +64,9 @@ async def change_notetype(service, body: bytes, hub=None) -> bytes:
     out = await service.backend_raw("change_notetype", req.SerializeToString())
     try:
         from anki.collection_pb2 import OpChanges
-        from ankiweb.adapters.outbound.anki_collection_adapter import op_changes_to_flags
+        from ankiweb.adapters.outbound.anki_collection_adapter import (
+            op_changes_to_flags,
+        )
 
         op = OpChanges()
         op.ParseFromString(bytes(out))
@@ -80,7 +84,9 @@ CUSTOM["changeNotetype"] = change_notetype
 async def _emit_import_changes(service, out: bytes) -> None:
     try:
         import anki.import_export_pb2 as ie
-        from ankiweb.adapters.outbound.anki_collection_adapter import op_changes_to_flags
+        from ankiweb.adapters.outbound.anki_collection_adapter import (
+            op_changes_to_flags,
+        )
 
         resp = ie.ImportResponse()
         resp.ParseFromString(bytes(out))
@@ -138,7 +144,9 @@ async def _emit_opchanges(service, out: bytes) -> None:
     """Parse a raw OpChanges reply and broadcast its flags (image-occlusion writes)."""
     try:
         from anki.collection_pb2 import OpChanges
-        from ankiweb.adapters.outbound.anki_collection_adapter import op_changes_to_flags
+        from ankiweb.adapters.outbound.anki_collection_adapter import (
+            op_changes_to_flags,
+        )
 
         op = OpChanges()
         op.ParseFromString(bytes(out))

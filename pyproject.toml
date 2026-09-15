@@ -34,7 +34,7 @@ testpaths = ["tests"]
 include = ["ankiweb*"]
 
 [tool.setuptools.package-data]
-ankiweb = ["screens/templates/*.html.jinja"]
+ankiweb = ["adapters/inbound/http_shared/templates/*.html.jinja"]
 
 [tool.djlint]
 profile = "jinja"

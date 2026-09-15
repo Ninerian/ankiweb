@@ -7,9 +7,12 @@ from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.ankiconnect.config import AnkiConnectConfig
 from ankiweb.bridge.hub import BridgeHub
 from ankiweb.ankiconnect.runtime import Runtime
-from ankiweb.ankiconnect.cors import allow_origin
+from ankiweb.adapters.inbound.http_ankiconnect.cors import allow_origin
 from ankiweb.ankiconnect.dispatch import dispatch_one
-from ankiweb.ankiconnect.rest import build_actions_router, build_extra_actions_router
+from ankiweb.adapters.inbound.http_ankiconnect.rest import (
+    build_actions_router,
+    build_extra_actions_router,
+)
 import ankiweb.ankiconnect.actions  # noqa: F401 — registers canonical actions
 import ankiweb.ankiconnect.extra_actions  # noqa: F401 — registers /extra_actions/<name>
 

@@ -5,30 +5,39 @@ from fastapi import APIRouter, Form, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from starlette.background import BackgroundTask
 
-from ankiweb.screens.page import render_page
+from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.screens.deckbrowser import render_deckbrowser_html, make_deckbrowser_routes
 from ankiweb.screens.overview import render_overview_html, make_overview_routes
-from ankiweb.screens.reviewer import reviewer_page_body, make_reviewer_handler
+from ankiweb.adapters.inbound.http_screens.reviewer import (
+    reviewer_page_body,
+    make_reviewer_handler,
+)
 from ankiweb.screens.browser import render_browser_html, make_browser_routes
-from ankiweb.screens.editor import editor_page_body, make_editor_handler
-from ankiweb.screens.add import render_add_html, make_add_handler
+from ankiweb.adapters.inbound.http_screens.editor import (
+    editor_page_body,
+    make_editor_handler,
+)
+from ankiweb.adapters.inbound.http_screens.add import render_add_html, make_add_handler
 from ankiweb.screens.custom_study import (
     render_custom_study_html,
     make_custom_study_routes,
 )
-from ankiweb.screens.about import render_about_html
+from ankiweb.adapters.inbound.http_shared.about import render_about_html
 from ankiweb.screens.filtered_deck import (
     render_filtered_deck_html,
     make_filtered_deck_routes,
 )
-from ankiweb.screens.export import render_export_html
+from ankiweb.adapters.inbound.http_shared.export import render_export_html
 from ankiweb.screens.preferences import render_preferences_html, make_preferences_routes
-from ankiweb.screens.preview import render_preview_html
+from ankiweb.adapters.inbound.http_shared.preview import render_preview_html
 from ankiweb.screens.fields import render_fields_html, make_fields_routes
 from ankiweb.screens.card_layout import render_card_layout_html, make_card_layout_routes
 from ankiweb.screens.tools import render_tools_html, make_tools_routes
 from ankiweb.screens.notetypes import render_notetypes_html, make_notetypes_routes
-from ankiweb.screens.notify import render_notify_html, config_from_form
+from ankiweb.adapters.inbound.http_shared.notify import (
+    render_notify_html,
+    config_from_form,
+)
 from ankiweb.notifier import header_safe
 
 _MIME_EXT = {

@@ -7,7 +7,7 @@ from datastar_py.fastapi import (
     ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.screens import templating
+from ankiweb.adapters.inbound.http_shared import templating
 
 _TAG_STRIP = re.compile(r"<[^>]+>")
 _LIMIT = 500
