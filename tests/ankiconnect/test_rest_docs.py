@@ -4,10 +4,10 @@ import inspect
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.ankiconnect.app import create_ankiconnect_app
 from ankiweb.ankiconnect.config import AnkiConnectConfig
-from ankiweb.ankiconnect.registry import ACTION_SPECS, EXTRA_ACTION_SPECS
+from ankiweb.core.ankiconnect_actions.registry import ACTION_SPECS, EXTRA_ACTION_SPECS
 
 
 @pytest.fixture

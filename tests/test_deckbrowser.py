@@ -3,7 +3,7 @@ import os
 import pytest
 from anki.collection import Collection
 from anki.decks import DeckCollapseScope
-from ankiweb.screens.deckbrowser import render_deckbrowser_html
+from ankiweb.adapters.inbound.http_datastar.deckbrowser import render_deckbrowser_html
 
 
 @pytest.fixture

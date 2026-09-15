@@ -2,16 +2,19 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
-from ankiweb.config import Settings
-from ankiweb.collection_service import CollectionService
+from ankiweb.core.config import Settings
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.ankiconnect.config import AnkiConnectConfig
-from ankiweb.bridge.hub import BridgeHub
-from ankiweb.ankiconnect.runtime import Runtime
-from ankiweb.ankiconnect.cors import allow_origin
+from ankiweb.core.bridge.hub import BridgeHub
+from ankiweb.core.ankiconnect_actions.runtime import Runtime
+from ankiweb.adapters.inbound.http_ankiconnect.cors import allow_origin
 from ankiweb.ankiconnect.dispatch import dispatch_one
-from ankiweb.ankiconnect.rest import build_actions_router, build_extra_actions_router
-import ankiweb.ankiconnect.actions  # noqa: F401 — registers canonical actions
-import ankiweb.ankiconnect.extra_actions  # noqa: F401 — registers /extra_actions/<name>
+from ankiweb.adapters.inbound.http_ankiconnect.rest import (
+    build_actions_router,
+    build_extra_actions_router,
+)
+import ankiweb.core.ankiconnect_actions.actions  # noqa: F401 — registers canonical actions
+import ankiweb.core.ankiconnect_actions.extra_actions  # noqa: F401 — registers /extra_actions/<name>
 
 
 # Group descriptions shown under each tag heading in Swagger (/docs).

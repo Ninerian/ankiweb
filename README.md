@@ -274,23 +274,48 @@ opened from there; use the browser's back button to return.
 
 ## Architecture
 
+ankiweb follows a **Ports & Adapters (hexagonal)** layout — see
+[`docs/superpowers/specs/2026-09-12-ankiweb-hexagonal-architecture-design.md`](docs/superpowers/specs/2026-09-12-ankiweb-hexagonal-architecture-design.md)
+for the full design (diagrams, ports table, scope decisions) and
+[`docs/superpowers/plans/2026-09-12-ankiweb-hexagonal-architecture-migration.md`](docs/superpowers/plans/2026-09-12-ankiweb-hexagonal-architecture-migration.md)
+for the migration that built it.
+
 - **`anki` pylib** owns the collection, scheduler (v3), and the Rust backend (protobuf).
-- **`ankiweb/collection_service.py`** — a single-worker, serialized wrapper around the one
-  `Collection` (pylib objects aren't thread-safe). An auxiliary pool runs the thread-safe
-  Rust calls that must be concurrent (FSRS compute/simulate + `latest_progress` polling) so
-  deck-options shows live optimize progress.
-- **`ankiweb/assets.py`** — serves the vendored Anki frontend (`/_anki/...`, `/_app/...`)
-  and routes the reused SvelteKit SPA pages.
-- **`ankiweb/anki_rpc/`** — `POST /_anki/{method}`: passthrough / custom / concurrent
-  dispatch to `col._backend.<method>_raw` (protobuf in, protobuf out).
-- **`ankiweb/bridge/`** — the WebSocket `/ws` `pycmd` bridge that the screens use to talk to
-  the server (the desktop `pycmd`/`bridgeCommand` shim, in `shell_src/bootstrap.ts`).
-- **`ankiweb/screens/`** — server-rendered pages (deck browser, overview, reviewer, browser,
-  editor, add, custom study, filtered deck, export) that mount Anki's real `reviewer.js` /
-  `editor.js` where applicable.
-- **`ankiweb/ankiconnect/`** — the AnkiConnect HTTP API (≈120 actions, minus sync).
-- **`ankiweb/__main__.py`** — runs the Web app and the AnkiConnect app as two uvicorn
-  servers on a shared collection + bridge hub.
+- **`ankiweb/core/`** — the framework-free application core; never imports from
+  `ankiweb/adapters/` (enforced by `tests/test_architecture_boundaries.py`).
+  - **`ports.py`** — the seven `typing.Protocol`s at the core/adapter seam (one outbound
+    `CollectionPort` plus `NotificationTransportPort`/`ConfigStorePort`/`ClockPort`; three
+    inbound `BridgeCommandPort`/`AnkiConnectDispatchPort`/`BackendRpcPort`).
+  - **`bridge/`** — `BridgeHub`, `UiState`: the `pycmd` command dispatcher the WebSocket
+    adapter calls into.
+  - **`ankiconnect_actions/`** — the ≈120 AnkiConnect action handlers (`actions/`,
+    `extra_actions/`), the `ACTIONS`/`ACTION_SPECS` registry, and `Runtime`.
+  - **`rpc/`** — `dispatch_backend_rpc`: the passthrough/custom/concurrent routing decision
+    for `/_anki/{method}`, plus the passthrough method lists and custom handlers.
+  - **`notify/engine.py`**, **`auth.py`**, **`i18n.py`**, **`config.py`**,
+    **`op_changes.py`** — pure supporting modules.
+- **`ankiweb/adapters/outbound/`** — `anki_collection_adapter.py` (`CollectionService`,
+  the single-worker serialized wrapper around the one `Collection`; an auxiliary pool runs
+  the thread-safe Rust calls that must be concurrent, e.g. FSRS compute/simulate); the
+  notifier's `httpx_notification_adapter.py` + `json_config_store.py`.
+- **`ankiweb/adapters/inbound/`** — one package per integration pattern:
+  - **`ws_bridge/`** — the WebSocket `/ws` `pycmd` bridge the screens use to talk to the
+    server (the desktop `pycmd`/`bridgeCommand` shim, in `shell_src/bootstrap.ts`).
+  - **`http_ankiconnect/`** — the typed AnkiConnect REST surface + CORS.
+  - **`http_screens/`** — the bridge-backed screens (reviewer, editor, add) that mount
+    Anki's real `reviewer.js` / `editor.js`.
+  - **`http_datastar/`** — the ten Datastar SSR/SSE screens (deck browser, overview,
+    browser, card layout, custom study, filtered deck, fields, notetypes, preferences,
+    tools); each route calls `CollectionPort` directly (no dedicated inbound port — see the
+    spec's Scope section for why).
+  - **`http_shared/`** — routing/templating infrastructure shared by every screen (routes,
+    Jinja templating, page shell, about, export, preview, congrats, type-answer, notify).
+  - **`rpc_passthrough/`** — the thin `POST /_anki/{method}` FastAPI route over
+    `core/rpc/dispatch.py`, for the reused SvelteKit SPA pages.
+- **`ankiweb/assets.py`** — serves the vendored Anki frontend (`/_anki/...`, `/_app/...`).
+- **`ankiweb/app.py`**, **`ankiweb/ankiconnect/app.py`**, **`ankiweb/__main__.py`** —
+  composition roots: wire adapters to core and run the Web app + AnkiConnect app as two
+  uvicorn servers on a shared collection + bridge hub.
 
 ## Test
 
@@ -304,7 +329,7 @@ browser once with `python -m playwright install chromium`.
 ## Project layout
 
 ```
-ankiweb/            the application package (collection_service, assets, anki_rpc, bridge, screens, ankiconnect)
+ankiweb/            the application package (core, adapters/{inbound,outbound}, assets, ankiconnect)
 shell_src/          the TS pycmd-bridge shell (compiled to ankiweb/shell/static/bootstrap.js)
 tools/              fetch_web_assets.py (vendor the frontend), build_shell.mjs (build the shell)
 tests/              pytest suite (backend + bridge + Playwright integration)

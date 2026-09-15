@@ -2,7 +2,7 @@ import os
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.app import create_app
 
 # a minimal valid 1x1 PNG
@@ -40,8 +40,8 @@ def test_route_serves_shell_for_path_and_noteid(client):
 
 
 def test_membership():
-    from ankiweb.anki_rpc.passthrough import PASSTHROUGH
-    from ankiweb.anki_rpc.handlers import CUSTOM
+    from ankiweb.core.rpc.passthrough import PASSTHROUGH
+    from ankiweb.core.rpc.custom_handlers import CUSTOM
 
     assert "get_image_occlusion_note" in PASSTHROUGH
     assert "get_image_occlusion_fields" in PASSTHROUGH

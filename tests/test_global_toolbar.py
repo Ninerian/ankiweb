@@ -1,9 +1,9 @@
 from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.app import create_app
-from ankiweb.screens.page import render_page
+from ankiweb.adapters.inbound.http_shared.page import render_page
 
 
 def test_render_page_includes_toolbar_by_default():

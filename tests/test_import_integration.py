@@ -5,7 +5,7 @@ from urllib.parse import quote
 import pytest
 import uvicorn
 from anki.collection import Collection
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.app import create_app
 
 pytest.importorskip("playwright.sync_api")

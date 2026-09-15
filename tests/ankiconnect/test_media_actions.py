@@ -2,7 +2,7 @@ import base64
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 

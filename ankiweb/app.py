@@ -5,19 +5,25 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
-from ankiweb.config import Settings, host_allowed
-from ankiweb.auth import COOKIE, auth_token, cookie_ok, password_ok
-from ankiweb.collection_service import CollectionService
-from ankiweb.bridge.hub import BridgeHub
+from ankiweb.core.config import Settings, host_allowed
+from ankiweb.core.auth import COOKIE, auth_token, cookie_ok, password_ok
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
+from ankiweb.core.bridge.hub import BridgeHub
 from ankiweb.assets import (
     build_router as build_assets_router,
     build_media_router,
     build_sveltekit_router,
 )
-from ankiweb.anki_rpc import build_router as build_rpc_router
-from ankiweb.bridge.ws import build_router as build_ws_router
-from ankiweb.screens.routes import build_screen_router, register_screen_handlers
-from ankiweb.notifier import NotifierState
+from ankiweb.adapters.inbound.rpc_passthrough.route import (
+    build_router as build_rpc_router,
+)
+from ankiweb.adapters.inbound.ws_bridge.ws import build_router as build_ws_router
+from ankiweb.adapters.inbound.http_shared.routes import (
+    build_screen_router,
+    register_screen_handlers,
+)
+from ankiweb.adapters.outbound import json_config_store
+from ankiweb.core.notify.engine import NotifierState
 
 
 def _login_html(error: bool = False) -> str:
@@ -71,7 +77,9 @@ def create_app(
         app.state.notifier = (
             notifier
             if notifier is not None
-            else NotifierState(settings.collection_path.parent / "notify.json")
+            else NotifierState(
+                settings.collection_path.parent / "notify.json", store=json_config_store
+            )
         )
         register_screen_handlers(svc, h)
         try:

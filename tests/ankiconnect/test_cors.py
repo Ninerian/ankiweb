@@ -1,4 +1,4 @@
-from ankiweb.ankiconnect.cors import allow_origin
+from ankiweb.adapters.inbound.http_ankiconnect.cors import allow_origin
 
 
 def test_star_allows_all():

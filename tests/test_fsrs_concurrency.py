@@ -3,8 +3,8 @@ from pathlib import Path
 import anyio
 import pytest
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
-from ankiweb.collection_service import CollectionService
+from ankiweb.core.config import Settings
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.app import create_app
 
 
@@ -37,7 +37,7 @@ def test_concurrent_path_not_blocked_by_busy_main_worker(tmp_path: Path):
 
 
 def test_concurrent_methods_are_segregated():
-    from ankiweb.anki_rpc.passthrough import PASSTHROUGH, CONCURRENT
+    from ankiweb.core.rpc.passthrough import PASSTHROUGH, CONCURRENT
 
     for m in (
         "latest_progress",

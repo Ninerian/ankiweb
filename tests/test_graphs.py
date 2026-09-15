@@ -1,7 +1,7 @@
 from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.app import create_app
 
 _APP = Path("ankiweb/web_assets/sveltekit/_app")

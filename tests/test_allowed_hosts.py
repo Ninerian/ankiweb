@@ -1,7 +1,7 @@
 from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings, host_allowed
+from ankiweb.core.config import Settings, host_allowed
 from ankiweb.app import create_app
 
 
