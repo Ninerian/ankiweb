@@ -1,5 +1,5 @@
 from pathlib import Path
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 
 

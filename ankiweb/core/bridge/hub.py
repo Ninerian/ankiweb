@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 from typing import Any, Awaitable, Callable
-from ankiweb.bridge.ui_state import UiState
+from ankiweb.core.bridge.ui_state import UiState
 
 
 class BridgeHub:

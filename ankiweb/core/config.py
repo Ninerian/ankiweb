@@ -28,9 +28,9 @@ class Settings:
     collection_path: Path
     host: str = "127.0.0.1"
     port: int = 8000
-    assets_dir: Path = Path(__file__).parent / "web_assets"
-    shell_dir: Path = Path(__file__).parent / "shell"
-    import_tmp_dir: Path = Path(__file__).parent / "_import_tmp"
+    assets_dir: Path = Path(__file__).parent.parent / "web_assets"
+    shell_dir: Path = Path(__file__).parent.parent / "shell"
+    import_tmp_dir: Path = Path(__file__).parent.parent / "_import_tmp"
     # Extra Host-header values accepted by the DNS-rebinding guard (beyond localhost),
     # e.g. ("192.168.1.50:8000",) or ("myhost.local",). "*" disables the check.
     allowed_hosts: tuple = ()

@@ -1,4 +1,4 @@
-from ankiweb.bridge.hub import BridgeHub
+from ankiweb.core.bridge.hub import BridgeHub
 
 
 class FakeWS:

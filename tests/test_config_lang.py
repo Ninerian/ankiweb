@@ -1,5 +1,5 @@
 from pathlib import Path
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 
 
 def test_lang_defaults_to_empty(tmp_path: Path):

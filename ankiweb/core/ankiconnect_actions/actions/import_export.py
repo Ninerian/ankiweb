@@ -1,6 +1,6 @@
 from __future__ import annotations
-from ankiweb.ankiconnect.registry import action
-from ankiweb.ankiconnect.actions._helpers import run_emit
+from ankiweb.core.ankiconnect_actions.registry import action
+from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
 from ankiweb.ankiconnect.schemas.import_export import (
     ExportPackageParams,
     ImportPackageParams,

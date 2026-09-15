@@ -1,6 +1,6 @@
 from __future__ import annotations
 import time
-from ankiweb.ankiconnect.registry import action
+from ankiweb.core.ankiconnect_actions.registry import action
 from ankiweb.ankiconnect.schemas.stats import (
     GetNumCardsReviewedTodayParams,
     GetNumCardsReviewedByDayParams,

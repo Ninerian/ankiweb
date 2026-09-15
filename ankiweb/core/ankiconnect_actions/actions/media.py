@@ -3,7 +3,7 @@ import base64
 import fnmatch
 import hashlib
 import os
-from ankiweb.ankiconnect.registry import action
+from ankiweb.core.ankiconnect_actions.registry import action
 from ankiweb.ankiconnect.schemas.media import (
     StoreMediaFileParams,
     RetrieveMediaFileParams,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from anki.sound import AV_REF_RE
-from ankiweb.i18n import tr
+from ankiweb.core.i18n import tr
 from ankiweb.adapters.inbound.http_shared import templating
 
 

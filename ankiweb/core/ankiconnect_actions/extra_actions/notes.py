@@ -3,8 +3,8 @@
 from __future__ import annotations
 from anki.collection import SearchNode
 from anki.utils import ids2str, split_fields, strip_html_media
-from ankiweb.ankiconnect.registry import extra_action
-from ankiweb.ankiconnect.actions._helpers import run_emit
+from ankiweb.core.ankiconnect_actions.registry import extra_action
+from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
 from ankiweb.ankiconnect.schemas.extra import RemoveDuplicateNotesParams
 
 

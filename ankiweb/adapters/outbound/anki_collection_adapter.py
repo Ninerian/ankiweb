@@ -4,19 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, TypeVar
 import anki.lang
 from anki.collection import Collection
-from ankiweb.config import Settings
-from google.protobuf.descriptor import FieldDescriptor
+from ankiweb.core.config import Settings
+from ankiweb.core.op_changes import op_changes_to_flags
 
 T = TypeVar("T")
-
-
-def op_changes_to_flags(changes) -> dict:
-    """Convert an OpChanges proto into a {field_name: bool} dict (only its bool fields)."""
-    return {
-        f.name: getattr(changes, f.name)
-        for f in changes.DESCRIPTOR.fields
-        if f.type == FieldDescriptor.TYPE_BOOL
-    }
 
 
 class CollectionService:

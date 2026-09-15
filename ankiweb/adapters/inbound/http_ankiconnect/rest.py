@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request, Security
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, create_model
 
-from ankiweb.ankiconnect.registry import (
+from ankiweb.core.ankiconnect_actions.registry import (
     ACTION_SPECS,
     ACTIONS,
     EXTRA_ACTION_SPECS,
@@ -19,7 +19,7 @@ from ankiweb.ankiconnect.registry import (
     ActionSpec,
 )
 from ankiweb.ankiconnect.dispatch import dispatch_one
-from ankiweb.ankiconnect.runtime import Runtime
+from ankiweb.core.ankiconnect_actions.runtime import Runtime
 from ankiweb.ankiconnect.schemas._base import LooseParams
 
 # Optional API key; auto_error=False so the request still reaches dispatch_one, which owns the

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from ankiweb.config import host_allowed
-from ankiweb.auth import COOKIE, cookie_ok
+from ankiweb.core.config import host_allowed
+from ankiweb.core.auth import COOKIE, cookie_ok
 
 
 def build_router(get_hub, allowed_hosts=(), password="") -> APIRouter:

@@ -1,8 +1,8 @@
 from pathlib import Path
 import anki.consts
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
-from ankiweb.bridge.ui_state import UiState
+from ankiweb.core.bridge.ui_state import UiState
 from ankiweb.adapters.inbound.http_screens.reviewer import make_reviewer_handler
 
 

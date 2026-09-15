@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.app import create_app
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.adapters.inbound.http_datastar.tools import render_tools_html

@@ -1,5 +1,5 @@
 # Importing the action modules registers their handlers in the ACTIONS registry.
-from ankiweb.ankiconnect.actions import (
+from ankiweb.core.ankiconnect_actions.actions import (
     meta as meta,
     decks as decks,
     notes as notes,

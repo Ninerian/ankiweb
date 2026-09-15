@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 import jinja2
-from ankiweb.i18n import tr
+from ankiweb.core.i18n import tr
 
 _env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(str(Path(__file__).parent / "templates")),

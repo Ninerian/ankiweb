@@ -1,5 +1,5 @@
 from __future__ import annotations
-from ankiweb.ankiconnect.registry import action, ACTIONS
+from ankiweb.core.ankiconnect_actions.registry import action, ACTIONS
 from ankiweb.ankiconnect.schemas.meta import (
     VersionParams,
     ApiReflectParams,

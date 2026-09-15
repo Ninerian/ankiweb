@@ -3,8 +3,8 @@
 from __future__ import annotations
 from typing import Optional
 from anki.errors import NotFoundError
-from ankiweb.ankiconnect.registry import action
-from ankiweb.ankiconnect.actions._helpers import card_to_info, run_emit
+from ankiweb.core.ankiconnect_actions.registry import action
+from ankiweb.core.ankiconnect_actions.actions._helpers import card_to_info, run_emit
 from ankiweb.ankiconnect.schemas.cards import (
     FindCardsParams,
     CardsInfoParams,

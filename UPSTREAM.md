@@ -37,9 +37,9 @@ These are the local checkouts the port was written against (read for understandi
 2. **SvelteKit routes.** `ankiweb/assets.py` (`SVELTEKIT_PAGES` + `build_sveltekit_router`): did any
    reused page get added/renamed/removed (deck-options, change-notetype, import-*, image-occlusion,
    card-info, graphs)?
-3. **Backend RPC names.** `ankiweb/anki_rpc/passthrough.py` (`PASSTHROUGH` / `CONCURRENT`) +
-   `handlers.py` (`CUSTOM`) dispatch to `col._backend.<method>_raw`. A renamed/removed backend method
-   silently 404s the dispatch — re-verify the method names.
+3. **Backend RPC names.** `ankiweb/core/rpc/passthrough.py` (`PASSTHROUGH` / `CONCURRENT`) +
+   `custom_handlers.py` (`CUSTOM`) dispatch to `col._backend.<method>_raw`. A renamed/removed backend
+   method silently 404s the dispatch — re-verify the method names.
 4. **Reused-frontend bridge commands.** `editor.js` / `reviewer.js` toolbars emit `bridgeCommand`s;
    a new button = a new command ankiweb may need to handle (see the dead-control audit:
    `docs/superpowers/specs/2026-06-03-ankiweb-editor-reviewer-completeness-design.md`).
@@ -47,8 +47,8 @@ These are the local checkouts the port was written against (read for understandi
    `AttributeError` at render. Re-verify the i18n maps (the I2 spec) and the new Tools/notetype labels.
 
 ### AnkiConnect (new commits / actions)
-1. Diff `plugin/__init__.py` `@util.api()` actions against `ankiweb/ankiconnect/actions/*.py` and port
-   any new ones. ankiweb already covers ~the full action surface minus sync.
+1. Diff `plugin/__init__.py` `@util.api()` actions against `ankiweb/core/ankiconnect_actions/actions/*.py`
+   and port any new ones. ankiweb already covers ~the full action surface minus sync.
 2. The reference commit above added a *"set fields in the Add Note dialog"* endpoint — already
    mirrored by ankiweb's `guiAddNoteSetData` (sub-project D6).
 3. **OpenAPI schemas are ankiweb-specific** (upstream AnkiConnect has no `/docs`). A new action

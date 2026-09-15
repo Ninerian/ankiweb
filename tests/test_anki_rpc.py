@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.app import create_app
 from ankiweb.core.rpc.passthrough import camel_to_snake, snake_to_camel
 

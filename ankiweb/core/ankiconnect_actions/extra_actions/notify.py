@@ -4,8 +4,8 @@ These edit the same in-memory NotifierState the web form (/notify) and the runni
 task share, so changes take effect live (and a URL change re-syncs the receiver)."""
 
 from __future__ import annotations
-from ankiweb.ankiconnect.registry import extra_action
-from ankiweb.notifier import NotifyConfig, header_safe
+from ankiweb.core.ankiconnect_actions.registry import extra_action
+from ankiweb.core.notify.engine import NotifyConfig, header_safe
 from ankiweb.ankiconnect.schemas.extra import (
     GetNotifyConfigParams,
     SetNotifyConfigParams,

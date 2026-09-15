@@ -3,7 +3,7 @@
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.ankiconnect.app import create_ankiconnect_app
 
 
@@ -18,7 +18,7 @@ def client(tmp_path: Path):
 @pytest.fixture
 def nclient(tmp_path: Path):
     from ankiweb.adapters.outbound import json_config_store
-    from ankiweb.notifier import NotifierState
+    from ankiweb.core.notify.engine import NotifierState
 
     state = NotifierState(tmp_path / "notify.json", store=json_config_store)
     with TestClient(

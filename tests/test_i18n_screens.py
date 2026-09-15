@@ -2,7 +2,7 @@
 
 The autouse `_default_english_lang` fixture (conftest) resets to English before each test,
 so the default-English tests need no setup; the zh-CN tests call set_lang in-body. Screens
-use the process-global `tr` (ankiweb.i18n), so set_lang controls their language regardless
+use the process-global `tr` (ankiweb.core.i18n), so set_lang controls their language regardless
 of how the test collection was opened.
 """
 

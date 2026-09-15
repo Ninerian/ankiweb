@@ -62,7 +62,7 @@ from ankiweb.adapters.inbound.http_shared.notify import (
     render_notify_html,
     config_from_form,
 )
-from ankiweb.notifier import header_safe
+from ankiweb.core.notify.engine import header_safe
 
 _MIME_EXT = {
     "image/png": ".png",

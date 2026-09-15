@@ -1,8 +1,8 @@
 import pytest
-from ankiweb.ankiconnect.registry import ACTIONS, ACTION_SPECS, action
+from ankiweb.core.ankiconnect_actions.registry import ACTIONS, ACTION_SPECS, action
 from ankiweb.ankiconnect.dispatch import dispatch_one
 from ankiweb.ankiconnect.config import AnkiConnectConfig
-from ankiweb.ankiconnect.runtime import Runtime
+from ankiweb.core.ankiconnect_actions.runtime import Runtime
 
 
 @pytest.fixture

@@ -1,51 +1,15 @@
 from __future__ import annotations
 import json
 from typing import Any
-from ankiweb.i18n import tr
+from ankiweb.core.i18n import tr
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_screens.editor import (
     _munge,
     paste_handler_js,
     editor_links_js,
 )
-from ankiweb.ankiconnect.actions._helpers import check_addable
-from ankiweb.adapters.outbound.anki_collection_adapter import op_changes_to_flags
-
-
-def _empty_load(col, ntid: int) -> dict:
-    model = col.models.get(ntid)
-    flds = model["flds"]
-    return {
-        "fields": [[f["name"], ""] for f in flds],
-        "fonts": [
-            [f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
-            for f in flds
-        ],
-        "io": False,
-        "noteId": 0,
-        "meta": {"id": model["id"], "modTime": model.get("mod", 0)},
-        "tags": [],
-    }
-
-
-def load_data_for_spec(col, note_spec) -> dict | None:
-    """Build the `ankiwebLoadNote` payload for an AnkiConnect note spec
-    (modelName/fields/tags) — used by guiAddCards/guiAddNoteSetData to live-prefill
-    the open Add dialog. Returns None if the model is unknown (case-insensitive fields)."""
-    spec = note_spec or {}
-    model = (
-        col.models.by_name(spec.get("modelName", "")) if spec.get("modelName") else None
-    )
-    if model is None:
-        return None
-    d = _empty_load(col, model["id"])
-    by_lower = {f["name"].lower(): i for i, f in enumerate(model["flds"])}
-    for key, val in (spec.get("fields") or {}).items():
-        i = by_lower.get(str(key).lower())
-        if i is not None:
-            d["fields"][i][1] = val
-    d["tags"] = list(spec.get("tags") or [])
-    return d
+from ankiweb.core.ankiconnect_actions.actions._helpers import check_addable, _empty_load
+from ankiweb.core.op_changes import op_changes_to_flags
 
 
 def add_page_body(decks, notetypes, paste_handler_js: str, editor_links_js: str) -> str:

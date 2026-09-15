@@ -9,7 +9,7 @@ still calls `set_lang(settings.lang or "en")` and overrides this default when `A
 is set (set_lang installs a fresh backend and repoints the shared `tr_legacyglobal`
 translator at it, so the `tr` bound below keeps tracking the active language).
 
-Usage:  from ankiweb.i18n import tr   ;   tr.actions_add()
+Usage:  from ankiweb.core.i18n import tr   ;   tr.actions_add()
 Always import `tr` from here, never from `anki.lang` directly, so the guard runs first.
 """
 

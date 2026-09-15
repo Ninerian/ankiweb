@@ -6,7 +6,7 @@ translation keys."""
 from __future__ import annotations
 import time
 
-from ankiweb.notifier import NotifyConfig
+from ankiweb.core.notify.engine import NotifyConfig
 from ankiweb.adapters.inbound.http_shared import templating
 
 

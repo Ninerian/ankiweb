@@ -3,7 +3,7 @@ from pathlib import Path
 import anyio
 import pytest
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.app import create_app
 

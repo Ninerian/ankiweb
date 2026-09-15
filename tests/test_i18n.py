@@ -12,7 +12,7 @@ def test_import_initializes_lang_in_fresh_process():
     # every test), so verify in a FRESH interpreter where current_i18n starts None.
     code = (
         "import anki.lang; assert anki.lang.current_i18n is None; "
-        "import ankiweb.i18n as I; "
+        "import ankiweb.core.i18n as I; "
         "assert anki.lang.current_i18n is not None; "
         "assert I.tr.actions_add() == 'Add'"
     )
@@ -27,7 +27,7 @@ def test_ensure_lang_initializes_when_none(monkeypatch):
     # the next test.
     monkeypatch.delenv("ANKIWEB_LANG", raising=False)
     anki.lang.current_i18n = None
-    from ankiweb.i18n import _ensure_lang
+    from ankiweb.core.i18n import _ensure_lang
 
     _ensure_lang()
     assert anki.lang.current_i18n is not None
@@ -37,7 +37,7 @@ def test_ensure_lang_initializes_when_none(monkeypatch):
 
 def test_tr_is_callable_without_collection():
     # Importing the module must have self-initialized; tr works with no Collection open.
-    from ankiweb.i18n import tr
+    from ankiweb.core.i18n import tr
 
     assert tr.actions_add() == "Add"
 
@@ -45,7 +45,7 @@ def test_tr_is_callable_without_collection():
 def test_ensure_lang_honors_env(monkeypatch):
     monkeypatch.setenv("ANKIWEB_LANG", "zh-CN")
     anki.lang.current_i18n = None
-    from ankiweb.i18n import _ensure_lang
+    from ankiweb.core.i18n import _ensure_lang
 
     _ensure_lang()
     assert anki.lang.tr_legacyglobal.actions_add() == "添加"
@@ -55,7 +55,7 @@ def test_ensure_lang_is_idempotent_when_already_set(monkeypatch):
     # If a language is already active, _ensure_lang must NOT override it.
     anki.lang.set_lang("zh-CN")
     monkeypatch.setenv("ANKIWEB_LANG", "ja")  # would change it if guard were absent
-    from ankiweb.i18n import _ensure_lang
+    from ankiweb.core.i18n import _ensure_lang
 
     _ensure_lang()
     assert anki.lang.tr_legacyglobal.actions_add() == "添加"  # still zh-CN, not ja

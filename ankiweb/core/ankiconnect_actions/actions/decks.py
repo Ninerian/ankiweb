@@ -1,5 +1,5 @@
 from __future__ import annotations
-from ankiweb.ankiconnect.registry import action
+from ankiweb.core.ankiconnect_actions.registry import action
 from ankiweb.ankiconnect.schemas.decks import (
     DeckNamesParams,
     DeckNamesAndIdsParams,

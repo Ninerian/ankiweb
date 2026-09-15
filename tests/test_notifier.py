@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import pytest
 from ankiweb.adapters.outbound import json_config_store
-from ankiweb.notifier import (
+from ankiweb.core.notify.engine import (
     NotifyConfig,
     NotifierState,
     DeckNotifier,

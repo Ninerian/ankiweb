@@ -2,9 +2,9 @@ import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.app import create_app
-from ankiweb.auth import COOKIE, auth_token
+from ankiweb.core.auth import COOKIE, auth_token
 
 
 def _client(tmp_path: Path, password: str = "") -> TestClient:

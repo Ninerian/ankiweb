@@ -1,8 +1,12 @@
 from __future__ import annotations
 from typing import Optional
-from ankiweb.ankiconnect.registry import action
-from ankiweb.ankiconnect.actions._helpers import run_emit, build_note, check_addable
-from ankiweb.ankiconnect.actions.media import attach_media
+from ankiweb.core.ankiconnect_actions.registry import action
+from ankiweb.core.ankiconnect_actions.actions._helpers import (
+    run_emit,
+    build_note,
+    check_addable,
+)
+from ankiweb.core.ankiconnect_actions.actions.media import attach_media
 from ankiweb.ankiconnect.schemas.notes import (
     AddNoteParams,
     CanAddNoteParams,
@@ -154,7 +158,7 @@ async def find_notes(rt, query=None):
     return await rt.service.run(lambda col: list(col.find_notes(query or "")))
 
 
-from ankiweb.ankiconnect.actions._helpers import note_to_info  # noqa: E402
+from ankiweb.core.ankiconnect_actions.actions._helpers import note_to_info  # noqa: E402
 
 
 @action("notesInfo", params=NotesInfoParams, summary="Full info for each note")

@@ -1,7 +1,7 @@
 import anki.lang
 from pathlib import Path
 from fastapi.testclient import TestClient
-from ankiweb.config import Settings
+from ankiweb.core.config import Settings
 from ankiweb.app import create_app
 from ankiweb.adapters.inbound.http_datastar.preferences import render_preferences_html
 from conftest import parse_datastar_events

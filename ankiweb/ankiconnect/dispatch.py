@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any
-from ankiweb.ankiconnect.registry import ACTIONS
+from ankiweb.core.ankiconnect_actions.registry import ACTIONS
 
 
 def _envelope(version: int, result: Any) -> Any:

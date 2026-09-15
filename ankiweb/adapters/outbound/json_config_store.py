@@ -5,9 +5,7 @@ Protocol instance) — no wrapper class needed."""
 from __future__ import annotations
 import json
 from pathlib import Path
-from ankiweb.notifier import (
-    NotifyConfig,
-)  # moves to ankiweb.core.notify.engine in Task 7
+from ankiweb.core.notify.engine import NotifyConfig
 
 
 def load(path: Path) -> NotifyConfig:

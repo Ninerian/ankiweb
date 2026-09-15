@@ -1,8 +1,8 @@
 """Note-type extra actions."""
 
 from __future__ import annotations
-from ankiweb.ankiconnect.registry import extra_action
-from ankiweb.ankiconnect.actions._helpers import run_emit
+from ankiweb.core.ankiconnect_actions.registry import extra_action
+from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
 from ankiweb.ankiconnect.schemas.extra import DeleteModelParams
 
 
