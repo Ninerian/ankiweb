@@ -9,6 +9,7 @@ from ankiweb.app import create_app
 def client(tmp_path: Path):
     settings = Settings(collection_path=tmp_path / "collection.anki2")
     with TestClient(create_app(settings)) as c:
+        assert c.portal is not None
         # seed a card so the deck browser has content
         c.portal.call(c.app.state.service.run, _seed)
         yield c
@@ -36,6 +37,7 @@ def test_deckbrowser_route(client):
 
 def test_open_command_sets_current_and_navigates(client):
     from conftest import parse_datastar_events
+    assert client.portal is not None
 
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
@@ -51,6 +53,7 @@ def test_open_command_sets_current_and_navigates(client):
 
 
 def test_overview_route(client):
+    assert client.portal is not None
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
     )
@@ -90,6 +93,7 @@ def test_reviewer_route_serves_real_page(client):
 
 
 def test_reviewer_show_pushes_question(client):
+    assert client.portal is not None
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
     )
@@ -111,6 +115,7 @@ def test_reviewer_show_pushes_question(client):
 
 
 def test_reviewer_ease_answers_and_shows_next(client):
+    assert client.portal is not None
     # The client fixture already seeds exactly ONE Basic card (do NOT seed again).
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
@@ -135,6 +140,7 @@ def test_reviewer_ease_answers_and_shows_next(client):
 
 
 def test_reviewer_ans_before_show_does_not_crash_socket(client):
+    assert client.portal is not None
     # Sending 'ans' with no in-flight card must NOT drop the socket; a subsequent
     # 'show' must still work (proves the handler guarded session.card is None).
     did = client.portal.call(
@@ -157,6 +163,7 @@ def test_reviewer_ans_before_show_does_not_crash_socket(client):
 
 
 def test_reviewer_edit_navigates_to_editor(client):
+    assert client.portal is not None
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
     )

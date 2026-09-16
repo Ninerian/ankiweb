@@ -16,10 +16,14 @@ def live_server_edit(tmp_path: Path):
     col_path = tmp_path / "edit.anki2"
     col = Collection(str(col_path))
     try:
-        n = col.new_note(col.models.by_name("Basic"))
+        nt = col.models.by_name("Basic")
+        assert nt is not None
+        n = col.new_note(nt)
         n["Front"] = "CapitalFrance"
         n["Back"] = "Paris"
-        col.add_note(n, col.decks.id("Default"))
+        did = col.decks.id("Default")
+        assert did is not None
+        col.add_note(n, did)
         nid = n.id
     finally:
         col.close()

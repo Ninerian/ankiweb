@@ -3,7 +3,9 @@ import time
 import pytest
 import uvicorn
 from pathlib import Path
+from anki.cards import CardId
 from anki.collection import Collection
+from anki.scheduler.v3 import Scheduler as V3Scheduler
 from ankiweb.core.config import Settings
 from ankiweb.app import create_app
 
@@ -16,17 +18,22 @@ def live_server_graphs(tmp_path: Path):
     col_path = tmp_path / "g.anki2"
     col = Collection(str(col_path))
     try:
+        nt = col.models.by_name("Basic")
+        assert nt is not None
+        did = col.decks.id("Default")
+        assert did is not None
         for q in ("a", "b", "c"):
-            n = col.new_note(col.models.by_name("Basic"))
+            n = col.new_note(nt)
             n["Front"] = q
             n["Back"] = q
-            col.add_note(n, col.decks.id("Default"))
+            col.add_note(n, did)
         from anki.scheduler.v3 import CardAnswer
 
+        assert isinstance(col.sched, V3Scheduler)
         queued = col.sched.get_queued_cards(fetch_limit=1)
         if queued.cards:
             top = queued.cards[0]
-            c = col.get_card(top.card.id)
+            c = col.get_card(CardId(top.card.id))
             c.start_timer()
             ans = col.sched.build_answer(
                 card=c, states=top.states, rating=CardAnswer.Rating.GOOD

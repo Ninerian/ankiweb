@@ -14,6 +14,7 @@ def client(tmp_path: Path):
     # The WEB app constructs hub + service + registers screen handlers in its lifespan,
     # so gui* reviewer-control actions (which reuse hub.dispatch_cmd) work end-to-end.
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+        assert c.portal is not None
         c.portal.call(c.app.state.service.run, _seed)
         yield c
 
@@ -38,14 +39,17 @@ async def _run(rt, name, params):
 
 
 def _gui(client, action, **params):
+    assert client.portal is not None
     return client.portal.call(_run, _rt(client), action, params)
 
 
 def _drive(client, arg):
+    assert client.portal is not None
     client.portal.call(client.app.state.hub.dispatch_cmd, "reviewer", arg)
 
 
 def _select_default(client):
+    assert client.portal is not None
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
     )
@@ -92,6 +96,7 @@ def test_gui_undo(client):
         n["Front"] = "u"
         return col.add_note(n, col.decks.id("Default"))
 
+    assert client.portal is not None
     client.portal.call(client.app.state.service.run_op, add, "test")
     assert _gui(client, "guiUndo") is True
     # undoing again with nothing to undo still returns True (no-op)
@@ -235,6 +240,7 @@ def test_gui_play_audio_pushes_when_reviewing(client):
             f.write(b"\x00")
         col.decks.set_current(did)
 
+    assert client.portal is not None
     client.portal.call(client.app.state.service.run, setup)
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})

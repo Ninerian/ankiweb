@@ -16,11 +16,15 @@ def live_server(tmp_path: Path):
     col_path = tmp_path / "collection.anki2"
     col = Collection(str(col_path))
     try:
-        n = col.new_note(col.models.by_name("Basic"))
+        nt = col.models.by_name("Basic")
+        assert nt is not None
+        n = col.new_note(nt)
         n["Front"] = "CapitalFrance"
         n["Back"] = "Paris"
-        col.add_note(n, col.decks.id("Default"))
-        col.decks.set_current(col.decks.id("Default"))
+        did = col.decks.id("Default")
+        assert did is not None
+        col.add_note(n, did)
+        col.decks.set_current(did)
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8125)
@@ -85,7 +89,10 @@ def live_server_audio(tmp_path: Path):
         col.models.add_template(m, t)
         col.models.add_dict(m)
         did = col.decks.id("Default")
-        n = col.new_note(col.models.by_name("AudioM"))
+        assert did is not None
+        nt = col.models.by_name("AudioM")
+        assert nt is not None
+        n = col.new_note(nt)
         n["Front"] = "Q"
         col.add_note(n, did)
         col.decks.set_current(did)

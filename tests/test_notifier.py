@@ -323,9 +323,12 @@ def test_snapshot_real_collection(tmp_path):
     col = Collection(str(tmp_path / "c.anki2"))
     try:
         m = col.models.by_name("Basic")
+        assert m is not None
         note = col.new_note(m)
         note["Front"], note["Back"] = "Q", "A"
-        col.add_note(note, col.decks.id("Default"))
+        did = col.decks.id("Default")
+        assert did is not None
+        col.add_note(note, did)
         snap = snapshot(col)
         assert "Default" in snap
         assert learnable(snap["Default"])  # a fresh new card -> learnable
@@ -438,7 +441,9 @@ def test_snapshot_marks_leaf_vs_parent(tmp_path):
     col = Collection(str(tmp_path / "c.anki2"))
     try:
         did = col.decks.id("Parent::Child")  # creates Parent and Parent::Child
+        assert did is not None
         m = col.models.by_name("Basic")
+        assert m is not None
         note = col.new_note(m)
         note["Front"], note["Back"] = "Q", "A"
         col.add_note(note, did)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
+from pydantic import BaseModel
 
 # action name -> async handler(rt, **params). This is the hot dispatch path (dispatch.py);
 # its shape is intentionally unchanged so POST / behavior cannot regress.
@@ -14,7 +15,7 @@ class ActionSpec:
 
     name: str
     handler: Callable[..., Awaitable]
-    params_model: type | None = None  # a pydantic BaseModel subclass, or None (loose)
+    params_model: type[BaseModel] | None = None  # a pydantic BaseModel subclass, or None (loose)
     result_type: Any = None  # python type for the response `result` field, or None
     summary: str = ""
     description: str = ""
@@ -44,7 +45,7 @@ def _register(actions, specs, name, fn, params, returns, summary, description):
 def action(
     name: str,
     *,
-    params: type | None = None,
+    params: type[BaseModel] | None = None,
     returns: Any = None,
     summary: str = "",
     description: str = "",
@@ -61,7 +62,7 @@ def action(
 def extra_action(
     name: str,
     *,
-    params: type | None = None,
+    params: type[BaseModel] | None = None,
     returns: Any = None,
     summary: str = "",
     description: str = "",

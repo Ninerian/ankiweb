@@ -30,6 +30,7 @@ def live_io(tmp_path: Path):
     try:
         col.add_image_occlusion_notetype()
         nt = col.models.by_name("Image Occlusion")
+        assert nt is not None
         col.add_image_occlusion_note(
             notetype_id=nt["id"],
             image_path=str(img),

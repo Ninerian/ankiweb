@@ -17,9 +17,12 @@ def live_server_cs(tmp_path: Path):
     col = Collection(str(col_path))
     try:
         did = col.decks.id("Default")
+        assert did is not None
         col.decks.set_current(did)
         for i in range(3):
-            n = col.new_note(col.models.by_name("Basic"))
+            nt = col.models.by_name("Basic")
+            assert nt is not None
+            n = col.new_note(nt)
             n["Front"] = f"f{i}"
             n["Back"] = f"b{i}"
             col.add_note(n, did)

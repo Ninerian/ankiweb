@@ -8,6 +8,7 @@ from ankiweb.app import create_app
 @pytest.fixture
 def client(tmp_path: Path):
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+        assert c.portal is not None
         c.portal.call(c.app.state.service.run, _seed)
         yield c
 
@@ -21,6 +22,7 @@ def _seed(col):
 
 
 def _nid(client):
+    assert client.portal is not None
     return client.portal.call(
         client.app.state.service.run, lambda col: list(col.find_notes(""))[0]
     )
@@ -75,6 +77,7 @@ def test_editor_blur_saves_field(client):
         ws.send_json({"type": "cmd", "id": None, "ctx": "editor", "arg": f"load:{nid}"})
         data = _drain_call(ws, "ankiwebLoadNote")[0]
         assert data["fields"][1][1] == "Lyon"
+    assert client.portal is not None
     assert (
         client.portal.call(
             client.app.state.service.run, lambda col: col.get_note(nid).fields[1]
@@ -129,6 +132,7 @@ def test_upload_media_stores_and_returns_name(client):
     assert r.status_code == 200
     fname = r.json()["filename"]
     assert fname.endswith(".png")
+    assert client.portal is not None
     assert client.portal.call(
         client.app.state.service.run, lambda col: col.media.have(fname)
     )

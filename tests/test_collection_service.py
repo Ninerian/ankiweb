@@ -23,9 +23,13 @@ async def test_run_serializes_access(service):
     # Many concurrent ops must not corrupt python-side state.
     async def add(i):
         def fn(col):
-            n = col.new_note(col.models.by_name("Basic"))
+            nt = col.models.by_name("Basic")
+            assert nt is not None
+            n = col.new_note(nt)
             n["Front"] = str(i)
-            col.add_note(n, col.decks.id("Default"))
+            did = col.decks.id("Default")
+            assert did is not None
+            col.add_note(n, did)
 
         await service.run(fn)
 
@@ -56,9 +60,13 @@ def test_op_changes_to_flags():
 
     col = Collection(os.path.join(tempfile.mkdtemp(), "c.anki2"))
     try:
-        n = col.new_note(col.models.by_name("Basic"))
+        nt = col.models.by_name("Basic")
+        assert nt is not None
+        n = col.new_note(nt)
         n["Front"] = "x"
-        res = col.add_note(n, col.decks.id("Default"))  # OpChangesWithCount
+        did = col.decks.id("Default")
+        assert did is not None
+        res = col.add_note(n, did)  # OpChangesWithCount
         flags = op_changes_to_flags(res.changes)
         assert flags["note"] is True
         assert flags["card"] is True
@@ -72,9 +80,13 @@ async def test_run_op_emits_flags(service):
     service.subscribe(lambda flags, initiator: seen.append((flags, initiator)))
 
     def add(col):
-        n = col.new_note(col.models.by_name("Basic"))
+        nt = col.models.by_name("Basic")
+        assert nt is not None
+        n = col.new_note(nt)
         n["Front"] = "y"
-        return col.add_note(n, col.decks.id("Default"))
+        did = col.decks.id("Default")
+        assert did is not None
+        return col.add_note(n, did)
 
     res = await service.run_op(add, initiator="deckbrowser")
     assert res.count == 1  # OpChangesWithCount passthrough return
