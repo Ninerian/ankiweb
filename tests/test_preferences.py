@@ -27,6 +27,7 @@ def test_saveprefs_roundtrip(tmp_path: Path):
     with TestClient(
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
+        assert client.portal is not None
         base = client.portal.call(
             client.app.state.service.run, lambda col: col.get_preferences()
         )
@@ -77,6 +78,7 @@ def test_saveprefs_inverse_checkboxes(tmp_path: Path):
     with TestClient(
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
+        assert client.portal is not None
         base = client.portal.call(
             client.app.state.service.run, lambda col: col.get_preferences()
         )

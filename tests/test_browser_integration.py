@@ -16,11 +16,15 @@ def live_server_browse(tmp_path: Path):
     col_path = tmp_path / "browse.anki2"
     col = Collection(str(col_path))
     try:
+        did = col.decks.id("Default")
+        assert did is not None
         for q in ("dogword", "catword"):
-            n = col.new_note(col.models.by_name("Basic"))
+            nt = col.models.by_name("Basic")
+            assert nt is not None
+            n = col.new_note(nt)
             n["Front"] = q
             n["Back"] = q.upper()
-            col.add_note(n, col.decks.id("Default"))
+            col.add_note(n, did)
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8127)
@@ -101,7 +105,10 @@ def live_server_longdeck(tmp_path: Path):
     long_name = "prefix_" + "a" * 40 + "::middle_" + "b" * 40 + "::leaf_zzz"
     try:
         did = col.decks.id(long_name)
-        n = col.new_note(col.models.by_name("Basic"))
+        assert did is not None
+        nt = col.models.by_name("Basic")
+        assert nt is not None
+        n = col.new_note(nt)
         n["Front"] = "q"
         n["Back"] = "a"
         col.add_note(n, did)

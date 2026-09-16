@@ -13,11 +13,15 @@ from ankiweb.adapters.inbound.http_screens.reviewer import (
 @pytest.fixture
 def col():
     c = Collection(os.path.join(tempfile.mkdtemp(), "c.anki2"))
+    did = c.decks.id("Default")
+    assert did is not None
     for i in range(2):
-        n = c.new_note(c.models.by_name("Basic"))
+        nt = c.models.by_name("Basic")
+        assert nt is not None
+        n = c.new_note(nt)
         n["Front"] = f"Q{i}"
         n["Back"] = f"A{i}"
-        c.add_note(n, c.decks.id("Default"))
+        c.add_note(n, did)
     yield c
     c.close()
 
@@ -44,6 +48,7 @@ def test_render_answer_has_answer_and_four_labels(col):
     s = ReviewerSession()
     load_question(col, s)
     info = render_answer(col, s)
+    assert info is not None
     assert info["a"]  # answer HTML present
     assert len(info["labels"]) == 4  # Again/Hard/Good/Easy interval labels
 

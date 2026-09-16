@@ -11,7 +11,7 @@ import asyncio
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Awaitable, Callable, Coroutine, Optional
 
 
 # ---------------------------------------------------------------------------- config + status
@@ -166,7 +166,7 @@ def eval_response(status_code: int, body: Any) -> tuple:
 
 def adapt_transport(
     transport: Callable[..., Awaitable[tuple]],
-) -> Callable[..., Awaitable[tuple]]:
+) -> Callable[..., Coroutine[Any, Any, tuple]]:
     """Adapt a `NotificationTransportPort`-shaped callable (`async (url, headers, json) ->
     (status_code, body)`) into the `async (cfg, payload) -> (ok, error)` shape `DeckNotifier.post`
     expects: builds the `Authorization: Bearer <token>` header from `cfg.token`, then interprets

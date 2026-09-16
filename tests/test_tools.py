@@ -74,6 +74,7 @@ def test_emptycards_roundtrip_deletes(tmp_path: Path):
     with TestClient(
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
+        assert client.portal is not None
 
         def seed(col):
             cloze_model = col.models.by_name("Cloze")

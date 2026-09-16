@@ -8,6 +8,7 @@ from ankiweb.app import create_app
 @pytest.fixture
 def client(tmp_path: Path):
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+        assert c.portal is not None
         c.portal.call(c.app.state.service.run, _seed)
         yield c
 
@@ -51,6 +52,7 @@ def test_browse_search_pushes_rows_and_mirrors_ui_state(client):
 def test_browse_searchdeck_and_searchtag(client):
     from conftest import parse_datastar_events
 
+    assert client.portal is not None
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
     )
@@ -72,6 +74,7 @@ def test_browse_searchdeck_and_searchtag(client):
 def test_browse_open_pushes_detail_and_selection(client):
     from conftest import parse_datastar_events
 
+    assert client.portal is not None
     cid = client.portal.call(
         client.app.state.service.run, lambda col: list(col.find_cards("dog"))[0]
     )
@@ -118,6 +121,7 @@ def test_search_and_refresh_reset_client_selection(client):
 
 
 def _run(client, fn):
+    assert client.portal is not None
     return client.portal.call(client.app.state.service.run, fn)
 
 

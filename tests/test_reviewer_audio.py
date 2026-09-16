@@ -8,6 +8,7 @@ from ankiweb.app import create_app
 @pytest.fixture
 def client(tmp_path: Path):
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+        assert c.portal is not None
         c.portal.call(c.app.state.service.run, _seed)
         yield c
 
@@ -42,6 +43,7 @@ def _calls(ws, n):
 
 
 def test_question_autoplays_and_renders_buttons(client):
+    assert client.portal is not None
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
     )
@@ -59,6 +61,7 @@ def test_question_autoplays_and_renders_buttons(client):
 
 
 def test_answer_autoplays_and_play_and_replay(client):
+    assert client.portal is not None
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
     )

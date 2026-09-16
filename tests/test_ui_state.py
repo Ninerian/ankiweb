@@ -28,6 +28,7 @@ def test_hub_has_ui_state():
 @pytest.fixture
 def client(tmp_path: Path):
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
+        assert c.portal is not None
         c.portal.call(c.app.state.service.run, _seed)
         yield c
 
@@ -40,6 +41,7 @@ def _seed(col):
 
 
 def test_dispatch_cmd_sets_current_screen(client):
+    assert client.portal is not None
     hub = client.app.state.hub
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
@@ -49,6 +51,7 @@ def test_dispatch_cmd_sets_current_screen(client):
 
 
 def test_reviewer_show_updates_ui_state(client):
+    assert client.portal is not None
     hub = client.app.state.hub
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
@@ -65,6 +68,7 @@ def test_reviewer_show_updates_ui_state(client):
 
 
 def test_reviewer_finish_clears_ui_state(client):
+    assert client.portal is not None
     hub = client.app.state.hub
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")

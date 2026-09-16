@@ -21,10 +21,14 @@ def col():
     )
     c.models.add_template(m, t)
     c.models.add_dict(m)
-    n = c.new_note(c.models.by_name("TypeM"))
+    nt = c.models.by_name("TypeM")
+    assert nt is not None
+    n = c.new_note(nt)
     n["Front"] = "capital?"
     n["Back"] = "Paris"
-    c.add_note(n, c.decks.id("Default"))
+    did = c.decks.id("Default")
+    assert did is not None
+    c.add_note(n, did)
     yield c
     c.close()
 
@@ -32,6 +36,7 @@ def col():
 def test_question_filter_injects_input_and_captures_expected(col):
     s = ReviewerSession()
     info = load_question(col, s)
+    assert info is not None
     assert "id=typeans" in info["q"] or 'id="typeans"' in info["q"]
     assert "[[type:" not in info["q"]
     assert s.type_correct == "Paris"
@@ -47,10 +52,14 @@ def test_non_type_card_leaves_type_correct_none(col):
     t["afmt"] = "{{Back}}"
     col.models.add_template(m, t)
     col.models.add_dict(m)
-    n = col.new_note(col.models.by_name("Plain"))
+    nt = col.models.by_name("Plain")
+    assert nt is not None
+    n = col.new_note(nt)
     n["Front"] = "x"
     n["Back"] = "y"
-    col.add_note(n, col.decks.id("Default"))
+    did = col.decks.id("Default")
+    assert did is not None
+    col.add_note(n, did)
     s = ReviewerSession()
     s.type_correct = "stale"
     _info = load_question(col, s)
@@ -68,6 +77,7 @@ def test_answer_filter_renders_diff(col):
     load_question(col, s)  # sets s.type_correct = "Paris"
     s.typed_answer = "Paros"
     info = render_answer(col, s)
+    assert info is not None
     assert "typeans" in info["a"]
     assert "typeBad" in info["a"] or "typeMissed" in info["a"]
     assert "[[type:" not in info["a"]

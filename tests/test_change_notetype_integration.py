@@ -16,11 +16,17 @@ def live_server_cnt(tmp_path: Path):
     col_path = tmp_path / "c.anki2"
     col = Collection(str(col_path))
     try:
-        old = col.models.by_name("Basic")["id"]
-        n = col.new_note(col.models.get(old))
+        basic_nt = col.models.by_name("Basic")
+        assert basic_nt is not None
+        old = basic_nt["id"]
+        m = col.models.get(old)
+        assert m is not None
+        n = col.new_note(m)
         n["Front"] = "x"
         n["Back"] = "y"
-        col.add_note(n, col.decks.id("Default"))
+        did = col.decks.id("Default")
+        assert did is not None
+        col.add_note(n, did)
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8132)
