@@ -42,7 +42,7 @@ _SPA_BRIDGE = (
     "}catch(e){}};"
     "window.addEventListener('click',function(e){"
     "var t=e.target; while(t&&t!==document){"
-    "if(t.matches&&t.matches('button.btn-close, [data-bs-dismiss=\"modal\"], button.close, .close-button, .back-btn')){"
+    "if(t.matches&&t.matches('#ankiweb-spa-toolbar .back-btn')){"
     "e.preventDefault(); e.stopPropagation();"
     "location.href='/deckbrowser';"
     "return;"
