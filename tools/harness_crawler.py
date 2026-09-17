@@ -5,7 +5,7 @@ Visits all core screens (/deckbrowser, /browse, /graphs, /preferences, /tools, /
 evaluating:
   1. Dead ends (pages with no top toolbar and no functional back/close/save/cancel control).
   2. Unintended target=_blank or window.open links to internal routes (breaks user flow).
-  3. Broken interactive controls (inert gear menu, unhandled routes, 404/500 errors).
+  3. Broken interactive controls (inert close/back buttons, unhandled routes, 404/500 errors).
 
 Emits structured summary and prints:
   METRIC ux_issues=<int> (lower is better; primary metric)
@@ -18,8 +18,6 @@ Emits structured summary and prints:
 from __future__ import annotations
 
 import sys
-import time
-from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
 
 
@@ -39,10 +37,10 @@ def run_crawl(base_url: str) -> dict[str, int]:
             nonlocal dead_ends, visited
             visited += 1
             cur_url = page.url
-            has_toolbar = page.locator("#ankiweb-toolbar").count() > 0
+            has_toolbar = page.locator("#ankiweb-toolbar, #ankiweb-spa-toolbar").count() > 0
             has_close = (
                 page.locator(
-                    "button.btn-close, [data-bs-dismiss='modal'], a.btn-close, .close-button, button:has-text('Close'), a:has-text('Decks'), button:has-text('Decks')"
+                    "button.btn-close, [data-bs-dismiss='modal'], a.btn-close, .close-button, .back-btn, button:has-text('Close'), a:has-text('Decks'), button:has-text('Decks')"
                 ).count()
                 > 0
             )
@@ -75,9 +73,22 @@ def run_crawl(base_url: str) -> dict[str, int]:
         page.goto(f"{base_url}/browse", wait_until="networkidle")
         audit_current_page("browse")
 
-        # 4. Graphs / Stats screen
+        # 4. Graphs / Stats screen — verify return/escape control actually navigates away
         page.goto(f"{base_url}/graphs", wait_until="networkidle")
         audit_current_page("graphs")
+        orig_graphs_url = page.url
+        if page.locator("#ankiweb-spa-toolbar .back-btn").count() > 0:
+            page.click("#ankiweb-spa-toolbar .back-btn")
+            page.wait_for_load_state("networkidle")
+        if page.url == orig_graphs_url:
+            broken_controls += 1
+            issues.append(
+                {
+                    "type": "broken_control",
+                    "url": "/graphs",
+                    "detail": "return control does not navigate away",
+                }
+            )
 
         # 5. Preferences
         page.goto(f"{base_url}/preferences", wait_until="networkidle")
@@ -103,7 +114,7 @@ def run_crawl(base_url: str) -> dict[str, int]:
         page.goto(f"{base_url}/export", wait_until="networkidle")
         audit_current_page("export")
 
-        # 11. Deck Options (for first available deck)
+        # 11. Deck Options (for first available deck) — verify escape navigation
         page.goto(f"{base_url}/deckbrowser", wait_until="networkidle")
         deck_ids = page.eval_on_selector_all(
             "tr.deck[id]", "nodes => nodes.map(n => n.id)"
@@ -112,6 +123,19 @@ def run_crawl(base_url: str) -> dict[str, int]:
             target_did = deck_ids[0]
             page.goto(f"{base_url}/deck-options/{target_did}", wait_until="networkidle")
             audit_current_page(f"deck-options-{target_did}")
+            orig_deck_opt_url = page.url
+            if page.locator("#ankiweb-spa-toolbar .back-btn").count() > 0:
+                page.click("#ankiweb-spa-toolbar .back-btn")
+                page.wait_for_load_state("networkidle")
+            if page.url == orig_deck_opt_url:
+                broken_controls += 1
+                issues.append(
+                    {
+                        "type": "broken_control",
+                        "url": f"/deck-options/{target_did}",
+                        "detail": "return control does not navigate away",
+                    }
+                )
 
         browser.close()
 
