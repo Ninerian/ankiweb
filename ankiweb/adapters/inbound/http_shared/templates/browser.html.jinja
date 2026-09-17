@@ -254,7 +254,7 @@
           _selChanged();
       }
       window.ankiwebCardInfo = function() {
-          if (_sel.length) window.open('/card-info/' + _sel[0], '_blank');
+          if (_sel.length) window.location.href = '/card-info/' + _sel[0];
       };
       document.getElementById('results-body').addEventListener('click', function(e) {
           var tr = e.target.closest('tr');
