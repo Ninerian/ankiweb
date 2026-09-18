@@ -67,10 +67,11 @@ card-template editors (one of the Tools-menu screens ankiweb rebuilds for the we
 uv sync --extra dev
 
 # 1. Vendor Anki's compiled frontend (downloads the aqt 25.9.4 wheel, extracts
-#    _aqt/data/web/ into ankiweb/web_assets/ — gitignored). Required.
+#    _aqt/data/web/ into ankiweb/web_assets/ — gitignored). Required on every fresh checkout.
 uv run python tools/fetch_web_assets.py
 
-# 2. Vendor the Datastar frontend bundle (downloads datastar.js into ankiweb/shell/static/ — gitignored). Required.
+# 2. Vendor/refresh the Datastar frontend bundle (downloads datastar.js into
+#    ankiweb/shell/static/ — tracked in git, but re-run this to update the pinned version).
 uv run python tools/fetch_datastar.py
 
 # 3. Build the shell bridge bundle (shell_src/bootstrap.ts -> ankiweb/shell/static/bootstrap.js)
@@ -78,6 +79,10 @@ npm install && npm run build
 
 # 4. (optional) for the Playwright integration tests
 uv run python -m playwright install chromium
+```
+
+Steps 1-3 are also available as one command after `npm install`: `npm run setup`
+(runs fetch_web_assets.py, fetch_datastar.py, then the shell build in order).
 
 ## Run
 
