@@ -2,5 +2,8 @@
   "name": "ankiweb-shell",
   "private": true,
   "devDependencies": { "esbuild": "^0.21.0", "typescript": "^5.4.0" },
-  "scripts": { "build": "node tools/build_shell.mjs" }
+  "scripts": {
+    "setup": "uv run python tools/fetch_web_assets.py && uv run python tools/fetch_datastar.py && npm run build",
+    "build": "node tools/build_shell.mjs"
+  }
 }

@@ -35,15 +35,15 @@ function _awCmd(c, cb) {
         }
         if (c === 'preview') {
             var nid = window.__ankiwebEditNid;
-            if (nid) window.open('/preview/' + nid, '_blank');
+            if (nid) (window.top || window).location.href = '/preview/' + nid;
             return;
         }
         if (c === 'fields') {
-            if (window.__ankiwebNotetypeId) window.open('/fields/' + window.__ankiwebNotetypeId, '_blank');
+            if (window.__ankiwebNotetypeId) (window.top || window).location.href = '/fields/' + window.__ankiwebNotetypeId;
             return;
         }
         if (c === 'cards') {
-            if (window.__ankiwebNotetypeId) window.open('/card-layout/' + window.__ankiwebNotetypeId, '_blank');
+            if (window.__ankiwebNotetypeId) (window.top || window).location.href = '/card-layout/' + window.__ankiwebNotetypeId;
             return;
         }
     }

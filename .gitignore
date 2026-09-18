@@ -12,7 +12,9 @@ venv/
 .ruff_cache/
 .wily/
 ankiweb/web_assets/
-ankiweb/shell/static/
+ankiweb/shell/static/*
+!ankiweb/shell/static/datastar.js
+!ankiweb/shell/static/DATASTAR_VERSION
 node_modules/
 *.anki2
 

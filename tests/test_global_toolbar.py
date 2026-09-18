@@ -71,6 +71,24 @@ def test_edit_iframe_has_no_toolbar(client):
     assert "ankiweb-toolbar" not in r.text  # embedded editor: no global toolbar
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/graphs",
+        "/deck-options/1",
+        "/change-notetype/1/2",
+        "/card-info/1",
+        "/import-csv/fake.csv",
+        "/import-anki-package/fake.apkg",
+        "/image-occlusion/fake.png",
+    ],
+)
+def test_sveltekit_task_pages_have_escape_toolbar(client, path):
+    r = client.get(path)
+    assert r.status_code == 200
+    assert 'id="ankiweb-spa-toolbar"' in r.text or "id='ankiweb-spa-toolbar'" in r.text
+    assert 'class="back-btn"' in r.text or "class='back-btn'" in r.text
+
 def _edit_seed(client):
     def seed(col):
         n = col.new_note(col.models.by_name("Basic"))
