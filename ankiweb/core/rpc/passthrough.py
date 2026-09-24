@@ -9,8 +9,10 @@ PASSTHROUGH: set[str] = {
     "get_deck_names",
     "i18n_resources",
     "get_field_names",
+    "get_cloze_field_ords",
     "get_import_anki_package_presets",
     "get_note",
+    "get_notetype",
     "get_notetype_names",
     "get_change_notetype_info",
     "card_stats",
@@ -24,6 +26,11 @@ PASSTHROUGH: set[str] = {
     "get_image_occlusion_note",
     "get_image_occlusion_fields",
     "get_ignored_before_count",
+    "defaults_for_adding",
+    "new_note",
+    "encode_iri_paths",
+    "decode_iri_paths",
+    "note_fields_check",
 }
 
 # Thread-safe Rust backend calls dispatched OFF the single main worker (via

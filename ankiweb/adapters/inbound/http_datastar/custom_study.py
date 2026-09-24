@@ -40,13 +40,13 @@ def render_custom_study_html(col) -> str:
         1: [
             tr.custom_study_increase_todays_new_card_limit_by(),
             d.extend_new or 0,
-            tr.custom_study_cards(),
+            tr.custom_study_cards(count=d.extend_new or 0),
             -9999,
         ],
         2: [
             tr.custom_study_increase_todays_review_limit_by(),
             d.extend_review or 0,
-            tr.custom_study_cards(),
+            tr.custom_study_cards(count=d.extend_review or 0),
             -9999,
         ],
         3: [
@@ -62,7 +62,7 @@ def render_custom_study_html(col) -> str:
             tr.scheduling_days(),
             1,
         ],
-        6: [tr.custom_study_select(), 100, tr.custom_study_cards_from_the_deck(), 1],
+        6: [tr.custom_study_select(), 100, tr.custom_study_cards_from_the_deck(count=100), 1],
     }
 
     return templating.render(

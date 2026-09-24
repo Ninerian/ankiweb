@@ -37,3 +37,19 @@ def parse_datastar_events(text: str) -> list[tuple[str | None, str]]:
                 data.append(line[len("data: ") :])
         events.append((etype, "\n".join(data)))
     return events
+
+
+def wait_for_body_text_length(page, min_len: int, timeout: float = 10.0) -> None:
+    """Poll page.inner_text('body') (native CDP text extraction, no page-side eval) until it
+    exceeds min_len chars. Avoids page.wait_for_function's string predicate, which compiles via
+    eval() in the page's JS realm and violates the CSP the vendored SvelteKit bundle now ships
+    (script-src 'self' '<hash>', no 'unsafe-eval')."""
+    import time
+
+    deadline = time.monotonic() + timeout
+    while True:
+        if len(page.inner_text("body")) > min_len:
+            return
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"body text did not exceed {min_len} chars within {timeout}s")
+        time.sleep(0.1)

@@ -18,7 +18,7 @@ def test_required_assets_vendored():
         "VERSION",
     ]:
         assert (ASSETS / rel).exists(), f"missing {rel}"
-    assert (ASSETS / "VERSION").read_text().strip() == "25.9.4"
+    assert (ASSETS / "VERSION").read_text().strip() == "26.9.2"
 
 def test_datastar_asset_vendored():
     datastar_js = SHELL_STATIC / "datastar.js"

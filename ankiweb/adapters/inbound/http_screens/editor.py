@@ -13,21 +13,14 @@ def _munge(col, html: str) -> str:
 
 def _build_load(col, nid: int) -> dict:
     note = col.get_note(nid)
-    model = note.note_type()
-    flds = model["flds"]
     return {
-        "fields": [
-            [f["name"], col.media.escape_media_filenames(note.fields[i])]
-            for i, f in enumerate(flds)
-        ],
-        "fonts": [
-            [f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
-            for f in flds
-        ],
-        "io": False,
-        "noteId": nid,
-        "meta": {"id": model["id"], "modTime": model.get("mod", 0)},
-        "tags": list(note.tags),
+        "nid": nid,
+        "notetypeId": note.note_type()["id"],
+        "deckId": None,
+        "focusTo": None,
+        "originalNoteId": None,
+        "reviewerCardId": None,
+        "initial": True,
     }
 
 

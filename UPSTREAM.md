@@ -6,8 +6,8 @@ can diff against these points and decide whether ankiweb needs to follow.
 
 ## Runtime dependency — the source of truth for behavior
 
-- **anki (pylib) + the vendored frontend: `25.9.4`** — pinned in `pyproject.toml` as `anki==25.9.4`.
-- The compiled frontend under `ankiweb/web_assets/` (gitignored) is vendored from the **aqt `25.9.4`**
+- **anki (pylib) + the vendored frontend: `26.9.2`** — pinned in `pyproject.toml` as `anki==26.9.2`.
+- The compiled frontend under `ankiweb/web_assets/` (gitignored) is vendored from the **aqt `26.9.2`**
   wheel by `tools/fetch_web_assets.py`.
 
 > **The version pin is load-bearing.** `_rsbridge.so` and the compiled frontend carry a *buildhash*

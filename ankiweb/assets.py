@@ -92,6 +92,7 @@ MIME = {
     ".mov": "video/quicktime",
 }
 SVELTEKIT_PAGES = {
+    "editor",
     "graphs",
     "congrats",
     "card-info",
@@ -200,6 +201,10 @@ def build_sveltekit_router(assets_dir: Path) -> APIRouter:
     def graphs_page() -> Response:
         return HTMLResponse(_shell_with_bridge())
 
+    @router.get("/editor")
+    @router.get("/editor/{path:path}")
+    def editor_page(path: str = "") -> Response:
+        return HTMLResponse(_shell_with_bridge())
     @router.get("/deck-options/{deck_id}")
     def deck_options_page(deck_id: str) -> Response:
         return HTMLResponse(_shell_with_bridge())

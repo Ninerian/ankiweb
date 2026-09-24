@@ -56,7 +56,7 @@ card-template editors (one of the Tools-menu screens ankiweb rebuilds for the we
 ## Requirements
 
 - Python **3.12**
-- `anki==25.9.4` (pinned — the vendored frontend must match this version; the exact upstream
+- `anki==26.9.2` (pinned — the vendored frontend must match this version; the exact upstream
   Anki/AnkiConnect commits this port was built against are recorded in [UPSTREAM.md](UPSTREAM.md))
 - Node.js (only to build the ~2 KB shell bundle)
 - [uv](https://docs.astral.sh/uv/) for Python package and environment management.
@@ -66,7 +66,7 @@ card-template editors (one of the Tools-menu screens ankiweb rebuilds for the we
 ```bash
 uv sync --extra dev
 
-# 1. Vendor Anki's compiled frontend (downloads the aqt 25.9.4 wheel, extracts
+# 1. Vendor Anki's compiled frontend (downloads the aqt 26.9.2 wheel, extracts
 #    _aqt/data/web/ into ankiweb/web_assets/ — gitignored). Required on every fresh checkout.
 uv run python tools/fetch_web_assets.py
 
@@ -361,7 +361,7 @@ the GPL-3.0 text covering the AnkiConnect-derived code is in
 Because ankiweb is a network service, every user interacting with it over a network is
 entitled to its Corresponding Source. The running app exposes a **Source** link (the top
 toolbar → `/about`). Set **`ANKIWEB_SOURCE_URL`** to where your deployed source lives so that
-link points at the exact running version; the pinned Anki/aqt 25.9.4 source is at
+link points at the exact running version; the pinned Anki/aqt 26.9.2 source is at
 <https://github.com/ankitects/anki> and AnkiConnect at <https://github.com/FooSoft/anki-connect>.
 
 Copyright (C) 2026 tsc. Anki © Ankitects Pty Ltd and contributors. AnkiConnect © 2016–2021

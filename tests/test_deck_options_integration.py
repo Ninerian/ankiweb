@@ -69,10 +69,10 @@ def test_deck_options_spa_boots(live_server_dopts):
             ),
         )
         page.goto(f"{url}/deck-options/{did}")
-        page.wait_for_function(
-            "document.querySelectorAll('input,button').length>3", timeout=10000
-        )
-        page.wait_for_function("document.body.innerText.length>50", timeout=10000)
+        from conftest import wait_for_body_text_length
+
+        page.locator("input, button").nth(3).wait_for(state="attached", timeout=10000)
+        wait_for_body_text_length(page, 50, timeout=10.0)
         assert not errors, errors
         assert any(
             "get_deck_configs_for_update" in u or "getDeckConfigsForUpdate" in u
