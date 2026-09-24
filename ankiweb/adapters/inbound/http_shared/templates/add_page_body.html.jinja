@@ -1,68 +1,50 @@
-<style>
-  #add-chrome {
-      position: fixed;
-      top: 42px;
-      left: 0;
-      right: 0;
-      height: 38px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      padding: 4px 8px;
-      background: #f4f4f4;
-      border-bottom: 1px solid #ccc;
-      z-index: 1000
-  }
-
-  body {
-      padding-top: 84px
-  }
-
-  #add-toast {
-      color: #080;
-      margin-left: 8px
-  }
-</style>
-<div id="add-chrome">
-  <label>{{ tr.decks_deck() }} <select
-      id="add-deck"
-      onchange="window.pycmd('setdeck:'+this.value)"
+<div class="add-container" style="display:flex;flex-direction:column;gap:8px;max-width:800px;margin:0 auto;padding:12px;">
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <label style="font-size:13px;font-weight:600;">
+      Type:
+      <select
+        id="add-notetype"
+        style="padding:3px 8px;font-size:13px;"
+        onchange="window.ankiwebSetNotetype(this.value)"
+      >
+        {% for m in notetypes %}
+          <option value="{{ m.id }}" {% if m.selected %}selected{% endif %}>
+            {{ m.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label style="font-size:13px;font-weight:600;">
+      Deck:
+      <select
+        id="add-deck"
+        style="padding:3px 8px;font-size:13px;"
+        onchange="window.ankiwebSetDeck(this.value)"
+      >
+        {% for d in decks %}
+          <option value="{{ d.id }}" {% if d.selected %}selected{% endif %}>
+            {{ d.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+    <button
+      id="add-btn"
+      type="button"
+      style="padding:4px 14px;font-size:13px;font-weight:600;background:#2980b9;color:#fff;border:none;border-radius:4px;cursor:pointer;"
+      onclick="window.ankiwebAddNote()"
     >
-      {% for d in decks %}<option
-          value="{{ d.id }}"
-          {% if d.selected %}
-            selected
-          {% endif %}
-        >
-          {{ d.name }}
-        </option>{% endfor %}
-    </select></label>
-  <label>{{ tr.notetypes_type() }} <select
-      id="add-notetype"
-      onchange="window.__ankiwebNotetypeId = this.value;
-                   window.pycmd('setnotetype:' + this.value)"
-    >
-      {% for m in notetypes %}<option
-          value="{{ m.id }}"
-          {% if m.selected %}
-            selected
-          {% endif %}
-        >
-          {{ m.name }}
-        </option>{% endfor %}
-    </select></label>
-  <button type="button" id="add-btn" onclick="ankiwebAddNote()">
-    {{ tr.actions_add_note() }}
-  </button>
-  <a href="/deckbrowser">{{ tr.actions_close() }}</a><span
-    id="add-toast"
-  ></span>
+      Add
+    </button>
+    <span
+      id="add-toast"
+      style="font-size:13px;color:#27ae60;font-weight:600;"
+    ></span>
+  </div>
 </div>
 <script>
   (function() {
-      window.setupEditor('add');
-      var _nt = document.getElementById('add-notetype');
-      if (_nt) window.__ankiwebNotetypeId = _nt.value;
+      window.__ankiwebContext = "add";
       var b = window.__ankiwebBridge;
 
       function readAllFields() {
@@ -80,17 +62,56 @@
       window.ankiwebAddNote = function() {
           window.pycmd('addnote:' + JSON.stringify(readAllFields()));
       };
+      window.ankiwebSetNotetype = function(val) {
+          window.__ankiwebNotetypeId = val;
+          window.pycmd('setnotetype:' + val);
+      };
+      window.ankiwebSetDeck = function(val) {
+          window.pycmd('setdeck:' + val);
+      };
+      window.setupEditor('add', true);
       b.registerCalls({
           ankiwebLoadNote: function(d) {
               require('anki/ui').loaded.then(function() {
-                  window.setFields(d.fields);
-                  window.setIsImageOcclusion(d.io);
-                  window.setFonts(d.fonts);
-                  window.setNotetypeMeta(d.meta);
-                  window.setNoteId(d.noteId);
-                  window.setTags(d.tags);
-                  window.triggerChanges();
+                  if (d.field_names) {
+                      window.saveSession();
+                      window.setFields(d.field_names, d.field_values);
+                      window.setIsImageOcclusion(false);
+                      window.setNotetypeMeta(d.notetype_meta);
+                      window.setCollapsed(d.collapsed);
+                      window.setClozeFields(d.cloze_fields);
+                      window.setPlainTexts(d.plain_texts);
+                      window.setDescriptions(d.descriptions);
+                      window.setFonts(d.fonts);
+                      window.setNoteId(0);
+                      window.setTags(d.tags);
+                      window.triggerChanges();
+                  } else {
+                      window.loadNote(d);
+                  }
               });
+          },
+          ankiwebPrefillFields: function(p) {
+              var deadline = Date.now() + 8000;
+              (function waitReady() {
+                  var cs = document.querySelectorAll('.field-container');
+                  if (cs.length >= p.fields.length || Date.now() > deadline) {
+                      var sorted = Array.prototype.slice.call(cs).sort(function(a, b) {
+                          return Number(a.dataset.index) - Number(b.dataset.index);
+                      });
+                      p.fields.forEach(function(pair, i) {
+                          var fc = sorted[i];
+                          if (!fc) return;
+                          var h = fc.querySelector('.rich-text-editable');
+                          if (!h || !h.shadowRoot) return;
+                          var e = h.shadowRoot.querySelector('[contenteditable]');
+                          if (e) e.innerHTML = pair[1];
+                      });
+                      window.pycmd('saveTags:' + JSON.stringify(p.tags));
+                      return;
+                  }
+                  setTimeout(waitReady, 50);
+              })();
           },
           ankiwebToast: function(m) {
               var t = document.getElementById('add-toast');

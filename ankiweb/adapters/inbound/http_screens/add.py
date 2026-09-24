@@ -8,9 +8,8 @@ from ankiweb.adapters.inbound.http_screens.editor import (
     paste_handler_js,
     editor_links_js,
 )
-from ankiweb.core.ankiconnect_actions.actions._helpers import check_addable, _empty_load
+from ankiweb.core.ankiconnect_actions.actions._helpers import check_addable, empty_add_payload
 from ankiweb.core.op_changes import op_changes_to_flags
-
 
 def add_page_body(decks, notetypes, paste_handler_js: str, editor_links_js: str) -> str:
     return templating.render(
@@ -46,7 +45,7 @@ def make_add_handler(service, hub):
             def init(col):
                 ntid = int(col.models.current()["id"])
                 did = int(col.decks.get_current_id())
-                return ntid, did, _empty_load(col, ntid)
+                return ntid, did, empty_add_payload(col, ntid, did)
 
             ntid, did, data = await service.run(init)
             state.update(notetype_id=ntid, deck_id=did, tags=[])
@@ -55,7 +54,7 @@ def make_add_handler(service, hub):
             ntid = int(rest)
             state["notetype_id"] = ntid
             state["tags"] = []
-            data = await service.run(lambda col: _empty_load(col, ntid))
+            data = await service.run(lambda col: empty_add_payload(col, ntid, state["deck_id"]))
             await hub.push_call("add", "ankiwebLoadNote", [data])
         elif head == "setdeck":
             state["deck_id"] = int(rest)
@@ -90,9 +89,8 @@ def make_add_handler(service, hub):
             if err:
                 await hub.push_call("add", "ankiwebToast", [err])
             else:
-                data = await service.run(lambda col: _empty_load(col, ntid))
+                data = await service.run(lambda col: empty_add_payload(col, ntid, did))
                 await hub.push_call("add", "ankiwebLoadNote", [data])
                 await hub.push_call("add", "ankiwebToast", [tr.adding_added()])
-        return None
 
     return handler

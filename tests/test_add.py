@@ -39,9 +39,9 @@ def test_add_ready_pushes_empty_fields(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})
         data = _drain_call(ws, "ankiwebLoadNote")[0]
-        assert data["noteId"] == 0
-        assert [f[0] for f in data["fields"]] == ["Front", "Back"]
-        assert all(f[1] == "" for f in data["fields"])
+        assert "field_names" in data
+        assert data["field_names"] == ["Front", "Back"]
+        assert all(f == "" for f in data["field_values"])
         assert len(data["fonts"]) == 2
 
 
@@ -86,7 +86,7 @@ def test_setnotetype_reloads_fields(client):
             {"type": "cmd", "id": None, "ctx": "add", "arg": f"setnotetype:{cloze_id}"}
         )
         data = _drain_call(ws, "ankiwebLoadNote")[0]
-        assert "Text" in [f[0] for f in data["fields"]]
+        assert "Text" in data["field_names"]
 
 
 def test_setdeck_and_tags_applied(client):

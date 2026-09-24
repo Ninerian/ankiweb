@@ -52,7 +52,7 @@ def test_set_data_prefills_open_add(client):
             note={"modelName": "Basic", "fields": {"Front": "PF", "Back": "PB"}},
         )
         assert res is None
-        m = _drain(ws, "ankiwebLoadNote")
+        m = _drain(ws, "ankiwebPrefillFields")
         fields = dict(m["args"][0]["fields"])
         assert fields["Front"] == "PF" and fields["Back"] == "PB"
 
@@ -70,7 +70,7 @@ def test_gui_add_cards_prefills_open_add(client):
             },
         )
         assert isinstance(nid, int)
-        m = _drain(ws, "ankiwebLoadNote")
+        m = _drain(ws, "ankiwebPrefillFields")
         d = m["args"][0]
         assert dict(d["fields"])["Front"] == "A"
         assert d["tags"] == ["t1"]

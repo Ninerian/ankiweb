@@ -327,7 +327,8 @@ async def gui_add_note_set_data(rt, note=None, append=False):
     data = await rt.service.run(lambda col: load_data_for_spec(col, note or {}))
     if data is None:
         return {"error": "Add Note dialog is not open", "code": 1}
-    await rt.hub.push_call("add", "ankiwebLoadNote", [data])
+    await rt.hub.push_call("add", "ankiwebLoadNote", [data["load"]])
+    await rt.hub.push_call("add", "ankiwebPrefillFields", [data["prefill"]])
     return None
 
 
@@ -370,7 +371,8 @@ async def gui_add_cards(rt, note=None):
 
     nid, data = await rt.service.run(build)
     if data is not None:  # live-prefill the open Add dialog
-        await rt.hub.push_call("add", "ankiwebLoadNote", [data])
+        await rt.hub.push_call("add", "ankiwebLoadNote", [data["load"]])
+        await rt.hub.push_call("add", "ankiwebPrefillFields", [data["prefill"]])
     return nid
 
 
