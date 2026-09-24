@@ -13,7 +13,7 @@ license-files = ["LICENSE", "LICENSES/*", "THIRD-PARTY-NOTICES.md"]
 authors = [{ name = "tsc", email = "xxj.tan@gmail.com" }]
 classifiers = ["Programming Language :: Python :: 3.12", "Framework :: FastAPI"]
 dependencies = [
-  "anki==25.9.4",
+  "anki==26.9.2",
   "fastapi>=0.115",
   "uvicorn>=0.30",
   "websockets>=12",          # uvicorn needs a WS library for real /ws connections (the bridge)

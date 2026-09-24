@@ -230,7 +230,7 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
                 "editor",
                 editor_page_body(nid),
                 ["css/editor.css", "css/editable.css"],
-                ["js/mathjax.js", "js/editor.js"],
+                ["js/webview.js", "js/mathjax.js", "js/editor.js"],
                 toolbar=False,
             )
         )
@@ -240,7 +240,6 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
         service = get_service()
         body = await service.run(lambda col: render_preview_html(col, nid))
         return HTMLResponse(render_page("preview", body))
-
     @router.get("/add", response_class=HTMLResponse)
     async def add_page():
         service = get_service()
@@ -250,7 +249,7 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
                 "add",
                 body,
                 ["css/editor.css", "css/editable.css"],
-                ["js/mathjax.js", "js/editor.js"],
+                ["js/webview.js", "js/mathjax.js", "js/editor.js"],
             )
         )
 

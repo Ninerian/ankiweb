@@ -197,3 +197,15 @@ async def update_image_occlusion_note(service, body: bytes, hub) -> bytes:
 CUSTOM["getImageForOcclusion"] = get_image_for_occlusion
 CUSTOM["addImageOcclusionNote"] = add_image_occlusion_note
 CUSTOM["updateImageOcclusionNote"] = update_image_occlusion_note
+
+async def get_profile_config_json(service, body: bytes, hub=None) -> bytes:
+    import anki.generic_pb2 as generic_pb2
+    return generic_pb2.Json(json=b"null").SerializeToString()
+
+
+CUSTOM["getProfileConfigJson"] = get_profile_config_json
+CUSTOM["setProfileConfigJson"] = _noop
+CUSTOM["getMetaJson"] = get_profile_config_json
+CUSTOM["setMetaJson"] = _noop
+CUSTOM["getConfigJson"] = get_profile_config_json
+CUSTOM["setConfigJson"] = _noop

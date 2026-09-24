@@ -63,11 +63,10 @@ def test_import_csv_spa_boots(live_server_imp):
             ),
         )
         page.goto(f"{url}/import-csv/{quote(csv_path, safe='')}")
-        page.wait_for_function(
-            "document.querySelectorAll('select,button,table,input').length>2",
-            timeout=10000,
-        )
-        page.wait_for_function("document.body.innerText.length>30", timeout=10000)
+        from conftest import wait_for_body_text_length
+
+        page.locator("select, button, table, input").nth(2).wait_for(state="attached", timeout=10000)
+        wait_for_body_text_length(page, 30, timeout=10.0)
         assert not errors, errors
         assert any(
             "get_csv_metadata" in u.lower() or "getcsvmetadata" in u.lower()

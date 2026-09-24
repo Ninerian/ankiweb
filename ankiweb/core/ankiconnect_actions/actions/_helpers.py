@@ -96,37 +96,58 @@ def card_to_info(col, card):
     }
 
 
-def _empty_load(col, ntid: int) -> dict:
+def _empty_load(col, ntid: int, did: int | None = None) -> dict:
+    return {
+        "nid": None,
+        "notetypeId": ntid,
+        "deckId": did,
+        "focusTo": None,
+        "originalNoteId": None,
+        "reviewerCardId": None,
+        "initial": True,
+    }
+
+
+def empty_add_payload(col, ntid: int, did: int | None = None) -> dict:
+    """Build the legacy Add dialog payload following upstream aqt/editor_legacy.py's loadNote contract."""
     model = col.models.get(ntid)
     flds = model["flds"]
     return {
-        "fields": [[f["name"], ""] for f in flds],
+        "field_names": [f["name"] for f in flds],
+        "field_values": ["" for _ in flds],
+        "notetype_meta": {"id": model["id"], "modTime": model.get("mod", 0)},
+        "collapsed": [f.get("collapsed", False) for f in flds],
+        "cloze_fields": [False for _ in flds],
+        "plain_texts": [f.get("plainText", False) for f in flds],
+        "descriptions": [f.get("description", "") for f in flds],
         "fonts": [
             [f.get("font", "Arial"), int(f.get("size", 20)), bool(f.get("rtl", False))]
             for f in flds
         ],
-        "io": False,
-        "noteId": 0,
-        "meta": {"id": model["id"], "modTime": model.get("mod", 0)},
         "tags": [],
     }
 
 
 def load_data_for_spec(col, note_spec) -> dict | None:
-    """Build the `ankiwebLoadNote` payload for an AnkiConnect note spec
-    (modelName/fields/tags) — used by guiAddCards/guiAddNoteSetData to live-prefill
-    the open Add dialog. Returns None if the model is unknown (case-insensitive fields)."""
+    """Build the ankiwebLoadNote reference payload plus an ankiwebPrefillFields overlay for an
+    AnkiConnect note spec (modelName/fields/tags) — used by guiAddCards/guiAddNoteSetData to
+    live-prefill the open Add dialog with data that doesn't back a real DB note yet (the new
+    loadNote() API only loads by nid/notetypeId reference, so ad-hoc field/tag values must be
+    injected client-side after the blank note renders — see ankiwebPrefillFields in
+    add_page_body.html.jinja). Returns None if the model is unknown (case-insensitive fields)."""
     spec = note_spec or {}
     model = (
         col.models.by_name(spec.get("modelName", "")) if spec.get("modelName") else None
     )
     if model is None:
         return None
-    d = _empty_load(col, model["id"])
     by_lower = {f["name"].lower(): i for i, f in enumerate(model["flds"])}
+    fields = [[f["name"], ""] for f in model["flds"]]
     for key, val in (spec.get("fields") or {}).items():
         i = by_lower.get(str(key).lower())
         if i is not None:
-            d["fields"][i][1] = val
-    d["tags"] = list(spec.get("tags") or [])
-    return d
+            fields[i][1] = val
+    return {
+        "load": _empty_load(col, model["id"]),
+        "prefill": {"fields": fields, "tags": list(spec.get("tags") or [])},
+    }

@@ -9,9 +9,55 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 # pycmd host otherwise; this defines a minimal one before the app modules load. Other bridge
 # commands are intentionally ignored (same as before).
 _SPA_BRIDGE = (
-    "<script>window.pycmd=window.bridgeCommand=function(c){try{"
+    "<style>"
+    "#ankiweb-spa-toolbar {"
+    "  position: fixed; top: 0; left: 0; right: 0; height: 32px;"
+    "  background: #f0f0f0; border-bottom: 1px solid #ccc;"
+    "  display: flex; align-items: center; padding: 0 12px; gap: 14px;"
+    "  font-family: system-ui, -apple-system, sans-serif; font-size: 13px;"
+    "  z-index: 99999;"
+    "}"
+    "#ankiweb-spa-toolbar a { text-decoration: none; color: #333; font-weight: 500; }"
+    "#ankiweb-spa-toolbar a:hover { text-decoration: underline; }"
+    "#ankiweb-spa-toolbar .back-btn {"
+    "  border: 1px solid #ccc; background: #fff; border-radius: 4px;"
+    "  padding: 2px 8px; cursor: pointer; font-size: 12px;"
+    "}"
+    ":root.night-mode #ankiweb-spa-toolbar, html.night-mode #ankiweb-spa-toolbar {"
+    "  background: #1e1e1e; border-color: #444;"
+    "}"
+    ":root.night-mode #ankiweb-spa-toolbar a, html.night-mode #ankiweb-spa-toolbar a { color: #ccc; }"
+    ":root.night-mode #ankiweb-spa-toolbar .back-btn, html.night-mode #ankiweb-spa-toolbar .back-btn {"
+    "  background: #2b2b2b; color: #ccc; border-color: #555;"
+    "}"
+    "body { padding-top: 36px !important; }"
+    "</style>"
+    "<script>"
+    "window.pycmd=window.bridgeCommand=function(c){try{"
     "if(typeof c==='string'&&c.indexOf('browserSearch:')===0){"
-    "location.href='/browse?q='+encodeURIComponent(c.slice(14));}}catch(e){}};</script>"
+    "location.href='/browse?q='+encodeURIComponent(c.slice(14));}"
+    "else if(typeof c==='string'&&(c==='ans:close'||c==='close'||c==='cancel')){"
+    "location.href='/deckbrowser';"
+    "}"
+    "}catch(e){}};"
+    "window.addEventListener('click',function(e){"
+    "var t=e.target; while(t&&t!==document){"
+    "if(t.matches&&t.matches('#ankiweb-spa-toolbar .back-btn')){"
+    "e.preventDefault(); e.stopPropagation();"
+    "location.href='/deckbrowser';"
+    "return;"
+    "}"
+    "t=t.parentElement;"
+    "}"
+    "},true);"
+    "document.addEventListener('DOMContentLoaded',function(){"
+    "if(!document.getElementById('ankiweb-spa-toolbar')){"
+    "var bar=document.createElement('div'); bar.id='ankiweb-spa-toolbar';"
+    "bar.innerHTML='<button type=\"button\" class=\"back-btn\" onclick=\"location.href=\\'/deckbrowser\\';\">‹ Decks</button><a href=\"/deckbrowser\">Decks</a><a href=\"/browse\">Browse</a><a href=\"/add\">Add</a>';"
+    "document.body.prepend(bar);"
+    "}"
+    "});"
+    "</script>"
 )
 
 # subset of mediasrv _mime_for_path (mediasrv.py:171-210)
@@ -46,6 +92,7 @@ MIME = {
     ".mov": "video/quicktime",
 }
 SVELTEKIT_PAGES = {
+    "editor",
     "graphs",
     "congrats",
     "card-info",
@@ -152,34 +199,35 @@ def build_sveltekit_router(assets_dir: Path) -> APIRouter:
 
     @router.get("/graphs")
     def graphs_page() -> Response:
-        # served with the browserSearch bridge so the stats count-links open /browse
         return HTMLResponse(_shell_with_bridge())
 
+    @router.get("/editor")
+    @router.get("/editor/{path:path}")
+    def editor_page(path: str = "") -> Response:
+        return HTMLResponse(_shell_with_bridge())
     @router.get("/deck-options/{deck_id}")
     def deck_options_page(deck_id: str) -> Response:
-        return FileResponse(index, media_type="text/html")
+        return HTMLResponse(_shell_with_bridge())
 
     @router.get("/change-notetype/{ids:path}")
     def change_notetype_page(ids: str) -> Response:
-        return FileResponse(index, media_type="text/html")
+        return HTMLResponse(_shell_with_bridge())
 
     @router.get("/card-info/{ids:path}")
     def card_info_page(ids: str) -> Response:
-        # SvelteKit route nodes: /card-info/[cardId] and /card-info/[cardId]/[previousId].
-        # Bundle is vendored; card_stats / get_review_logs are already PASSTHROUGH RPCs.
-        return FileResponse(index, media_type="text/html")
+        return HTMLResponse(_shell_with_bridge())
 
     @router.get("/import-csv/{path:path}")
     def import_csv_page(path: str) -> Response:
-        return FileResponse(index, media_type="text/html")
+        return HTMLResponse(_shell_with_bridge())
 
     @router.get("/import-anki-package/{path:path}")
     def import_anki_package_page(path: str) -> Response:
-        return FileResponse(index, media_type="text/html")
+        return HTMLResponse(_shell_with_bridge())
 
     @router.get("/image-occlusion/{path:path}")
     def image_occlusion_page(path: str) -> Response:
-        return FileResponse(index, media_type="text/html")
+        return HTMLResponse(_shell_with_bridge())
 
     @router.get("/_app/{path:path}")
     def app_asset(path: str) -> Response:
