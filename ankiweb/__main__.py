@@ -51,6 +51,8 @@ async def _serve() -> None:
     notifier_task = asyncio.create_task(notifier.run())
     try:
         await asyncio.gather(web_server.serve(), api_server.serve())
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        pass
     finally:
         notifier_task.cancel()
         try:
@@ -58,10 +60,11 @@ async def _serve() -> None:
         except asyncio.CancelledError:
             pass
         await service.close()
-
-
 def main() -> None:
-    asyncio.run(_serve())
+    try:
+        asyncio.run(_serve())
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
