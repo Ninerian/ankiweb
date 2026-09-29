@@ -67,17 +67,20 @@
       window.ankiwebTypeAnsPress = ankiwebTypeAnsPress;
 
       function ankiwebSetDue() {
-          var s = window.prompt('Set due date (e.g. 0, 3, 1-7):', '');
-          if (s !== null && s !== '') {
-              window.pycmd('setdue:' + s);
-          }
+          window.ankiwebPrompt('Set due date (e.g. 0, 3, 1-7):', '').then(function(s) {
+              if (s !== null && s !== '') {
+                  window.pycmd('setdue:' + s);
+              }
+          });
       }
       window.ankiwebSetDue = ankiwebSetDue;
 
       function ankiwebDeleteNote() {
-          if (window.confirm('Delete this note?')) {
-              window.pycmd('deletenote');
-          }
+          window.ankiwebConfirm('Delete this note?', {danger: true}).then(function(ok) {
+              if (ok) {
+                  window.pycmd('deletenote');
+              }
+          });
       }
       window.ankiwebDeleteNote = ankiwebDeleteNote;
       b.registerCalls({
@@ -102,7 +105,7 @@
               return window._drawFlag && window._drawFlag(n);
           },
           ankiwebReviewerError: function(m) {
-              alert(m);
+              window.ankiwebAlert(m);
           }
       });
       document.addEventListener('keydown', function(e) {

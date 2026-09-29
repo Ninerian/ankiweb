@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <link rel="stylesheet" href="/shell/static/vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="/shell/static/theme.css">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ title }}</title>
@@ -25,6 +26,7 @@
     {% for j in js_files %}<script src="/_anki/{{ j }}"></script>{% endfor %}
     <script src="/shell/static/vendor/bootstrap.bundle.min.js"></script>
     <script src="/shell/static/bootstrap.js"></script>
+    <script src="/shell/static/dialogs.js"></script>
     <script type="module" src="/shell/static/datastar.js"></script>
   </head>
   <body>

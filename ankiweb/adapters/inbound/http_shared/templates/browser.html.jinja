@@ -196,7 +196,7 @@
           class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
           type="button"
           disabled
-          data-on:click__prevent="const x = prompt('Due in days (e.g. 0, 3, 1-7):'); if (x !== null && x !== '') @post('/browse/setdue', {payload: {value: x}})"
+          data-on:click__prevent="ankiwebPrompt('Due in days (e.g. 0, 3, 1-7):').then(function(x) { if (x !== null && x !== '') @post('/browse/setdue', {payload: {value: x}}); })"
         >
           {{ tr.actions_set_due_date() }}
         </button>
@@ -205,7 +205,7 @@
           class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
           type="button"
           disabled
-          data-on:click__prevent="const x = prompt('Move to deck:'); if (x !== null && x !== '') @post('/browse/changedeck', {payload: {deck: x}})"
+          data-on:click__prevent="ankiwebPrompt('Move to deck:').then(function(x) { if (x !== null && x !== '') @post('/browse/changedeck', {payload: {deck: x}}); })"
         >
           {{ tr.browsing_change_deck() }}
         </button>
@@ -214,7 +214,7 @@
           class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
           type="button"
           disabled
-          data-on:click__prevent="const x = prompt('Add tag:'); if (x !== null && x !== '') @post('/browse/addtag', {payload: {tag: x}})"
+          data-on:click__prevent="ankiwebPrompt('Add tag:').then(function(x) { if (x !== null && x !== '') @post('/browse/addtag', {payload: {tag: x}}); })"
         >
           Add Tag
         </button>
@@ -223,7 +223,7 @@
           class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
           type="button"
           disabled
-          data-on:click__prevent="const x = prompt('Remove tag:'); if (x !== null && x !== '') @post('/browse/removetag', {payload: {tag: x}})"
+          data-on:click__prevent="ankiwebPrompt('Remove tag:').then(function(x) { if (x !== null && x !== '') @post('/browse/removetag', {payload: {tag: x}}); })"
         >
           {{ tr.actions_remove_tag() }}
         </button>
@@ -232,7 +232,7 @@
           class="btn btn-sm btn-outline-danger d-none d-md-inline-block"
           type="button"
           disabled
-          data-on:click__prevent="if (confirm('Delete selected notes?')) @post('/browse/delete')"
+          data-on:click__prevent="ankiwebConfirm('Delete selected notes?', {danger: true}).then(function(ok) { if (ok) @post('/browse/delete'); })"
         >
           {{ tr.actions_delete() }}
         </button>

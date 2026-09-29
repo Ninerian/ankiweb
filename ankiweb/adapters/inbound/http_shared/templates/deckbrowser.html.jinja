@@ -49,10 +49,10 @@
             <a class="dropdown-item" href="#" data-on:click__prevent="@post('/deckbrowser/opts/{{ node.deck_id }}')">{{ tr.actions_options() }}</a>
           </li>
           <li>
-            <a class="dropdown-item" href="#" data-on:click__prevent="document.getElementById('err').textContent = ''; const name = prompt('{{ tr.decks_new_deck_name() }}', {{ node.name | tojson }}); if (name) @post('/deckbrowser/rename/{{ node.deck_id }}', {payload: {name: name}})">{{ tr.actions_rename() }}</a>
+            <a class="dropdown-item" href="#" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebPrompt("{{ tr.decks_new_deck_name() }}", {{ node.name | tojson }}).then(function(name) { if (name) @post(&#39;/deckbrowser/rename/{{ node.deck_id }}&#39;, {payload: {name: name}}); })'>{{ tr.actions_rename() }}</a>
           </li>
           <li>
-            <a class="dropdown-item text-danger" href="#" data-on:click__prevent="document.getElementById('err').textContent = ''; if (confirm('{{ tr.decks_delete_deck() }}: ' + {{ node.name | tojson }} + '?')) @post('/deckbrowser/delete/{{ node.deck_id }}')">{{ tr.actions_delete() }}</a>
+            <a class="dropdown-item text-danger" href="#" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebConfirm("{{ tr.decks_delete_deck() }}: " + {{ node.name | tojson }} + "?", {danger: true}).then(function(ok) { if (ok) @post(&#39;/deckbrowser/delete/{{ node.deck_id }}&#39;); })'>{{ tr.actions_delete() }}</a>
           </li>
         </ul>
       </div>
@@ -159,7 +159,7 @@
   </div>
   <div id="studiedToday" class="text-muted text-center mt-3"><span>{{ studied_today }}</span></div>
   <div class="dyn-buttons d-flex flex-wrap justify-content-center mt-3">
-    <button class="btn btn-outline-secondary btn-sm me-2 mb-2" type="button" data-on:click__prevent="const name = prompt('Deck name:'); if (name) @post('/deckbrowser/create', {payload: {name: name}})">
+    <button class="btn btn-outline-secondary btn-sm me-2 mb-2" type="button" data-on:click__prevent="ankiwebPrompt('Deck name:').then(function(name) { if (name) @post('/deckbrowser/create', {payload: {name: name}}); })">
       {{ tr.decks_create_deck() }}
     </button>
     <button class="btn btn-outline-secondary btn-sm me-2 mb-2" type="button" data-on:click__prevent="@post('/deckbrowser/createfiltered')">

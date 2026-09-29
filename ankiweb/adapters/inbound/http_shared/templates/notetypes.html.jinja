@@ -9,12 +9,12 @@
           <td><a href="/fields/{{ r.id }}">{{ L_fields }}</a></td>
           <td><a href="/card-layout/{{ r.id }}">{{ L_cards }}</a></td>
           <td>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); const name = prompt('New name:', cur); if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}})">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('New name:', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })">
               {{ L_rename }}
             </button>
           </td>
           <td>
-            <button class="btn btn-sm btn-outline-danger" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; if (confirm('Delete this note type and its {{ r.count }} note(s)?')) @post('/notetypes/delete/{{ r.id }}')">
+            <button class="btn btn-sm btn-outline-danger" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; ankiwebConfirm('Delete this note type and its {{ r.count }} note(s)?', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })">
               {{ L_delete }}
             </button>
           </td>

@@ -21,8 +21,8 @@ def test_deckbrowser_row_has_options_dropdown(client):
     r = client.get("/deckbrowser")
     assert r.status_code == 200
     assert 'data-bs-toggle="dropdown"' in r.text
-    assert f"@post('/deckbrowser/rename/{did}'" in r.text
-    assert f"@post('/deckbrowser/delete/{did}')" in r.text
+    assert f"/deckbrowser/rename/{did}" in r.text
+    assert f"/deckbrowser/delete/{did}" in r.text
 
 
 def test_deckbrowser_rename_deck(client):
