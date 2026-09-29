@@ -8,7 +8,7 @@ from datastar_py.fastapi import (
 )
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
-
+from ankiweb.core.html_sanitize import sanitize_html
 
 def make_overview_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/overview")
@@ -103,7 +103,8 @@ def render_overview_html(col) -> str:
         return render_congrats_html(col)
 
     raw = deck.get("desc", "")
-    desc = col.render_markdown(raw) if (raw and deck.get("md")) else raw
+    raw_rendered = col.render_markdown(raw) if (raw and deck.get("md")) else raw
+    desc = sanitize_html(raw_rendered)
     desc_is_markdown = bool(deck.get("md"))
 
     return templating.render(
