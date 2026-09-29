@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AnkiWeb Reviewer — Playful Neo-Pop Edition</title>
+  <style>
+    /* ==========================================================================
+       NEO-POP HIGH SCHOOL REVIEWER DESIGN SYSTEM
+       Playful, tactile, high-contrast, energetic, mobile-first
+       ========================================================================== */
+
+    :root {
+      /* Typography System: punchy, geometric, impactful using platform fonts */
+      --font-display: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+
+      /* Light Theme Palette: vibrant, tactile, energetic */
+      --bg-base: #f4f3ed;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #ffffff;
+      --text-main: #18191f;
+      --text-muted: #5f6368;
+      --border-color: #18191f;
+      --border-width: 2.5px;
+      --shadow-offset: 4px;
+      --shadow-sm: 2px 2px 0px var(--border-color);
+      --shadow-card: 4px 4px 0px var(--border-color);
+      --shadow-button: 3px 3px 0px var(--border-color);
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-pill: 999px;
+
+      /* Accent & Gamification Colors */
+      --color-streak: #ff4d00;
+      --color-streak-bg: #fff0eb;
+      --color-streak-glow: rgba(255, 77, 0, 0.35);
+      --color-meter-track: #e5e3d8;
+      --color-meter-fill: #ffd13b;
+      --color-primary: #1971c2;
+      --color-primary-accent: #ffd13b;
+
+      /* Ease Button Colors (Neo-Pop Vibrant) */
+      --ease-again-bg: #ffe3e3;
+      --ease-again-border: #fa5252;
+      --ease-again-text: #c92a2a;
+      --ease-again-shadow: #c92a2a;
+
+      --ease-hard-bg: #fff3bf;
+      --ease-hard-border: #fab005;
+      --ease-hard-text: #d9480f;
+      --ease-hard-shadow: #e67700;
+
+      --ease-good-bg: #d3f9d8;
+      --ease-good-border: #40c057;
+      --ease-good-text: #2b8a3e;
+      --ease-good-shadow: #2b8a3e;
+
+      --ease-easy-bg: #d0ebff;
+      --ease-easy-border: #228be6;
+      --ease-easy-text: #1864ab;
+      --ease-easy-shadow: #1864ab;
+
+      --badge-bg: #e9ecef;
+      --badge-text: #212529;
+
+      /* Bottom sheet overlay */
+      --sheet-backdrop: rgba(24, 25, 31, 0.65);
+    }
+
+    [data-theme="dark"] {
+      --bg-base: #121316;
+      --bg-surface: #1e2025;
+      --bg-surface-elevated: #282a30;
+      --text-main: #f8f9fa;
+      --text-muted: #a1a6b0;
+      --border-color: #f8f9fa;
+      --shadow-sm: 2px 2px 0px #000000;
+      --shadow-card: 4px 4px 0px #000000;
+      --shadow-button: 3px 3px 0px #000000;
+
+      --color-streak: #ff6b35;
+      --color-streak-bg: #2b170c;
+      --color-streak-glow: rgba(255, 107, 53, 0.45);
+      --color-meter-track: #2a2c33;
+      --color-meter-fill: #ffd13b;
+
+      --ease-again-bg: #381519;
+      --ease-again-border: #ff6b6b;
+      --ease-again-text: #ffa8a8;
+      --ease-again-shadow: #1a080a;
+
+      --ease-hard-bg: #382c0b;
+      --ease-hard-border: #fcc419;
+      --ease-hard-text: #ffe066;
+      --ease-hard-shadow: #1a1402;
+
+      --ease-good-bg: #0f361a;
+      --ease-good-border: #51cf66;
+      --ease-good-text: #8ce99a;
+      --ease-good-shadow: #051408;
+
+      --ease-easy-bg: #0c2b45;
+      --ease-easy-border: #4dabf7;
+      --ease-easy-text: #74c0fc;
+      --ease-easy-shadow: #04121e;
+
+      --badge-bg: #2d3038;
+      --badge-text: #e9ecef;
+      --sheet-backdrop: rgba(0, 0, 0, 0.8);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      line-height: 1.4;
+      overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* Mobile Device Frame for Desktop Viewers */
+    .app-viewport {
+      width: 100%;
+      max-width: 430px;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background-color: var(--bg-base);
+      overflow: hidden;
+      border-left: 1px solid rgba(0,0,0,0.06);
+      border-right: 1px solid rgba(0,0,0,0.06);
+    }
+
+    /* ==========================================================================
+       TOP HUD (Header, Progress Meter, Streak, Theme Toggle, Actions)
+       ========================================================================== */
+    .top-hud {
+      padding: 12px 16px 8px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background-color: var(--bg-base);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .hud-controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .btn-icon-neo {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-sm);
+      border: var(--border-width) solid var(--border-color);
+      background-color: var(--bg-surface);
+      color: var(--text-main);
+      box-shadow: var(--shadow-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .btn-icon-neo:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px var(--border-color);
+    }
+
+    .btn-icon-neo svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Streak Pill with Pop/Bounce Animation */
+    .streak-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background-color: var(--color-streak-bg);
+      border: var(--border-width) solid var(--color-streak);
+      box-shadow: 2px 2px 0px var(--color-streak);
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      color: var(--color-streak);
+      user-select: none;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .streak-flame {
+      font-size: 1.25rem;
+      line-height: 1;
+      display: inline-block;
+      transform-origin: bottom center;
+    }
+
+    .streak-label {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .streak-number {
+      font-size: 1.2rem;
+      font-feature-settings: "tnum";
+    }
+
+    /* Keyframes for Streak Pop on Increment */
+    @keyframes streakPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.35) rotate(-4deg); box-shadow: 0 0 16px var(--color-streak-glow); }
+      75% { transform: scale(0.95) rotate(2deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    .animate-streak-pop {
+      animation: streakPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* Keyframes for Streak Reset on Again */
+    @keyframes streakReset {
+      0% { transform: translateX(0); }
+      20% { transform: translateX(-6px) rotate(-3deg); opacity: 0.6; }
+      40% { transform: translateX(6px) rotate(3deg); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+
+    .animate-streak-reset {
+      animation: streakReset 0.4s ease-in-out;
+    }
+
+    /* Progress Meter Bar */
+    .hud-progress-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      font-family: var(--font-display);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .meter-track {
+      width: 100%;
+      height: 12px;
+      background-color: var(--color-meter-track);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .meter-fill {
+      height: 100%;
+      width: 40%;
+      background-color: var(--color-meter-fill);
+      background-image: repeating-linear-gradient(
+        45deg,
+        rgba(0, 0, 0, 0.08),
+        rgba(0, 0, 0, 0.08) 8px,
+        transparent 8px,
+        transparent 16px
+      );
+      border-right: 2px solid var(--border-color);
+      border-radius: var(--radius-pill);
+      transition: width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* ==========================================================================
+       MAIN CARD STAGE
+       ========================================================================== */
+    .reviewer-stage {
+      flex: 1;
+      padding: 8px 16px 12px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow-y: auto;
+      perspective: 1000px;
+    }
+
+    .flashcard {
+      background-color: var(--bg-surface);
+      border: 3px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: 280px;
+      max-height: 100%;
+      position: relative;
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.25s ease;
+    }
+
+    .deck-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      align-self: flex-start;
+      background-color: var(--badge-bg);
+      color: var(--badge-text);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      border: 1.5px solid var(--border-color);
+      margin-bottom: 16px;
+    }
+
+    .card-content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .card-prompt-label {
+      font-size: 0.8rem;
+      font-family: var(--font-display);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .card-question-text {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 900;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .card-hint-text {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 12px;
+    }
+
+    /* Divider with playful notch / tag */
+    .answer-divider {
+      width: 100%;
+      height: 3px;
+      background: var(--border-color);
+      margin: 16px 0;
+      position: relative;
+      opacity: 0.15;
+    }
+
+    /* Revealed Answer Area with Smooth Unfold */
+    .answer-revealed-wrap {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .answer-revealed-wrap.hidden {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px) scale(0.96);
+    }
+
+    .answer-revealed-wrap.revealed {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      animation: revealAnswer 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes revealAnswer {
+      0% { opacity: 0; transform: translateY(16px) scale(0.95); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .card-answer-text {
+      font-family: var(--font-display);
+      font-size: 1.85rem;
+      font-weight: 900;
+      color: var(--color-primary);
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+
+    [data-theme="dark"] .card-answer-text {
+      color: #74c0fc;
+    }
+
+    .card-example-sentence {
+      font-size: 0.95rem;
+      line-height: 1.45;
+      color: var(--text-main);
+      background-color: var(--bg-base);
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      margin-top: 10px;
+      max-width: 100%;
+      font-weight: 500;
+    }
+
+    .card-example-sentence mark {
+      background-color: var(--color-meter-fill);
+      color: #000;
+      padding: 0 4px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    /* Card Indicators (Marked star / Flagged pin) */
+    .card-status-tags {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      display: flex;
+      gap: 6px;
+    }
+
+    .tag-icon {
+      font-size: 1rem;
+      display: none;
+    }
+    .tag-icon.active {
+      display: inline-block;
+    }
+
+    /* ==========================================================================
+       BOTTOM CONTROLS BAR (Show Answer vs Ease 4-Pack)
+       ========================================================================== */
+    .reviewer-bottom-bar {
+      padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+      background-color: var(--bg-base);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    /* Giant Show Answer Button */
+    .btn-show-answer {
+      width: 100%;
+      height: 64px;
+      border-radius: var(--radius-md);
+      border: 3px solid var(--border-color);
+      background-color: var(--color-meter-fill);
+      color: #000000;
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      box-shadow: var(--shadow-button);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      user-select: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+
+    .btn-show-answer:active {
+      transform: translate(3px, 3px);
+      box-shadow: 0px 0px 0px var(--border-color);
+    }
+
+    .btn-show-answer .space-shortcut {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 3px 7px;
+      background: rgba(0, 0, 0, 0.12);
+      border: 1.5px solid rgba(0, 0, 0, 0.3);
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    /* Ease Buttons 4-Tile Grid */
+    .ease-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      width: 100%;
+    }
+
+    .btn-ease-tile {
+      height: 70px;
+      border-radius: var(--radius-md);
+      border: var(--border-width) solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: var(--shadow-button);
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      padding: 4px 2px;
+      position: relative;
+    }
+
+    .btn-ease-tile:active {
+      transform: translate(3px, 3px);
+      box-shadow: 0px 0px 0px var(--border-color) !important;
+    }
+
+    /* Specific Ease Themes */
+    .btn-ease-again {
+      background-color: var(--ease-again-bg);
+      border-color: var(--ease-again-border);
+      color: var(--ease-again-text);
+      box-shadow: 3px 3px 0px var(--ease-again-shadow);
+    }
+
+    .btn-ease-hard {
+      background-color: var(--ease-hard-bg);
+      border-color: var(--ease-hard-border);
+      color: var(--ease-hard-text);
+      box-shadow: 3px 3px 0px var(--ease-hard-shadow);
+    }
+
+    .btn-ease-good {
+      background-color: var(--ease-good-bg);
+      border-color: var(--ease-good-border);
+      color: var(--ease-good-text);
+      box-shadow: 3px 3px 0px var(--ease-good-shadow);
+    }
+
+    .btn-ease-easy {
+      background-color: var(--ease-easy-bg);
+      border-color: var(--ease-easy-border);
+      color: var(--ease-easy-text);
+      box-shadow: 3px 3px 0px var(--ease-easy-shadow);
+    }
+
+    .ease-tile-key {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      opacity: 0.75;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    [data-theme="dark"] .ease-tile-key {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .ease-tile-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-top: 2px;
+    }
+
+    .ease-tile-interval {
+      font-size: 0.72rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    /* ==========================================================================
+       BOTTOM SHEET MODAL (Card Actions & Info)
+       ========================================================================== */
+    .sheet-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--sheet-backdrop);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .sheet-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .bottom-sheet {
+      width: 100%;
+      max-width: 430px;
+      background-color: var(--bg-surface);
+      border-top: 3px solid var(--border-color);
+      border-left: 3px solid var(--border-color);
+      border-right: 3px solid var(--border-color);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      padding: 16px 20px 32px 20px;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .sheet-overlay.open .bottom-sheet {
+      transform: translateY(0);
+    }
+
+    .sheet-handle-bar {
+      width: 44px;
+      height: 5px;
+      background: var(--text-muted);
+      opacity: 0.3;
+      border-radius: 999px;
+      margin: 0 auto 16px auto;
+    }
+
+    .sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .sheet-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .btn-action-tile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: var(--bg-base);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      box-shadow: 2px 2px 0px var(--border-color);
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+
+    .btn-action-tile:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px var(--border-color);
+    }
+
+    .btn-action-tile.danger {
+      border-color: #fa5252;
+      color: #fa5252;
+      box-shadow: 2px 2px 0px #fa5252;
+    }
+
+    .btn-action-tile svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      flex-shrink: 0;
+    }
+
+    .btn-sheet-close {
+      width: 100%;
+      height: 48px;
+      background-color: var(--bg-surface-elevated);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text-main);
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      user-select: none;
+    }
+
+    /* Toast Notification for Simulated Actions */
+    .toast-pill {
+      position: absolute;
+      top: 76px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background-color: var(--border-color);
+      color: var(--bg-surface);
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.85rem;
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      z-index: 80;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .toast-pill.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-viewport">
+    <!-- Top Floating Toast Notification -->
+    <div id="toast" class="toast-pill">Action triggered</div>
+
+    <!-- TOP HUD -->
+    <header class="top-hud">
+      <div class="hud-controls-row">
+        <!-- Back to Decks Button -->
+        <a href="#decks" class="btn-icon-neo" id="btn-back" title="Decks" onclick="showToast('Navigating to Decks...'); return false;">
+          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
+
+        <!-- Gamified Streak Counter -->
+        <div class="streak-container" id="streak-pill" title="Study Streak (Cards mastered in a row)">
+          <span class="streak-flame" id="streak-icon">🔥</span>
+          <div class="streak-label">
+            <span id="streak-count" class="streak-number">7</span>
+            <span>STREAK</span>
+          </div>
+        </div>
+
+        <!-- Right Quick Controls: Theme Toggle + Action Menu Trigger -->
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-icon-neo" id="btn-theme" title="Toggle Dark/Light Mode" onclick="toggleTheme()">
+            <span id="theme-icon">🌙</span>
+          </button>
+          <button type="button" class="btn-icon-neo" id="btn-actions-sheet" title="More Actions" onclick="openActionsSheet()">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Session Progress Bar -->
+      <div class="hud-progress-row">
+        <div class="progress-labels">
+          <span>Session Progress</span>
+          <span id="progress-text">14 / 20 CARDS</span>
+        </div>
+        <div class="meter-track">
+          <div id="meter-fill" class="meter-fill" style="width: 70%;"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- REVIEWER STAGE (FLASHCARD) -->
+    <main class="reviewer-stage">
+      <article class="flashcard" id="current-card">
+        <!-- Deck Badge & Status Indicators -->
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <div class="deck-badge">
+            <span>🇩🇪 German B1 Vocab</span>
+          </div>
+          <div class="card-status-tags">
+            <span id="mark-icon" class="tag-icon" title="Marked">⭐</span>
+            <span id="flag-icon" class="tag-icon" title="Flagged">🚩</span>
+          </div>
+        </div>
+
+        <!-- Question & Answer Flow -->
+        <div class="card-content-area">
+          <div class="card-prompt-label">Vocabulary &bull; Front</div>
+          <div class="card-question-text" id="card-q">die Sehnsucht</div>
+          <div class="card-hint-text">Noun, feminine (Plural: die Sehnsüchte)</div>
+
+          <div class="answer-divider"></div>
+
+          <!-- Revealed Answer Area -->
+          <div class="answer-revealed-wrap hidden" id="answer-box">
+            <div class="card-prompt-label">Definition &bull; Back</div>
+            <div class="card-answer-text" id="card-a">yearning, longing, nostalgia</div>
+            <div class="card-example-sentence">
+              „Er verspürte eine tiefe <mark>Sehnsucht</mark> nach seiner Heimat.“
+            </div>
+          </div>
+        </div>
+      </article>
+    </main>
+
+    <!-- BOTTOM CONTROL BAR -->
+    <footer class="reviewer-bottom-bar">
+      <!-- State A: Show Answer Button -->
+      <div id="bar-show-answer" style="display: block;">
+        <button type="button" class="btn-show-answer" id="btn-show-ans" onclick="revealAnswer()">
+          <span>Show Answer</span>
+          <span class="space-shortcut">SPACE</span>
+        </button>
+      </div>
+
+      <!-- State B: 4 Ease Rating Tiles -->
+      <div id="bar-ease-buttons" class="ease-grid" style="display: none;">
+        <button type="button" class="btn-ease-tile btn-ease-again" onclick="rateCard('again')">
+          <span class="ease-tile-key">1</span>
+          <span class="ease-tile-title">Again</span>
+          <span class="ease-tile-interval">&lt; 10m</span>
+        </button>
+        <button type="button" class="btn-ease-tile btn-ease-hard" onclick="rateCard('hard')">
+          <span class="ease-tile-key">2</span>
+          <span class="ease-tile-title">Hard</span>
+          <span class="ease-tile-interval">2 d</span>
+        </button>
+        <button type="button" class="btn-ease-tile btn-ease-good" onclick="rateCard('good')">
+          <span class="ease-tile-key">3</span>
+          <span class="ease-tile-title">Good</span>
+          <span class="ease-tile-interval">5 d</span>
+        </button>
+        <button type="button" class="btn-ease-tile btn-ease-easy" onclick="rateCard('easy')">
+          <span class="ease-tile-key">4</span>
+          <span class="ease-tile-title">Easy</span>
+          <span class="ease-tile-interval">9 d</span>
+        </button>
+      </div>
+    </footer>
+
+    <!-- ACTIONS BOTTOM SHEET -->
+    <div class="sheet-overlay" id="actions-sheet-overlay" onclick="closeSheetOnBackdrop(event)">
+      <div class="bottom-sheet" id="actions-bottom-sheet">
+        <div class="sheet-handle-bar"></div>
+        <div class="sheet-header">
+          <div class="sheet-title">Card Actions</div>
+          <button type="button" class="btn-icon-neo" style="width: 32px; height: 32px;" onclick="closeActionsSheet()">✕</button>
+        </div>
+
+        <div class="actions-grid">
+          <button type="button" class="btn-action-tile" onclick="triggerCardAction('toggleMark')">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span id="label-mark">Mark Card</span>
+          </button>
+
+          <button type="button" class="btn-action-tile" onclick="triggerCardAction('toggleFlag')">
+            <svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            <span id="label-flag">Flag (Red)</span>
+          </button>
+
+          <button type="button" class="btn-action-tile" onclick="triggerCardAction('bury')">
+            <svg viewBox="0 0 24 24"><path d="M2 12h20"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/></svg>
+            <span>Bury Card</span>
+          </button>
+
+          <button type="button" class="btn-action-tile" onclick="triggerCardAction('suspend')">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            <span>Suspend</span>
+          </button>
+
+          <button type="button" class="btn-action-tile" onclick="triggerCardAction('undo')">
+            <svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+            <span>Undo Review</span>
+          </button>
+
+          <button type="button" class="btn-action-tile" onclick="triggerCardAction('setDue')">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Set Due Date</span>
+          </button>
+
+          <button type="button" class="btn-action-tile" onclick="triggerCardAction('cardInfo')">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span>Card Info</span>
+          </button>
+
+          <button type="button" class="btn-action-tile danger" onclick="triggerCardAction('delete')">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Delete Note</span>
+          </button>
+        </div>
+
+        <button type="button" class="btn-sheet-close" onclick="closeActionsSheet()">Dismiss</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT SIMULATING INTERACTION, GAMIFICATION & STATE -->
+  <script>
+    // Sample flashcard deck data
+    const sampleCards = [
+      {
+        front: "die Sehnsucht",
+        hint: "Noun, feminine (Plural: die Sehnsüchte)",
+        back: "yearning, longing, nostalgia",
+        example: "„Er verspürte eine tiefe <mark>Sehnsucht</mark> nach seiner Heimat.“"
+      },
+      {
+        front: "das Fingerspitzengefühl",
+        hint: "Noun, neuter (Literally: finger-tip feeling)",
+        back: "tact, finesse, intuition",
+        example: "„Für diese Verhandlung braucht man viel <mark>Fingerspitzengefühl</mark>.“"
+      },
+      {
+        front: "die Schadenfreude",
+        hint: "Noun, feminine (Schaden + Freude)",
+        back: "pleasure derived from another's misfortune",
+        example: "„Ein Anflug von <mark>Schadenfreude</mark> war nicht zu leugnen.“"
+      },
+      {
+        front: "das Fernweh",
+        hint: "Noun, neuter (Opposite of Heimweh)",
+        back: "wanderlust, ache for distant places",
+        example: "„Im grauen Winter packt mich immer das <mark>Fernweh</mark>.“"
+      }
+    ];
+
+    let currentCardIndex = 0;
+    let isAnswerRevealed = false;
+    let streakCount = 7;
+    let cardsReviewed = 14;
+    const totalSessionCards = 20;
+    let isMarked = false;
+    let isFlagged = false;
+
+    // Toast helper
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 1800);
+    }
+
+    // Toggle Theme (Dark / Light)
+    function toggleTheme() {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme');
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', nextTheme);
+      document.getElementById('theme-icon').textContent = nextTheme === 'dark' ? '☀️' : '🌙';
+      showToast(nextTheme === 'dark' ? 'Dark Mode Activated' : 'Light Mode Activated');
+    }
+
+    // Reveal Answer
+    function revealAnswer() {
+      isAnswerRevealed = true;
+      const answerBox = document.getElementById('answer-box');
+      answerBox.classList.remove('hidden');
+      answerBox.classList.add('revealed');
+
+      document.getElementById('bar-show-answer').style.display = 'none';
+      document.getElementById('bar-ease-buttons').style.display = 'grid';
+    }
+
+    // Rate Card (Ease Buttons)
+    function rateCard(rating) {
+      const streakPill = document.getElementById('streak-pill');
+      const streakEl = document.getElementById('streak-count');
+      const streakIcon = document.getElementById('streak-icon');
+
+      if (rating === 'again') {
+        // Reset streak with shake animation
+        streakCount = 0;
+        streakEl.textContent = '0';
+        streakIcon.textContent = '💔';
+        streakPill.classList.remove('animate-streak-pop', 'animate-streak-reset');
+        void streakPill.offsetWidth; // trigger reflow
+        streakPill.classList.add('animate-streak-reset');
+        showToast('Streak Reset! Don’t give up 💪');
+      } else {
+        // Increment streak with bounce pop animation
+        streakCount++;
+        streakEl.textContent = streakCount;
+        streakIcon.textContent = '🔥';
+        streakPill.classList.remove('animate-streak-pop', 'animate-streak-reset');
+        void streakPill.offsetWidth; // trigger reflow
+        streakPill.classList.add('animate-streak-pop');
+        showToast(`Streak +1! (${streakCount} in a row 🎯)`);
+      }
+
+      // Update progress meter
+      if (cardsReviewed < totalSessionCards) {
+        cardsReviewed++;
+        updateProgressBar();
+      }
+
+      // Load next sample card
+      loadNextCard();
+    }
+
+    function updateProgressBar() {
+      const percentage = Math.min(100, Math.round((cardsReviewed / totalSessionCards) * 100));
+      document.getElementById('meter-fill').style.width = percentage + '%';
+      document.getElementById('progress-text').textContent = `${cardsReviewed} / ${totalSessionCards} CARDS`;
+    }
+
+    function loadNextCard() {
+      currentCardIndex = (currentCardIndex + 1) % sampleCards.length;
+      const card = sampleCards[currentCardIndex];
+
+      isAnswerRevealed = false;
+      const answerBox = document.getElementById('answer-box');
+      answerBox.classList.remove('revealed');
+      answerBox.classList.add('hidden');
+
+      document.getElementById('card-q').textContent = card.front;
+      document.querySelector('.card-hint-text').textContent = card.hint;
+      document.getElementById('card-a').textContent = card.back;
+      document.querySelector('.card-example-sentence').innerHTML = card.example;
+
+      document.getElementById('bar-show-answer').style.display = 'block';
+      document.getElementById('bar-ease-buttons').style.display = 'none';
+    }
+
+    // Bottom Sheet Actions
+    function openActionsSheet() {
+      document.getElementById('actions-sheet-overlay').classList.add('open');
+    }
+
+    function closeActionsSheet() {
+      document.getElementById('actions-sheet-overlay').classList.remove('open');
+    }
+
+    function closeSheetOnBackdrop(e) {
+      if (e.target.id === 'actions-sheet-overlay') {
+        closeActionsSheet();
+      }
+    }
+
+    function triggerCardAction(action) {
+      closeActionsSheet();
+      if (action === 'toggleMark') {
+        isMarked = !isMarked;
+        document.getElementById('mark-icon').classList.toggle('active', isMarked);
+        document.getElementById('label-mark').textContent = isMarked ? 'Unmark Card' : 'Mark Card';
+        showToast(isMarked ? 'Card Marked ⭐' : 'Card Unmarked');
+      } else if (action === 'toggleFlag') {
+        isFlagged = !isFlagged;
+        document.getElementById('flag-icon').classList.toggle('active', isFlagged);
+        document.getElementById('label-flag').textContent = isFlagged ? 'Remove Flag' : 'Flag (Red)';
+        showToast(isFlagged ? 'Flagged Card 🚩' : 'Flag Removed');
+      } else if (action === 'bury') {
+        showToast('Card Buried for Today 📦');
+        loadNextCard();
+      } else if (action === 'suspend') {
+        showToast('Card Suspended ⏸️');
+        loadNextCard();
+      } else if (action === 'undo') {
+        showToast('Undo Last Review ↩️');
+      } else if (action === 'setDue') {
+        showToast('Set Due Date dialog opened 📅');
+      } else if (action === 'cardInfo') {
+        showToast('Showing Card Info ℹ️');
+      } else if (action === 'delete') {
+        showToast('Note Deleted 🗑️');
+        loadNextCard();
+      }
+    }
+
+    // Keyboard Shortcuts (Space for Show Answer, 1-4 for Ease)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        if (!isAnswerRevealed) {
+          revealAnswer();
+        }
+      } else if (isAnswerRevealed && ['1', '2', '3', '4'].includes(e.key)) {
+        e.preventDefault();
+        const map = { '1': 'again', '2': 'hard', '3': 'good', '4': 'easy' };
+        rateCard(map[e.key]);
+      }
+    });
+  </script>
+</body>
+</html>
