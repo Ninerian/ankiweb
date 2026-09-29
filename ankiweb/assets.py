@@ -15,35 +15,9 @@ _SPA_HEAD = (
 )
 
 def _spa_navbar() -> str:
-    """Mirrors _toolbar.html.jinja's labels/keys so both navbars localize identically."""
-    return (
-        '<nav id="ankiweb-spa-toolbar" class="navbar navbar-expand-md bg-body-tertiary border-bottom sticky-top">'
-        '  <div class="container-fluid">'
-        f'    <button type="button" class="back-btn btn btn-sm btn-outline-secondary me-2" onclick="location.href=\'/deckbrowser\';">\u2039 {tr.actions_decks()}</button>'
-        '    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#spaNavbarNav" aria-controls="spaNavbarNav" aria-expanded="false" aria-label="Toggle navigation">'
-        '      <span class="navbar-toggler-icon"></span>'
-        '    </button>'
-        '    <div class="collapse navbar-collapse" id="spaNavbarNav">'
-        '      <ul class="navbar-nav me-auto mb-2 mb-md-0">'
-        f'        <li class="nav-item"><a class="nav-link" href="/deckbrowser">{tr.actions_decks()}</a></li>'
-        f'        <li class="nav-item"><a class="nav-link" href="/add">{tr.actions_add()}</a></li>'
-        f'        <li class="nav-item"><a class="nav-link" href="/browse">{tr.qt_misc_browse()}</a></li>'
-        f'        <li class="nav-item"><a class="nav-link" href="/graphs">{tr.qt_misc_stats()}</a></li>'
-        f'        <li class="nav-item"><a class="nav-link" href="/preferences">{tr.preferences_preferences()}</a></li>'
-        f'        <li class="nav-item"><a class="nav-link" href="/tools">{tr.qt_accel_tools().replace("&", "")}</a></li>'
-        '        <li class="nav-item"><a class="nav-link" href="/about" title="Source code (AGPL)">Source</a></li>'
-        '        <li class="nav-item dropdown">'
-        '          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="ankiweb extras">Extras</a>'
-        '          <ul class="dropdown-menu">'
-        '            <li><a class="dropdown-item" href="/notify">Push notifications</a></li>'
-        '          </ul>'
-        '        </li>'
-        '      </ul>'
-        '      <button type="button" class="btn btn-link nav-link ms-auto" onclick="window.ankiwebToggleNight()" title="Toggle night mode">\U0001f319</button>'
-        '    </div>'
-        '  </div>'
-        '</nav>'
-    )
+    """Render the shared toolbar template in SPA mode."""
+    from ankiweb.adapters.inbound.http_shared import templating
+    return templating.render("_toolbar.html.jinja", is_spa=True)
 
 # subset of mediasrv _mime_for_path (mediasrv.py:171-210)
 MIME = {

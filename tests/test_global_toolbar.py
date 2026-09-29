@@ -65,6 +65,8 @@ def test_reviewer_has_no_global_toolbar(client):
     r = client.get("/reviewer")
     assert r.status_code == 200
     assert "ankiweb-toolbar" not in r.text
+
+
 def test_edit_iframe_has_no_toolbar(client):
     nid = client.portal.call(
         client.app.state.service.run,

@@ -5,25 +5,29 @@ from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
 
+# Callables, not strings: `tr` is bound to the language set when the collection opens
+# (ANKIWEB_LANG), which happens after import, so titles must resolve at request time.
+_TITLES = {
+    "deckbrowser": lambda: tr.actions_decks(),
+    "overview": lambda: tr.actions_decks(),
+    "customstudy": lambda: tr.actions_custom_study(),
+    "filtereddeck": lambda: tr.qt_misc_create_filtered_deck(),
+    "reviewer": lambda: tr.studying_study_now(),
+    "browser": lambda: tr.qt_misc_browse(),
+    "add": lambda: tr.actions_add(),
+    "preferences": lambda: tr.preferences_preferences(),
+    "notetypes": lambda: tr.notetypes_note_types(),
+    "tools": lambda: tr.qt_accel_tools().replace("&", ""),
+    "notify": lambda: "Push notifications",
+    "about": lambda: "Source",
+    "export": lambda: tr.actions_export(),
+}
+
+
 def _page_title(context: str) -> str:
     """Human title for the browser tab/history; unknown contexts fall back to the app name."""
-    titles = {
-        "deckbrowser": tr.actions_decks(),
-        "overview": tr.actions_decks(),
-        "customstudy": tr.actions_custom_study(),
-        "filtereddeck": tr.qt_misc_create_filtered_deck(),
-        "reviewer": tr.studying_study_now(),
-        "browser": tr.qt_misc_browse(),
-        "add": tr.actions_add(),
-        "preferences": tr.preferences_preferences(),
-        "notetypes": tr.notetypes_note_types(),
-        "tools": tr.qt_accel_tools().replace("&", ""),
-        "notify": "Push notifications",
-        "about": "Source",
-        "export": tr.actions_export(),
-    }
-    title = titles.get(context)
-    return f"{title} \u2013 AnkiWeb" if title else "AnkiWeb"
+    make = _TITLES.get(context)
+    return f"{make()} \u2013 AnkiWeb" if make else "AnkiWeb"
 
 
 def render_page(
