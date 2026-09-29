@@ -1,10 +1,10 @@
-<div class="add-container" style="display:flex;flex-direction:column;gap:8px;max-width:800px;margin:0 auto;padding:12px;">
-  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-    <label style="font-size:13px;font-weight:600;">
+<div class="add-container container-fluid d-flex flex-column gap-2 py-3" style="max-width:800px;">
+  <div class="d-flex gap-3 align-items-center flex-wrap">
+    <label class="d-flex align-items-center gap-1 small fw-semibold">
       Type:
       <select
         id="add-notetype"
-        style="padding:3px 8px;font-size:13px;"
+        class="form-select form-select-sm"
         onchange="window.ankiwebSetNotetype(this.value)"
       >
         {% for m in notetypes %}
@@ -14,11 +14,11 @@
         {% endfor %}
       </select>
     </label>
-    <label style="font-size:13px;font-weight:600;">
+    <label class="d-flex align-items-center gap-1 small fw-semibold">
       Deck:
       <select
         id="add-deck"
-        style="padding:3px 8px;font-size:13px;"
+        class="form-select form-select-sm"
         onchange="window.ankiwebSetDeck(this.value)"
       >
         {% for d in decks %}
@@ -31,20 +31,21 @@
     <button
       id="add-btn"
       type="button"
-      style="padding:4px 14px;font-size:13px;font-weight:600;background:#2980b9;color:#fff;border:none;border-radius:4px;cursor:pointer;"
+      class="btn btn-primary btn-sm"
       onclick="window.ankiwebAddNote()"
     >
       Add
     </button>
     <span
       id="add-toast"
-      style="font-size:13px;color:#27ae60;font-weight:600;"
+      class="text-success fw-bold small"
     ></span>
   </div>
 </div>
 <script>
   (function() {
       window.__ankiwebContext = "add";
+      window.__ankiwebNotetypeId = "{{ (notetypes | selectattr('selected') | map(attribute='id') | first) | default('') }}";
       var b = window.__ankiwebBridge;
 
       function readAllFields() {

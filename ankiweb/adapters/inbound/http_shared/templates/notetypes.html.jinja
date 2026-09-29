@@ -1,6 +1,6 @@
-<div class="notetypes">
+<div class="notetypes container-fluid">
   <h3>{{ heading }}</h3>
-  <table id="nttbl" border="1" cellpadding="6" cellspacing="0">
+  <table id="nttbl" class="table table-sm table-hover align-middle">
     <tbody id="ntrows">
       {% for r in rows %}
         <tr class="nt-row" data-id="{{ r.id }}" data-name="{{ r.name }}">
@@ -9,12 +9,12 @@
           <td><a href="/fields/{{ r.id }}">{{ L_fields }}</a></td>
           <td><a href="/card-layout/{{ r.id }}">{{ L_cards }}</a></td>
           <td>
-            <button type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); const name = prompt('New name:', cur); if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}})">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); const name = prompt('New name:', cur); if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}})">
               {{ L_rename }}
             </button>
           </td>
           <td>
-            <button type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; if (confirm('Delete this note type and its {{ r.count }} note(s)?')) @post('/notetypes/delete/{{ r.id }}')">
+            <button class="btn btn-sm btn-outline-danger" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; if (confirm('Delete this note type and its {{ r.count }} note(s)?')) @post('/notetypes/delete/{{ r.id }}')">
               {{ L_delete }}
             </button>
           </td>
@@ -22,18 +22,22 @@
       {% endfor %}
     </tbody>
   </table>
-  <div id="ntadd" style="margin-top:16px;">
-    <h4>{{ L_add }}</h4>
-    <label>
-      {{ L_name }}
-      <input type="text" id="ntnewname" size="24">
-    </label>
-    <select id="ntbase">
-      {% for r in rows %}<option value="{{ r.id }}">{{ r.name }}</option>{%
-        endfor
-      %}
-    </select>
-    <button type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const name = document.getElementById('ntnewname').value; const base = document.getElementById('ntbase').value; if (name && base) @post('/notetypes/add/' + base, {payload: {name: name}})">{{ L_add }}</button>
+  <div id="ntadd" class="row g-2 align-items-center mt-3">
+    <h4 class="mb-2">{{ L_add }}</h4>
+    <div class="col-auto">
+      <label for="ntnewname" class="visually-hidden">{{ L_name }}</label>
+      <input type="text" id="ntnewname" class="form-control" placeholder="{{ L_name }}" size="24">
+    </div>
+    <div class="col-auto">
+      <select id="ntbase" class="form-select">
+        {% for r in rows %}<option value="{{ r.id }}">{{ r.name }}</option>{%
+          endfor
+        %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-primary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const name = document.getElementById('ntnewname').value; const base = document.getElementById('ntbase').value; if (name && base) @post('/notetypes/add/' + base, {payload: {name: name}})">{{ L_add }}</button>
+    </div>
   </div>
-  <div id="err" style="color:#c00;margin-top:8px;"></div>
+  <div id="err" class="text-danger mt-2"></div>
 </div>

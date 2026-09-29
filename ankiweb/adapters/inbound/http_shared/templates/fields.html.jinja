@@ -1,91 +1,101 @@
 {% macro field_row(field, sortf) %}
   <tr class="field-row" data-orig="{{ field.ord }}">
     <td>
-      <label>
-        {{ tr.actions_name() }}
-        <input type="text" class="fld-name" value="{{ field.name }}" size="16">
+      <label class="form-label mb-0">
+        <span class="visually-hidden">{{ tr.actions_name() }}</span>
+        <input type="text" class="fld-name form-control form-control-sm" value="{{ field.name }}" size="16" placeholder="{{ tr.actions_name() }}">
       </label>
     </td>
     <td>
-      <label>
-        {{ tr.fields_editing_font() }}
-        <input type="text" class="fld-font" value="{{ field.font }}" size="10">
+      <label class="form-label mb-0">
+        <span class="visually-hidden">{{ tr.fields_editing_font() }}</span>
+        <input type="text" class="fld-font form-control form-control-sm" value="{{ field.font }}" size="10" placeholder="{{ tr.fields_editing_font() }}">
       </label>
     </td>
     <td>
-      <label>
-        {{ tr.fields_size() }}
+      <label class="form-label mb-0">
+        <span class="visually-hidden">{{ tr.fields_size() }}</span>
         <input
           type="number"
-          class="fld-size"
+          class="fld-size form-control form-control-sm"
           value="{{ field.size }}"
           min="1"
           style="width:5em"
+          placeholder="{{ tr.fields_size() }}"
         >
       </label>
     </td>
     <td>
-      <label><input
+      <div class="form-check form-check-inline mb-0">
+        <input
           type="checkbox"
-          class="fld-rtl"
+          class="fld-rtl form-check-input"
+          id="rtl_{{ field.ord }}"
           {% if field.rtl %}
             checked
           {% endif %}
-        > {{ tr.fields_reverse_text_direction_rtl() }}</label>
+        >
+        <label class="form-check-label" for="rtl_{{ field.ord }}">{{ tr.fields_reverse_text_direction_rtl() }}</label>
+      </div>
     </td>
     <td>
-      <label>
-        {{ tr.fields_description() }}
+      <label class="form-label mb-0">
+        <span class="visually-hidden">{{ tr.fields_description() }}</span>
         <input
           type="text"
-          class="fld-desc"
+          class="fld-desc form-control form-control-sm"
           value="{{ field.description }}"
           size="16"
+          placeholder="{{ tr.fields_description() }}"
         >
       </label>
     </td>
     <td>
-      <label><input
+      <div class="form-check form-check-inline mb-0">
+        <input
           type="radio"
           name="sortf"
-          class="fld-sort"
+          id="sortf_{{ field.ord }}"
+          class="fld-sort form-check-input"
           {% if field.ord == sortf %}
             checked
           {% endif %}
-        > {{ tr.browsing_sort_field() }}</label>
+        >
+        <label class="form-check-label" for="sortf_{{ field.ord }}">{{ tr.browsing_sort_field() }}</label>
+      </div>
     </td>
     <td>
-      <button type="button" onclick="moveUp(this)">↑</button>
-      <button type="button" onclick="moveDown(this)">↓</button>
-      <button type="button" onclick="deleteRow(this)">
+      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="moveUp(this)">↑</button>
+      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="moveDown(this)">↓</button>
+      <button class="btn btn-sm btn-outline-danger" type="button" onclick="deleteRow(this)">
         {{ tr.actions_delete() }}
       </button>
     </td>
   </tr>
 {% endmacro %}
-<div class="fields">
+<div class="fields container-fluid">
   <h3>Fields</h3>
   <input type="hidden" id="ntid" value="{{ ntid }}">
   <form id="ff" onsubmit="return false">
-    <table id="fieldtbl">
+    <table id="fieldtbl" class="table table-sm align-middle">
       <tbody id="fieldrows">
         {% for f in fields %}{{ field_row(f, sortf) }}{% endfor %}
       </tbody>
     </table>
-    <div style="margin-top:8px;">
-      <button type="button" id="addfield" onclick="addRow()">
+    <div class="mt-2">
+      <button class="btn btn-outline-secondary" type="button" id="addfield" onclick="addRow()">
         {{ add_label }}
       </button>
     </div>
-    <div style="margin-top:10px;">
-      <button type="button" id="save" data-on:click__prevent="const payload = buildFieldsPayload(); @post('/fields/savefields', {payload: payload})">
+    <div class="mt-3">
+      <button class="btn btn-primary me-2" type="button" id="save" data-on:click__prevent="const payload = buildFieldsPayload(); @post('/fields/savefields', {payload: payload})">
         {{ save_label }}
       </button>
-      <button type="button" data-on:click__prevent="@post('/fields/cancel')">
+      <button class="btn btn-secondary" type="button" data-on:click__prevent="@post('/fields/cancel')">
         {{ cancel_label }}
       </button>
     </div>
-    <div id="err" style="color:#c00;margin-top:8px;"></div>
+    <div id="err" class="text-danger mt-2"></div>
   </form>
 </div>
 <template id="blankrow">{{

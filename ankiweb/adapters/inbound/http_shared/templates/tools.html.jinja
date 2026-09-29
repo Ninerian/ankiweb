@@ -1,16 +1,16 @@
-<div class="tools">
+<div class="tools container" style="max-width:640px;">
     <h3>Tools</h3>
-    <section style="margin-bottom:16px;">
-        <button type='button' data-on:click__prevent="@post('/tools/checkdb')">{{ checkdb_label }}</button>
+    <section class="mb-3">
+        <button class="btn btn-outline-secondary" type='button' data-on:click__prevent="@post('/tools/checkdb')">{{ checkdb_label }}</button>
         <div id="res-db"></div>
     </section>
-    <section style="margin-bottom:16px;">
-        <button type='button' data-on:click__prevent="@post('/tools/checkmedia')">{{ checkmedia_label }}</button>
+    <section class="mb-3">
+        <button class="btn btn-outline-secondary" type='button' data-on:click__prevent="@post('/tools/checkmedia')">{{ checkmedia_label }}</button>
         <div id="res-media"></div>
     </section>
-    <section style="margin-bottom:16px;">
-        <button type='button' data-on:click__prevent="@post('/tools/emptycards')">{{ emptycards_label }}</button>
+    <section class="mb-3">
+        <button class="btn btn-outline-secondary" type='button' data-on:click__prevent="@post('/tools/emptycards')">{{ emptycards_label }}</button>
         <div id="res-empty"></div>
     </section>
-    <p><a href='/notetypes'>{{ notetypes_label }}</a></p>
+    <p><a class="btn btn-outline-secondary" href='/notetypes'>{{ notetypes_label }}</a></p>
 </div>

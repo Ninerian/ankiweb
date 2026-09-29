@@ -16,60 +16,162 @@
         data-on:click__prevent="@post('/deckbrowser/open/{{ node.deck_id }}')"
       >{{ node.name }}</a>
     </td>
-    <td align="right" class="count">
+    <td align="right" class="count" data-label="{{ tr.actions_new() }}">
       {% if node.new_count %}<span class="new-count">{{
           node.new_count
         }}</span>{% else %}<span class="zero-count">0</span>{% endif %}
     </td>
-    <td align="right" class="count">
+    <td align="right" class="count" data-label="{{ tr.decks_learn_header() }}">
       {% if node.learn_count %}<span class="learn-count">{{
           node.learn_count
         }}</span>{% else %}<span class="zero-count">0</span>{% endif %}
     </td>
-    <td align="right" class="count">
+    <td align="right" class="count" data-label="{{ tr.decks_review_header() }}">
       {% if node.review_count %}<span class="review-count">{{
           node.review_count
         }}</span>{% else %}<span class="zero-count">0</span>{% endif %}
     </td>
     <td align="center" class="opts">
-      <a
-        class="opts"
-        href="#"
-        data-on:click__prevent="@post('/deckbrowser/opts/{{ node.deck_id }}')"
-      >
-        <img src="/_anki/imgs/gears.svg" class="gears" alt="">
-      </a>
+      <div class="dropdown">
+        <a
+          class="opts dropdown-toggle"
+          href="#"
+          role="button"
+          data-bs-toggle="dropdown"
+          data-bs-boundary="viewport"
+          data-bs-config='{"popperConfig":{"strategy":"fixed"}}'
+          aria-expanded="false"
+        >
+          <img src="/_anki/imgs/gears.svg" class="gears" alt="">
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <a class="dropdown-item" href="#" data-on:click__prevent="@post('/deckbrowser/opts/{{ node.deck_id }}')">{{ tr.actions_options() }}</a>
+          </li>
+          <li>
+            <a class="dropdown-item" href="#" data-on:click__prevent="document.getElementById('err').textContent = ''; const name = prompt('{{ tr.decks_new_deck_name() }}', {{ node.name | tojson }}); if (name) @post('/deckbrowser/rename/{{ node.deck_id }}', {payload: {name: name}})">{{ tr.actions_rename() }}</a>
+          </li>
+          <li>
+            <a class="dropdown-item text-danger" href="#" data-on:click__prevent="document.getElementById('err').textContent = ''; if (confirm('{{ tr.decks_delete_deck() }}: ' + {{ node.name | tojson }} + '?')) @post('/deckbrowser/delete/{{ node.deck_id }}')">{{ tr.actions_delete() }}</a>
+          </li>
+        </ul>
+      </div>
     </td>
   </tr>
   {% if not node.collapsed %}{% for child in node.children %}{{
         render_node(child, current_id)
       }}{% endfor %}{% endif %}
 {% endmacro %}
-<center>
-  <table cellspacing="0" cellpadding="3" class="decks">
-    <tr>
-      <th colspan="1" align="left">{{ tr.actions_decks() }}</th>
-      <th class="count">{{ tr.actions_new() }}</th>
-      <th class="count">{{ tr.decks_learn_header() }}</th>
-      <th class="count">{{ tr.decks_review_header() }}</th>
-      <th></th>
-    </tr>
-    {% for c in children %}{{ render_node(c, current_id) }}{% endfor %}
-  </table>
-  <div id="studiedToday"><span>{{ studied_today }}</span></div>
-  <div class="dyn-buttons">
-    <button type="button" data-on:click__prevent="const name = prompt('Deck name:'); if (name) @post('/deckbrowser/create', {payload: {name: name}})">
+<style>
+  /* No Bootstrap utility collapses individual table columns responsively while
+     preserving the vendored .decks/.decktd/.count/.opts selectors Anki's CSS
+     targets by exact name, so this narrow, scoped media-query rule is kept
+     alongside Bootstrap rather than replacing the table with a grid. */
+  @media (max-width: 480px) {
+    table.decks {
+      width: 100%;
+      display: block;
+    }
+    table.decks > tr:first-child,
+    table.decks > tbody > tr:first-child {
+      display: none !important;
+    }
+    table.decks tr.deck {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border-subtle, #dee2e6);
+    }
+    table.decks tr.deck td.decktd {
+      flex: 1 1 100%;
+      width: 100%;
+      max-width: 100%;
+      order: 1;
+      display: flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 0 0 0.25rem 0;
+    }
+    table.decks tr.deck td.decktd a.deck {
+      flex: 1;
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      word-break: break-word;
+    }
+    table.decks tr.deck td.decktd a.collapse {
+      min-height: 40px;
+      min-width: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    table.decks tr.deck td.count {
+      order: 2;
+      flex: 1 1 auto;
+      min-width: 0;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem;
+    }
+    table.decks tr.deck td.count::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 0.75rem;
+      color: var(--bs-secondary-color, #6c757d);
+      line-height: 1.2;
+      margin-bottom: 0.125rem;
+    }
+    table.decks tr.deck td.opts {
+      order: 3;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    table.decks tr.deck td.opts a.opts {
+      min-height: 40px;
+      min-width: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+</style>
+
+<div class="container-fluid px-2 px-sm-3">
+  <div class="table-responsive">
+    <table cellspacing="0" cellpadding="3" class="decks">
+      <tr>
+        <th colspan="1" align="left">{{ tr.actions_decks() }}</th>
+        <th class="count">{{ tr.actions_new() }}</th>
+        <th class="count">{{ tr.decks_learn_header() }}</th>
+        <th class="count">{{ tr.decks_review_header() }}</th>
+        <th></th>
+      </tr>
+      {% for c in children %}{{ render_node(c, current_id) }}{% endfor %}
+    </table>
+  </div>
+  <div id="studiedToday" class="text-muted text-center mt-3"><span>{{ studied_today }}</span></div>
+  <div class="dyn-buttons d-flex flex-wrap justify-content-center mt-3">
+    <button class="btn btn-outline-secondary btn-sm me-2 mb-2" type="button" data-on:click__prevent="const name = prompt('Deck name:'); if (name) @post('/deckbrowser/create', {payload: {name: name}})">
       {{ tr.decks_create_deck() }}
     </button>
-    <button type="button" data-on:click__prevent="@post('/deckbrowser/createfiltered')">
+    <button class="btn btn-outline-secondary btn-sm me-2 mb-2" type="button" data-on:click__prevent="@post('/deckbrowser/createfiltered')">
       {{ tr.qt_misc_create_filtered_deck() }}
     </button>
-    <button type="button" onclick="ankiwebImportFile()">
+    <button class="btn btn-outline-secondary btn-sm me-2 mb-2" type="button" onclick="ankiwebImportFile()">
       {{ tr.actions_import() }}
     </button>
-    <a href="/export">{{ tr.actions_export() }}</a>
-    <button type="button" onclick="ankiwebImageOcclusion()">
+    <a class="btn btn-outline-secondary btn-sm me-2 mb-2" href="/export">{{ tr.actions_export() }}</a>
+    <button class="btn btn-outline-secondary btn-sm me-2 mb-2" type="button" onclick="ankiwebImageOcclusion()">
       {{ tr.notetypes_image_occlusion_name() }}
     </button>
   </div>
-</center>
+  <div id="err" class="text-danger mt-2"></div>
+</div>

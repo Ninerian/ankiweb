@@ -35,6 +35,19 @@ def test_add_route_renders(client):
     assert "Default" in r.text and "Basic" in r.text
 
 
+def test_add_route_initializes_notetype_id_for_fields_cards_buttons(client):
+    # regression: window.__ankiwebNotetypeId used to be set only inside
+    # ankiwebSetNotetype (fired by the <select> onchange), so the editor
+    # toolbar's Fields.../Cards... buttons (bridgeCommand('fields'/'cards'))
+    # had no notetype id to navigate to until the user touched the dropdown.
+    r = client.get("/add")
+    assert r.status_code == 200
+    basic_id = _run(
+        client, lambda col: col.models.by_name("Basic")["id"]
+    )
+    assert f'window.__ankiwebNotetypeId = "{basic_id}"' in r.text
+
+
 def test_add_ready_pushes_empty_fields(client):
     with client.websocket_connect("/ws?context=add") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "add", "arg": "addReady"})

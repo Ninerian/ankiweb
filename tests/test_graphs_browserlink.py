@@ -17,10 +17,13 @@ def test_graphs_shell_injects_browsersearch_bridge(client):
     assert r.headers["content-type"].startswith("text/html")
     # SPA still boots
     assert "_app/immutable/entry" in r.text
+    # bridge script tag present
+    assert "/shell/static/spa_bridge.js" in r.text
+    bridge_r = client.get("/shell/static/spa_bridge.js")
+    assert bridge_r.status_code == 200
     # bridge present + maps browserSearch -> /browse?q=
-    assert "browserSearch:" in r.text
-    assert "/browse?q=" in r.text
-
+    assert "browserSearch:" in bridge_r.text
+    assert "/browse?q=" in bridge_r.text
 
 def test_browse_q_prefills_and_searches(client):
     def seed(col):

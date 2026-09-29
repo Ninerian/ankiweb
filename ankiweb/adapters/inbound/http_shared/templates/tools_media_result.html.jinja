@@ -1,12 +1,13 @@
-<pre>{{ report }}</pre>{% if unused %}<button
+<pre class="bg-body-secondary p-3 rounded mt-2">{{ report }}</pre>{% if unused %}<button
     type="button"
+    class="btn btn-outline-danger btn-sm mt-2"
     data-on:click__prevent="@post('/tools/deleteunused')"
   >
     {{ delete_label }} ({{ unused|length }})
-  </button><div class="unused-list">
+  </button><div class="unused-list text-muted small mt-1">
     {{ unused[:10]|join(", ") }}{% if unused|length > 10 %}
       (+{{ unused|length - 10 }}){% endif %}
-  </div>{% endif %}{% if missing %}<div class="missing-list">
+  </div>{% endif %}{% if missing %}<div class="missing-list text-muted small mt-1">
     {{ missing[:10]|join(", ") }}{% if missing|length > 10 %}
       (+{{ missing|length - 10 }}){% endif %}
   </div>{% endif %}

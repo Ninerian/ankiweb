@@ -3,62 +3,47 @@ from pathlib import Path
 from typing import Callable
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
-
+from ankiweb.core.i18n import tr
 # Injected into the served SvelteKit shell so the SPA's bridgeCommand("browserSearch:<q>")
 # (e.g. graphs count-links) opens ankiweb's browser instead of being a no-op. The SPA has no
 # pycmd host otherwise; this defines a minimal one before the app modules load. Other bridge
 # commands are intentionally ignored (same as before).
-_SPA_BRIDGE = (
-    "<style>"
-    "#ankiweb-spa-toolbar {"
-    "  position: fixed; top: 0; left: 0; right: 0; height: 32px;"
-    "  background: #f0f0f0; border-bottom: 1px solid #ccc;"
-    "  display: flex; align-items: center; padding: 0 12px; gap: 14px;"
-    "  font-family: system-ui, -apple-system, sans-serif; font-size: 13px;"
-    "  z-index: 99999;"
-    "}"
-    "#ankiweb-spa-toolbar a { text-decoration: none; color: #333; font-weight: 500; }"
-    "#ankiweb-spa-toolbar a:hover { text-decoration: underline; }"
-    "#ankiweb-spa-toolbar .back-btn {"
-    "  border: 1px solid #ccc; background: #fff; border-radius: 4px;"
-    "  padding: 2px 8px; cursor: pointer; font-size: 12px;"
-    "}"
-    ":root.night-mode #ankiweb-spa-toolbar, html.night-mode #ankiweb-spa-toolbar {"
-    "  background: #1e1e1e; border-color: #444;"
-    "}"
-    ":root.night-mode #ankiweb-spa-toolbar a, html.night-mode #ankiweb-spa-toolbar a { color: #ccc; }"
-    ":root.night-mode #ankiweb-spa-toolbar .back-btn, html.night-mode #ankiweb-spa-toolbar .back-btn {"
-    "  background: #2b2b2b; color: #ccc; border-color: #555;"
-    "}"
-    "body { padding-top: 36px !important; }"
-    "</style>"
-    "<script>"
-    "window.pycmd=window.bridgeCommand=function(c){try{"
-    "if(typeof c==='string'&&c.indexOf('browserSearch:')===0){"
-    "location.href='/browse?q='+encodeURIComponent(c.slice(14));}"
-    "else if(typeof c==='string'&&(c==='ans:close'||c==='close'||c==='cancel')){"
-    "location.href='/deckbrowser';"
-    "}"
-    "}catch(e){}};"
-    "window.addEventListener('click',function(e){"
-    "var t=e.target; while(t&&t!==document){"
-    "if(t.matches&&t.matches('#ankiweb-spa-toolbar .back-btn')){"
-    "e.preventDefault(); e.stopPropagation();"
-    "location.href='/deckbrowser';"
-    "return;"
-    "}"
-    "t=t.parentElement;"
-    "}"
-    "},true);"
-    "document.addEventListener('DOMContentLoaded',function(){"
-    "if(!document.getElementById('ankiweb-spa-toolbar')){"
-    "var bar=document.createElement('div'); bar.id='ankiweb-spa-toolbar';"
-    "bar.innerHTML='<button type=\"button\" class=\"back-btn\" onclick=\"location.href=\\'/deckbrowser\\';\">‹ Decks</button><a href=\"/deckbrowser\">Decks</a><a href=\"/browse\">Browse</a><a href=\"/add\">Add</a>';"
-    "document.body.prepend(bar);"
-    "}"
-    "});"
-    "</script>"
+_SPA_HEAD = (
+    '<link rel="stylesheet" href="/shell/static/vendor/bootstrap.min.css">'
+    '<script src="/shell/static/vendor/bootstrap.bundle.min.js"></script>'
+    '<script src="/shell/static/spa_bridge.js"></script>'
 )
+
+def _spa_navbar() -> str:
+    """Mirrors _toolbar.html.jinja's labels/keys so both navbars localize identically."""
+    return (
+        '<nav id="ankiweb-spa-toolbar" class="navbar navbar-expand-md bg-body-tertiary border-bottom sticky-top">'
+        '  <div class="container-fluid">'
+        f'    <button type="button" class="back-btn btn btn-sm btn-outline-secondary me-2" onclick="location.href=\'/deckbrowser\';">\u2039 {tr.actions_decks()}</button>'
+        '    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#spaNavbarNav" aria-controls="spaNavbarNav" aria-expanded="false" aria-label="Toggle navigation">'
+        '      <span class="navbar-toggler-icon"></span>'
+        '    </button>'
+        '    <div class="collapse navbar-collapse" id="spaNavbarNav">'
+        '      <ul class="navbar-nav me-auto mb-2 mb-md-0">'
+        f'        <li class="nav-item"><a class="nav-link" href="/deckbrowser">{tr.actions_decks()}</a></li>'
+        f'        <li class="nav-item"><a class="nav-link" href="/add">{tr.actions_add()}</a></li>'
+        f'        <li class="nav-item"><a class="nav-link" href="/browse">{tr.qt_misc_browse()}</a></li>'
+        f'        <li class="nav-item"><a class="nav-link" href="/graphs">{tr.qt_misc_stats()}</a></li>'
+        f'        <li class="nav-item"><a class="nav-link" href="/preferences">{tr.preferences_preferences()}</a></li>'
+        f'        <li class="nav-item"><a class="nav-link" href="/tools">{tr.qt_accel_tools().replace("&", "")}</a></li>'
+        '        <li class="nav-item"><a class="nav-link" href="/about" title="Source code (AGPL)">Source</a></li>'
+        '        <li class="nav-item dropdown">'
+        '          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="ankiweb extras">Extras</a>'
+        '          <ul class="dropdown-menu">'
+        '            <li><a class="dropdown-item" href="/notify">Push notifications</a></li>'
+        '          </ul>'
+        '        </li>'
+        '      </ul>'
+        '      <button type="button" class="btn btn-link nav-link ms-auto" onclick="window.ankiwebToggleNight()" title="Toggle night mode">\U0001f319</button>'
+        '    </div>'
+        '  </div>'
+        '</nav>'
+    )
 
 # subset of mediasrv _mime_for_path (mediasrv.py:171-210)
 MIME = {
@@ -195,8 +180,8 @@ def build_sveltekit_router(assets_dir: Path) -> APIRouter:
 
     def _shell_with_bridge() -> str:
         html = index.read_text(encoding="utf-8")
-        return html.replace("<head>", "<head>" + _SPA_BRIDGE, 1)
-
+        html = html.replace('<body data-sveltekit-preload-data="hover">', '<body data-sveltekit-preload-data="hover">' + _spa_navbar(), 1)
+        return html.replace("</body>", _SPA_HEAD + "</body>", 1)
     @router.get("/graphs")
     def graphs_page() -> Response:
         return HTMLResponse(_shell_with_bridge())
@@ -205,6 +190,7 @@ def build_sveltekit_router(assets_dir: Path) -> APIRouter:
     @router.get("/editor/{path:path}")
     def editor_page(path: str = "") -> Response:
         return HTMLResponse(_shell_with_bridge())
+
     @router.get("/deck-options/{deck_id}")
     def deck_options_page(deck_id: str) -> Response:
         return HTMLResponse(_shell_with_bridge())
@@ -228,7 +214,6 @@ def build_sveltekit_router(assets_dir: Path) -> APIRouter:
     @router.get("/image-occlusion/{path:path}")
     def image_occlusion_page(path: str) -> Response:
         return HTMLResponse(_shell_with_bridge())
-
     @router.get("/_app/{path:path}")
     def app_asset(path: str) -> Response:
         rel = _resolve("_app/" + path)

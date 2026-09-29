@@ -132,6 +132,7 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
                     "js/vendor/mathjax/tex-chtml-full.js",
                     "js/reviewer.js",
                 ],
+                toolbar=False,
             )
         )
 

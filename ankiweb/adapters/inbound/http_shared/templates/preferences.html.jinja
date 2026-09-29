@@ -1,44 +1,35 @@
 {% macro checkbox_field(field_id, label, checked) %}
-  <div>
-    <label><input
-        type="checkbox"
-        id="{{ field_id }}"
-        {% if checked %}
-          checked
-        {% endif %}
-      > {{ label }}</label>
+  <div class="form-check mb-2">
+    <input class="form-check-input" type="checkbox" id="{{ field_id }}" {% if checked %}checked{% endif %}>
+    <label class="form-check-label" for="{{ field_id }}">{{ label }}</label>
   </div>
 {% endmacro %}
 {% macro number_field(field_id, label, value, minv=0, maxv=None, suffix="") %}
-  <div>
-    <label>{{ label }} <input
-        type="number"
-        id="{{ field_id }}"
-        value="{{ value }}"
-        min="{{ minv }}"
-        {% if maxv is not none %}
-          max="{{ maxv }}"
-        {% endif %}
-        style="width:6em"
-      >{% if suffix %}
-        {{ suffix }}{% endif %}</label>
+  <div class="mb-2 row align-items-center">
+    <label for="{{ field_id }}" class="col-sm-6 col-form-label">{{ label }}</label>
+    <div class="col-sm-6 d-flex align-items-center gap-2">
+      <input type="number" class="form-control form-control-sm" style="max-width:8em" id="{{ field_id }}" value="{{ value }}" min="{{ minv }}" {% if maxv is not none %}max="{{ maxv }}"{% endif %}>
+      {% if suffix %}<span>{{ suffix }}</span>{% endif %}
+    </div>
   </div>
 {% endmacro %}
-<div class="preferences">
+<div class="preferences container" style="max-width:640px;">
   <h3>{{ tr.preferences_preferences() }}</h3>
   <form id="pf" onsubmit="return false">
-    <fieldset>
-      <legend>{{ tr.preferences_scheduling() }}</legend>
+    <fieldset class="mb-4 border rounded p-3">
+      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.preferences_scheduling() }}</legend>
       {{
         number_field("rollover", tr.preferences_next_day_starts_at(), s.rollover, 0, 23)
       }}
       {{
         number_field("learn_ahead_mins", tr.preferences_learn_ahead_limit(), s.learn_ahead_secs // 60, suffix=tr.preferences_mins())
       }}
-      <div>
-        <label>
+      <div class="mb-2 row align-items-center">
+        <label for="new_review_mix" class="col-sm-6 col-form-label">
           {{ tr.deck_config_new_review_priority() }}
-          <select id="new_review_mix">
+        </label>
+        <div class="col-sm-6">
+          <select id="new_review_mix" class="form-select form-select-sm">
             {% for v, lbl in mix_opts %}
               <option
                 value="{{ v }}"
@@ -50,7 +41,7 @@
               </option>
             {% endfor %}
           </select>
-        </label>
+        </div>
       </div>
       {{
         checkbox_field("legacy_timezone", tr.preferences_legacy_timezone_handling(), not s.new_timezone)
@@ -59,8 +50,8 @@
         checkbox_field("day_learn_first", tr.preferences_show_learning_cards_with_larger_steps(), s.day_learn_first)
       }}
     </fieldset>
-    <fieldset>
-      <legend>{{ tr.preferences_review() }}</legend>
+    <fieldset class="mb-4 border rounded p-3">
+      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.preferences_review() }}</legend>
       {{
         checkbox_field("show_play_buttons", tr.preferences_show_play_buttons_on_cards_with(), not r.hide_audio_play_buttons)
       }}
@@ -83,8 +74,8 @@
         checkbox_field("fsrs_short_term_with_steps_enabled", "Use FSRS for short-term scheduling (with steps)", r.fsrs_short_term_with_steps_enabled)
       }}
     </fieldset>
-    <fieldset>
-      <legend>{{ tr.preferences_editing() }}</legend>
+    <fieldset class="mb-4 border rounded p-3">
+      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.preferences_editing() }}</legend>
       {{
         checkbox_field("adding_defaults_to_current_deck", tr.preferences_when_adding_default_to_current_deck(), e.adding_defaults_to_current_deck)
       }}
@@ -94,16 +85,18 @@
       {{
         checkbox_field("paste_strips_formatting", tr.preferences_paste_without_shift_key_strips_formatting(), e.paste_strips_formatting)
       }}
-      <div>
-        <label>
+      <div class="mb-2 row align-items-center">
+        <label for="default_search_text" class="col-sm-6 col-form-label">
           {{ tr.preferences_default_search_text() }}
+        </label>
+        <div class="col-sm-6">
           <input
             type="text"
+            class="form-control form-control-sm"
             id="default_search_text"
             value="{{ e.default_search_text }}"
-            size="30"
           >
-        </label>
+        </div>
       </div>
       {{
         checkbox_field("ignore_accents_in_search", tr.preferences_ignore_accents_in_search(), e.ignore_accents_in_search)
@@ -112,8 +105,8 @@
         checkbox_field("render_latex", tr.preferences_generate_latex_images_automatically(), e.render_latex)
       }}
     </fieldset>
-    <fieldset>
-      <legend>{{ tr.preferences_backups() }}</legend>
+    <fieldset class="mb-4 border rounded p-3">
+      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.preferences_backups() }}</legend>
       {{ number_field("daily", tr.preferences_daily_backups(), b.daily) }}
       {{ number_field("weekly", tr.preferences_weekly_backups(), b.weekly) }}
       {{ number_field("monthly", tr.preferences_monthly_backups(), b.monthly) }}
@@ -121,15 +114,15 @@
         number_field("minimum_interval_mins", tr.preferences_minutes_between_backups(), b.minimum_interval_mins)
       }}
     </fieldset>
-    <div style="margin-top:10px;">
-      <button type="button" id="save" data-on:click__prevent="const payload = buildPrefsPayload(); @post('/preferences/savePrefs', {payload: payload})">
+    <div class="mt-3">
+      <button class="btn btn-primary me-2" type="button" id="save" data-on:click__prevent="const payload = buildPrefsPayload(); @post('/preferences/savePrefs', {payload: payload})">
         {{ tr.actions_save() }}
       </button>
-      <button type="button" data-on:click__prevent="@post('/preferences/cancel')">
+      <button class="btn btn-secondary" type="button" data-on:click__prevent="@post('/preferences/cancel')">
         {{ tr.actions_cancel() }}
       </button>
     </div>
-    <div id="err" style="color:#c00;margin-top:8px;"></div>
+    <div id="err" class="text-danger mt-2"></div>
   </form>
 </div>
 <script>

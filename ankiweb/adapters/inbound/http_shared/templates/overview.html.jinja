@@ -1,74 +1,100 @@
-<center>
-  <h3>{{ name }}</h3>
-  {% if desc %}<div class="descfont descmid description">
-      {% if desc_is_markdown %}{{ desc | safe }}{% else %}{{ desc }}{% endif %}
-    </div>{% endif %}
-  <table cellspacing="0" cellpadding="5" class="overview-counts">
-    <tr>
-      <th>{{ tr.statistics_counts_new_cards() }}</th>
-      <th>{{ tr.statistics_counts_learning_cards() }}</th>
-      <th>{{ tr.studying_to_review() }}</th>
-    </tr>
-    <tr>
-      <td align="center"><span class="new-count">{{ new }}</span></td>
-      <td align="center"><span class="learn-count">{{ learn }}</span></td>
-      <td align="center"><span class="review-count">{{ review }}</span></td>
-    </tr>
-  </table>
-  <div class="studybtn">
-    <button
-      type="button"
-      id="study"
-      class="but"
-      autofocus
-      data-on:click__prevent="@post('/overview/study')"
-    >
-      {{ tr.studying_study_now() }}
-    </button>
-  </div>
-  <div class="bottom-buttons">
-    <button type="button" data-on:click__prevent="@post('/overview/opts')">
-      {{ tr.actions_options() }}
-    </button>
-    {% if is_dyn %}<button type="button" data-on:click__prevent="@post('/overview/refresh')">
-        {{ tr.actions_rebuild() }}
-      </button><button type="button" data-on:click__prevent="@post('/overview/empty')">
-        {{ tr.studying_empty() }}
-      </button>{% else %}<button type="button" data-on:click__prevent="@post('/overview/studymore')">
-        {{ tr.actions_custom_study() }}
-      </button>{% endif %}
-    {% if have_buried %}<button type="button" data-on:click__prevent="@post('/overview/unbury')">
-        {{ tr.studying_unbury() }}
-      </button>{% endif %}
-    <button
-      type="button"
-      onclick="document.getElementById('descedit').style.display = ''"
-    >
-      {{ tr.studying_edit() }} {{ tr.fields_description() }}
-    </button>
-    <button type="button" data-on:click__prevent="@post('/overview/decks')">
-      {{ tr.actions_decks() }}
-    </button>
-  </div>
-  <div id="descedit" style="display:none;margin-top:10px;">
-    <textarea id="descbox" rows="4" cols="50"
-    >{{ raw_desc }}</textarea><br><label><input
-        type="checkbox"
-        id="descmd"
-        {% if md_checked %}
-          checked
+<div class="container">
+  <div class="card shadow-sm mx-auto mt-4" style="max-width: 32rem;">
+    <div class="card-body text-center p-4">
+      <h3 class="card-title mb-3">{{ name }}</h3>
+      {% if desc %}
+        <div class="descfont description text-start mb-4">
+          {{ desc | safe }}
+        </div>
+      {% endif %}
+      <div class="row text-center g-2 mb-4">
+        <div class="col-4">
+          <div class="fs-2 fw-semibold new-count">{{ new }}</div>
+          <div class="small text-body-secondary">{{ tr.statistics_counts_new_cards() }}</div>
+        </div>
+        <div class="col-4">
+          <div class="fs-2 fw-semibold learn-count">{{ learn }}</div>
+          <div class="small text-body-secondary">{{ tr.statistics_counts_learning_cards() }}</div>
+        </div>
+        <div class="col-4">
+          <div class="fs-2 fw-semibold review-count">{{ review }}</div>
+          <div class="small text-body-secondary">{{ tr.studying_to_review() }}</div>
+        </div>
+      </div>
+      <div class="d-grid mb-3">
+        <button
+          type="button"
+          id="study"
+          class="btn btn-primary btn-lg"
+          autofocus
+          data-on:click__prevent="@post('/overview/study')"
+        >
+          {{ tr.studying_study_now() }}
+        </button>
+      </div>
+      <div class="d-flex flex-wrap justify-content-center gap-2">
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/opts')">
+          {{ tr.actions_options() }}
+        </button>
+        {% if is_dyn %}
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/refresh')">
+            {{ tr.actions_rebuild() }}
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/empty')">
+            {{ tr.studying_empty() }}
+          </button>
+        {% else %}
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/studymore')">
+            {{ tr.actions_custom_study() }}
+          </button>
         {% endif %}
-      > Render as markdown</label><br><button
-      type="button"
-      data-on:click__prevent="const d = document.getElementById('descbox').value; const m = document.getElementById('descmd').checked; @post('/overview/setdesc', {payload: {desc: d, md: m}})"
-    >
-      {{ tr.actions_save() }}
-    </button>
-    <button
-      type="button"
-      onclick="document.getElementById('descedit').style.display = 'none'"
-    >
-      {{ tr.actions_cancel() }}
-    </button>
+        {% if have_buried %}
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/unbury')">
+            {{ tr.studying_unbury() }}
+          </button>
+        {% endif %}
+        <button
+          class="btn btn-outline-secondary btn-sm"
+          type="button"
+          onclick="document.getElementById('descedit').style.display = ''"
+        >
+          {{ tr.studying_edit() }} {{ tr.fields_description() }}
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/decks')">
+          {{ tr.actions_decks() }}
+        </button>
+      </div>
+      <div id="descedit" class="mt-3 text-start" style="display:none;">
+        <textarea id="descbox" class="form-control" rows="4" cols="50"
+        >{{ raw_desc }}</textarea>
+        <div class="form-check my-2">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="descmd"
+            {% if md_checked %}
+              checked
+            {% endif %}
+          >
+          <label class="form-check-label" for="descmd">Render as markdown</label>
+        </div>
+        <div class="text-center">
+          <button
+            class="btn btn-primary btn-sm me-2"
+            type="button"
+            data-on:click__prevent="const d = document.getElementById('descbox').value; const m = document.getElementById('descmd').checked; @post('/overview/setdesc', {payload: {desc: d, md: m}})"
+          >
+            {{ tr.actions_save() }}
+          </button>
+          <button
+            class="btn btn-secondary btn-sm"
+            type="button"
+            onclick="document.getElementById('descedit').style.display = 'none'"
+          >
+            {{ tr.actions_cancel() }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
-</center>
+</div>

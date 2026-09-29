@@ -1,8 +1,27 @@
-<div id="_mark" hidden>★</div>
-<div id="_flag" hidden>⚑</div>
-<div id="qa" dir="auto"></div>
-<div id="ankiweb-answer"></div>
-{{ actions_bar | safe }}<script>
+<style>
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100vh;
+  }
+</style>
+<div class="d-flex flex-column" style="min-height: 100vh;">
+  <header class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom bg-body sticky-top">
+    <a href="/deckbrowser" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center">
+      &lsaquo; {{ tr.actions_decks() }}
+    </a>
+    {{ actions_bar | safe }}
+  </header>
+
+  <div class="flex-grow-1 overflow-y-auto px-3 py-2">
+    <div id="_mark" hidden>★</div>
+    <div id="_flag" hidden>⚑</div>
+    <div id="qa" dir="auto"></div>
+  </div>
+
+  <div id="ankiweb-answer" class="position-sticky bottom-0 bg-body border-top w-100" style="z-index: 1020;"></div>
+</div>
+<script>
   (function() {
       var b = window.__ankiwebBridge;
       var _ankiAudio = null;

@@ -1,13 +1,13 @@
-<center class="congrats">
+<div class="congrats container text-center py-4">
   <h1>{{ heading }}</h1>
   {% if learn_remaining_mins %}<p>
       The next learning card will be ready in {{ learn_remaining_mins }}
       minute(s).
     </p>{% endif %}
   {% if show_unbury %}<p>
-      <button type="button" data-on:click__prevent="@post('/overview/unbury')">
+      <button class="btn btn-outline-primary mt-2" type="button" data-on:click__prevent="@post('/overview/unbury')">
         {{ tr.studying_unbury() }}
       </button> buried cards.
     </p>{% endif %}
-  <p><button type="button" data-on:click__prevent="@post('/overview/decks')">Back to Decks</button></p>
-</center>
+  <p><button class="btn btn-primary mt-2" type="button" data-on:click__prevent="@post('/overview/decks')">Back to Decks</button></p>
+</div>

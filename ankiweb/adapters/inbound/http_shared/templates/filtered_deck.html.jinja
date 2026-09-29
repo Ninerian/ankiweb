@@ -1,5 +1,5 @@
 {% macro order_select(sel_id, selected, labels) %}
-  <select id="{{ sel_id }}">
+  <select id="{{ sel_id }}" class="form-select form-select-sm d-inline-block w-auto">
     {% for l in labels %}<option
         value="{{ loop.index0 }}"
         {% if loop.index0 == selected %}
@@ -10,138 +10,150 @@
       </option>{% endfor %}
   </select>
 {% endmacro %}
-<div class="filtered-deck">
+<div class="filtered-deck container" style="max-width:640px;">
   <h3>{{ heading }}</h3>
   <form id="fd" onsubmit="return false">
     <input type="hidden" id="did" value="{{ did }}">
-    <div>
-      <label>
+    <div class="mb-3">
+      <label for="name" class="form-label">
         {{ tr.deck_config_name_prompt() }}
-        <input type="text" id="name" value="{{ name }}" size="30">
       </label>
+      <input type="text" id="name" class="form-control" value="{{ name }}" size="30">
     </div>
-    <fieldset>
-      <legend>{{ tr.actions_filter() }}</legend>
-      <div>
-        <label>
+    <fieldset class="mb-4 border rounded p-3">
+      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.actions_filter() }}</legend>
+      <div class="mb-2">
+        <label for="search1" class="form-label">
           {{ tr.actions_search() }}
-          <input type="text" id="search1" value="{{ search1 }}" size="40">
         </label>
+        <input type="text" id="search1" class="form-control" value="{{ search1 }}">
       </div>
-      <div>
-        <label>
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <label for="limit1" class="form-label mb-0">
           {{ tr.decks_limit_to() }}
-          <input
-            type="number"
-            id="limit1"
-            value="{{ limit1 }}"
-            min="1"
-            style="width:6em"
-          >
         </label>
-        &nbsp; {{ tr.scheduling_order() }} {{
-          order_select('order1', order1, labels)
-        }}
+        <input
+          type="number"
+          id="limit1"
+          class="form-control form-control-sm"
+          value="{{ limit1 }}"
+          min="1"
+          style="width:6em"
+        >
+        <span>{{ tr.scheduling_order() }}</span>
+        {{ order_select('order1', order1, labels) }}
       </div>
     </fieldset>
-    <div>
-      <label><input
-          type="checkbox"
-          id="second"
-          {% if has2 %}
-            checked
-          {% endif %}
-          onchange="onSecond()"
-        > {{ tr.decks_enable_second_filter() }}</label>
+    <div class="form-check mb-3">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        id="second"
+        {% if has2 %}
+          checked
+        {% endif %}
+        onchange="onSecond()"
+      >
+      <label class="form-check-label" for="second">{{ tr.decks_enable_second_filter() }}</label>
     </div>
-    <fieldset id="filter2" {% if not has2 %}style="display:none;"{% endif %}>
-      <legend>{{ tr.decks_filter_2() }}</legend>
-      <div>
-        <label>
+    <fieldset id="filter2" class="mb-4 border rounded p-3" {% if not has2 %}style="display:none;"{% endif %}>
+      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.decks_filter_2() }}</legend>
+      <div class="mb-2">
+        <label for="search2" class="form-label">
           {{ tr.actions_search() }}
-          <input type="text" id="search2" value="{{ search2 }}" size="40">
         </label>
+        <input type="text" id="search2" class="form-control" value="{{ search2 }}">
       </div>
-      <div>
-        <label>
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <label for="limit2" class="form-label mb-0">
           {{ tr.decks_limit_to() }}
-          <input
-            type="number"
-            id="limit2"
-            value="{{ limit2 }}"
-            min="1"
-            style="width:6em"
-          >
         </label>
-        &nbsp; {{ tr.scheduling_order() }} {{
-          order_select('order2', order2, labels)
-        }}
+        <input
+          type="number"
+          id="limit2"
+          class="form-control form-control-sm"
+          value="{{ limit2 }}"
+          min="1"
+          style="width:6em"
+        >
+        <span>{{ tr.scheduling_order() }}</span>
+        {{ order_select('order2', order2, labels) }}
       </div>
     </fieldset>
-    <div style="margin-top:8px;">
-      <label><input
-          type="checkbox"
-          id="resched"
-          {% if resched %}
-            checked
-          {% endif %}
-          onchange="onResched()"
-        > {{ tr.decks_reschedule_cards_based_on_my_answers() }}</label>
+    <div class="form-check mb-3">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        id="resched"
+        {% if resched %}
+          checked
+        {% endif %}
+        onchange="onResched()"
+      >
+      <label class="form-check-label" for="resched">{{ tr.decks_reschedule_cards_based_on_my_answers() }}</label>
     </div>
     <fieldset
       id="previewblock"
+      class="mb-4 border rounded p-3"
       {% if resched %}
         style="display:none;"
       {% endif %}
     >
-      <legend>Preview delays (seconds)</legend>
-      <label>
-        {{ tr.studying_again() }}
-        <input
-          type="number"
-          id="preview_again"
-          value="{{ preview_again }}"
-          min="0"
-          style="width:6em"
-        >
-      </label>
-      <label>
-        {{ tr.studying_hard() }}
-        <input
-          type="number"
-          id="preview_hard"
-          value="{{ preview_hard }}"
-          min="0"
-          style="width:6em"
-        >
-      </label>
-      <label>
-        {{ tr.studying_good() }}
-        <input
-          type="number"
-          id="preview_good"
-          value="{{ preview_good }}"
-          min="0"
-          style="width:6em"
-        >
-      </label>
+      <legend class="fs-6 fw-bold w-auto float-none px-2">Preview delays (seconds)</legend>
+      <div class="d-flex align-items-center flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-1">
+          <label for="preview_again" class="form-label mb-0">{{ tr.studying_again() }}</label>
+          <input
+            type="number"
+            id="preview_again"
+            class="form-control form-control-sm"
+            value="{{ preview_again }}"
+            min="0"
+            style="width:6em"
+          >
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <label for="preview_hard" class="form-label mb-0">{{ tr.studying_hard() }}</label>
+          <input
+            type="number"
+            id="preview_hard"
+            class="form-control form-control-sm"
+            value="{{ preview_hard }}"
+            min="0"
+            style="width:6em"
+          >
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <label for="preview_good" class="form-label mb-0">{{ tr.studying_good() }}</label>
+          <input
+            type="number"
+            id="preview_good"
+            class="form-control form-control-sm"
+            value="{{ preview_good }}"
+            min="0"
+            style="width:6em"
+          >
+        </div>
+      </div>
     </fieldset>
-    <div style="margin-top:8px;">
-      <label><input
-          type="checkbox"
-          id="allow_empty"
-          {% if allow_empty %}
-            checked
-          {% endif %}
-        > {{ tr.decks_create_even_if_empty() }}</label>
+    <div class="form-check mb-3">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        id="allow_empty"
+        {% if allow_empty %}
+          checked
+        {% endif %}
+      >
+      <label class="form-check-label" for="allow_empty">{{ tr.decks_create_even_if_empty() }}</label>
     </div>
-    <div style="margin-top:10px;">
-      <button type="button" id="go" data-on:click__prevent="const payload = buildFdPayload(); @post('/filtered-deck/submit', {payload: payload})">{{ oklabel }}</button>
-      <button type="button" data-on:click__prevent="@post('/filtered-deck/cancel')">
+    <div class="mt-3">
+      <button class="btn btn-primary me-2" type="button" id="go" data-on:click__prevent="const payload = buildFdPayload(); @post('/filtered-deck/submit', {payload: payload})">{{ oklabel }}</button>
+      <button class="btn btn-secondary" type="button" data-on:click__prevent="@post('/filtered-deck/cancel')">
         {{ tr.actions_cancel() }}
       </button>
     </div>
-    <div id="err" style="color:#c00;margin-top:8px;"></div>
+    <div id="err" class="text-danger mt-2"></div>
   </form>
 </div>
 <script>

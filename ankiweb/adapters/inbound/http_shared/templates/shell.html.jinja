@@ -1,44 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>AnkiWeb</title>
+    <link rel="stylesheet" href="/shell/static/vendor/bootstrap.min.css">
     <meta charset="utf-8">
-    <script>
-      window.__ankiwebContext = {{ context | tojson }}
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
     <style>
-      html.night-mode body {
-          background: #2b2b2b;
-          color: #e0e0e0;
-      }
-
-      html.night-mode a {
-          color: #6cb6ff;
-      }
-
-      html.night-mode button,
-      html.night-mode input,
-      html.night-mode select,
-      html.night-mode textarea {
-          background: #3a3a3a;
-          color: #e0e0e0;
-          border-color: #555;
-      }
-
-      html.night-mode table,
-      html.night-mode th,
-      html.night-mode td {
-          border-color: #555;
-      }
-
-      html.night-mode .zero-count {
-          color: #888;
+      /* Anki's vendored SvelteKit editor bundle (editor.css/editor.js, untouched) sizes its
+         internal scroll-area component via a `height: 100%` chain up to `html`/`body`; without
+         an explicit height here that chain resolves to 0 (nested height:100% needs every
+         ancestor sized), breaking the field scrollbar and rich-text-editable click activation
+         on pages that embed the editor (/add, /editor). Harmless on every other page. */
+      html, body {
+        height: 100%;
       }
     </style>
+    <script>
+      /* night-mode: theme synchronized via bootstrap.js and data-bs-theme */
+      window.__ankiwebContext = {{ context | tojson }}
+    </script>
     {% for c in css_files %}<link rel="stylesheet" href="/_anki/{{ c }}">{%
       endfor
     %}
     {% for j in js_files %}<script src="/_anki/{{ j }}"></script>{% endfor %}
+    <script src="/shell/static/vendor/bootstrap.bundle.min.js"></script>
     <script src="/shell/static/bootstrap.js"></script>
     <script type="module" src="/shell/static/datastar.js"></script>
   </head>

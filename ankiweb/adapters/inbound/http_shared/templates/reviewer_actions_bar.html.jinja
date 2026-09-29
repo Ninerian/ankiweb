@@ -1,9 +1,20 @@
-<div id="rev-actions">
-  {% for b in buttons %}<button
-      type="button"
-      class="rev-act"
-      onclick="{{ b.onclick | safe }}"
-    >
-      {{ b.label }}
-    </button>{% endfor %}
+<div id="rev-actions" class="d-inline-block">
+  <div class="dropdown">
+    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+      More Actions
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="max-height: calc(100dvh - 4rem); overflow-y: auto;">
+      {% for b in buttons %}
+        <li>
+          <button
+            type="button"
+            class="dropdown-item rev-act small py-1 px-3"
+            onclick="{{ b.onclick | safe }}"
+          >
+            {{ b.label }}
+          </button>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
 </div>

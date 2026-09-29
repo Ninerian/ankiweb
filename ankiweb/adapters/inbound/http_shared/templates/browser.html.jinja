@@ -20,110 +20,132 @@
 {% endmacro %}
 <style>
   #browser {
-      font-family: sans-serif;
-      font-size: 13px
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 57px);
   }
 
   #browser-top {
-      padding: 6px;
-      border-bottom: 1px solid #ccc
-  }
-
-  #search {
-      width: 60%;
-      padding: 4px
-  }
-
-  #browser-status {
-      margin-left: 10px;
-      color: #666
+    flex-shrink: 0;
   }
 
   #browser-main {
-      display: flex;
-      align-items: flex-start
+    display: flex;
+    flex: 1 1 auto;
+    align-items: stretch;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #search {
+    max-width: 320px;
+    padding: 4px;
+  }
+
+  /* Desktop sidebar */
+  @media (min-width: 768px) {
+    #sidebar-offcanvas {
+      width: 200px !important;
+      flex-shrink: 0;
+      border-right: 1px solid var(--bs-border-color);
+      overflow-y: auto;
+    }
   }
 
   #sidebar {
-      width: 200px;
-      padding: 6px;
-      border-right: 1px solid #ccc
+    width: 100%;
+    padding: 6px;
   }
 
   #sidebar .side-section {
-      font-weight: bold;
-      margin-top: 8px
+    font-weight: bold;
+    margin-top: 8px;
+    color: var(--bs-body-color);
   }
 
   #sidebar .side-item {
-      display: block;
-      padding: 2px 4px;
-      color: #06c;
-      text-decoration: none;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      direction: rtl;
-      text-align: left
+    display: block;
+    padding: 2px 4px;
+    color: var(--bs-link-color);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: left;
+    border-radius: var(--bs-border-radius-sm);
   }
 
   #sidebar .side-item:hover {
-      background: #eef
+    background-color: var(--bs-tertiary-bg);
   }
 
   #results-wrap {
-      flex: 1;
-      overflow: auto;
-      max-height: 80vh
-  }
-
-  #results {
-      width: 100%;
-      border-collapse: collapse
-  }
-
-  #results th,
-  #results td {
-      text-align: left;
-      padding: 3px 6px;
-      border-bottom: 1px solid #eee
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow: auto;
+    height: 100%;
   }
 
   .browser-row {
-      cursor: pointer
+    cursor: pointer;
   }
 
   .browser-row:hover {
-      background: #eef
-  }
-
-  #detail {
-      width: 46%;
-      padding: 6px;
-      border-left: 1px solid #ccc
-  }
-
-  #detail .fldname {
-      font-weight: bold;
-      color: #888;
-      font-size: 11px;
-      margin-top: 6px
+    background-color: var(--bs-tertiary-bg);
   }
 
   #results tr.selected {
-      background: #cde
+    background-color: var(--bs-primary-bg-subtle) !important;
+    border-left: 3px solid var(--bs-primary);
+  }
+
+  #results tr.selected > td {
+    background-color: transparent !important;
+  }
+
+  /* Desktop detail pane */
+  @media (min-width: 768px) {
+    #detail-offcanvas {
+      width: 46% !important;
+      flex-shrink: 0;
+      border-left: 1px solid var(--bs-border-color);
+      overflow-y: auto;
+    }
+  }
+
+  #detail {
+    width: 100%;
+    padding: 6px;
+  }
+
+  #detail .fldname {
+    font-weight: bold;
+    color: var(--bs-secondary-color, #888);
+    font-size: 11px;
+    margin-top: 6px;
   }
 
   .editor-frame {
-      width: 100%;
-      height: 78vh;
-      border: 0
+    width: 100%;
+    height: calc(100dvh - 120px);
+    border: 0;
   }
 </style>
-<div id="browser">
-  <div id="browser-top">
+<div id="browser" class="small">
+  <div id="browser-top" class="d-flex flex-wrap align-items-center gap-2 p-2 border-bottom">
+    <button
+      class="btn btn-sm btn-outline-secondary d-md-none"
+      type="button"
+      data-bs-toggle="offcanvas"
+      data-bs-target="#sidebar-offcanvas"
+      aria-controls="sidebar-offcanvas"
+    >
+      {{ tr.actions_decks() }} &amp; {{ tr.editing_tags() }}
+    </button>
     <input
       id="search"
+      class="form-control form-control-sm flex-grow-1 flex-md-grow-0"
       type="text"
       autofocus
       placeholder="{{ tr.actions_search() }}…"
@@ -132,52 +154,190 @@
                               document.getElementById('search-trigger').click();
                           }"
     >
-    <span id="browser-status">{{ initial_count }} cards</span>
-    <div id="browser-actions">
+    <div class="d-inline-flex align-items-center gap-2">
+      <span id="browser-status" class="text-muted">{{ initial_count }} cards</span>
+      <span id="browser-selected-status" class="badge text-bg-secondary" style="display: none;">0 selected</span>
+    </div>
+    <div id="browser-actions" class="d-flex flex-wrap align-items-center gap-1 ms-auto">
       <button id="search-trigger" style="display:none" data-on:click__prevent="const q = document.getElementById('search').value; @post('/browse/search', {payload: {query: q}})"></button>
       <button id="refresh-trigger" style="display:none" data-on:click__prevent="@post('/browse/refresh')"></button>
       <button id="select-trigger" style="display:none" data-on:click__prevent="const cids = window.__ankiwebGetSel(); @post('/browse/select', {payload: {cids: cids}})"></button>
-      <button type="button" data-on:click__prevent="@post('/browse/suspend')">
-        {{ tr.studying_suspend() }}
-      </button>
-      <button type="button" data-on:click__prevent="@post('/browse/unsuspend')">Unsuspend</button>
-      <button type="button" data-on:click__prevent="@post('/browse/forget')">
-        {{ tr.actions_forget_card() }}
-      </button>
-      <button
-        type="button"
-        data-on:click__prevent="const x = prompt('Due in days (e.g. 0, 3, 1-7):'); if (x !== null && x !== '') @post('/browse/setdue', {payload: {value: x}})"
-      >
-        {{ tr.actions_set_due_date() }}
-      </button>
-      <button
-        type="button"
-        data-on:click__prevent="const x = prompt('Move to deck:'); if (x !== null && x !== '') @post('/browse/changedeck', {payload: {deck: x}})"
-      >
-        {{ tr.browsing_change_deck() }}
-      </button>
-      <button type="button" data-on:click__prevent="const x = prompt('Add tag:'); if (x !== null && x !== '') @post('/browse/addtag', {payload: {tag: x}})">
-        Add Tag
-      </button>
-      <button type="button" data-on:click__prevent="const x = prompt('Remove tag:'); if (x !== null && x !== '') @post('/browse/removetag', {payload: {tag: x}})">
-        {{ tr.actions_remove_tag() }}
-      </button>
-      <button
-        type="button"
-        data-on:click__prevent="if (confirm('Delete selected notes?')) @post('/browse/delete')"
-      >
-        {{ tr.actions_delete() }}
-      </button>
-      <button type="button" onclick="ankiwebCardInfo()">
-        {{ tr.actions_card_info() }}
-      </button>
+
+      <div class="btn-group" role="group">
+        <button
+          id="btn-suspend"
+          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          type="button"
+          disabled
+          data-on:click__prevent="@post('/browse/suspend')"
+        >
+          {{ tr.studying_suspend() }}
+        </button>
+        <button
+          id="btn-unsuspend"
+          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          type="button"
+          disabled
+          data-on:click__prevent="@post('/browse/unsuspend')"
+        >
+          Unsuspend
+        </button>
+        <button
+          id="btn-forget"
+          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          type="button"
+          disabled
+          data-on:click__prevent="@post('/browse/forget')"
+        >
+          {{ tr.actions_forget_card() }}
+        </button>
+        <button
+          id="btn-setdue"
+          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          type="button"
+          disabled
+          data-on:click__prevent="const x = prompt('Due in days (e.g. 0, 3, 1-7):'); if (x !== null && x !== '') @post('/browse/setdue', {payload: {value: x}})"
+        >
+          {{ tr.actions_set_due_date() }}
+        </button>
+        <button
+          id="btn-changedeck"
+          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          type="button"
+          disabled
+          data-on:click__prevent="const x = prompt('Move to deck:'); if (x !== null && x !== '') @post('/browse/changedeck', {payload: {deck: x}})"
+        >
+          {{ tr.browsing_change_deck() }}
+        </button>
+        <button
+          id="btn-addtag"
+          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          type="button"
+          disabled
+          data-on:click__prevent="const x = prompt('Add tag:'); if (x !== null && x !== '') @post('/browse/addtag', {payload: {tag: x}})"
+        >
+          Add Tag
+        </button>
+        <button
+          id="btn-removetag"
+          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          type="button"
+          disabled
+          data-on:click__prevent="const x = prompt('Remove tag:'); if (x !== null && x !== '') @post('/browse/removetag', {payload: {tag: x}})"
+        >
+          {{ tr.actions_remove_tag() }}
+        </button>
+        <button
+          id="btn-delete"
+          class="btn btn-sm btn-outline-danger d-none d-md-inline-block"
+          type="button"
+          disabled
+          data-on:click__prevent="if (confirm('Delete selected notes?')) @post('/browse/delete')"
+        >
+          {{ tr.actions_delete() }}
+        </button>
+        <button
+          id="btn-cardinfo"
+          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          type="button"
+          disabled
+          onclick="ankiwebCardInfo()"
+        >
+          {{ tr.actions_card_info() }}
+        </button>
+
+        <!-- Mobile dropdown collapsible -->
+        <div class="btn-group d-md-none" role="group">
+          <button
+            id="btn-actions-dropdown"
+            type="button"
+            class="btn btn-sm btn-outline-secondary dropdown-toggle"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            disabled
+          >
+            Actions
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+            <li>
+              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-suspend').click()">
+                {{ tr.studying_suspend() }}
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-unsuspend').click()">
+                Unsuspend
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-forget').click()">
+                {{ tr.actions_forget_card() }}
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-setdue').click()">
+                {{ tr.actions_set_due_date() }}
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-changedeck').click()">
+                {{ tr.browsing_change_deck() }}
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-addtag').click()">
+                Add Tag
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-removetag').click()">
+                {{ tr.actions_remove_tag() }}
+              </button>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <button class="dropdown-item text-danger" type="button" onclick="document.getElementById('btn-delete').click()">
+                {{ tr.actions_delete() }}
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-cardinfo').click()">
+                {{ tr.actions_card_info() }}
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
+
   <div id="browser-main">
-    <div id="sidebar">{{ sidebar(decks, tags) }}</div>
+    <!-- Sidebar in offcanvas-md start -->
+    <div
+      id="sidebar-offcanvas"
+      class="offcanvas-md offcanvas-start bg-body"
+      tabindex="-1"
+      aria-labelledby="sidebar-offcanvas-label"
+    >
+      <div class="offcanvas-header d-md-none border-bottom p-2">
+        <h6 class="offcanvas-title m-0" id="sidebar-offcanvas-label">{{ tr.actions_decks() }} &amp; {{ tr.editing_tags() }}</h6>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="offcanvas"
+          data-bs-target="#sidebar-offcanvas"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="offcanvas-body p-0">
+        <div id="sidebar">{{ sidebar(decks, tags) }}</div>
+      </div>
+    </div>
+
+    <!-- Results table -->
     <div id="results-wrap">
-      <table id="results">
-        <thead>
+      <table id="results" class="table table-sm table-hover mb-0">
+        <thead class="sticky-top bg-body">
           <tr>
             <th>{{ tr.browsing_sort_field() }}</th>
             <th>{{ tr.decks_deck() }}</th>
@@ -187,7 +347,28 @@
         <tbody id="results-body">{{ initial_rows | safe }}</tbody>
       </table>
     </div>
-    <div id="detail"></div>
+
+    <!-- Detail pane in offcanvas-md end -->
+    <div
+      id="detail-offcanvas"
+      class="offcanvas-md offcanvas-end bg-body w-100"
+      tabindex="-1"
+      aria-labelledby="detail-offcanvas-label"
+    >
+      <div class="offcanvas-header d-md-none border-bottom p-2">
+        <h6 class="offcanvas-title m-0" id="detail-offcanvas-label">Card Details</h6>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="offcanvas"
+          data-bs-target="#detail-offcanvas"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="offcanvas-body p-0">
+        <div id="detail"></div>
+      </div>
+    </div>
   </div>
 </div>
 <script>
@@ -199,6 +380,29 @@
       var _sel = [],
           _anchor = null;
 
+      function _updateBulkButtons() {
+          var count = _sel.length;
+          var hasSel = count > 0;
+          var actionIds = [
+              'btn-suspend', 'btn-unsuspend', 'btn-forget', 'btn-setdue',
+              'btn-changedeck', 'btn-addtag', 'btn-removetag', 'btn-delete',
+              'btn-cardinfo', 'btn-actions-dropdown'
+          ];
+          for (var i = 0; i < actionIds.length; i++) {
+              var el = document.getElementById(actionIds[i]);
+              if (el) el.disabled = !hasSel;
+          }
+          var selBadge = document.getElementById('browser-selected-status');
+          if (selBadge) {
+              if (hasSel) {
+                  selBadge.textContent = count + ' selected';
+                  selBadge.style.display = 'inline-block';
+              } else {
+                  selBadge.style.display = 'none';
+              }
+          }
+      }
+
       window.__ankiwebGetSel = function() {
           return _sel.map(function(x) { return parseInt(x); });
       };
@@ -206,6 +410,8 @@
       window.__ankiwebResetSel = function() {
           _sel = [];
           _anchor = null;
+          _hl();
+          _updateBulkButtons();
       };
 
       function _rows() {
@@ -221,8 +427,19 @@
 
       function _selChanged() {
           _hl();
+          _updateBulkButtons();
           var btn = document.getElementById('select-trigger');
           if (btn) btn.click();
+      }
+
+      function _openDetailOnMobile() {
+          if (window.innerWidth < 768) {
+              var panel = document.getElementById('detail-offcanvas');
+              if (panel && typeof bootstrap !== 'undefined' && bootstrap.Offcanvas) {
+                  var oc = bootstrap.Offcanvas.getInstance(panel) || new bootstrap.Offcanvas(panel);
+                  oc.show();
+              }
+          }
       }
 
       function _click(tr, e) {
@@ -252,16 +469,22 @@
               _anchor = cid;
           }
           _selChanged();
+          if (_sel.length > 0) {
+              _openDetailOnMobile();
+          }
       }
+
       window.ankiwebCardInfo = function() {
           if (_sel.length) window.location.href = '/card-info/' + _sel[0];
       };
+
       document.getElementById('results-body').addEventListener('click', function(e) {
           var tr = e.target.closest('tr');
           if (tr && tr.dataset.cid) {
               _click(tr, e);
           }
       });
+
       document.getElementById('results-body').addEventListener('contextmenu', function(e) {
           if (e.ctrlKey) {
               e.preventDefault();
@@ -271,5 +494,21 @@
               }
           }
       });
+
+      // Close sidebar offcanvas on mobile when clicking an item
+      var sidebarEl = document.getElementById('sidebar-offcanvas');
+      if (sidebarEl) {
+          sidebarEl.addEventListener('click', function(e) {
+              if (e.target.closest('.side-item') && window.innerWidth < 768) {
+                  if (typeof bootstrap !== 'undefined' && bootstrap.Offcanvas) {
+                      var oc = bootstrap.Offcanvas.getInstance(sidebarEl);
+                      if (oc) oc.hide();
+                  }
+              }
+          });
+      }
+
+      // Initial state
+      _updateBulkButtons();
   })();
 </script>

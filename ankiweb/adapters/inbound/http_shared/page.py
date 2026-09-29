@@ -2,6 +2,28 @@ from __future__ import annotations
 from typing import Sequence
 
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
+
+
+def _page_title(context: str) -> str:
+    """Human title for the browser tab/history; unknown contexts fall back to the app name."""
+    titles = {
+        "deckbrowser": tr.actions_decks(),
+        "overview": tr.actions_decks(),
+        "customstudy": tr.actions_custom_study(),
+        "filtereddeck": tr.qt_misc_create_filtered_deck(),
+        "reviewer": tr.studying_study_now(),
+        "browser": tr.qt_misc_browse(),
+        "add": tr.actions_add(),
+        "preferences": tr.preferences_preferences(),
+        "notetypes": tr.notetypes_note_types(),
+        "tools": tr.qt_accel_tools().replace("&", ""),
+        "notify": "Push notifications",
+        "about": "Source",
+        "export": tr.actions_export(),
+    }
+    title = titles.get(context)
+    return f"{title} \u2013 AnkiWeb" if title else "AnkiWeb"
 
 
 def render_page(
@@ -31,6 +53,7 @@ def render_page(
         "shell.html.jinja",
         context=context,
         body=body,
+        title=_page_title(context),
         css_files=css_files,
         js_files=js_files,
         toolbar=toolbar,
