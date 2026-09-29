@@ -1,149 +1,253 @@
-{% macro checkbox_field(field_id, label, checked) %}
-  <div class="form-check mb-2">
+{% macro checkbox_field(field_id, label, checked, hint="") %}
+  <div class="form-check mb-3">
     <input class="form-check-input" type="checkbox" id="{{ field_id }}" {% if checked %}checked{% endif %}>
     <label class="form-check-label" for="{{ field_id }}">{{ label }}</label>
+    {% if hint %}<div class="form-text mt-0">{{ hint }}</div>{% endif %}
   </div>
 {% endmacro %}
-{% macro number_field(field_id, label, value, minv=0, maxv=None, suffix="") %}
-  <div class="mb-2 row align-items-center">
-    <label for="{{ field_id }}" class="col-sm-6 col-form-label">{{ label }}</label>
-    <div class="col-sm-6 d-flex align-items-center gap-2">
-      <input type="number" class="form-control form-control-sm" style="max-width:8em" id="{{ field_id }}" value="{{ value }}" min="{{ minv }}" {% if maxv is not none %}max="{{ maxv }}"{% endif %}>
-      {% if suffix %}<span>{{ suffix }}</span>{% endif %}
+{% macro number_field(field_id, label, value, minv=0, maxv=None, suffix="", hint="") %}
+  <div class="mb-3">
+    <label for="{{ field_id }}" class="form-label mb-1">{{ label }}</label>
+    <div class="d-flex align-items-center gap-2">
+      <input type="number" class="form-control form-control-sm w-auto" style="min-width: 7rem; min-height: 38px;" id="{{ field_id }}" value="{{ value }}" min="{{ minv }}" {% if maxv is not none %}max="{{ maxv }}"{% endif %}>
+      {% if suffix %}<span class="text-body-secondary small">{{ suffix }}</span>{% endif %}
+    </div>
+    {% if hint %}<div class="form-text">{{ hint }}</div>{% endif %}
+  </div>
+{% endmacro %}
+<div class="preferences container-xl py-3 pb-5 mb-5">
+  <div class="row align-items-center mb-3">
+    <div class="col">
+      <h3 class="h4 mb-0">{{ tr.preferences_preferences() }}</h3>
     </div>
   </div>
-{% endmacro %}
-<div class="preferences container" style="max-width:640px;">
-  <h3>{{ tr.preferences_preferences() }}</h3>
+
   <form id="pf" onsubmit="return false">
-    <fieldset class="mb-4 border rounded p-3">
-      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.preferences_scheduling() }}</legend>
-      {{
-        number_field("rollover", tr.preferences_next_day_starts_at(), s.rollover, 0, 23)
-      }}
-      {{
-        number_field("learn_ahead_mins", tr.preferences_learn_ahead_limit(), s.learn_ahead_secs // 60, suffix=tr.preferences_mins())
-      }}
-      <div class="mb-2 row align-items-center">
-        <label for="new_review_mix" class="col-sm-6 col-form-label">
-          {{ tr.deck_config_new_review_priority() }}
-        </label>
-        <div class="col-sm-6">
-          <select id="new_review_mix" class="form-select form-select-sm">
-            {% for v, lbl in mix_opts %}
-              <option
-                value="{{ v }}"
-                {% if s.new_review_mix == v %}
-                  selected
-                {% endif %}
+    <div class="row g-4">
+      <!-- Section navigation index for >= lg -->
+      <nav class="col-lg-3 d-none d-lg-block" aria-label="Preferences navigation">
+        <div class="sticky-top" style="top: 4.5rem; z-index: 10;">
+          <div id="prefs-index" class="list-group shadow-sm">
+            <a class="list-group-item list-group-item-action active" href="#pref-scheduling">{{ tr.preferences_scheduling() }}</a>
+            <a class="list-group-item list-group-item-action" href="#pref-review">{{ tr.preferences_review() }}</a>
+            <a class="list-group-item list-group-item-action" href="#pref-editing">{{ tr.preferences_editing() }}</a>
+            <a class="list-group-item list-group-item-action" href="#pref-backups">{{ tr.preferences_backups() }}</a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Sections column (Cards on >= lg, Accordion on < lg) -->
+      <div class="col-12 col-lg-9">
+        <div class="pref-sections-container">
+          <!-- Scheduling Section -->
+          <section id="pref-scheduling" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
+            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+              <button
+                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse-scheduling"
+                aria-expanded="true"
+                aria-controls="collapse-scheduling"
+                style="min-height: 38px;"
               >
-                {{ lbl }}
-              </option>
-            {% endfor %}
-          </select>
+                <span>{{ tr.preferences_scheduling() }}</span>
+                <span class="pref-chevron">▾</span>
+              </button>
+              <span class="d-none d-lg-inline">{{ tr.preferences_scheduling() }}</span>
+            </div>
+            <div id="collapse-scheduling" class="collapse show d-lg-block">
+              <div class="card-body">
+                {{ number_field("rollover", tr.preferences_next_day_starts_at(), s.rollover, 0, 23) }}
+                {{ number_field("learn_ahead_mins", tr.preferences_learn_ahead_limit(), s.learn_ahead_secs // 60, suffix=tr.preferences_mins()) }}
+                <div class="mb-3">
+                  <label for="new_review_mix" class="form-label mb-1">
+                    {{ tr.deck_config_new_review_priority() }}
+                  </label>
+                  <div>
+                    <select id="new_review_mix" class="form-select form-select-sm w-auto" style="min-width: 14rem; min-height: 38px;">
+                      {% for v, lbl in mix_opts %}
+                        <option value="{{ v }}" {% if s.new_review_mix == v %}selected{% endif %}>
+                          {{ lbl }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                {{ checkbox_field("legacy_timezone", tr.preferences_legacy_timezone_handling(), not s.new_timezone) }}
+                {{ checkbox_field("day_learn_first", tr.preferences_show_learning_cards_with_larger_steps(), s.day_learn_first) }}
+              </div>
+            </div>
+          </section>
+
+          <!-- Review Section -->
+          <section id="pref-review" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
+            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+              <button
+                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse-review"
+                aria-expanded="false"
+                aria-controls="collapse-review"
+                style="min-height: 38px;"
+              >
+                <span>{{ tr.preferences_review() }}</span>
+                <span class="pref-chevron">▾</span>
+              </button>
+              <span class="d-none d-lg-inline">{{ tr.preferences_review() }}</span>
+            </div>
+            <div id="collapse-review" class="collapse d-lg-block">
+              <div class="card-body">
+                {{ checkbox_field("show_play_buttons", tr.preferences_show_play_buttons_on_cards_with(), not r.hide_audio_play_buttons) }}
+                {{ checkbox_field("interrupt_audio_when_answering", tr.preferences_interrupt_current_audio_when_answering(), r.interrupt_audio_when_answering) }}
+                {{ checkbox_field("show_remaining_due_counts", tr.preferences_show_remaining_card_count(), r.show_remaining_due_counts) }}
+                {{ checkbox_field("show_intervals_on_buttons", tr.preferences_show_next_review_time_above_answer(), r.show_intervals_on_buttons) }}
+                {{ number_field("time_limit_mins", tr.preferences_timebox_time_limit(), r.time_limit_secs // 60, suffix=tr.preferences_mins()) }}
+                {{ checkbox_field("load_balancer_enabled", "Enable load balancer", r.load_balancer_enabled) }}
+                {{ checkbox_field("fsrs_short_term_with_steps_enabled", "Use FSRS for short-term scheduling (with steps)", r.fsrs_short_term_with_steps_enabled) }}
+              </div>
+            </div>
+          </section>
+
+          <!-- Editing Section -->
+          <section id="pref-editing" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
+            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+              <button
+                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse-editing"
+                aria-expanded="false"
+                aria-controls="collapse-editing"
+                style="min-height: 38px;"
+              >
+                <span>{{ tr.preferences_editing() }}</span>
+                <span class="pref-chevron">▾</span>
+              </button>
+              <span class="d-none d-lg-inline">{{ tr.preferences_editing() }}</span>
+            </div>
+            <div id="collapse-editing" class="collapse d-lg-block">
+              <div class="card-body">
+                {{ checkbox_field("adding_defaults_to_current_deck", tr.preferences_when_adding_default_to_current_deck(), e.adding_defaults_to_current_deck) }}
+                {{ checkbox_field("paste_images_as_png", tr.preferences_paste_clipboard_images_as_png(), e.paste_images_as_png) }}
+                {{ checkbox_field("paste_strips_formatting", tr.preferences_paste_without_shift_key_strips_formatting(), e.paste_strips_formatting) }}
+                <div class="mb-3">
+                  <label for="default_search_text" class="form-label mb-1">
+                    {{ tr.preferences_default_search_text() }}
+                  </label>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    id="default_search_text"
+                    style="min-height: 38px; max-width: 24rem;"
+                    value="{{ e.default_search_text }}"
+                  >
+                </div>
+                {{ checkbox_field("ignore_accents_in_search", tr.preferences_ignore_accents_in_search(), e.ignore_accents_in_search) }}
+                {{ checkbox_field("render_latex", tr.preferences_generate_latex_images_automatically(), e.render_latex) }}
+              </div>
+            </div>
+          </section>
+
+          <!-- Backups Section -->
+          <section id="pref-backups" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
+            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+              <button
+                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse-backups"
+                aria-expanded="false"
+                aria-controls="collapse-backups"
+                style="min-height: 38px;"
+              >
+                <span>{{ tr.preferences_backups() }}</span>
+                <span class="pref-chevron">▾</span>
+              </button>
+              <span class="d-none d-lg-inline">{{ tr.preferences_backups() }}</span>
+            </div>
+            <div id="collapse-backups" class="collapse d-lg-block">
+              <div class="card-body">
+                {{ number_field("daily", tr.preferences_daily_backups(), b.daily) }}
+                {{ number_field("weekly", tr.preferences_weekly_backups(), b.weekly) }}
+                {{ number_field("monthly", tr.preferences_monthly_backups(), b.monthly) }}
+                {{ number_field("minimum_interval_mins", tr.preferences_minutes_between_backups(), b.minimum_interval_mins) }}
+              </div>
+            </div>
+          </section>
         </div>
       </div>
-      {{
-        checkbox_field("legacy_timezone", tr.preferences_legacy_timezone_handling(), not s.new_timezone)
-      }}
-      {{
-        checkbox_field("day_learn_first", tr.preferences_show_learning_cards_with_larger_steps(), s.day_learn_first)
-      }}
-    </fieldset>
-    <fieldset class="mb-4 border rounded p-3">
-      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.preferences_review() }}</legend>
-      {{
-        checkbox_field("show_play_buttons", tr.preferences_show_play_buttons_on_cards_with(), not r.hide_audio_play_buttons)
-      }}
-      {{
-        checkbox_field("interrupt_audio_when_answering", tr.preferences_interrupt_current_audio_when_answering(), r.interrupt_audio_when_answering)
-      }}
-      {{
-        checkbox_field("show_remaining_due_counts", tr.preferences_show_remaining_card_count(), r.show_remaining_due_counts)
-      }}
-      {{
-        checkbox_field("show_intervals_on_buttons", tr.preferences_show_next_review_time_above_answer(), r.show_intervals_on_buttons)
-      }}
-      {{
-        number_field("time_limit_mins", tr.preferences_timebox_time_limit(), r.time_limit_secs // 60, suffix=tr.preferences_mins())
-      }}
-      {{
-        checkbox_field("load_balancer_enabled", "Enable load balancer", r.load_balancer_enabled)
-      }}
-      {{
-        checkbox_field("fsrs_short_term_with_steps_enabled", "Use FSRS for short-term scheduling (with steps)", r.fsrs_short_term_with_steps_enabled)
-      }}
-    </fieldset>
-    <fieldset class="mb-4 border rounded p-3">
-      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.preferences_editing() }}</legend>
-      {{
-        checkbox_field("adding_defaults_to_current_deck", tr.preferences_when_adding_default_to_current_deck(), e.adding_defaults_to_current_deck)
-      }}
-      {{
-        checkbox_field("paste_images_as_png", tr.preferences_paste_clipboard_images_as_png(), e.paste_images_as_png)
-      }}
-      {{
-        checkbox_field("paste_strips_formatting", tr.preferences_paste_without_shift_key_strips_formatting(), e.paste_strips_formatting)
-      }}
-      <div class="mb-2 row align-items-center">
-        <label for="default_search_text" class="col-sm-6 col-form-label">
-          {{ tr.preferences_default_search_text() }}
-        </label>
-        <div class="col-sm-6">
-          <input
-            type="text"
-            class="form-control form-control-sm"
-            id="default_search_text"
-            value="{{ e.default_search_text }}"
-          >
-        </div>
-      </div>
-      {{
-        checkbox_field("ignore_accents_in_search", tr.preferences_ignore_accents_in_search(), e.ignore_accents_in_search)
-      }}
-      {{
-        checkbox_field("render_latex", tr.preferences_generate_latex_images_automatically(), e.render_latex)
-      }}
-    </fieldset>
-    <fieldset class="mb-4 border rounded p-3">
-      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.preferences_backups() }}</legend>
-      {{ number_field("daily", tr.preferences_daily_backups(), b.daily) }}
-      {{ number_field("weekly", tr.preferences_weekly_backups(), b.weekly) }}
-      {{ number_field("monthly", tr.preferences_monthly_backups(), b.monthly) }}
-      {{
-        number_field("minimum_interval_mins", tr.preferences_minutes_between_backups(), b.minimum_interval_mins)
-      }}
-    </fieldset>
-    <div class="mt-3">
-      <button class="btn btn-primary me-2" type="button" id="save" data-on:click__prevent="const payload = buildPrefsPayload(); @post('/preferences/savePrefs', {payload: payload})">
-        {{ tr.actions_save() }}
-      </button>
-      <button class="btn btn-secondary" type="button" data-on:click__prevent="@post('/preferences/cancel')">
-        {{ tr.actions_cancel() }}
-      </button>
     </div>
-    <div id="err" class="text-danger mt-2"></div>
+
+    <!-- Sticky bottom action bar -->
+    <div class="fixed-bottom bg-body border-top py-2 px-3 shadow">
+      <div class="container-xl d-flex align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            class="btn btn-outline-secondary px-4 fw-semibold"
+            type="button"
+            id="save"
+            style="min-height: 44px;"
+            data-on:click__prevent="const payload = buildPrefsPayload(); @post('/preferences/savePrefs', {payload: payload})"
+          >
+            {{ tr.actions_save() }}
+          </button>
+          <button
+            class="btn btn-secondary px-3"
+            type="button"
+            id="cancel"
+            style="min-height: 44px;"
+            data-on:click__prevent="@post('/preferences/cancel')"
+          >
+            {{ tr.actions_cancel() }}
+          </button>
+        </div>
+        <div id="status-area" class="d-flex align-items-center ms-auto">
+          <div id="err" class="text-danger small fw-semibold"></div>
+        </div>
+      </div>
+    </div>
   </form>
 </div>
+
+<style>
+  .pref-accordion-toggle .pref-chevron {
+    transition: transform 0.2s ease;
+  }
+  .pref-accordion-toggle.collapsed .pref-chevron {
+    transform: rotate(-90deg);
+  }
+  @media (min-width: 992px) {
+    .pref-section .collapse:not(.show) {
+      display: block !important;
+    }
+  }
+</style>
+
 <script>
   function chk(id) {
-      return document.getElementById(id).checked;
+      var el = document.getElementById(id);
+      return el ? el.checked : false;
   }
 
   function num(id) {
-      return parseInt(document.getElementById(id).value || '0');
+      var el = document.getElementById(id);
+      return el ? parseInt(el.value || '0', 10) : 0;
   }
 
   function val(id) {
-      return document.getElementById(id).value;
+      var el = document.getElementById(id);
+      return el ? el.value : '';
   }
 
   function buildPrefsPayload() {
-      document.getElementById('err').textContent = '';
+      var errEl = document.getElementById('err');
+      if (errEl) errEl.textContent = '';
       return {
           rollover: num('rollover'),
           learn_ahead_mins: num('learn_ahead_mins'),
-          new_review_mix: parseInt(document.getElementById('new_review_mix').value),
+          new_review_mix: parseInt(document.getElementById('new_review_mix').value, 10),
           new_timezone: !chk('legacy_timezone'),
           day_learn_first: chk('day_learn_first'),
           hide_audio_play_buttons: !chk('show_play_buttons'),
@@ -165,4 +269,82 @@
           minimum_interval_mins: num('minimum_interval_mins')
       };
   }
+
+  (function() {
+      // Unsaved changes tracking
+      var saveBtn = document.getElementById('save');
+      var form = document.getElementById('pf');
+      var initialValues = {};
+
+      function snapshotForm() {
+          initialValues = {};
+          if (!form) return;
+          var inputs = form.querySelectorAll('input, select');
+          inputs.forEach(function(input) {
+              if (input.type === 'checkbox') {
+                  initialValues[input.id] = input.checked;
+              } else {
+                  initialValues[input.id] = input.value;
+              }
+          });
+      }
+
+      function checkDirty() {
+          if (!form || !saveBtn) return;
+          var isDirty = false;
+          var inputs = form.querySelectorAll('input, select');
+          for (var i = 0; i < inputs.length; i++) {
+              var input = inputs[i];
+              var initVal = initialValues[input.id];
+              if (input.type === 'checkbox') {
+                  if (input.checked !== initVal) {
+                      isDirty = true;
+                      break;
+                  }
+              } else {
+                  if (input.value !== initVal) {
+                      isDirty = true;
+                      break;
+                  }
+              }
+          }
+          if (isDirty) {
+              saveBtn.classList.remove('btn-outline-secondary');
+              saveBtn.classList.add('btn-primary');
+          } else {
+              saveBtn.classList.remove('btn-primary');
+              saveBtn.classList.add('btn-outline-secondary');
+          }
+      }
+
+      snapshotForm();
+      if (form) {
+          form.addEventListener('input', checkDirty);
+          form.addEventListener('change', checkDirty);
+      }
+
+      // ScrollSpy / active index item tracking for >= lg
+      var indexLinks = document.querySelectorAll('#prefs-index a');
+      if (indexLinks.length && 'IntersectionObserver' in window) {
+          var observer = new IntersectionObserver(function(entries) {
+              entries.forEach(function(entry) {
+                  if (entry.isIntersecting) {
+                      var id = entry.target.id;
+                      indexLinks.forEach(function(link) {
+                          if (link.getAttribute('href') === '#' + id) {
+                              link.classList.add('active');
+                          } else {
+                              link.classList.remove('active');
+                          }
+                      });
+                  }
+              });
+          }, { rootMargin: '-10% 0px -70% 0px' });
+
+          ['pref-scheduling', 'pref-review', 'pref-editing', 'pref-backups'].forEach(function(id) {
+              var el = document.getElementById(id);
+              if (el) observer.observe(el);
+          });
+      }
+  })();
 </script>
