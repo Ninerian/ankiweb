@@ -1,16 +1,16 @@
 <div class="tools container" style="max-width:640px;">
-    <h3>Tools</h3>
+    <h3 class="mb-3">{{ tr.qt_accel_tools() | tr_clean }}</h3>
     <section class="mb-3">
-        <button class="btn btn-outline-secondary" type='button' data-on:click__prevent="@post('/tools/checkdb')">{{ checkdb_label }}</button>
+        <button class="btn btn-outline-secondary" type='button' data-on:click__prevent="@post('/tools/checkdb')">{{ checkdb_label | tr_clean }}</button>
         <div id="res-db"></div>
     </section>
     <section class="mb-3">
-        <button class="btn btn-outline-secondary" type='button' data-on:click__prevent="@post('/tools/checkmedia')">{{ checkmedia_label }}</button>
+        <button class="btn btn-outline-secondary" type='button' data-on:click__prevent="@post('/tools/checkmedia')">{{ checkmedia_label | tr_clean }}</button>
         <div id="res-media"></div>
     </section>
     <section class="mb-3">
-        <button class="btn btn-outline-secondary" type='button' data-on:click__prevent="@post('/tools/emptycards')">{{ emptycards_label }}</button>
+        <button class="btn btn-outline-secondary" type='button' data-on:click__prevent="@post('/tools/emptycards')">{{ emptycards_label | tr_clean }}</button>
         <div id="res-empty"></div>
     </section>
-    <p><a class="btn btn-outline-secondary" href='/notetypes'>{{ notetypes_label }}</a></p>
+    <p><a class="btn btn-outline-secondary" href='/notetypes'>{{ notetypes_label | tr_clean }}</a></p>
 </div>

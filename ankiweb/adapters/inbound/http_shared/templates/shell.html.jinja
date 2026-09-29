@@ -29,7 +29,7 @@
     <script src="/shell/static/dialogs.js"></script>
     <script type="module" src="/shell/static/datastar.js"></script>
   </head>
-  <body>
+  <body class="context-{{ context }}">
     {% if toolbar %}{% include "_toolbar.html.jinja" %}{% endif %}{{
       body | safe
     }}

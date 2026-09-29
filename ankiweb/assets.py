@@ -1,9 +1,11 @@
 from __future__ import annotations
 from pathlib import Path
+import html
 from typing import Callable
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from ankiweb.core.i18n import tr
+from ankiweb.adapters.inbound.http_shared.templating import tr_clean
 # Injected into the served SvelteKit shell so the SPA's bridgeCommand("browserSearch:<q>")
 # (e.g. graphs count-links) opens ankiweb's browser instead of being a no-op. The SPA has no
 # pycmd host otherwise; this defines a minimal one before the app modules load. Other bridge
@@ -151,15 +153,23 @@ def build_sveltekit_router(assets_dir: Path) -> APIRouter:
     and client-routes by location.pathname). E2/E3 add more page routes here."""
     router = APIRouter()
     index = assets_dir / "sveltekit" / "index.html"
+    def _shell_with_bridge(title: str = "") -> str:
+        html_content = index.read_text(encoding="utf-8")
+        if title:
+            title_tag = f"<title>{html.escape(title)}</title>"
+            if "</head>" in html_content:
+                html_content = html_content.replace("</head>", f"{title_tag}</head>", 1)
+            else:
+                html_content = title_tag + html_content
+        html_content = html_content.replace('<body data-sveltekit-preload-data="hover">', '<body data-sveltekit-preload-data="hover">' + _spa_navbar(), 1)
+        return html_content.replace("</body>", _SPA_HEAD + "</body>", 1)
 
-    def _shell_with_bridge() -> str:
-        html = index.read_text(encoding="utf-8")
-        html = html.replace('<body data-sveltekit-preload-data="hover">', '<body data-sveltekit-preload-data="hover">' + _spa_navbar(), 1)
-        return html.replace("</body>", _SPA_HEAD + "</body>", 1)
     @router.get("/graphs")
     def graphs_page() -> Response:
-        return HTMLResponse(_shell_with_bridge())
-
+        raw = tr.qt_misc_stats()
+        clean = tr_clean(raw)
+        title = f"{clean} \u2013 AnkiWeb" if clean else "AnkiWeb"
+        return HTMLResponse(_shell_with_bridge(title=title))
     @router.get("/editor")
     @router.get("/editor/{path:path}")
     def editor_page(path: str = "") -> Response:

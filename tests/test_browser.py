@@ -42,8 +42,11 @@ def test_browse_search_pushes_rows_and_mirrors_ui_state(client):
     )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
-    assert any("dog" in data and "cat" not in data for _, data in events)
-    assert any("1 cards" in data for _, data in events)
+    assert any("dog" in data and ">cat<" not in data for _, data in events)
+    from ankiweb.adapters.inbound.http_datastar.browser import _card_count_str
+
+    # the status line is updated to the localized "<n> cards" label for the match count
+    assert any("browser-status" in data and _card_count_str(1) in data for _, data in events)
     assert hub.ui_state.browser_open is True
     assert hub.ui_state.last_browse_query == "dog"
     assert len(hub.ui_state.matched_card_ids) == 1
@@ -304,3 +307,107 @@ def test_editor_listens_for_in_place_note_switch(client):
     # editor reloads a note in-place on a parent postMessage (no full editor.js reload)
     assert "addEventListener('message'" in html
     assert "ankiwebLoadNid" in html
+
+
+def test_row_data_rich_fields_and_formatted_due(client):
+    import datetime, time
+    from ankiweb.adapters.inbound.http_datastar.browser import _row_data, _format_due
+
+    def seed_various_cards(col):
+        m_rev = col.models.by_name("Basic (and reversed card)")
+        d = col.decks.id("Default")
+        note = col.new_note(m_rev)
+        note["Front"] = "alpha"
+        note["Back"] = "beta"
+        note.tags = ["tag1", "tag2"]
+        col.add_note(note, d)
+
+        cards = note.cards()
+        c1, c2 = cards[0], cards[1]
+
+        # c1 is new
+        c1.queue = 0
+        c1.due = 7
+        col.update_card(c1)
+
+        # c2 is review
+        c2.queue = 2
+        c2.type = 2
+        c2.due = col.sched.today + 4
+        col.update_card(c2)
+
+        # single basic note for suspended & learn
+        m_basic = col.models.by_name("Basic")
+        note2 = col.new_note(m_basic)
+        note2["Front"] = "gamma"
+        note2["Back"] = "delta"
+        col.add_note(note2, d)
+        c3 = note2.cards()[0]
+        c3.queue = -1
+        col.update_card(c3)
+
+        note3 = col.new_note(m_basic)
+        note3["Front"] = "learn_card"
+        note3["Back"] = "epsilon"
+        col.add_note(note3, d)
+        c4 = note3.cards()[0]
+        c4.queue = 1
+        c4.due = int(time.time()) + 300
+        col.update_card(c4)
+
+        # c5 is review past due
+        note4 = col.new_note(m_basic)
+        note4["Front"] = "past_due_card"
+        note4["Back"] = "zeta"
+        col.add_note(note4, d)
+        c5 = note4.cards()[0]
+        c5.queue = 2
+        c5.type = 2
+        c5.due = col.sched.today - 3
+        col.update_card(c5)
+
+        return c1.id, c2.id, c3.id, c4.id, c5.id
+
+    c1_id, c2_id, c3_id, c4_id, c5_id = _run(client, seed_various_cards)
+
+    def check_rows(col):
+        rows = _row_data(col, [c1_id, c2_id, c3_id, c4_id, c5_id])
+        return rows
+
+    rows = _run(client, check_rows)
+    assert len(rows) == 5
+
+
+    r1 = next(r for r in rows if r["cid"] == c1_id)
+    assert r1["sort_text"] == "alpha"
+    assert r1["template_name"] == "Card 1"
+    assert r1["note_type_name"] == "Basic (and reversed card)"
+    assert r1["deck"] == "Default"
+    assert r1["tags"] == "tag1 tag2"
+    assert "#7" in r1["due"]
+    assert r1["is_suspended"] is False
+
+    r2 = next(r for r in rows if r["cid"] == c2_id)
+    assert r2["sort_text"] == "alpha"
+    assert r2["template_name"] == "Card 2"
+    assert r2["note_type_name"] == "Basic (and reversed card)"
+    assert r2["due"] == (datetime.date.today() + datetime.timedelta(days=4)).isoformat()
+    assert r2["is_suspended"] is False
+
+    r3 = next(r for r in rows if r["cid"] == c3_id)
+    assert r3["sort_text"] == "gamma"
+    assert r3["is_suspended"] is True
+    assert len(r3["due"]) > 0  # e.g. 'Suspended' or 'Ausgeschlossen'
+
+    r4 = next(r for r in rows if r["cid"] == c4_id)
+    assert r4["sort_text"] == "learn_card"
+    assert ":" in r4["due"]  # HH:MM timestamp
+
+    r5 = next(r for r in rows if r["cid"] == c5_id)
+    assert r5["sort_text"] == "past_due_card"
+    assert r5["due"] == (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
+    # verify rendering of these rows includes template names and tags
+    html = client.get("/browse?q=alpha").text
+    assert "Card 1" in html
+    assert "Card 2" in html
+    assert "tag1 tag2" in html

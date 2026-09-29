@@ -42,13 +42,14 @@ def test_spa_toolbar_default_english(client):
     assert r.status_code == 200
     assert ">Decks</a>" in r.text and ">Add</a>" in r.text
     assert ">Browse</a>" in r.text and ">Stats</a>" in r.text
-    assert "‹ Decks" in r.text
+    assert "id=\"ankiweb-bottom-nav\"" in r.text
+
 def test_spa_toolbar_zh(client):
     anki.lang.set_lang("zh-CN")
     r = client.get("/graphs")
     assert r.status_code == 200
     assert "牌组" in r.text and "浏览" in r.text and "统计" in r.text
-    assert "‹ 牌组" in r.text
+    assert "id=\"ankiweb-bottom-nav\"" in r.text
 
 
 def test_spa_toolbar_de(client):
@@ -56,7 +57,7 @@ def test_spa_toolbar_de(client):
     r = client.get("/graphs")
     assert r.status_code == 200
     assert "Stapel" in r.text and "Kartenverwaltung" in r.text and "Statistiken" in r.text
-    assert "‹ Stapel" in r.text
+    assert "id=\"ankiweb-bottom-nav\"" in r.text
 def test_deckbrowser_default_english(temp_collection):
     html = render_deckbrowser_html(temp_collection)
     assert "Create Deck" in html and "Import" in html

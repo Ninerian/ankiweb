@@ -1,22 +1,8 @@
 {% set nav_id = "ankiweb-spa-toolbar" if is_spa else "ankiweb-toolbar" %}
 {% set collapse_id = "spaNavbarNav" if is_spa else "ankiwebNavbarNav" %}
-<nav id="{{ nav_id }}" class="navbar navbar-expand-md bg-body-tertiary border-bottom sticky-top">
+<nav id="{{ nav_id }}" class="navbar navbar-expand-md bg-body-tertiary border-bottom sticky-top d-none d-md-flex">
   <div class="container-fluid">
-    {% if is_spa %}
-    <button type="button" class="back-btn btn btn-sm btn-outline-secondary me-2" onclick="location.href='/deckbrowser';">‹ {{ tr.actions_decks() }}</button>
-    {% endif %}
-    <button
-      class="navbar-toggler"
-      type="button"
-      data-bs-toggle="collapse"
-      data-bs-target="#{{ collapse_id }}"
-      aria-controls="{{ collapse_id }}"
-      aria-expanded="false"
-      aria-label="Toggle navigation"
-    >
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="{{ collapse_id }}">
+    <div class="collapse navbar-collapse show" id="{{ collapse_id }}">
       <ul class="navbar-nav me-auto mb-2 mb-md-0">
         <li class="nav-item"><a class="nav-link py-2 py-md-1" href="/deckbrowser">{{ tr.actions_decks() }}</a></li>
         <li class="nav-item"><a class="nav-link py-2 py-md-1" href="/add">{{ tr.actions_add() }}</a></li>
@@ -28,12 +14,13 @@
               <circle cx="12" cy="12" r="3"></circle>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
-            <span>More</span>
+            <span>{{ tr.studying_more() }}</span>
             <span class="visually-hidden">Extras</span>
           </a>
           <ul class="dropdown-menu">
             <li><a class="dropdown-item py-2" href="/preferences">{{ tr.preferences_preferences() }}</a></li>
             <li><a class="dropdown-item py-2" href="/tools">{{ tr.qt_accel_tools().replace('&', '') }}</a></li>
+            <li><a class="dropdown-item py-2" href="/notetypes">{{ tr.qt_misc_manage_note_types().replace('&', '') }}</a></li>
             <li><a class="dropdown-item py-2" href="/about" title="Source code (AGPL)">Source</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item py-2" href="/notify">Push notifications</a></li>
@@ -44,8 +31,8 @@
         type="button"
         class="btn btn-link nav-link p-2 ms-auto d-inline-flex align-items-center text-body"
         onclick="ankiwebToggleNight()"
-        title="Toggle night mode"
-        aria-label="Toggle night mode"
+        title="{{ tr.card_templates_night_mode() }}"
+        aria-label="{{ tr.card_templates_night_mode() }}"
       >
         <span class="theme-icon-light d-inline-flex align-items-center" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -71,16 +58,16 @@
 </nav>
 
 <nav id="ankiweb-bottom-nav" class="navbar fixed-bottom bg-body-tertiary border-top d-md-none p-0" aria-label="Mobile navigation">
-  <div class="container-fluid px-0">
-    <div class="d-flex w-100 justify-content-around text-center">
-      <a href="/deckbrowser" class="nav-link py-2 px-1 flex-fill d-flex flex-column align-items-center gap-1" data-nav-path="/deckbrowser">
+  <div class="container-fluid px-0 h-100">
+    <div class="d-flex w-100 h-100 justify-content-around text-center align-items-stretch">
+      <a href="/deckbrowser" class="nav-link py-2 px-1 flex-fill d-flex flex-column align-items-center justify-content-center gap-1" data-nav-path="/deckbrowser">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
           <path d="M16 3 8 3"></path>
         </svg>
         <span class="small" style="font-size: 0.72rem; line-height: 1;">{{ tr.actions_decks() }}</span>
       </a>
-      <a href="/add" class="nav-link py-2 px-1 flex-fill d-flex flex-column align-items-center gap-1" data-nav-path="/add">
+      <a href="/add" class="nav-link py-2 px-1 flex-fill d-flex flex-column align-items-center justify-content-center gap-1" data-nav-path="/add">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="16"></line>
@@ -88,14 +75,14 @@
         </svg>
         <span class="small" style="font-size: 0.72rem; line-height: 1;">{{ tr.actions_add() }}</span>
       </a>
-      <a href="/browse" class="nav-link py-2 px-1 flex-fill d-flex flex-column align-items-center gap-1" data-nav-path="/browse">
+      <a href="/browse" class="nav-link py-2 px-1 flex-fill d-flex flex-column align-items-center justify-content-center gap-1" data-nav-path="/browse">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
         <span class="small" style="font-size: 0.72rem; line-height: 1;">{{ tr.qt_misc_browse() }}</span>
       </a>
-      <a href="/graphs" class="nav-link py-2 px-1 flex-fill d-flex flex-column align-items-center gap-1" data-nav-path="/graphs">
+      <a href="/graphs" class="nav-link py-2 px-1 flex-fill d-flex flex-column align-items-center justify-content-center gap-1" data-nav-path="/graphs">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <line x1="18" y1="20" x2="18" y2="10"></line>
           <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -103,16 +90,118 @@
         </svg>
         <span class="small" style="font-size: 0.72rem; line-height: 1;">{{ tr.qt_misc_stats() }}</span>
       </a>
+      <button
+        type="button"
+        id="ankiweb-bottom-more-btn"
+        class="btn btn-link nav-link py-2 px-1 flex-fill d-flex flex-column align-items-center justify-content-center gap-1 text-decoration-none"
+        data-bs-toggle="offcanvas"
+        data-bs-target="#ankiwebMoreSheet"
+        aria-controls="ankiwebMoreSheet"
+        data-nav-path="more"
+        style="border: none;"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="1"></circle>
+          <circle cx="19" cy="12" r="1"></circle>
+          <circle cx="5" cy="12" r="1"></circle>
+        </svg>
+        <span class="small" style="font-size: 0.72rem; line-height: 1;">{{ tr.studying_more() }}</span>
+      </button>
     </div>
   </div>
 </nav>
 
+<!-- Mobile More Offcanvas Sheet -->
+<div
+  class="offcanvas offcanvas-bottom d-md-none"
+  tabindex="-1"
+  id="ankiwebMoreSheet"
+  aria-labelledby="ankiwebMoreSheetLabel"
+>
+  <div class="offcanvas-header flex-column align-items-center pb-2 pt-2 border-bottom position-relative">
+    <div class="drag-handle-bar mb-2"></div>
+    <h6 class="offcanvas-title m-0 fw-bold" id="ankiwebMoreSheetLabel">{{ tr.studying_more() }}</h6>
+    <button
+      type="button"
+      class="btn-close position-absolute end-0 top-0 m-3"
+      data-bs-dismiss="offcanvas"
+      aria-label="Close"
+    ></button>
+  </div>
+  <div class="offcanvas-body p-0">
+    <div class="list-group list-group-flush">
+      <a href="/preferences" class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="text-secondary flex-shrink-0">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>{{ tr.preferences_preferences() }}</span>
+      </a>
+      <a href="/tools" class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="text-secondary flex-shrink-0">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+        </svg>
+        <span>{{ tr.qt_accel_tools().replace('&', '') }}</span>
+      </a>
+      <a href="/notetypes" class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="text-secondary flex-shrink-0">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        <span>{{ tr.qt_misc_manage_note_types().replace('&', '') }}</span>
+      </a>
+      <a href="/notify" class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="text-secondary flex-shrink-0">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span>Push notifications</span>
+      </a>
+      <a href="/about" class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center gap-3" title="Source code (AGPL)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="text-secondary flex-shrink-0">
+          <polyline points="16 18 22 12 16 6"></polyline>
+          <polyline points="8 6 2 12 8 18"></polyline>
+        </svg>
+        <span>Source</span>
+      </a>
+      <button
+        type="button"
+        class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center justify-content-between"
+        onclick="ankiwebToggleNight()"
+      >
+        <div class="d-flex align-items-center gap-3">
+          <span class="theme-icon-light d-inline-flex align-items-center text-secondary flex-shrink-0" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+          <span class="theme-icon-dark d-none align-items-center text-secondary flex-shrink-0" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </span>
+          <span>{{ tr.card_templates_night_mode() }}</span>
+        </div>
+        <div class="form-check form-switch m-0 pointer-events-none">
+          <input class="form-check-input" type="checkbox" role="switch" id="theme-switch-mobile" tabindex="-1" onclick="event.stopPropagation(); ankiwebToggleNight();">
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
 <style>
-  @media (max-width: 767.98px) {
-    body {
-      padding-bottom: 5rem !important;
-    }
-  }
   [data-bs-theme="dark"] .theme-icon-light,
   .night-mode .theme-icon-light {
     display: none !important;
@@ -121,16 +210,19 @@
   .night-mode .theme-icon-dark {
     display: inline-flex !important;
   }
-  #ankiweb-bottom-nav .nav-link.active {
-    color: var(--bs-primary) !important;
-    font-weight: 600;
-  }
 </style>
 
 <script>
   (() => {
     function updateToolbarActive() {
       const p = window.location.pathname;
+      const moreTargets = [
+        "/preferences",
+        "/tools",
+        "/notetypes",
+        "/about",
+        "/notify"
+      ];
       const targets = [
         ["/deckbrowser", "/deckbrowser"],
         ["/add", "/add"],
@@ -138,6 +230,7 @@
         ["/graphs", "/graphs"],
         ["/preferences", "/preferences"],
         ["/tools", "/tools"],
+        ["/notetypes", "/notetypes"],
         ["/about", "/about"],
         ["/notify", "/notify"]
       ];
@@ -162,8 +255,26 @@
           a.classList.add("active");
           a.setAttribute("aria-current", "page");
         });
+        const isMoreActive = moreTargets.some(t => p === t || (t !== "/" && p.startsWith(t + "/")));
+        if (isMoreActive) {
+          const moreBtn = document.getElementById("ankiweb-bottom-more-btn");
+          if (moreBtn) {
+            moreBtn.classList.add("active");
+            moreBtn.setAttribute("aria-current", "page");
+          }
+        }
+      }
+
+      // Sync mobile theme switch state
+      const isNight = document.documentElement.classList.contains("night-mode") ||
+                      document.documentElement.getAttribute("data-bs-theme") === "dark" ||
+                      localStorage.getItem("ankiweb-night") === "1";
+      const sw = document.getElementById("theme-switch-mobile");
+      if (sw) {
+        sw.checked = isNight;
       }
     }
+
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", updateToolbarActive);
     } else {

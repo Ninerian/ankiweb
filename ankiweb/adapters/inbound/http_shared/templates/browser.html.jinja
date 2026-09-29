@@ -1,5 +1,5 @@
 {% macro sidebar(decks, tags) %}
-  <div class="side-section">{{ tr.actions_decks() }}</div>
+  <div class="side-section">{{ tr.browsing_sidebar_decks() }}</div>
   {% for d in decks %}
     <a
       class="side-item"
@@ -8,7 +8,7 @@
       data-on:click__prevent="@post('/browse/searchdeck/{{ d.id }}')"
     >{{ d.name }}</a>
   {% endfor %}
-  <div class="side-section">{{ tr.editing_tags() }}</div>
+  <div class="side-section">{{ tr.browsing_sidebar_tags() }}</div>
   {% for t in tags %}
     <a
       class="side-item"
@@ -23,6 +23,11 @@
     display: flex;
     flex-direction: column;
     height: calc(100dvh - 57px);
+  }
+  @media (max-width: 767.98px) {
+    #browser {
+      height: calc(100dvh - var(--ankiweb-bottomnav-h, 3.5rem));
+    }
   }
 
   #browser-top {
@@ -83,16 +88,39 @@
   #results-wrap {
     flex: 1 1 0%;
     min-width: 0;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: auto;
     height: 100%;
+  }
+  @media (max-width: 767.98px) {
+    #results-wrap {
+      padding-bottom: var(--ankiweb-bottomnav-h, 3.5rem);
+    }
+  }
+
+  #results {
+    table-layout: fixed;
+    width: 100%;
   }
 
   .browser-row {
     cursor: pointer;
   }
+  @media (max-width: 767.98px) {
+    .browser-row {
+      min-height: 56px;
+    }
+    .browser-row td.cell-mobile {
+      min-height: 56px;
+    }
+  }
 
   .browser-row:hover {
     background-color: var(--bs-tertiary-bg);
+  }
+
+  .browser-row.suspended-card {
+    opacity: 0.65;
   }
 
   #results tr.selected {
@@ -104,6 +132,29 @@
     background-color: transparent !important;
   }
 
+  /* Desktop column widths */
+  .cell-sortfield {
+    width: 35%;
+    max-width: 0;
+  }
+  .cell-card {
+    width: 20%;
+    max-width: 0;
+  }
+  .cell-deck {
+    width: 25%;
+    max-width: 0;
+  }
+  .cell-due {
+    width: 20%;
+  }
+  @media (min-width: 1200px) {
+    .cell-sortfield { width: 30%; }
+    .cell-card { width: 15%; }
+    .cell-deck { width: 20%; }
+    .cell-due { width: 15%; }
+    .cell-tags { width: 20%; max-width: 0; }
+  }
   /* Desktop detail pane */
   @media (min-width: 768px) {
     #detail-offcanvas {
@@ -141,7 +192,7 @@
       data-bs-target="#sidebar-offcanvas"
       aria-controls="sidebar-offcanvas"
     >
-      {{ tr.actions_decks() }} &amp; {{ tr.editing_tags() }}
+      {{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}
     </button>
     <input
       id="search"
@@ -155,8 +206,8 @@
                           }"
     >
     <div class="d-inline-flex align-items-center gap-2">
-      <span id="browser-status" class="text-muted">{{ initial_count }} cards</span>
-      <span id="browser-selected-status" class="badge text-bg-secondary" style="display: none;">0 selected</span>
+      <span id="browser-status" class="text-muted">{{ count_label }}</span>
+      <span id="browser-selected-status" class="badge text-bg-secondary" style="display: none;"></span>
     </div>
     <div id="browser-actions" class="d-flex flex-wrap align-items-center gap-1 ms-auto">
       <button id="search-trigger" style="display:none" data-on:click__prevent="const q = document.getElementById('search').value; @post('/browse/search', {payload: {query: q}})"></button>
@@ -180,7 +231,7 @@
           disabled
           data-on:click__prevent="@post('/browse/unsuspend')"
         >
-          Unsuspend
+          {{ tr.actions_unbury_unsuspend() }}
         </button>
         <button
           id="btn-forget"
@@ -216,7 +267,7 @@
           disabled
           data-on:click__prevent="ankiwebPrompt('Add tag:').then(function(x) { if (x !== null && x !== '') @post('/browse/addtag', {payload: {tag: x}}); })"
         >
-          Add Tag
+          {{ tr.editing_tags_add() }}
         </button>
         <button
           id="btn-removetag"
@@ -232,7 +283,7 @@
           class="btn btn-sm btn-outline-danger d-none d-md-inline-block"
           type="button"
           disabled
-          data-on:click__prevent="ankiwebConfirm('Delete selected notes?', {danger: true}).then(function(ok) { if (ok) @post('/browse/delete'); })"
+          data-on:click__prevent="ankiwebConfirm({{ (tr.browsing_delete_notes() ~ '?') | tojson | forceescape }}, {danger: true}).then(function(ok) { if (ok) @post('/browse/delete'); })"
         >
           {{ tr.actions_delete() }}
         </button>
@@ -256,7 +307,7 @@
             aria-expanded="false"
             disabled
           >
-            Actions
+            {{ tr.studying_more() }}
           </button>
           <ul class="dropdown-menu dropdown-menu-end shadow-sm">
             <li>
@@ -266,10 +317,9 @@
             </li>
             <li>
               <button class="dropdown-item" type="button" onclick="document.getElementById('btn-unsuspend').click()">
-                Unsuspend
+                {{ tr.actions_unbury_unsuspend() }}
               </button>
             </li>
-            <li>
               <button class="dropdown-item" type="button" onclick="document.getElementById('btn-forget').click()">
                 {{ tr.actions_forget_card() }}
               </button>
@@ -286,9 +336,8 @@
             </li>
             <li>
               <button class="dropdown-item" type="button" onclick="document.getElementById('btn-addtag').click()">
-                Add Tag
+                {{ tr.editing_tags_add() }}
               </button>
-            </li>
             <li>
               <button class="dropdown-item" type="button" onclick="document.getElementById('btn-removetag').click()">
                 {{ tr.actions_remove_tag() }}
@@ -320,7 +369,7 @@
       aria-labelledby="sidebar-offcanvas-label"
     >
       <div class="offcanvas-header d-md-none border-bottom p-2">
-        <h6 class="offcanvas-title m-0" id="sidebar-offcanvas-label">{{ tr.actions_decks() }} &amp; {{ tr.editing_tags() }}</h6>
+        <h6 class="offcanvas-title m-0" id="sidebar-offcanvas-label">{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}</h6>
         <button
           type="button"
           class="btn-close"
@@ -338,10 +387,12 @@
     <div id="results-wrap">
       <table id="results" class="table table-sm table-hover mb-0">
         <thead class="sticky-top bg-body">
-          <tr>
-            <th>{{ tr.browsing_sort_field() }}</th>
-            <th>{{ tr.decks_deck() }}</th>
-            <th>{{ tr.statistics_due_date() }}</th>
+          <tr class="d-none d-md-table-row">
+            <th class="cell-sortfield">{{ tr.browsing_sort_field() }}</th>
+            <th class="cell-card">{{ tr.browsing_card() }}</th>
+            <th class="cell-deck">{{ tr.decks_deck() }}</th>
+            <th class="cell-due">{{ tr.statistics_due_date() }}</th>
+            <th class="cell-tags d-none d-xl-table-cell">{{ tr.editing_tags() }}</th>
           </tr>
         </thead>
         <tbody id="results-body">{{ initial_rows | safe }}</tbody>
@@ -356,7 +407,7 @@
       aria-labelledby="detail-offcanvas-label"
     >
       <div class="offcanvas-header d-md-none border-bottom p-2">
-        <h6 class="offcanvas-title m-0" id="detail-offcanvas-label">Card Details</h6>
+        <h6 class="offcanvas-title m-0" id="detail-offcanvas-label">{{ tr.browsing_card() }} – {{ tr.importing_details() }}</h6>
         <button
           type="button"
           class="btn-close"
@@ -395,7 +446,15 @@
           var selBadge = document.getElementById('browser-selected-status');
           if (selBadge) {
               if (hasSel) {
-                  selBadge.textContent = count + ' selected';
+                  // Anki's window title "Browse (2 of 5480 cards selected)": take the parenthetical,
+                  // substituting sentinel numbers so the text stays localized.
+                  var tpl = {{ tr.browsing_window_title(total=987654, selected=123456) | tojson }};
+                  var st = document.getElementById('browser-status');
+                  var total = st ? parseInt(st.textContent, 10) : count;
+                  var txt = tpl.replace(/[\u2068\u2069]/g, '')
+                      .replace('123456', count).replace('987654', isNaN(total) ? count : total);
+                  var m = txt.match(/\((.*)\)/);
+                  selBadge.textContent = m ? m[1] : txt;
                   selBadge.style.display = 'inline-block';
               } else {
                   selBadge.style.display = 'none';

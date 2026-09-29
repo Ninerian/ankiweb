@@ -93,7 +93,7 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
     async def deckbrowser_page():
         service = get_service()
         body = await service.run(render_deckbrowser_html)
-        return HTMLResponse(render_page("deckbrowser", body, ["css/deckbrowser.css"]))
+        return HTMLResponse(render_page("deckbrowser", body))
 
     @router.get("/overview", response_class=HTMLResponse)
     async def overview_page():

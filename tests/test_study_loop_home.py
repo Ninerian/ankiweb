@@ -52,9 +52,9 @@ def test_browse_then_open_deck(live_server):
         page.on("pageerror", lambda e: print("PAGEERROR:", e))
         page.goto(f"{live_server}/")
         # deck browser shows the Default deck with a new-count of 3
-        page.wait_for_selector("tr.deck")
+        page.wait_for_selector("div.deck")
         assert "Default" in page.inner_text("body")
-        assert "3" in page.inner_text("tr.deck")
+        assert "3" in page.inner_text("div.deck")
         # click the deck name → server sets current + pushes navigate → lands on /overview
         page.click("a.deck")
         page.wait_for_url("**/overview", timeout=5000)

@@ -139,7 +139,7 @@ def test_browse_sidebar_long_name_truncated(live_server_longdeck):
         page = browser.new_page()
         page.goto(f"{base}/browse")
         page.wait_for_selector("#sidebar .side-item", timeout=6000)
-        item = page.get_by_title(long_name, exact=True)
+        item = page.locator("#sidebar").get_by_title(long_name, exact=True)
         # the full name is preserved on the hover tooltip even though the visible text is clipped
         assert item.get_attribute("title") == long_name
         geo = item.evaluate(

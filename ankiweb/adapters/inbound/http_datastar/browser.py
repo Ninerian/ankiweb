@@ -1,5 +1,8 @@
 from __future__ import annotations
+import json
+import datetime
 import re
+import time
 from typing import Callable
 from fastapi import APIRouter
 from datastar_py.fastapi import (
@@ -8,9 +11,42 @@ from datastar_py.fastapi import (
     ReadSignals,
 )
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
 
 _TAG_STRIP = re.compile(r"<[^>]+>")
 _LIMIT = 500
+
+
+def _format_due(card, col) -> str:
+    if card.queue == -1:
+        return tr.browsing_suspended()
+    elif card.queue in (-2, -3):
+        return tr.browsing_buried()
+    elif card.queue == 0:
+        return f"{tr.actions_new()} #{card.due}"
+    elif card.queue == 1:
+        try:
+            dt = datetime.datetime.fromtimestamp(card.due)
+            if dt.date() == datetime.date.today():
+                return dt.strftime("%H:%M")
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            return str(card.due)
+    elif card.queue in (2, 3):
+        try:
+            days_diff = card.due - col.sched.today
+            due_date = datetime.date.today() + datetime.timedelta(days=days_diff)
+            return due_date.isoformat()
+        except Exception:
+            return str(card.due)
+    return ""
+
+
+def _card_count_str(count: int) -> str:
+    """Localized '<n> cards' with Fluent's bidi isolates and nbsp normalised for plain text."""
+    raw = tr.card_templates_card_count(count=count)
+    return re.sub(r"[\u2068\u2069]", "", raw).replace("\xa0", " ")
+
 
 
 def render_browser_html(col, query: str = "") -> str:
@@ -28,6 +64,7 @@ def render_browser_html(col, query: str = "") -> str:
         query=query,
         initial_rows=initial_rows,
         initial_count=len(cids),
+        count_label=_card_count_str(len(cids)),
     )
 
 
@@ -46,21 +83,30 @@ def _row_data(col, cids):
             if sf < len(note.fields)
             else (note.fields[0] if note.fields else "")
         )
-        rows.append((cid, sort, col.decks.name(card.did), card.due))
+        try:
+            template_name = card.template().get("name", "")
+        except Exception:
+            template_name = ""
+        note_type_name = model.get("name", "")
+        deck_name = col.decks.name(card.did)
+        tags_str = " ".join(note.tags)
+        due_str = _format_due(card, col)
+        is_suspended = (card.queue == -1)
+        rows.append({
+            "cid": cid,
+            "sort_text": _TAG_STRIP.sub("", sort)[:200],
+            "template_name": template_name,
+            "note_type_name": note_type_name,
+            "deck": deck_name,
+            "tags": tags_str,
+            "due": due_str,
+            "is_suspended": is_suspended,
+        })
     return rows
 
 
 def _rows_html(rows) -> str:
-    row_dicts = [
-        {
-            "cid": cid,
-            "sort_text": _TAG_STRIP.sub("", sort)[:200],
-            "deck": deck,
-            "due": due,
-        }
-        for cid, sort, deck, due in rows
-    ]
-    return templating.render("browser_rows.html.jinja", rows=row_dicts)
+    return templating.render("browser_rows.html.jinja", rows=rows)
 
 
 def _detail_html(col, cid) -> str:
@@ -100,11 +146,12 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
 
         cids, rows_html = await service.run(run)
         if cids is None:
-            err_body = '<tbody id="results-body"><tr><td colspan="3">invalid search</td></tr></tbody>'
+            err_body = '<tbody id="results-body"><tr><td colspan="5">invalid search</td></tr></tbody>'
+            zero_label = json.dumps(_card_count_str(0))
             return [
                 SSE.patch_elements(err_body, selector="#results-body"),
                 SSE.execute_script(
-                    "document.getElementById('browser-status').textContent = '0 cards'; "
+                    f"document.getElementById('browser-status').textContent = {zero_label}; "
                     "window.__ankiwebResetSel && window.__ankiwebResetSel();"
                 ),
             ]
@@ -113,8 +160,9 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             hub.ui_state.last_browse_query = query
             hub.ui_state.matched_card_ids = cids
         body_html = f'<tbody id="results-body">{rows_html}</tbody>'
+        count_label = json.dumps(_card_count_str(len(cids)))
         count_js = (
-            f"document.getElementById('browser-status').textContent = '{len(cids)} cards'; "
+            f"document.getElementById('browser-status').textContent = {count_label}; "
             "window.__ankiwebResetSel && window.__ankiwebResetSel();"
         )
         return [

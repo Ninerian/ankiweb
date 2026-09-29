@@ -17,7 +17,7 @@ _TITLES = {
     "add": lambda: tr.actions_add(),
     "preferences": lambda: tr.preferences_preferences(),
     "notetypes": lambda: tr.notetypes_note_types(),
-    "tools": lambda: tr.qt_accel_tools().replace("&", ""),
+    "tools": lambda: tr.qt_accel_tools(),
     "notify": lambda: "Push notifications",
     "about": lambda: "Source",
     "export": lambda: tr.actions_export(),
@@ -27,8 +27,11 @@ _TITLES = {
 def _page_title(context: str) -> str:
     """Human title for the browser tab/history; unknown contexts fall back to the app name."""
     make = _TITLES.get(context)
-    return f"{make()} \u2013 AnkiWeb" if make else "AnkiWeb"
-
+    if not make:
+        return "AnkiWeb"
+    raw_title = make()
+    clean_title = templating.tr_clean(raw_title)
+    return f"{clean_title} \u2013 AnkiWeb" if clean_title else "AnkiWeb"
 
 def render_page(
     context: str,

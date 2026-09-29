@@ -181,7 +181,7 @@
     </div>
 
     <!-- Sticky bottom action bar -->
-    <div class="fixed-bottom bg-body border-top py-2 px-3 shadow">
+    <div class="fixed-bottom bg-body border-top py-2 px-3 shadow pref-bottom-bar">
       <div class="container-xl d-flex align-items-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <button
@@ -221,6 +221,11 @@
   @media (min-width: 992px) {
     .pref-section .collapse:not(.show) {
       display: block !important;
+    }
+  }
+  @media (max-width: 767.98px) {
+    .pref-bottom-bar {
+      bottom: var(--ankiweb-bottomnav-h) !important;
     }
   }
 </style>

@@ -93,7 +93,7 @@ def test_sveltekit_task_pages_have_escape_toolbar(client, path):
     r = client.get(path)
     assert r.status_code == 200
     assert 'id="ankiweb-spa-toolbar"' in r.text or "id='ankiweb-spa-toolbar'" in r.text
-    assert 'back-btn' in r.text
+    assert 'id="ankiweb-bottom-nav"' in r.text or "id='ankiweb-bottom-nav'" in r.text
 def _edit_seed(client):
     def seed(col):
         n = col.new_note(col.models.by_name("Basic"))

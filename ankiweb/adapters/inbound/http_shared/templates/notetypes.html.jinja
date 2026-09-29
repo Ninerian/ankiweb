@@ -1,42 +1,98 @@
-<div class="notetypes container-fluid">
-  <h3>{{ heading }}</h3>
-  <table id="nttbl" class="table table-sm table-hover align-middle">
-    <tbody id="ntrows">
-      {% for r in rows %}
-        <tr class="nt-row" data-id="{{ r.id }}" data-name="{{ r.name }}">
-          <td class="nt-name">{{ r.name }}</td>
-          <td class="nt-count">{{ r.count }} notes</td>
-          <td><a href="/fields/{{ r.id }}">{{ L_fields }}</a></td>
-          <td><a href="/card-layout/{{ r.id }}">{{ L_cards }}</a></td>
-          <td>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('New name:', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })">
-              {{ L_rename }}
+<div class="notetypes container-fluid py-3" style="max-width: 960px;">
+  <h3 class="mb-3">{{ heading | tr_clean }}</h3>
+
+  {# Mobile view (<md): card list with name, note count, and kebab dropdown actions #}
+  <div id="ntcards" class="d-md-none d-flex flex-column gap-2 mb-3">
+    {% for r in rows %}
+      <div class="nt-row card shadow-sm p-3" data-id="{{ r.id }}" data-name="{{ r.name }}">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="min-w-0 flex-grow-1">
+            <div class="nt-name fw-semibold text-truncate">{{ r.name }}</div>
+            <div class="nt-count small text-body-secondary">{{ tr.browsing_note_count(count=r.count) | tr_clean }}</div>
+          </div>
+          <div class="dropdown flex-shrink-0">
+            <button
+              class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              aria-label="Actions"
+              style="width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0;"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+              </svg>
             </button>
-          </td>
-          <td>
-            <button class="btn btn-sm btn-outline-danger" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; ankiwebConfirm('Delete this note type and its {{ r.count }} note(s)?', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })">
-              {{ L_delete }}
-            </button>
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+              <li><a class="dropdown-item py-2" href="/fields/{{ r.id }}">{{ L_fields | tr_clean }}</a></li>
+              <li><a class="dropdown-item py-2" href="/card-layout/{{ r.id }}">{{ L_cards | tr_clean }}</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button
+                  class="dropdown-item py-2"
+                  type="button"
+                  data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })"
+                >
+                  {{ L_rename | tr_clean }}
+                </button>
+              </li>
+              <li>
+                <button
+                  class="dropdown-item py-2 text-danger"
+                  type="button"
+                  data-on:click__prevent="document.getElementById('err').textContent = ''; ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })"
+                >
+                  {{ L_delete | tr_clean }}
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  {# Desktop view (>=md): table #}
+  <div class="table-responsive d-none d-md-block">
+    <table id="nttbl" class="table table-sm table-hover align-middle">
+      <tbody id="ntrows">
+        {% for r in rows %}
+          <tr class="nt-row" data-id="{{ r.id }}" data-name="{{ r.name }}">
+            <td class="nt-name">{{ r.name }}</td>
+            <td class="nt-count">{{ tr.browsing_note_count(count=r.count) | tr_clean }}</td>
+            <td><a href="/fields/{{ r.id }}">{{ L_fields | tr_clean }}</a></td>
+            <td><a href="/card-layout/{{ r.id }}">{{ L_cards | tr_clean }}</a></td>
+            <td>
+              <button class="btn btn-sm btn-outline-secondary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })">
+                {{ L_rename | tr_clean }}
+              </button>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-danger" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })">
+                {{ L_delete | tr_clean }}
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
   <div id="ntadd" class="row g-2 align-items-center mt-3">
-    <h4 class="mb-2">{{ L_add }}</h4>
-    <div class="col-auto">
-      <label for="ntnewname" class="visually-hidden">{{ L_name }}</label>
-      <input type="text" id="ntnewname" class="form-control" placeholder="{{ L_name }}" size="24">
+    <h4 class="mb-2">{{ L_add | tr_clean }}</h4>
+    <div class="col-12 col-sm-auto">
+      <label for="ntnewname" class="visually-hidden">{{ L_name | tr_clean }}</label>
+      <input type="text" id="ntnewname" class="form-control" placeholder="{{ L_name | tr_clean }}" size="24">
     </div>
-    <div class="col-auto">
+    <div class="col-12 col-sm-auto">
       <select id="ntbase" class="form-select">
         {% for r in rows %}<option value="{{ r.id }}">{{ r.name }}</option>{%
           endfor
         %}
       </select>
     </div>
-    <div class="col-auto">
-      <button class="btn btn-primary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const name = document.getElementById('ntnewname').value; const base = document.getElementById('ntbase').value; if (name && base) @post('/notetypes/add/' + base, {payload: {name: name}})">{{ L_add }}</button>
+    <div class="col-12 col-sm-auto">
+      <button class="btn btn-primary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const name = document.getElementById('ntnewname').value; const base = document.getElementById('ntbase').value; if (name && base) @post('/notetypes/add/' + base, {payload: {name: name}})">{{ L_add | tr_clean }}</button>
     </div>
   </div>
   <div id="err" class="text-danger mt-2"></div>

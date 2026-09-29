@@ -26,8 +26,9 @@ def test_root_serves_deckbrowser(client):
     assert r.status_code == 200
     assert "Default" in r.text
     assert 'window.__ankiwebContext = "deckbrowser"' in r.text
-    assert "/_anki/css/deckbrowser.css" in r.text
-
+    assert "/shell/static/theme.css" in r.text
+    assert "/shell/static/deckbrowser.css" not in r.text
+    assert "/_anki/css/deckbrowser.css" not in r.text
 
 def test_deckbrowser_route(client):
     r = client.get("/deckbrowser")

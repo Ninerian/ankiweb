@@ -87,7 +87,7 @@
       </div>
     </div>
     <p>
-      <button class="btn btn-primary me-2" type="submit" name="action" value="save">Save</button>
+      <button class="btn btn-primary me-2" type="submit" name="action" value="save">{{ tr.actions_save() | tr_clean }}</button>
       <button
         class="btn btn-outline-primary"
         type="submit"
@@ -95,12 +95,11 @@
         value="resync"
         title="Re-push every currently-learnable deck now"
       >
-        Save &amp; re-push all
+        {{ tr.actions_save() | tr_clean }} &amp; re-push all
       </button>
     </p>
   </form>
-  <h3>Status</h3>
-  <table class="table table-sm">
+  <h3>{{ tr.importing_status() | tr_clean }}</h3>
     <tr>
       <td>Active</td>
       <td>{{ "yes" if active else "no" }}</td>

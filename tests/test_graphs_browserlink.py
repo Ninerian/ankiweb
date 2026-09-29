@@ -46,7 +46,9 @@ def test_browse_q_prefills_and_searches(client):
     # SSR baked the query's actual results into the initial page, not just the default/all-cards set
     assert "otherword" in r.text
     assert "defaultword" not in r.text
-    assert "1 cards" in r.text
+    from ankiweb.adapters.inbound.http_datastar.browser import _card_count_str
+
+    assert _card_count_str(1) in r.text
 
 
 def test_browse_q_empty_default(client):

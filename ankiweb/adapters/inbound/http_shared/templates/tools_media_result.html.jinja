@@ -3,7 +3,7 @@
     class="btn btn-outline-danger btn-sm mt-2"
     data-on:click__prevent="@post('/tools/deleteunused')"
   >
-    {{ delete_label }} ({{ unused|length }})
+    {{ delete_label | tr_clean }} ({{ unused|length }})
   </button><div class="unused-list text-muted small mt-1">
     {{ unused[:10]|join(", ") }}{% if unused|length > 10 %}
       (+{{ unused|length - 10 }}){% endif %}
