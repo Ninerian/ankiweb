@@ -74,15 +74,19 @@ uv run python tools/fetch_web_assets.py
 #    ankiweb/shell/static/ — tracked in git, but re-run this to update the pinned version).
 uv run python tools/fetch_datastar.py
 
-# 3. Build the shell bridge bundle (shell_src/bootstrap.ts -> ankiweb/shell/static/bootstrap.js)
+# 3. Vendor the Bootstrap 5 framework (downloads bootstrap.min.css + bootstrap.bundle.min.js
+#    into ankiweb/shell/static/vendor/ — tracked in git, but re-run to update the pinned version).
+uv run python tools/fetch_bootstrap.py
+
+# 4. Build the shell bridge bundle (shell_src/bootstrap.ts -> ankiweb/shell/static/bootstrap.js)
 npm install && npm run build
 
-# 4. (optional) for the Playwright integration tests
+# 5. (optional) for the Playwright integration tests
 uv run python -m playwright install chromium
 ```
 
-Steps 1-3 are also available as one command after `npm install`: `npm run setup`
-(runs fetch_web_assets.py, fetch_datastar.py, then the shell build in order).
+Steps 1-4 are also available as one command after `npm install`: `npm run setup`
+(runs fetch_web_assets.py, fetch_datastar.py, fetch_bootstrap.py, then the shell build in order).
 
 ## Run
 
