@@ -1,4 +1,5 @@
 from __future__ import annotations
+import html
 from typing import Callable
 from fastapi import APIRouter
 from datastar_py.fastapi import (
@@ -75,6 +76,39 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
         path = f"/filtered-deck/{did}" if is_dyn else f"/deck-options/{did}"
         return DatastarResponse(SSE.redirect(path))
+
+    @router.post("/rename/{did}")
+    async def rename_deck(did: int, payload: ReadSignals):
+        service = get_service()
+        newname = ""
+        if payload and isinstance(payload, dict):
+            newname = str(payload.get("name", "")).strip()
+        if not newname:
+            return DatastarResponse()
+
+        def do_rename(col):
+            return col.decks.rename(did, newname)
+
+        try:
+            await service.run_op(do_rename, initiator="deckbrowser")
+        except Exception as exc:
+            err_html = f'<div id="err" class="text-danger mt-2">{html.escape(str(exc))}</div>'
+            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+        return DatastarResponse(SSE.execute_script("window.location.reload()"))
+
+    @router.post("/delete/{did}")
+    async def delete_deck(did: int):
+        service = get_service()
+
+        def do_delete(col):
+            return col.decks.remove([did])
+
+        try:
+            await service.run_op(do_delete, initiator="deckbrowser")
+        except Exception as exc:
+            err_html = f'<div id="err" class="text-danger mt-2">{html.escape(str(exc))}</div>'
+            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+        return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
     @router.post("/createfiltered")
     async def create_filtered():
