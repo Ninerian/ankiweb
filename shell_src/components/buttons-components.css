@@ -6,48 +6,11 @@
 /* ==========================================================================
    CSS Variables & Base Fallbacks for Buttons & Icons
    ========================================================================== */
+/* Variables specific to buttons/icons/dropdowns not defined in theme.css */
 :root {
   --buttons-size: 26px;
-  --button-bg: var(--bs-tertiary-bg, #f3eee5);
-  --button-primary-bg: var(--bs-primary, #185f66);
-  --button-gradient-start: #ffffff;
-  --button-gradient-end: var(--bs-tertiary-bg, #ebe4d8);
-  --button-primary-gradient-start: var(--bs-primary, #185f66);
-  --button-primary-gradient-end: var(--bs-primary-text-emphasis, #104449);
-  --border-subtle: var(--bs-border-color, #ddd6c8);
-  --border-focus: var(--bs-focus-ring-color, #185f66);
-  --border-radius: var(--bs-border-radius, 4px);
-  --border-left-radius: var(--bs-border-radius, 4px);
-  --border-right-radius: var(--bs-border-radius, 4px);
-  --shadow: rgba(0, 0, 0, 0.15);
-  --shadow-focus: rgba(24, 95, 102, 0.25);
-  --fg: var(--bs-body-color, #26241f);
-  --fg-disabled: var(--bs-secondary-color, #8c887f);
-  --highlight-bg: var(--bs-primary, #185f66);
-  --highlight-fg: #ffffff;
-  --canvas-elevated: var(--bs-body-bg, #ffffff);
   --dropdown-font-size: 0.875rem;
 }
-
-[data-bs-theme="dark"],
-.night-mode {
-  --button-bg: var(--bs-tertiary-bg, #282622);
-  --button-primary-bg: var(--bs-primary, #52b7a8);
-  --button-gradient-start: #32302a;
-  --button-gradient-end: #24221e;
-  --button-primary-gradient-start: var(--bs-primary, #52b7a8);
-  --button-primary-gradient-end: #3a8277;
-  --border-subtle: var(--bs-border-color, #44413b);
-  --border-focus: var(--bs-focus-ring-color, #52b7a8);
-  --shadow: rgba(0, 0, 0, 0.4);
-  --shadow-focus: rgba(82, 183, 168, 0.35);
-  --fg: var(--bs-body-color, #e8e5de);
-  --fg-disabled: var(--bs-secondary-color, #827e74);
-  --highlight-bg: var(--bs-primary, #52b7a8);
-  --highlight-fg: #1e1d1a;
-  --canvas-elevated: var(--bs-body-bg, #1e1d1a);
-}
-
 /* ==========================================================================
    Icon & SVG
    ========================================================================== */
@@ -319,9 +282,6 @@ button.badge:active {
   box-shadow: none;
 }
 
-button.badge.dropdown-toggle::after {
-  display: none;
-}
 
 /* ==========================================================================
    FloatingArrow

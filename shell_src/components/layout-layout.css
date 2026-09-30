@@ -138,9 +138,9 @@
   left: 0;
   right: 0;
   z-index: var(--z-index, 50);
-  background: var(--sticky-bg, var(--bs-body-bg, #fff));
+  background: var(--sticky-bg, var(--color-base-100));
   border-style: solid;
-  border-color: var(--sticky-border, var(--bs-border-color, #dee2e6));
+  border-color: var(--sticky-border, var(--color-base-300));
   border-width: var(--sticky-borders, 0);
 }
 

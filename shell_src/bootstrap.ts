@@ -82,9 +82,10 @@ addBrowserClasses();
 // synchronously in <head> (before <body>) so server-rendered screens don't flash.
 if (nightOn()) {
   document.documentElement.classList.add("night-mode");
-  document.documentElement.setAttribute("data-bs-theme", "dark");
+  document.documentElement.setAttribute("data-theme", "dark");
+} else {
+  document.documentElement.setAttribute("data-theme", "light");
 }
-
 
 (window as any).ankiwebToggleNight = () => {
   const on = localStorage.getItem("ankiweb-night") === "1";
@@ -92,43 +93,52 @@ if (nightOn()) {
   location.reload();
 };
 
-// Bootstrap tooltips are opt-in: create one per tooltip target, and keep up with elements that
-// Datastar patches in or out later. Targets are [data-bs-toggle="tooltip"] elements plus the
-// editor's title-bearing controls (toolbar buttons/selects, per-field action buttons). Per-element instances (not the delegated
-// `selector` option) so each element keeps its own data-bs-trigger / delay / placement.
-// Only the slice of Bootstrap's Tooltip API used here (bootstrap.bundle.min.js sets window.bootstrap).
-interface TooltipStatics {
-  getOrCreateInstance(el: Element, config?: { container?: string; trigger?: string }): unknown;
-  getInstance(el: Element): { dispose(): void } | null;
-}
-
-declare global {
-  interface Window {
-    bootstrap?: { Tooltip?: TooltipStatics };
+// daisyUI tooltips: convert title-bearing controls (.editor-toolbar [title], .field-action-btn[title])
+// into daisyUI tooltip (class="tooltip", data-tip=<title>), keeping up with elements that
+// Datastar patches in or out later. Controls that cannot render pseudo-element tooltips
+// (e.g. <select>, <input>, <option>, elements with overflow:hidden) retain native title.
+function canRenderDaisyTooltip(el: Element): boolean {
+  const tag = el.tagName.toLowerCase();
+  if (tag === "select" || tag === "input" || tag === "option" || tag === "textarea") {
+    return false;
   }
+  // Elements with overflow:hidden (or ancestor clipping inside the toolbar) clip ::before/::after
+  if (el.classList.contains("overflow-hidden")) {
+    return false;
+  }
+  return true;
 }
 
 function tooltipTargets(node: Node): Element[] {
   if (!(node instanceof Element)) return [];
-  const sel = '[data-bs-toggle="tooltip"], .editor-toolbar [title], .field-action-btn[title]';
+  const sel = '.editor-toolbar [title], .field-action-btn[title]';
   return [...(node.matches(sel) ? [node] : []), ...node.querySelectorAll(sel)];
 }
 
-function createTooltip(Tooltip: TooltipStatics, el: Element): void {
-  // Render in <body> so overflow/stacking of toolbars and cards can never clip a tooltip.
-  // Title-based controls are hover-only: a clicked button keeps focus, and Bootstrap's default
-  // "hover focus" trigger would keep its tooltip open after the pointer has left.
-  Tooltip.getOrCreateInstance(el, el.hasAttribute("data-bs-toggle") ? { container: "body" } : { container: "body", trigger: "hover" });
+function applyDaisyTooltip(el: Element): void {
+  const tip = el.getAttribute("data-tip") || el.getAttribute("title");
+  if (!tip) return;
+  if (!el.getAttribute("aria-label")) {
+    el.setAttribute("aria-label", tip);
+  }
+  if (!canRenderDaisyTooltip(el)) {
+    // Keep native title attribute for controls where CSS tooltips cannot render
+    return;
+  }
+  el.setAttribute("data-tip", tip);
+  el.removeAttribute("title");
+  el.classList.add("tooltip");
+  // Place on bottom or top appropriately if not specified
+  if (!el.classList.contains("tooltip-top") && !el.classList.contains("tooltip-bottom") &&
+      !el.classList.contains("tooltip-left") && !el.classList.contains("tooltip-right")) {
+    el.classList.add("tooltip-bottom");
+  }
 }
-
 document.addEventListener("DOMContentLoaded", () => {
-  const Tooltip = window.bootstrap?.Tooltip;
-  if (!Tooltip) return;
-  tooltipTargets(document.body).forEach((el) => createTooltip(Tooltip, el));
+  tooltipTargets(document.body).forEach(applyDaisyTooltip);
   new MutationObserver((records) => {
     for (const r of records) {
-      r.removedNodes.forEach((n) => tooltipTargets(n).forEach((el) => Tooltip.getInstance(el)?.dispose()));
-      r.addedNodes.forEach((n) => tooltipTargets(n).forEach((el) => createTooltip(Tooltip, el)));
+      r.addedNodes.forEach((n) => tooltipTargets(n).forEach(applyDaisyTooltip));
     }
   }).observe(document.body, { childList: true, subtree: true });
 });

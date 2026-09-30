@@ -18,7 +18,7 @@ export function createPlainTextEditor(
     initialValue: string,
     onChange?: (val: string) => void
 ): PlainTextInstance {
-    const isDark = document.body.classList.contains("nightMode") || document.documentElement.getAttribute("data-bs-theme") === "dark";
+    const isDark = document.body.classList.contains("nightMode") || document.documentElement.getAttribute("data-theme") === "dark";
 
     const updateListener = EditorView.updateListener.of((update) => {
         if (update.docChanged && onChange) {
@@ -37,7 +37,7 @@ export function createPlainTextEditor(
                 "&": {
                     height: "100%",
                     fontSize: "14px",
-                    fontFamily: "var(--bs-font-monospace, monospace)",
+                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
                 },
                 ".cm-scroller": {
                     overflow: "auto",

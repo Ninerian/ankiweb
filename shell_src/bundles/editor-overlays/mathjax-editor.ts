@@ -5,42 +5,42 @@ import { renderMathjaxSvg, toStoredMathjax } from "./mathjax";
 import { saveSelection, restoreSelection } from "../editor/selection";
 import { setCaretToEnd } from "../editor/dom";
 
-let activeModal: HTMLElement | null = null;
+let activeModal: HTMLDialogElement | null = null;
 
-function ensureMathjaxModal(): HTMLElement {
+function ensureMathjaxModal(): HTMLDialogElement {
     if (!activeModal) {
-        activeModal = document.createElement("div");
+        activeModal = document.createElement("dialog") as HTMLDialogElement;
         activeModal.className = "ankiweb-mathjax-modal modal";
-        activeModal.tabIndex = -1;
-        activeModal.style.zIndex = "1055";
         activeModal.innerHTML = `
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header py-2">
-                        <h6 class="modal-title m-0">Edit MathJax Equation</h6>
-                        <button type="button" class="btn-close btn-sm mj-close-btn" aria-label="Close"></button>
+            <div class="modal-box max-w-lg">
+                <div class="flex justify-between items-center pb-2">
+                    <h3 class="font-bold text-base m-0">Edit MathJax Equation</h3>
+                    <button type="button" class="btn btn-sm btn-circle btn-ghost mj-close-btn" aria-label="Close">✕</button>
+                </div>
+                <div class="py-2">
+                    <div class="mb-2">
+                        <label class="label text-sm font-bold">Formula (TeX / LaTeX):</label>
+                        <textarea class="textarea w-full font-mono mj-input" rows="3" placeholder="e.g. \\frac{a}{b} or \\sqrt{x}"></textarea>
                     </div>
-                    <div class="modal-body py-2">
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold">Formula (TeX / LaTeX):</label>
-                            <textarea class="form-control font-monospace mj-input" rows="3" placeholder="e.g. \\frac{a}{b} or \\sqrt{x}"></textarea>
-                        </div>
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input mj-block-switch" type="checkbox" id="mj-block-toggle">
-                            <label class="form-check-label small" for="mj-block-toggle">Display as Block equation (\\[ ... \\])</label>
-                        </div>
-                        <div class="border rounded p-2 bg-light mj-preview-box" style="min-height: 48px; display: flex; align-items: center; justify-content: center;">
-                            <div class="mj-preview-content"></div>
-                        </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <input class="toggle toggle-primary mj-block-switch" type="checkbox" id="mj-block-toggle">
+                        <label class="text-sm cursor-pointer" for="mj-block-toggle">Display as Block equation (\\[ ... \\])</label>
                     </div>
-                    <div class="modal-footer py-2">
-                        <button type="button" class="btn btn-sm btn-outline-danger me-auto mj-delete-btn">Delete</button>
-                        <button type="button" class="btn btn-sm btn-secondary mj-close-btn">Cancel</button>
+                    <div class="border border-base-300 rounded-box p-2 bg-base-200 mj-preview-box" style="min-height: 48px; display: flex; align-items: center; justify-content: center;">
+                        <div class="mj-preview-content"></div>
+                    </div>
+                </div>
+                <div class="modal-action flex justify-between items-center pt-2">
+                    <button type="button" class="btn btn-sm btn-outline btn-error mj-delete-btn">Delete</button>
+                    <div class="flex gap-2">
+                        <button type="button" class="btn btn-sm btn-ghost mj-close-btn">Cancel</button>
                         <button type="button" class="btn btn-sm btn-primary mj-save-btn">Save (Enter)</button>
                     </div>
                 </div>
             </div>
-            <div class="modal-backdrop fade show" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: -1;"></div>
+            <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+            </form>
         `;
         document.body.appendChild(activeModal);
     }
@@ -155,17 +155,20 @@ export function openMathjaxEditor(
 
     updatePreview();
 
-    modal.style.display = "block";
+    modal.showModal();
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
 
     input.oninput = updatePreview;
     blockSwitch.onchange = updatePreview;
 
-    const closeModal = () => {
-        modal.style.display = "none";
+    modal.onclose = () => {
         input.oninput = null;
         blockSwitch.onchange = null;
+    };
+
+    const closeModal = () => {
+        modal.close();
     };
 
     const saveAndClose = () => {

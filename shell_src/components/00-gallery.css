@@ -8,8 +8,8 @@
   padding: 1.5rem;
 }
 .component-gallery .component-demo {
-  border: 1px solid var(--bs-border-color, #dee2e6);
-  border-radius: 0.5rem;
+  border: 1px solid var(--color-base-300, #dee2e6);
+  border-radius: var(--radius-box, 0.5rem);
   padding: 1rem 1.25rem;
   margin-bottom: 1.25rem;
 }
@@ -19,6 +19,6 @@
   margin-bottom: 0.75rem;
 }
 .component-gallery .component-demo-empty {
-  color: var(--bs-secondary-color, #6c757d);
+  color: color-mix(in oklab, var(--color-base-content, #6c757d) 60%, transparent);
   font-style: italic;
 }

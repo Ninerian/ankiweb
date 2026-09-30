@@ -181,35 +181,32 @@ export function promptRecordAudio(): void {
     const richHost = getEditingHost();
     if (!richHost) return;
 
-    let modal = document.getElementById("ankiweb-recorder-modal");
+    let modal = document.getElementById("ankiweb-recorder-modal") as HTMLDialogElement | null;
     if (!modal) {
-        modal = document.createElement("div");
+        modal = document.createElement("dialog") as HTMLDialogElement;
         modal.id = "ankiweb-recorder-modal";
-        modal.className = "modal fade show d-block";
-        modal.tabIndex = -1;
-        modal.style.backgroundColor = "rgba(0,0,0,0.5)";
+        modal.className = "modal";
         modal.innerHTML = `
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content">
-                    <div class="modal-header py-2">
-                        <h6 class="modal-title">Record Audio</h6>
-                        <button type="button" class="btn-close btn-sm" id="rec-close-btn"></button>
-                    </div>
-                    <div class="modal-body text-center py-3">
-                        <div class="mb-2 fs-4 fw-bold text-danger" id="rec-timer">00:00</div>
-                        <div class="d-flex justify-content-center gap-2">
-                            <button type="button" class="btn btn-danger btn-sm" id="rec-toggle-btn">Start</button>
-                            <button type="button" class="btn btn-primary btn-sm" id="rec-save-btn" disabled>Insert</button>
-                        </div>
+            <div class="modal-box max-w-xs">
+                <div class="flex justify-between items-center pb-2">
+                    <h3 class="font-bold text-base">Record Audio</h3>
+                    <button type="button" class="btn btn-sm btn-circle btn-ghost" id="rec-close-btn" aria-label="Close">✕</button>
+                </div>
+                <div class="text-center py-3">
+                    <div class="mb-2 text-2xl font-bold text-error" id="rec-timer">00:00</div>
+                    <div class="flex justify-center gap-2">
+                        <button type="button" class="btn btn-error btn-sm" id="rec-toggle-btn">Start</button>
+                        <button type="button" class="btn btn-primary btn-sm" id="rec-save-btn" disabled>Insert</button>
                     </div>
                 </div>
             </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+            </form>
         `;
         document.body.appendChild(modal);
-    } else {
-        modal.classList.add("d-block");
-        modal.classList.remove("d-none");
     }
+    modal.showModal();
 
     const timerEl = modal.querySelector<HTMLElement>("#rec-timer")!;
     const toggleBtn = modal.querySelector<HTMLButtonElement>("#rec-toggle-btn")!;
@@ -218,20 +215,25 @@ export function promptRecordAudio(): void {
 
     timerEl.textContent = "00:00";
     toggleBtn.textContent = "Start";
-    toggleBtn.className = "btn btn-danger btn-sm";
+    toggleBtn.className = "btn btn-error btn-sm";
     saveBtn.disabled = true;
 
     let seconds = 0;
     let timerId: number | null = null;
     recordedChunks = [];
 
-    const closeModal = () => {
+    modal.onclose = () => {
         if (activeMediaRecorder && activeMediaRecorder.state !== "inactive") {
             activeMediaRecorder.stop();
         }
-        if (timerId !== null) clearInterval(timerId);
-        modal!.classList.remove("d-block");
-        modal!.classList.add("d-none");
+        if (timerId !== null) {
+            clearInterval(timerId);
+            timerId = null;
+        }
+    };
+
+    const closeModal = () => {
+        modal!.close();
     };
 
     closeBtn.onclick = closeModal;
@@ -251,8 +253,7 @@ export function promptRecordAudio(): void {
                 };
                 activeMediaRecorder.start();
                 toggleBtn.textContent = "Stop";
-                toggleBtn.className = "btn btn-secondary btn-sm";
-
+                toggleBtn.className = "btn btn-neutral btn-sm";
                 seconds = 0;
                 if (timerId !== null) clearInterval(timerId);
                 timerId = window.setInterval(() => {
@@ -269,7 +270,7 @@ export function promptRecordAudio(): void {
             activeMediaRecorder.stop();
             if (timerId !== null) clearInterval(timerId);
             toggleBtn.textContent = "Start";
-            toggleBtn.className = "btn btn-danger btn-sm";
+            toggleBtn.className = "btn btn-error btn-sm";
         }
     };
 

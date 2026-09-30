@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, dark;
+}
+
+/* Class names are composed in Jinja templates, Python route modules and shell scripts. */
+@source "../ankiweb";
+@source "../shell_src";
+@source not "../ankiweb/web_assets";
+@source not "../ankiweb/shell/static";
+
+/* Global override so daisyUI .label wraps in option/setting lists */
+.label {
+  white-space: normal;
+}
+
+/* Neutralize daisyUI .card styling on user note HTML in the reviewer */
+body.card figure {
+  display: revert;
+  overflow: revert;
+  align-items: revert;
+  justify-content: revert;
+}
+
+@layer base {
+  /* Form selectors sit inside flex rows next to long labels; never let them collapse. */
+  .toggle,
+  .checkbox,
+  .radio {
+    flex-shrink: 0;
+  }
+
+  /* Ensure daisyUI components use 1px border-width even on pages loading vendored
+     stylesheets (e.g. /overview, /reviewer) that declare :root { --border: <color> }.
+     Element-level declarations beat inherited root values regardless of cascade layer. */
+  .btn,
+  .input,
+  .select,
+  .textarea,
+  .checkbox,
+  .radio,
+  .toggle,
+  .badge,
+  .table,
+  .join,
+  .join-item,
+  .alert,
+  .tabs,
+  .tab,
+  .modal-box,
+  .card,
+  .menu,
+  .dropdown-content,
+  .kbd,
+  .file-input,
+  .range,
+  .progress,
+  .collapse,
+  .fieldset,
+  .navbar,
+  .tooltip,
+  .list,
+  .stats,
+  .timeline {
+    --border: 1px;
+  }
+}

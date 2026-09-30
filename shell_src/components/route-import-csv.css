@@ -1,10 +1,10 @@
 /* Scoped CSS for Import CSV route */
 
 .route-import-csv .sticky-top-bar {
-  background: var(--canvas, var(--bs-body-bg, #fff));
+  background: var(--canvas, var(--color-base-100));
   z-index: 100;
   padding: 0.5rem 0.25rem;
-  border-bottom: 1px solid var(--border, #dee2e6);
+  border-bottom: 1px solid var(--color-base-300);
 }
 
 .route-import-csv .import-btn-inner {
@@ -32,19 +32,19 @@
 .route-import-csv .preview-table td {
   text-overflow: ellipsis;
   overflow: hidden;
-  border: 1px solid var(--border-subtle, #dee2e6);
+  border: 1px solid var(--border-subtle, var(--color-base-300));
   padding: 0.25rem 0.5rem;
   max-width: 15em;
 }
 
 .route-import-csv .preview-table th {
-  background: var(--border, #e9ecef);
+  background: var(--color-base-200);
   text-align: center;
   font-weight: 600;
 }
 
 .route-import-csv .preview-table tr:nth-child(2n) {
-  background: var(--canvas, #f8f9fa);
+  background: var(--color-base-200);
 }
 
 .route-import-csv .preview-table td {
@@ -58,7 +58,7 @@
 
 .route-import-csv .details-table th,
 .route-import-csv .details-table td {
-  border: 1px solid var(--border-subtle, #dee2e6);
+  border: 1px solid var(--border-subtle, var(--color-base-300));
   padding: 0.35rem 0.5rem;
   vertical-align: middle;
 }

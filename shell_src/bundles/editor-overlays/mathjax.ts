@@ -75,6 +75,6 @@ export function renderMathjaxSvg(tex: string, isBlock: boolean): { svgHtml: stri
         }
     }
     return {
-        svgHtml: `<span class="badge ${isBlock ? "bg-primary" : "bg-info"} font-monospace py-1 px-2">${escapeHtml(tex || "(empty)")}</span>`
+        svgHtml: `<span class="badge ${isBlock ? "badge-primary" : "badge-info"} font-mono py-1 px-2">${escapeHtml(tex || "(empty)")}</span>`
     };
 }

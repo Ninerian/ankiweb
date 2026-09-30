@@ -43,7 +43,8 @@
 }
 
 .anki-backend-progress-container .spinner.nightMode div,
-[data-bs-theme="dark"] .anki-backend-progress-container .spinner div {
+[data-theme="dark"] .anki-backend-progress-container .spinner div,
+.night-mode .anki-backend-progress-container .spinner div {
     border-top-color: #fff;
 }
 
@@ -73,7 +74,7 @@
     text-align: center;
     margin-top: 8px;
     font-size: 0.95rem;
-    color: var(--bs-body-color, #212529);
+    color: var(--color-base-content);
 }
 
 /* Shortcut indicator styling */

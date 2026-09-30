@@ -187,11 +187,11 @@ export class TagEditorController {
     private updateSelectionUI(): void {
         const hasSelection = this.selectedIndices.size > 0;
         if (hasSelection) {
-            this.selectedButton.classList.remove("d-none");
-            this.addButton.classList.add("d-none");
+            this.selectedButton.classList.remove("hidden");
+            this.addButton.classList.add("hidden");
         } else {
-            this.selectedButton.classList.add("d-none");
-            this.addButton.classList.remove("d-none");
+            this.selectedButton.classList.add("hidden");
+            this.addButton.classList.remove("hidden");
         }
 
         const chips = this.chipsContainer.querySelectorAll(".tag-chip");
@@ -610,7 +610,7 @@ export class TagEditorController {
 
         this.menu.style.top = `${rect.bottom - rootRect.top}px`;
         this.menu.style.left = `${rect.left - rootRect.left}px`;
-        this.menu.classList.remove("d-none");
+        this.menu.classList.remove("hidden");
     }
 
     private navigateSuggestions(delta: number): void {
@@ -643,7 +643,7 @@ export class TagEditorController {
     private closeAutocomplete(): void {
         this.suggestions = [];
         this.selectedSuggestionIndex = null;
-        this.menu.classList.add("d-none");
+        this.menu.classList.add("hidden");
         this.menu.innerHTML = "";
     }
 }

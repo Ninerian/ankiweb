@@ -8,7 +8,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: gray;
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
 }
 
 .route-card-info .stats-table {
@@ -62,16 +62,16 @@
 }
 
 .route-card-info .revlog-learn {
-    color: var(--state-new, #007bff);
+    color: var(--color-info);
 }
 
 .route-card-info .revlog-review {
-    color: var(--state-review, #28a745);
+    color: var(--color-success);
 }
 
 .route-card-info .revlog-relearn,
 .route-card-info .revlog-ease1 {
-    color: var(--state-learn, #dc3545);
+    color: var(--color-error);
 }
 
 @media only screen and (max-device-width: 480px) and (orientation: portrait) {
