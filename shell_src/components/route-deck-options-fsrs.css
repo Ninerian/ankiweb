@@ -1,0 +1,29 @@
+/* Route Deck Options FSRS styles */
+.route-deck-options-fsrs {
+    margin-top: 1rem;
+}
+
+.route-deck-options-fsrs .fsrs-weights-box {
+    font-family: var(--bs-font-monospace, monospace);
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 120px;
+    overflow-y: auto;
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.route-deck-options-fsrs .workload-badge {
+    font-size: 0.85rem;
+    padding: 0.35em 0.65em;
+}
+
+.route-deck-options-fsrs .fsrs-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}

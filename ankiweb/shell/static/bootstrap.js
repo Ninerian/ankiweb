@@ -3,6 +3,23 @@
   var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
   var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
+  // shell_src/browser_selector.ts
+  function addBrowserClasses() {
+    const ua = navigator.userAgent.toLowerCase();
+    const el = document.documentElement;
+    if (/ipad/.test(ua)) el.classList.add("ipad");
+    else if (/iphone/.test(ua)) el.classList.add("iphone");
+    else if (/android/.test(ua)) el.classList.add("android");
+    if (/ipad|iphone|ipod/.test(ua)) el.classList.add("ios");
+    if (/ipad|iphone|ipod|android/.test(ua)) el.classList.add("mobile");
+    else if (/linux/.test(ua)) el.classList.add("linux");
+    else if (/windows/.test(ua)) el.classList.add("win");
+    else if (/mac/.test(ua)) el.classList.add("mac");
+    if (/firefox\//.test(ua)) el.classList.add("firefox");
+    else if (/chrome\//.test(ua)) el.classList.add("chrome");
+    else if (/safari\//.test(ua)) el.classList.add("safari");
+  }
+
   // shell_src/pycmd_shim.ts
   var Bridge = class {
     constructor(ctx2) {
@@ -69,28 +86,12 @@
   var ctx = window.__ankiwebContext || new URLSearchParams(location.search).get("context") || "default";
   var bridge = new Bridge(ctx);
   window.__ankiwebBridge = bridge;
-  var SPA_NIGHT_PREFIXES = [
-    "/graphs",
-    "/deck-options",
-    "/change-notetype",
-    "/import-csv",
-    "/import-anki-package",
-    "/image-occlusion"
-  ];
   function nightOn() {
     return location.hash.includes("night") || localStorage.getItem("ankiweb-night") === "1";
   }
-  function withNight(url) {
-    if (!nightOn() || url.includes("#")) return url;
-    const path = url.split("?")[0];
-    if (SPA_NIGHT_PREFIXES.some((p) => path === p || path.startsWith(p + "/"))) {
-      return url + "#night";
-    }
-    return url;
-  }
   bridge.registerCalls({
     ankiwebNavigate: (url) => {
-      location.href = withNight(String(url));
+      location.href = String(url);
     },
     ankiwebReload: () => {
       location.reload();
@@ -147,25 +148,34 @@
       location.reload();
     }
   });
+  addBrowserClasses();
   if (nightOn()) {
     document.documentElement.classList.add("night-mode");
     document.documentElement.setAttribute("data-bs-theme", "dark");
   }
-  window.addEventListener("DOMContentLoaded", () => {
-    if (!nightOn()) return;
-    document.querySelectorAll("a[href]").forEach((a) => {
-      const el = a;
-      const href = el.getAttribute("href") || "";
-      if (href.startsWith("/")) {
-        const patched = withNight(href);
-        if (patched !== href) el.setAttribute("href", patched);
-      }
-    });
-  });
   window.ankiwebToggleNight = () => {
     const on = localStorage.getItem("ankiweb-night") === "1";
     localStorage.setItem("ankiweb-night", on ? "0" : "1");
     location.reload();
   };
+  function tooltipTargets(node) {
+    if (!(node instanceof Element)) return [];
+    const sel = '[data-bs-toggle="tooltip"], .editor-toolbar [title], .field-action-btn[title]';
+    return [...node.matches(sel) ? [node] : [], ...node.querySelectorAll(sel)];
+  }
+  function createTooltip(Tooltip, el) {
+    Tooltip.getOrCreateInstance(el, el.hasAttribute("data-bs-toggle") ? { container: "body" } : { container: "body", trigger: "hover" });
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+    const Tooltip = window.bootstrap?.Tooltip;
+    if (!Tooltip) return;
+    tooltipTargets(document.body).forEach((el) => createTooltip(Tooltip, el));
+    new MutationObserver((records) => {
+      for (const r of records) {
+        r.removedNodes.forEach((n) => tooltipTargets(n).forEach((el) => Tooltip.getInstance(el)?.dispose()));
+        r.addedNodes.forEach((n) => tooltipTargets(n).forEach((el) => createTooltip(Tooltip, el)));
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   window.addEventListener("load", () => bridge.ready());
 })();

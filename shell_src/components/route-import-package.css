@@ -1,0 +1,133 @@
+/* Scoped CSS for Import Package and Import Log route */
+
+.route-import-package .outer {
+  width: 100%;
+  overflow: auto;
+  max-height: 400px;
+  margin: 0 auto;
+}
+
+.route-import-package .table {
+  border-collapse: collapse;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.route-import-package .table th,
+.route-import-package .table td {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle, #dee2e6);
+  padding: 0.25rem 0.5rem;
+  max-width: 15em;
+  vertical-align: middle;
+}
+
+.route-import-package .table th {
+  background: var(--border, #e9ecef);
+  text-align: center;
+}
+
+.route-import-package .table thead {
+  position: sticky;
+  top: -1px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 1;
+}
+
+.route-import-package .details-table {
+  margin: 0.5rem 0;
+}
+
+.route-import-package .details-table tr {
+  height: 40px;
+  text-align: center;
+}
+
+.route-import-package .details-table .index-cell {
+  width: 3em;
+}
+
+.route-import-package .details-table .status-cell {
+  width: 5em;
+}
+
+.route-import-package .details-table .contents-cell {
+  text-align: left;
+}
+
+.route-import-package .details-table .search-cell {
+  width: 3em;
+}
+
+.route-import-package .search-icon {
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.route-import-package .search-icon:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.route-import-package li.summary-item {
+  list-style-type: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.route-import-package .pre-import-page {
+  margin: 0 auto;
+}
+
+.route-import-package .import {
+  margin: 0.2rem 0.75rem;
+}
+
+.route-import-package .filename {
+  word-break: break-word;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.route-import-package .sticky-top-bar {
+  background: var(--canvas, var(--bs-body-bg, #fff));
+  z-index: 100;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--border, #dee2e6);
+}
+
+.route-import-package .error-box {
+  background-color: var(--window-bg, var(--bs-body-bg, #fff));
+  border: 1px solid var(--error-fg, #dc3545);
+  color: var(--fg, #212529);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  max-width: 400px;
+  margin: 1rem auto;
+  text-align: center;
+  box-shadow: 0 0 6px #00000026;
+}
+
+.route-import-package .error-text {
+  color: var(--error-fg, #dc3545);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.route-import-package .spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+}

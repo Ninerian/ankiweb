@@ -1,0 +1,189 @@
+/* Scoped styles for AnkiWeb Tag Editor, ported from upstream Svelte TagEditor.svelte */
+
+.tag-editor-root {
+  position: relative;
+  width: 100%;
+}
+
+.tag-editor-root .tag-editor {
+  display: flex;
+  flex-grow: 1;
+  flex-flow: row wrap;
+  align-items: center;
+  background: var(--canvas-elevated, #fff);
+  border: 1px solid var(--border, #ced4da);
+  border-radius: var(--border-radius, 4px);
+  padding: 4px 6px;
+  min-height: 38px;
+}
+
+.tag-editor-root .tag-editor:focus-within {
+  outline-offset: -1px;
+  outline: 2px solid var(--border-focus, #86b7fe);
+}
+
+.tag-editor-root .tag-options-button {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+
+.tag-editor-root .tag-add-button {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  line-height: 1;
+  user-select: none;
+}
+
+.tag-editor-root .tag-add-button .tag-icon-add-hover {
+  display: none;
+}
+
+.tag-editor-root .tag-add-button:hover .tag-icon-add {
+  display: none;
+}
+
+.tag-editor-root .tag-add-button:hover .tag-icon-add-hover {
+  display: inline-block;
+}
+
+.tag-editor-root .tag-add-button svg {
+  cursor: pointer;
+  fill: currentColor;
+  opacity: 0.6;
+}
+
+.tag-editor-root .tag-add-button svg:hover {
+  opacity: 1;
+}
+
+.tag-editor-root .tag-add-button .tags-info {
+  margin-left: 0.35rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tag-editor-root .tags-chips-container {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-editor-root .tag-relative {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tag-editor-root .tag-chip {
+  -webkit-appearance: none;
+  cursor: pointer;
+  border: 1px solid var(--border, #ccc) !important;
+  border-radius: 4px;
+  background: var(--button-bg, #f8f9fa);
+  color: var(--fg, #212529);
+  vertical-align: middle;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.3;
+  user-select: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.tag-editor-root .tag-chip:hover {
+  background: var(--button-hover-bg, #e9ecef);
+}
+
+.tag-editor-root .tag-chip.selected {
+  box-shadow: 0 0 0 2px var(--border-focus, #0d6efd);
+  border-color: var(--border-focus, #0d6efd) !important;
+  background: rgba(13, 110, 253, 0.1);
+}
+
+.tag-editor-root .tag-chip.flashing {
+  animation: ankiweb-tag-flash 0.3s linear;
+}
+
+@keyframes ankiweb-tag-flash {
+  0% { filter: invert(0); }
+  50% { filter: invert(0.4); }
+  100% { filter: invert(0); }
+}
+
+.tag-editor-root .tag-chip .tag-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.tag-editor-root .tag-chip .tag-delete-btn:hover {
+  opacity: 1;
+}
+
+.tag-editor-root .tag-input-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tag-editor-root .tag-input {
+  color: var(--fg, #212529);
+  background: transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  outline: none;
+  border: 1px solid transparent !important;
+  margin: 0;
+  padding: 2px 4px;
+  min-width: 60px;
+}
+
+.tag-editor-root .tag-spacer {
+  cursor: text;
+  flex-grow: 1;
+  align-self: stretch;
+  min-width: 30px;
+  height: 100%;
+}
+
+.tag-editor-root .autocomplete-menu {
+  position: absolute;
+  z-index: 1050;
+  background: var(--canvas-elevated, #fff);
+  border: 1px solid var(--border, #ccc);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: max-content;
+  min-width: 150px;
+  max-width: 350px;
+  margin-top: 2px;
+}
+
+.tag-editor-root .autocomplete-item {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg, #212529);
+}
+
+.tag-editor-root .autocomplete-item:hover,
+.tag-editor-root .autocomplete-item.active {
+  background-color: #e9ecef;
+}
+
+.tag-editor-root .autocomplete-item.selected {
+  background-color: var(--button-primary-bg, #0d6efd);
+  color: #fff;
+}

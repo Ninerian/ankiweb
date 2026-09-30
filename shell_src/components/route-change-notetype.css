@@ -1,0 +1,22 @@
+/* Scoped CSS for Change Notetype route */
+.route-change-notetype .arrow-container {
+  margin: 0 0.5em;
+  display: flex;
+  align-items: center;
+}
+
+.route-change-notetype .save-btn-inner {
+  margin: 0.15rem 0.75rem;
+}
+
+.route-change-notetype .clickable-collapse {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.route-change-notetype .sticky-top-bar {
+  background: var(--canvas, var(--bs-body-bg, #fff));
+  z-index: 100;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--border, #dee2e6);
+}

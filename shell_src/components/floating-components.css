@@ -1,0 +1,140 @@
+/* shell_src/components/floating-components.css
+ * Ported from upstream ts/lib/components/WithFloating.svelte, Select.svelte, and ts/lib/sass/_button-mixins.scss
+ * Batch: floating
+ */
+
+/* ==========================================================================
+   WithFloating (.floating, .floating-reference, .floating-arrow)
+   ========================================================================== */
+
+span.floating-reference {
+    line-height: 1;
+    display: inline-block;
+}
+
+div.floating-reference {
+    display: block;
+}
+
+.floating {
+    position: absolute;
+    border-radius: var(--border-radius, 5px);
+    z-index: 890;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.floating.show {
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.floating-arrow {
+    position: absolute;
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   Select (ts/lib/components/Select.svelte)
+   ========================================================================== */
+
+.select-container {
+    width: 100%;
+    pointer-events: all;
+    cursor: pointer;
+    -webkit-appearance: none;
+    border-radius: var(--border-radius, 4px);
+    line-height: 1.5;
+    height: 100%;
+    min-height: var(--buttons-size, 26px);
+    position: relative;
+    display: flex;
+    flex-flow: row;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--button-bg, var(--bs-tertiary-bg, #f3eee5));
+    border: 1px solid var(--border-subtle, var(--bs-border-color, #ddd6c8));
+    border-bottom-color: var(--shadow, rgba(0, 0, 0, 0.2));
+    color: var(--fg, var(--bs-body-color, #26241f));
+    user-select: none;
+    box-sizing: border-box;
+}
+
+.select-container:hover,
+.select-container.hover {
+    background: linear-gradient(
+        180deg,
+        var(--button-gradient-start, #ffffff) 0%,
+        var(--button-gradient-end, var(--bs-tertiary-bg, #ebe4d8)) 100%
+    );
+    border: 1px solid var(--shadow, rgba(0, 0, 0, 0.2));
+}
+
+.select-container:active,
+.select-container:focus-visible {
+    outline: none;
+    box-shadow: inset 0 calc(var(--buttons-size, 10px) / 15)
+        calc(var(--buttons-size, 10px) / 5) rgba(0, 0, 0, 0.35);
+    border-color: var(--border-focus, var(--bs-primary, #185f66));
+}
+
+.select-container.disabled,
+.select-container[disabled] {
+    pointer-events: none;
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: var(--fg-disabled, var(--bs-secondary-color, #888));
+    box-shadow: none !important;
+    background: var(--button-gradient-end, var(--bs-tertiary-bg, #ebe4d8));
+    border-bottom-color: var(--border-subtle, var(--bs-border-color, #ddd6c8));
+}
+
+.select-container.rtl {
+    direction: rtl;
+}
+
+.select-container .inner {
+    flex-grow: 1;
+    position: relative;
+    min-height: 1.5rem;
+    overflow: hidden;
+}
+
+.select-container .inner .label {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 0.5rem;
+    left: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+.select-container.rtl .inner .label {
+    text-align: right;
+}
+
+.select-container .chevron {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.35rem;
+    border-left: 1px solid var(--border-subtle, var(--bs-border-color, #ddd6c8));
+}
+
+:global([dir="rtl"]) .select-container .chevron,
+[dir="rtl"] .select-container .chevron,
+.select-container.rtl .chevron {
+    border-left: none;
+    border-right: 1px solid var(--border-subtle, var(--bs-border-color, #ddd6c8));
+}
+
+/* Focused option in listbox (via Arrow keys / APG combobox) */
+.select-option-item.focus {
+    background: var(--bs-secondary-bg, #e9ecef);
+    color: var(--bs-emphasis-color, #000);
+    outline: none;
+}

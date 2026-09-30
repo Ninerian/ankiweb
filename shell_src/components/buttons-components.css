@@ -1,0 +1,342 @@
+/* Buttons, Icons, Badge, FloatingArrow component styles
+ * Ported from upstream ts/lib/components/ and ts/lib/sass/
+ * Batch: buttons
+ */
+
+/* ==========================================================================
+   CSS Variables & Base Fallbacks for Buttons & Icons
+   ========================================================================== */
+:root {
+  --buttons-size: 26px;
+  --button-bg: var(--bs-tertiary-bg, #f3eee5);
+  --button-primary-bg: var(--bs-primary, #185f66);
+  --button-gradient-start: #ffffff;
+  --button-gradient-end: var(--bs-tertiary-bg, #ebe4d8);
+  --button-primary-gradient-start: var(--bs-primary, #185f66);
+  --button-primary-gradient-end: var(--bs-primary-text-emphasis, #104449);
+  --border-subtle: var(--bs-border-color, #ddd6c8);
+  --border-focus: var(--bs-focus-ring-color, #185f66);
+  --border-radius: var(--bs-border-radius, 4px);
+  --border-left-radius: var(--bs-border-radius, 4px);
+  --border-right-radius: var(--bs-border-radius, 4px);
+  --shadow: rgba(0, 0, 0, 0.15);
+  --shadow-focus: rgba(24, 95, 102, 0.25);
+  --fg: var(--bs-body-color, #26241f);
+  --fg-disabled: var(--bs-secondary-color, #8c887f);
+  --highlight-bg: var(--bs-primary, #185f66);
+  --highlight-fg: #ffffff;
+  --canvas-elevated: var(--bs-body-bg, #ffffff);
+  --dropdown-font-size: 0.875rem;
+}
+
+[data-bs-theme="dark"],
+.night-mode {
+  --button-bg: var(--bs-tertiary-bg, #282622);
+  --button-primary-bg: var(--bs-primary, #52b7a8);
+  --button-gradient-start: #32302a;
+  --button-gradient-end: #24221e;
+  --button-primary-gradient-start: var(--bs-primary, #52b7a8);
+  --button-primary-gradient-end: #3a8277;
+  --border-subtle: var(--bs-border-color, #44413b);
+  --border-focus: var(--bs-focus-ring-color, #52b7a8);
+  --shadow: rgba(0, 0, 0, 0.4);
+  --shadow-focus: rgba(82, 183, 168, 0.35);
+  --fg: var(--bs-body-color, #e8e5de);
+  --fg-disabled: var(--bs-secondary-color, #827e74);
+  --highlight-bg: var(--bs-primary, #52b7a8);
+  --highlight-fg: #1e1d1a;
+  --canvas-elevated: var(--bs-body-bg, #1e1d1a);
+}
+
+/* ==========================================================================
+   Icon & SVG
+   ========================================================================== */
+svg.anki-icon {
+  display: inline-block;
+  vertical-align: middle;
+  fill: currentColor;
+}
+
+/* ==========================================================================
+   IconConstrain
+   ========================================================================== */
+span.icon-constrain {
+  display: inline-block;
+  position: relative;
+  vertical-align: var(--icon-align, middle);
+
+  /* constrain icon */
+  min-width: calc((var(--buttons-size, 22px) - 2px) * var(--width-multiplier, 1));
+  height: calc(var(--buttons-size, 22px) - 2px);
+}
+
+span.icon-constrain > svg,
+span.icon-constrain > img {
+  position: absolute;
+  width: var(--icon-size, 100%);
+  height: var(--icon-size, 100%);
+  top: calc((100% - var(--icon-size, 100%)) / 2);
+  bottom: calc((100% - var(--icon-size, 100%)) / 2);
+  left: calc((100% - var(--icon-size, 100%)) / 2);
+  right: calc((100% - var(--icon-size, 100%)) / 2);
+
+  fill: currentColor;
+  vertical-align: unset;
+}
+
+span.icon-constrain.flip-x > svg,
+span.icon-constrain.flip-x > img {
+  transform: scaleX(-1);
+}
+
+/* ==========================================================================
+   IconButton
+   ========================================================================== */
+button.icon-button {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  border-bottom-color: var(--shadow);
+  background: var(--button-bg);
+  color: var(--fg);
+  border-top-left-radius: var(--border-left-radius);
+  border-bottom-left-radius: var(--border-left-radius);
+  border-top-right-radius: var(--border-right-radius);
+  border-bottom-right-radius: var(--border-right-radius);
+  padding: 0 var(--padding-inline, 0);
+  font-size: var(--font-size, 14px);
+  height: var(--buttons-size);
+  min-width: calc(var(--buttons-size) * 0.75);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+button.icon-button:hover:not([disabled]) {
+  background: linear-gradient(
+    180deg,
+    var(--button-gradient-start) 0%,
+    var(--button-gradient-end) 100%
+  );
+  border: 1px solid var(--shadow);
+}
+
+button.icon-button:active:not([disabled]) {
+  box-shadow: inset 0 calc(var(--buttons-size, 10px) / 15) calc(var(--buttons-size, 10px) / 5) rgba(0, 0, 0, 0.35);
+  border-color: var(--border-subtle);
+}
+
+button.icon-button.active {
+  box-shadow: inset 0 calc(var(--buttons-size, 10px) / 15) calc(var(--buttons-size, 10px) / 5) rgba(0, 0, 0, 0.35);
+  background: var(--button-primary-bg);
+  color: #ffffff;
+  border-color: var(--border-focus);
+}
+
+button.icon-button.primary {
+  border: none;
+  background: var(--button-primary-bg);
+  color: #ffffff;
+}
+
+button.icon-button.primary:hover:not([disabled]) {
+  background: linear-gradient(
+    180deg,
+    var(--button-primary-gradient-start) 0%,
+    var(--button-primary-gradient-end) 100%
+  );
+}
+
+button.icon-button[disabled],
+button.icon-button[disabled]:hover {
+  cursor: not-allowed;
+  color: var(--fg-disabled);
+  box-shadow: none !important;
+  background: var(--button-gradient-end);
+  border-bottom-color: var(--border-subtle);
+  opacity: 0.65;
+}
+
+/* ==========================================================================
+   LabelButton
+   ========================================================================== */
+button.label-button {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  border-bottom-color: var(--shadow);
+  background: var(--button-bg);
+  color: var(--fg);
+  border-top-left-radius: var(--border-left-radius);
+  border-bottom-left-radius: var(--border-left-radius);
+  border-top-right-radius: var(--border-right-radius);
+  border-bottom-right-radius: var(--border-right-radius);
+  white-space: nowrap;
+  padding: 0 calc(var(--buttons-size) / 3);
+  font-size: var(--font-size, 14px);
+  width: auto;
+  height: var(--buttons-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+button.label-button.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+button.label-button:hover:not([disabled]) {
+  background: linear-gradient(
+    180deg,
+    var(--button-gradient-start) 0%,
+    var(--button-gradient-end) 100%
+  );
+  border: 1px solid var(--shadow);
+}
+
+button.label-button:active:not([disabled]) {
+  box-shadow: inset 0 calc(var(--buttons-size, 10px) / 15) calc(var(--buttons-size, 10px) / 5) rgba(0, 0, 0, 0.35);
+  border-color: var(--border-subtle);
+}
+
+button.label-button.active {
+  box-shadow: inset 0 calc(var(--buttons-size, 10px) / 15) calc(var(--buttons-size, 10px) / 5) rgba(0, 0, 0, 0.35);
+  background: var(--button-primary-bg);
+  color: #ffffff;
+  border-color: var(--border-focus);
+}
+
+button.label-button.primary {
+  border: none;
+  background: var(--button-primary-bg);
+  color: #ffffff;
+}
+
+button.label-button.primary:hover:not([disabled]) {
+  background: linear-gradient(
+    180deg,
+    var(--button-primary-gradient-start) 0%,
+    var(--button-primary-gradient-end) 100%
+  );
+}
+
+button.label-button[disabled],
+button.label-button[disabled]:hover {
+  cursor: not-allowed;
+  color: var(--fg-disabled);
+  box-shadow: none !important;
+  background: var(--button-gradient-end);
+  border-bottom-color: var(--border-subtle);
+  opacity: 0.65;
+}
+
+/* ==========================================================================
+   DropdownItem
+   ========================================================================== */
+button.dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0.25rem 1rem;
+  white-space: nowrap;
+  font-size: var(--dropdown-font-size, small);
+
+  background: none;
+  box-shadow: none !important;
+  border: none;
+  border-radius: 0;
+  color: var(--fg);
+  cursor: pointer;
+  text-align: left;
+}
+
+button.dropdown-item:hover {
+  border: none;
+}
+
+button.dropdown-item:hover:not([disabled]) {
+  background: var(--highlight-bg);
+  color: var(--highlight-fg);
+}
+
+button.dropdown-item.focus {
+  background: var(--highlight-bg);
+  color: var(--highlight-fg);
+}
+
+button.dropdown-item[disabled] {
+  cursor: default;
+  color: var(--fg-disabled);
+  background: none;
+  opacity: 0.5;
+}
+
+/* selection highlight */
+button.dropdown-item:not(.rtl) {
+  border-left: 3px solid transparent;
+}
+button.dropdown-item.rtl {
+  border-right: 3px solid transparent;
+  direction: rtl;
+  text-align: right;
+}
+button.dropdown-item.active {
+  background: var(--highlight-bg);
+  color: var(--highlight-fg);
+}
+button.dropdown-item.active:not(.rtl) {
+  border-left-color: var(--border-focus);
+}
+button.dropdown-item.active.rtl {
+  border-right-color: var(--border-focus);
+}
+
+/* ==========================================================================
+   Badge
+   ========================================================================== */
+button.badge {
+  color: var(--badge-color, inherit);
+  border: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button.badge:hover,
+button.badge:active {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+button.badge.dropdown-toggle::after {
+  display: none;
+}
+
+/* ==========================================================================
+   FloatingArrow
+   ========================================================================== */
+div.arrow {
+  background-color: var(--canvas-elevated);
+  width: 10px;
+  height: 10px;
+  z-index: 60;
+
+  /* outer border */
+  border: 1px solid var(--border-subtle);
+
+  /* Rotate the box to indicate the different directions */
+  border-right: none;
+  border-bottom: none;
+  box-sizing: border-box;
+}

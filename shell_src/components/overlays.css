@@ -1,0 +1,211 @@
+/* Overlays batch: Modal, WithOverlay, Popover, WithTooltip, HelpModal
+ * Ported from upstream ts/lib/components/Modal.svelte, WithOverlay.svelte,
+ * Popover.svelte, WithTooltip.svelte, HelpModal.svelte and ts/lib/sass/
+ */
+
+/* ==========================================================================
+   CSS Variables & Fallbacks
+   ========================================================================== */
+:root {
+  --canvas: var(--bs-body-bg, #faf7f2);
+  --canvas-elevated: var(--bs-body-bg, #ffffff);
+  --canvas-inset: var(--bs-tertiary-bg, #f3eee5);
+  --fg: var(--bs-body-color, #26241f);
+  --fg-subtle: var(--bs-secondary-color, #5c584f);
+  --border-radius: var(--bs-border-radius, 5px);
+  --border-radius-medium: 10px;
+  --border-subtle: var(--bs-border-color, #ddd6c8);
+  --border-focus: var(--bs-primary, #185f66);
+}
+
+[data-bs-theme="dark"],
+.night-mode {
+  --canvas: var(--bs-body-bg, #1e1d1a);
+  --canvas-elevated: var(--bs-body-bg, #282622);
+  --canvas-inset: var(--bs-tertiary-bg, #24221e);
+  --fg: var(--bs-body-color, #e8e5de);
+  --fg-subtle: var(--bs-secondary-color, #8c887f);
+  --border-subtle: var(--bs-border-color, #44413b);
+  --border-focus: var(--bs-primary, #52b7a8);
+}
+
+/* ==========================================================================
+   Modal (ts/lib/components/Modal.svelte)
+   ========================================================================== */
+.modal {
+  z-index: 1066;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  background-color: var(--canvas, var(--bs-body-bg, #faf7f2));
+  color: var(--fg, var(--bs-body-color, #26241f));
+  border-radius: var(--border-radius-medium, 10px);
+  border: 1px solid var(--border-subtle, var(--bs-border-color, #ddd6c8));
+}
+
+/* ==========================================================================
+   WithOverlay (ts/lib/components/WithOverlay.svelte)
+   ========================================================================== */
+.overlay-reference {
+  position: relative;
+  display: block;
+}
+
+span.overlay-reference {
+  display: inline-block;
+}
+
+.overlay {
+  position: absolute;
+  border-radius: var(--border-radius);
+  z-index: 40;
+}
+
+/* Placement positioning helpers when Popper is not dynamically applied */
+.overlay[data-placement="bottom"],
+.overlay.placement-bottom {
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+}
+
+.overlay[data-placement="top"],
+.overlay.placement-top {
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+}
+
+.overlay[data-placement="left"],
+.overlay.placement-left {
+  top: 0;
+  right: 100%;
+  margin-right: 4px;
+}
+
+.overlay[data-placement="right"],
+.overlay.placement-right {
+  top: 0;
+  left: 100%;
+  margin-left: 4px;
+}
+
+/* ==========================================================================
+   Popover (ts/lib/components/Popover.svelte + ts/lib/sass/elevation.scss)
+   ========================================================================== */
+.popover-wrapper {
+  min-height: var(--min-height, 0);
+  position: relative;
+}
+
+.popover {
+  /* Material elevation dp 8 */
+  box-shadow: 0px 8px 10px -5px rgba(20, 20, 20, 0.2),
+              0px 16px 24px 2px rgba(20, 20, 20, 0.14),
+              0px 6px 30px 5px rgba(20, 20, 20, 0.12);
+
+  align-self: flex-start;
+  border-radius: var(--border-radius, 5px);
+  background-color: var(--canvas-elevated, var(--bs-card-bg, #ffffff));
+  color: var(--fg, var(--bs-body-color, #26241f));
+  border: 1px solid var(--border-subtle, var(--bs-border-color, #ddd6c8));
+
+  min-width: var(--popover-width, 1rem);
+  max-width: 95vw;
+
+  /* Needs this much space for FloatingArrow to be positioned */
+  padding: var(--popover-padding-block, 6px) var(--popover-padding-inline, 6px);
+}
+
+.popover.scrollable {
+  max-height: 400px;
+  overflow: hidden auto;
+}
+
+.popover.hidden {
+  visibility: hidden;
+}
+
+/* Alignment determines slide animation direction */
+.popover.top,
+.popover.left {
+  align-self: flex-end;
+}
+
+.popover.bottom,
+.popover.right {
+  align-self: flex-start;
+}
+
+/* Embedded floating arrow in popover */
+.popover > .arrow,
+.popover-wrapper > .arrow {
+  position: absolute;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   WithTooltip (ts/lib/components/WithTooltip.svelte)
+   ========================================================================== */
+body {
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   HelpModal (ts/lib/components/HelpModal.svelte)
+   ========================================================================== */
+#nav {
+  margin-bottom: 1.5rem;
+}
+
+.modal-title {
+  margin-inline-end: 0.75rem;
+}
+
+.invert {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+#nav ul,
+.help-modal-nav ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+#nav li button,
+.help-modal-nav li button {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  text-decoration: none;
+  text-align: start;
+  min-width: 250px;
+  background-color: var(--canvas);
+  border: 1px solid transparent;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+#nav li button:hover,
+.help-modal-nav li button:hover {
+  background-color: var(--canvas-inset);
+}
+
+#nav li button.active,
+.help-modal-nav li button.active {
+  border-inline-start: 4px solid var(--border-focus);
+}
+
+.modal-header.help-modal-header,
+.help-modal .modal-header {
+  flex-direction: column;
+  align-items: normal;
+  padding-bottom: 0;
+}
+
+.chapter-redirect {
+  width: 100%;
+  color: var(--fg-subtle);
+  font-size: small;
+}

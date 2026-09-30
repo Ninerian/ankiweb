@@ -66,6 +66,24 @@ html[data-bs-theme="light"] body,
 
   /* Focus ring */
   --bs-focus-ring-color: rgba(24, 95, 102, 0.25);
+
+  /* Upstream / component semantic aliases for light theme */
+  --canvas: var(--bs-body-bg, #faf7f2);
+  --canvas-elevated: #ffffff;
+  --canvas-inset: var(--bs-tertiary-bg, #f3eee5);
+  --canvas-subtle: #f8f9fa;
+  --fg: var(--bs-body-color, #26241f);
+  --fg-default: var(--bs-body-color, #26241f);
+  --fg-subtle: var(--bs-secondary-color, #5c584f);
+  --fg-disabled: var(--bs-tertiary-color, #7d786d);
+  --border: var(--bs-border-color, #ddd6c8);
+  --border-subtle: var(--bs-border-color, #ddd6c8);
+  --border-focus: var(--bs-primary, #185f66);
+  --border-strong: var(--bs-primary, #185f66);
+  --bs-card-bg: #ffffff;
+  --bs-card-color: var(--bs-body-color);
+  --bs-popover-bg: #ffffff;
+  --bs-popover-border-color: var(--bs-border-color);
 }
 
 :root[data-bs-theme="dark"],
@@ -121,6 +139,30 @@ html.night-mode body,
   --bs-danger-border-subtle: #63262b;
 
   --bs-warning: #dca134;
+
+  /* Upstream / component semantic aliases for dark theme */
+  --canvas: var(--bs-body-bg, #1e1d1a);
+  --canvas-elevated: #282622;
+  --canvas-inset: var(--bs-tertiary-bg, #24221e);
+  --canvas-subtle: #24221e;
+  --fg: var(--bs-body-color, #e8e5de);
+  --fg-default: var(--bs-body-color, #e8e5de);
+  --fg-subtle: var(--bs-secondary-color, #a8a49a);
+  --fg-disabled: var(--bs-tertiary-color, #827e74);
+  --border: var(--bs-border-color, #423f38);
+  --border-subtle: var(--bs-border-color, #423f38);
+  --border-focus: var(--bs-primary, #52b7a8);
+  --border-strong: var(--bs-primary, #52b7a8);
+  --bs-card-bg: #282622;
+  --bs-card-color: var(--bs-body-color);
+  --bs-popover-bg: #282622;
+  --bs-popover-border-color: var(--bs-border-color);
+  --bs-secondary-bg: #32302a;
+  --bs-tertiary-bg: #282622;
+  --bs-light-rgb: 40, 38, 34;
+  --bs-light-bg-subtle: #282622;
+  --bs-light-border-subtle: #423f38;
+  --bs-light-text-emphasis: #e8e5de;
   --bs-warning-rgb: 220, 161, 52;
   --bs-warning-text-emphasis: #e7ba63;
   --bs-warning-bg-subtle: #2c220c;
@@ -220,6 +262,61 @@ button.btn-outline-primary {
   --bs-btn-disabled-color: #52b7a8;
   --bs-btn-disabled-bg: transparent;
   --bs-btn-disabled-border-color: #52b7a8;
+}
+
+/* Outline secondary buttons */
+.btn-outline-secondary,
+button.btn-outline-secondary {
+  --bs-btn-color: var(--bs-secondary-color, #5c584f);
+  --bs-btn-border-color: var(--bs-border-color, #ddd6c8);
+  --bs-btn-hover-color: var(--bs-body-color, #26241f);
+  --bs-btn-hover-bg: var(--bs-secondary-bg, #ebe4d8);
+  --bs-btn-hover-border-color: var(--bs-secondary-color, #5c584f);
+  --bs-btn-active-color: var(--bs-body-color, #26241f);
+  --bs-btn-active-bg: var(--bs-tertiary-bg, #f3eee5);
+  --bs-btn-active-border-color: var(--bs-secondary-color, #5c584f);
+  --bs-btn-disabled-color: var(--bs-tertiary-color, #7d786d);
+  --bs-btn-disabled-border-color: var(--bs-border-color, #ddd6c8);
+}
+
+[data-bs-theme="dark"] .btn-outline-secondary,
+[data-bs-theme="dark"] button.btn-outline-secondary,
+html.night-mode .btn-outline-secondary,
+html.night-mode button.btn-outline-secondary {
+  --bs-btn-color: #c4c0b6;
+  --bs-btn-border-color: #555148;
+  --bs-btn-hover-color: #faf8f5;
+  --bs-btn-hover-bg: #32302a;
+  --bs-btn-hover-border-color: #a8a49a;
+  --bs-btn-active-color: #faf8f5;
+  --bs-btn-active-bg: #282622;
+  --bs-btn-active-border-color: #a8a49a;
+  --bs-btn-disabled-color: #827e74;
+  --bs-btn-disabled-border-color: #423f38;
+}
+
+/* Global Card & Container theme integration */
+.card,
+.graph-card,
+.section-card,
+.titled-container {
+  background-color: var(--bs-card-bg, var(--canvas-elevated, var(--bs-body-bg)));
+  color: var(--bs-card-color, var(--fg, var(--bs-body-color)));
+  border-color: var(--bs-border-color, var(--border, #ddd6c8));
+}
+
+/* Alert light and bg-light in dark mode */
+[data-bs-theme="dark"] .bg-light,
+html.night-mode .bg-light {
+  background-color: var(--bs-tertiary-bg, #282622) !important;
+  color: var(--bs-body-color, #e8e5de) !important;
+}
+
+[data-bs-theme="dark"] .alert-light,
+html.night-mode .alert-light {
+  background-color: var(--bs-tertiary-bg, #282622) !important;
+  border-color: var(--bs-border-color, #423f38) !important;
+  color: var(--bs-body-color, #e8e5de) !important;
 }
 
 /* Form controls: focus ring matching theme primary */
@@ -828,6 +925,13 @@ body.context-add {
   flex-direction: column !important;
   height: 100vh !important;
   overflow: hidden !important;
+}
+
+/* The navbar (and the More dropdown inside it) must stack above page-level sticky bars, which
+   also use Bootstrap's .sticky-top z-index (1020) and come later in the DOM. Stay below the
+   bottom nav (1030), the More sheet (1045) and modals/tooltips. */
+#ankiweb-toolbar {
+  z-index: 1029;
 }
 
 body.context-add > #ankiweb-toolbar {

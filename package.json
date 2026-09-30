@@ -1,9 +1,16 @@
 {
   "name": "ankiweb-shell",
   "private": true,
-  "devDependencies": { "esbuild": "^0.21.0", "typescript": "^5.4.0" },
+  "devDependencies": {
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0"
+  },
   "scripts": {
     "setup": "uv run python tools/fetch_web_assets.py && uv run python tools/fetch_datastar.py && uv run python tools/fetch_bootstrap.py && npm run build",
     "build": "node tools/build_shell.mjs"
+  },
+  "dependencies": {
+    "@codemirror/lang-html": "6.4.12",
+    "codemirror": "6.0.2"
   }
 }
