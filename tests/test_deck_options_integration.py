@@ -57,5 +57,5 @@ def test_deck_options_page_boots(live_server_dopts):
         assert not errors, errors
         # Concrete assertion: Preset selector exists and Daily limits section rendered
         assert page.locator("#presetSelector").is_visible()
-        assert page.locator("button.nav-link", has_text="Daily Limits").is_visible()
+        assert page.locator("button.tab", has_text="Daily Limits").is_visible()
         browser.close()
