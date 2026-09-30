@@ -2,12 +2,16 @@
   "name": "ankiweb-shell",
   "private": true,
   "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "daisyui": "5.7.47",
     "esbuild": "^0.21.0",
+    "tailwindcss": "4.3.3",
     "typescript": "^5.4.0"
   },
   "scripts": {
-    "setup": "uv run python tools/fetch_web_assets.py && uv run python tools/fetch_datastar.py && uv run python tools/fetch_bootstrap.py && npm run build",
-    "build": "node tools/build_shell.mjs"
+    "setup": "uv run python tools/fetch_web_assets.py && uv run python tools/fetch_datastar.py && npm run build",
+    "build:css": "tailwindcss -i shell_src/app.css -o ankiweb/shell/static/app.css --minify",
+    "build": "node tools/build_shell.mjs && npm run build:css"
   },
   "dependencies": {
     "@codemirror/lang-html": "6.4.12",
