@@ -1,0 +1,22 @@
+{% import "pages/card_info_components.html.jinja" as comp %}
+
+<div class="route-card-info container-md my-3" id="card-info-root">
+    {% if is_multi %}
+    <center>
+        {{ comp.card_info_block(current_card, title=current_title, show_revlog=show_revlog, show_curve=show_curve) }}
+        {{ comp.card_info_block(previous_card, title=previous_title, show_revlog=show_revlog, show_curve=show_curve) }}
+    </center>
+    {% else %}
+    {{ comp.card_info_block(current_card, title="", show_revlog=show_revlog, show_curve=show_curve) }}
+    {% endif %}
+</div>
+
+<script>
+globalThis.anki = globalThis.anki || {};
+globalThis.anki.updateCard = function(cid) {
+    window.location.href = '/card-info/' + cid;
+};
+globalThis.anki.updateCardInfos = function(ids) {
+    window.location.href = '/card-info/' + ids;
+};
+</script>

@@ -1,0 +1,533 @@
+{% from "components/help_modal.html.jinja" import help_modal %}
+{# Full content fragment for all graph cards #}
+<div id="graphs-cards-container">
+  {# 1. Today #}
+  <div class="container graph-card light">
+    <div class="graph-header">
+      <h1 class="graph-title">{{ today.title }}</h1>
+    </div>
+    <div class="graph-body">
+      <div class="legend">
+        {% if today.has_data %}
+          <div>{{ today.studied_str }}</div>
+          <div>{{ today.again_str }}</div>
+          <div>{{ today.breakdown_str }}</div>
+          {% if today.mature_str %}
+            <div>{{ today.mature_str }}</div>
+          {% endif %}
+        {% else %}
+          <div>{{ today.no_cards_str }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# 2. Future Due #}
+  <div class="container graph-card light">
+    <div class="graph-header d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <h1 class="graph-title">{{ future_due.title }}</h1>
+        <div class="graph-subtitle">{{ future_due.subtitle }}</div>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        {% if future_due.have_backlog %}
+          <label class="form-check-label d-inline-flex align-items-center gap-1 small">
+            <input type="checkbox" class="form-check-input" data-bind="show_backlog" data-on:change="@post('/graphs/update')" {% if future_due.show_backlog %}checked{% endif %}>
+            {{ tr.statistics_backlog_checkbox() }}
+          </label>
+        {% endif %}
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="fd-range" id="fd-30" value="30" data-bind="future_due_range" data-on:change="@post('/graphs/update')" {% if future_due.range_days == 30 %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="fd-30">1 month</label>
+
+          <input type="radio" class="btn-check" name="fd-range" id="fd-90" value="90" data-bind="future_due_range" data-on:change="@post('/graphs/update')" {% if future_due.range_days == 90 %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="fd-90">3 months</label>
+
+          <input type="radio" class="btn-check" name="fd-range" id="fd-365" value="365" data-bind="future_due_range" data-on:change="@post('/graphs/update')" {% if future_due.range_days == 365 %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="fd-365">1 year</label>
+
+          <input type="radio" class="btn-check" name="fd-range" id="fd-all" value="0" data-bind="future_due_range" data-on:change="@post('/graphs/update')" {% if future_due.range_days == 0 %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="fd-all">all</label>
+        </div>
+      </div>
+    </div>
+    <div class="graph-svg-wrap">
+      {{ future_due.svg | safe }}
+    </div>
+    <div class="graph-summary-table">
+      <table>
+        <tbody>
+          {% for row in future_due.summary %}
+            <tr>
+              <td class="text-end fw-semibold">{{ row.label }}:</td>
+              <td class="text-start">{{ row.value }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# 3. Calendar #}
+  <div class="container graph-card light">
+    <div class="graph-header d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="graph-title">{{ calendar.title }}</h1>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-on:click="$calendar_year = $calendar_year - 1; @post('/graphs/update')">◄</button>
+        <span class="fw-bold">{{ calendar.year }}</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-on:click="$calendar_year = $calendar_year + 1; @post('/graphs/update')">►</button>
+      </div>
+    </div>
+    <div class="graph-svg-wrap">
+      {{ calendar.svg | safe }}
+    </div>
+  </div>
+
+  {# 4. Reviews #}
+  <div class="container graph-card light">
+    <div class="graph-header d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <h1 class="graph-title">{{ reviews.title }}</h1>
+        <div class="graph-subtitle">{{ reviews.subtitle }}</div>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <label class="form-check-label d-inline-flex align-items-center gap-1 small">
+          <input type="checkbox" class="form-check-input" data-bind="reviews_show_time" data-on:change="@post('/graphs/update')" {% if reviews.show_time %}checked{% endif %}>
+          {{ tr.statistics_reviews_time_checkbox() }}
+        </label>
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="rev-range" id="rev-30" value="30" data-bind="reviews_range" data-on:change="@post('/graphs/update')" {% if reviews.days_range == 30 %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="rev-30">1 month</label>
+
+          <input type="radio" class="btn-check" name="rev-range" id="rev-90" value="90" data-bind="reviews_range" data-on:change="@post('/graphs/update')" {% if reviews.days_range == 90 %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="rev-90">3 months</label>
+
+          <input type="radio" class="btn-check" name="rev-range" id="rev-365" value="365" data-bind="reviews_range" data-on:change="@post('/graphs/update')" {% if reviews.days_range == 365 %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="rev-365">1 year</label>
+        </div>
+      </div>
+    </div>
+    <div class="graph-svg-wrap">
+      {{ reviews.svg | safe }}
+    </div>
+    <div class="graph-summary-table">
+      <table>
+        <tbody>
+          {% for row in reviews.summary %}
+            <tr>
+              <td class="text-end fw-semibold">{{ row.label }}:</td>
+              <td class="text-start">{{ row.value }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# 5. Card Counts #}
+  <div class="container graph-card light">
+    <div class="graph-header">
+      <div>
+        <h1 class="graph-title">{{ card_counts.title }}</h1>
+      </div>
+    </div>
+    <div class="mb-2">
+      <label class="form-check-label d-inline-flex align-items-center gap-2">
+        <input type="checkbox" class="form-check-input" data-bind="separate_inactive" data-on:change="@post('/graphs/update')" {% if card_counts.separate_inactive %}checked{% endif %}>
+        {{ tr.statistics_counts_separate_suspended_buried_cards() }}
+      </label>
+    </div>
+    <div class="row align-items-center">
+      <div class="col-md-5 d-flex justify-content-center">
+        <div class="graph-svg-wrap">
+          {{ card_counts.svg | safe }}
+        </div>
+      </div>
+      <div class="col-md-7">
+        <table class="table table-sm table-borderless m-0">
+          <tbody>
+            {% for row in card_counts.rows %}
+              <tr>
+                <td>
+                  {% if row.color %}
+                    <span style="color: {{ row.color }};">■&nbsp;</span>
+                  {% endif %}
+                  {% if row.query %}
+                    <a href="/browse?q={{ row.query | urlencode }}" class="btn btn-link btn-sm p-0 text-decoration-none align-baseline">
+                      {{ row.name }}
+                    </a>
+                  {% else %}
+                    <span class="fw-semibold">{{ row.name }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">{{ row.count }}</td>
+                <td class="text-end text-muted">{{ row.percent }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# 6. Review Intervals #}
+  <div class="container graph-card light">
+    <div class="graph-header d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <h1 class="graph-title">{{ intervals.title }}</h1>
+        <div class="graph-subtitle">{{ intervals.subtitle }}</div>
+      </div>
+      <div class="btn-group btn-group-sm" role="group">
+        <input type="radio" class="btn-check" name="ivl-range" id="ivl-month" value="month" data-bind="intervals_range" data-on:change="@post('/graphs/update')" {% if intervals.range_choice == "month" %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="ivl-month">1 month</label>
+
+        <input type="radio" class="btn-check" name="ivl-range" id="ivl-50" value="50" data-bind="intervals_range" data-on:change="@post('/graphs/update')" {% if intervals.range_choice == "50" %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="ivl-50">50%</label>
+
+        <input type="radio" class="btn-check" name="ivl-range" id="ivl-95" value="95" data-bind="intervals_range" data-on:change="@post('/graphs/update')" {% if intervals.range_choice == "95" %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="ivl-95">95%</label>
+
+        <input type="radio" class="btn-check" name="ivl-range" id="ivl-all" value="all" data-bind="intervals_range" data-on:change="@post('/graphs/update')" {% if intervals.range_choice == "all" %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="ivl-all">all</label>
+      </div>
+    </div>
+    <div class="graph-svg-wrap">
+      {{ intervals.svg | safe }}
+    </div>
+    {% if intervals.summary %}
+      <div class="graph-summary-table">
+        <table>
+          <tbody>
+            {% for row in intervals.summary %}
+              <tr>
+                <td class="text-end fw-semibold">{{ row.label }}:</td>
+                <td class="text-start">{{ row.value }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+
+  {# 7. Card Ease / Difficulty #}
+  {% if fsrs_enabled and difficulty %}
+    <div class="container graph-card light">
+      <div class="graph-header">
+        <div>
+          <h1 class="graph-title">{{ difficulty.title }}</h1>
+          <div class="graph-subtitle">{{ difficulty.subtitle }}</div>
+        </div>
+      </div>
+      <div class="graph-svg-wrap">
+        {{ difficulty.svg | safe }}
+      </div>
+      {% if difficulty.summary %}
+        <div class="graph-summary-table">
+          <table>
+            <tbody>
+              {% for row in difficulty.summary %}
+                <tr>
+                  <td class="text-end fw-semibold">{{ row.label }}:</td>
+                  <td class="text-start">{{ row.value }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="container graph-card light">
+      <div class="graph-header">
+        <div>
+          <h1 class="graph-title">{{ ease.title }}</h1>
+          <div class="graph-subtitle">{{ ease.subtitle }}</div>
+        </div>
+      </div>
+      <div class="graph-svg-wrap">
+        {{ ease.svg | safe }}
+      </div>
+      {% if ease.summary %}
+        <div class="graph-summary-table">
+          <table>
+            <tbody>
+              {% for row in ease.summary %}
+                <tr>
+                  <td class="text-end fw-semibold">{{ row.label }}:</td>
+                  <td class="text-start">{{ row.value }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {# 8. True Retention #}
+  <div class="container graph-card light">
+    <div class="graph-header d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <div class="d-flex align-items-center gap-2">
+          <h1 class="graph-title m-0">{{ retention.title }}</h1>
+          <span class="help-badge">
+            {{ help_modal(
+                title=retention.title,
+                url="https://docs.ankiweb.net/deck-options.html#fsrs",
+                link_label=tr.deck_config_desired_retention(),
+                id="retentionHelpModal",
+                help_sections=[
+                    {
+                        "title": retention.title,
+                        "help": "<p>" ~ tr.statistics_true_retention_tooltip() ~ "</p>",
+                        "url": "https://docs.ankiweb.net/deck-options.html#fsrs"
+                    }
+                ]
+            ) }}
+          </span>
+        </div>
+        <div class="graph-subtitle">{{ retention.subtitle }}</div>
+      </div>
+      <div class="btn-group btn-group-sm" role="group">
+        <input type="radio" class="btn-check" name="ret-mode" id="ret-summary" value="summary" data-bind="retention_mode" data-on:change="@post('/graphs/update')" {% if retention.filter_mode == "summary" %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="ret-summary">Summary</label>
+
+        <input type="radio" class="btn-check" name="ret-mode" id="ret-young" value="young" data-bind="retention_mode" data-on:change="@post('/graphs/update')" {% if retention.filter_mode == "young" %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="ret-young">{{ tr.statistics_true_retention_young() }}</label>
+
+        <input type="radio" class="btn-check" name="ret-mode" id="ret-mature" value="mature" data-bind="retention_mode" data-on:change="@post('/graphs/update')" {% if retention.filter_mode == "mature" %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="ret-mature">{{ tr.statistics_true_retention_mature() }}</label>
+      </div>
+    </div>
+    <div class="table-responsive">
+      {% if retention.filter_mode == "young" %}
+        <table class="table table-sm table-hover text-center">
+          <thead>
+            <tr>
+              <th class="text-start"></th>
+              <th>Pass</th>
+              <th>Fail</th>
+              <th>Total</th>
+              <th>Retention</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in retention.rows %}
+              <tr>
+                <td class="text-start fw-semibold">{{ row.period }}</td>
+                <td>{{ row.young_passed }}</td>
+                <td>{{ row.young_failed }}</td>
+                <td>{{ row.young_passed + row.young_failed }}</td>
+                <td>{{ row.young }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% elif retention.filter_mode == "mature" %}
+        <table class="table table-sm table-hover text-center">
+          <thead>
+            <tr>
+              <th class="text-start"></th>
+              <th>Pass</th>
+              <th>Fail</th>
+              <th>Total</th>
+              <th>Retention</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in retention.rows %}
+              <tr>
+                <td class="text-start fw-semibold">{{ row.period }}</td>
+                <td>{{ row.mature_passed }}</td>
+                <td>{{ row.mature_failed }}</td>
+                <td>{{ row.mature_passed + row.mature_failed }}</td>
+                <td>{{ row.mature }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <table class="table table-sm table-hover text-center">
+          <thead>
+            <tr>
+              <th class="text-start"></th>
+              <th>{{ tr.statistics_true_retention_young() }}</th>
+              <th>{{ tr.statistics_true_retention_mature() }}</th>
+              <th>{{ tr.statistics_true_retention_total() }}</th>
+              <th>{{ tr.statistics_true_retention_count() }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in retention.rows %}
+              <tr>
+                <td class="text-start fw-semibold">{{ row.period }}</td>
+                <td>{{ row.young }}</td>
+                <td>{{ row.mature }}</td>
+                <td>{{ row.total }}</td>
+                <td>{{ row.count }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+  </div>
+
+  {# 9. Hourly Breakdown #}
+  <div class="container graph-card light">
+    <div class="graph-header d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <h1 class="graph-title">{{ hours.title }}</h1>
+        <div class="graph-subtitle">{{ hours.subtitle }}</div>
+      </div>
+      <div class="btn-group btn-group-sm" role="group">
+        <input type="radio" class="btn-check" name="hr-range" id="hr-30" value="30" data-bind="hours_range" data-on:change="@post('/graphs/update')" {% if hours.days_range == 30 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="hr-30">1 month</label>
+
+        <input type="radio" class="btn-check" name="hr-range" id="hr-90" value="90" data-bind="hours_range" data-on:change="@post('/graphs/update')" {% if hours.days_range == 90 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="hr-90">3 months</label>
+
+        <input type="radio" class="btn-check" name="hr-range" id="hr-365" value="365" data-bind="hours_range" data-on:change="@post('/graphs/update')" {% if hours.days_range == 365 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="hr-365">1 year</label>
+      </div>
+    </div>
+    <div class="graph-svg-wrap">
+      {{ hours.svg | safe }}
+    </div>
+  </div>
+
+  {# 10. Answer Buttons #}
+  <div class="container graph-card light">
+    <div class="graph-header d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <h1 class="graph-title">{{ buttons.title }}</h1>
+        <div class="graph-subtitle">{{ buttons.subtitle }}</div>
+      </div>
+      <div class="btn-group btn-group-sm" role="group">
+        <input type="radio" class="btn-check" name="btn-range" id="btn-30" value="30" data-bind="buttons_range" data-on:change="@post('/graphs/update')" {% if buttons.days_range == 30 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="btn-30">1 month</label>
+
+        <input type="radio" class="btn-check" name="btn-range" id="btn-90" value="90" data-bind="buttons_range" data-on:change="@post('/graphs/update')" {% if buttons.days_range == 90 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="btn-90">3 months</label>
+
+        <input type="radio" class="btn-check" name="btn-range" id="btn-365" value="365" data-bind="buttons_range" data-on:change="@post('/graphs/update')" {% if buttons.days_range == 365 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="btn-365">1 year</label>
+      </div>
+    </div>
+    <div class="graph-svg-wrap">
+      {{ buttons.svg | safe }}
+    </div>
+  </div>
+
+  {# 11. Added #}
+  <div class="container graph-card light">
+    <div class="graph-header d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <h1 class="graph-title">{{ added.title }}</h1>
+        <div class="graph-subtitle">{{ added.subtitle }}</div>
+      </div>
+      <div class="btn-group btn-group-sm" role="group">
+        <input type="radio" class="btn-check" name="add-range" id="add-30" value="30" data-bind="added_range" data-on:change="@post('/graphs/update')" {% if added.days_range == 30 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="add-30">1 month</label>
+
+        <input type="radio" class="btn-check" name="add-range" id="add-90" value="90" data-bind="added_range" data-on:change="@post('/graphs/update')" {% if added.days_range == 90 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="add-90">3 months</label>
+
+        <input type="radio" class="btn-check" name="add-range" id="add-365" value="365" data-bind="added_range" data-on:change="@post('/graphs/update')" {% if added.days_range == 365 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="add-365">1 year</label>
+
+        <input type="radio" class="btn-check" name="add-range" id="add-all" value="0" data-bind="added_range" data-on:change="@post('/graphs/update')" {% if added.days_range == 0 %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="add-all">all</label>
+      </div>
+    </div>
+    <div class="graph-svg-wrap">
+      {{ added.svg | safe }}
+    </div>
+    <div class="graph-summary-table">
+      <table>
+        <tbody>
+          {% for row in added.summary %}
+            <tr>
+              <td class="text-end fw-semibold">{{ row.label }}:</td>
+              <td class="text-start">{{ row.value }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# 12. Retrievability (FSRS) #}
+  {% if fsrs_enabled and retrievability %}
+    <div class="container graph-card light">
+      <div class="graph-header">
+        <div>
+          <h1 class="graph-title">{{ retrievability.title }}</h1>
+          <div class="graph-subtitle">{{ retrievability.subtitle }}</div>
+        </div>
+      </div>
+      <div class="graph-svg-wrap">
+        {{ retrievability.svg | safe }}
+      </div>
+      {% if retrievability.summary %}
+        <div class="graph-summary-table">
+          <table>
+            <tbody>
+              {% for row in retrievability.summary %}
+                <tr>
+                  <td class="text-end fw-semibold">{{ row.label }}:</td>
+                  <td class="text-start">{{ row.value }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {# 13. Stability (FSRS) #}
+  {% if fsrs_enabled and stability %}
+    <div class="container graph-card light">
+      <div class="graph-header d-flex flex-wrap justify-content-between align-items-center">
+        <div>
+          <h1 class="graph-title">{{ stability.title }}</h1>
+          <div class="graph-subtitle">{{ stability.subtitle }}</div>
+        </div>
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="stab-range" id="stab-month" value="month" data-bind="stability_range" data-on:change="@post('/graphs/update')" {% if stability.range_choice == "month" %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="stab-month">1 month</label>
+
+          <input type="radio" class="btn-check" name="stab-range" id="stab-50" value="50" data-bind="stability_range" data-on:change="@post('/graphs/update')" {% if stability.range_choice == "50" %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="stab-50">50%</label>
+
+          <input type="radio" class="btn-check" name="stab-range" id="stab-95" value="95" data-bind="stability_range" data-on:change="@post('/graphs/update')" {% if stability.range_choice == "95" %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="stab-95">95%</label>
+
+          <input type="radio" class="btn-check" name="stab-range" id="stab-all" value="all" data-bind="stability_range" data-on:change="@post('/graphs/update')" {% if stability.range_choice == "all" %}checked{% endif %}>
+          <label class="btn btn-outline-secondary" for="stab-all">all</label>
+        </div>
+      </div>
+      <div class="graph-svg-wrap">
+        {{ stability.svg | safe }}
+      </div>
+      {% if stability.summary %}
+        <div class="graph-summary-table">
+          <table>
+            <tbody>
+              {% for row in stability.summary %}
+                <tr>
+                  <td class="text-end fw-semibold">{{ row.label }}:</td>
+                  <td class="text-start">{{ row.value }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

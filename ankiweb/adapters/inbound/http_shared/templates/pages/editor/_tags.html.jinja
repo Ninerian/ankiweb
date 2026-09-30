@@ -1,0 +1,46 @@
+{# Tag Editor Partial: Ported from upstream Svelte TagEditor.svelte #}
+{% set tag_list = initial_tags if initial_tags is defined and initial_tags is not none else (tags if tags is defined and tags is not none else []) %}
+
+
+<div
+  class="tag-editor-root"
+  data-ankiweb-tag-editor
+  data-initial-tags="{{ tag_list | tojson | forceescape }}"
+>
+  <div class="tag-editor">
+    {# Tag Options / Actions badge #}
+    <div class="tag-options-button gap">
+      <div class="tag-add-button" role="button" tabindex="0" title="Add Tag (Ctrl+Shift+T)" aria-label="Add Tag">
+        {# Plus Icon #}
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="tag-icon-add">
+          <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/>
+        </svg>
+        {# Hover plus icon #}
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="tag-icon-add-hover">
+          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3z"/>
+        </svg>
+        <span class="tags-info text-muted small">Tags</span>
+      </div>
+
+      <div class="tags-selected-button d-none" role="button" tabindex="0" title="Tag actions">
+        {# Checkmark or selection icon #}
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z"/>
+        </svg>
+      </div>
+    </div>
+
+    {# Tags container where chips and current input are mounted #}
+    <div class="tags-chips-container d-inline-flex flex-wrap align-items-center gap-1">
+      {# Generated dynamically by tag-editor.ts #}
+    </div>
+
+    {# Spacer to focus/add tag on click #}
+    <div class="tag-spacer" role="textbox" tabindex="-1"></div>
+  </div>
+
+  {# Autocomplete floating dropdown #}
+  <div class="autocomplete-menu d-none" role="listbox">
+    {# Items populated dynamically #}
+  </div>
+</div>

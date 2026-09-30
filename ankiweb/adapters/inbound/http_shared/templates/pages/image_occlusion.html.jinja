@@ -1,0 +1,235 @@
+{# pages/image_occlusion.html.jinja #}
+{% from "components/deck_chooser.html.jinja" import deck_chooser %}
+{% from "components/notetype_chooser.html.jinja" import notetype_chooser %}
+
+<div class="route-image-occlusion"
+     data-signals='{{ {
+       "mode": mode,
+       "note_id": note_id,
+       "image_path": image_path,
+       "image_url": image_url,
+       "active_tab": "mask",
+       "hide_all": hide_all,
+       "header": header,
+       "back_extra": back_extra,
+       "comments": comments,
+       "tags_str": tags_str,
+       "occlusions": occlusions,
+       "shapes_count": shapes_count,
+       "selected_deck_id": selected_deck_id,
+       "selected_notetype_id": selected_notetype_id,
+       "status_msg": "",
+       "status_type": "success",
+       "is_saving": false
+     }|tojson|forceescape }}'
+     data-on:ankiweb:io-shapes-changed__window="evt.detail && ($shapes_count = evt.detail.count, $occlusions = evt.detail.cloze)">
+
+  <div class="io-layout">
+    <!-- Top Header Bar -->
+    <header class="io-header-bar">
+      <div class="io-header-left">
+        <!-- Deck & Notetype Choosers -->
+        <div style="min-width: 180px; max-width: 260px;">
+          {{ deck_chooser(
+            decks=decks,
+            selected_deck_id=selected_deck_id,
+            id="io_deck_chooser",
+            on_change="$selected_deck_id = evt.detail.id;"
+          ) }}
+        </div>
+        <div style="min-width: 180px; max-width: 260px;">
+          {{ notetype_chooser(
+            notetypes=notetypes,
+            selected_notetype_id=selected_notetype_id,
+            id="io_notetype_chooser",
+            on_change="$selected_notetype_id = evt.detail.id;"
+          ) }}
+        </div>
+      </div>
+
+      <div class="io-header-right">
+        <!-- Tab Switcher: Mask Editor vs Fields/Notes -->
+        <div class="io-tabs" role="tablist">
+          <button
+            type="button"
+            class="io-tab-btn"
+            id="tab-btn-mask"
+            data-class:active="$active_tab === 'mask'"
+            data-on:click="$active_tab = 'mask'">
+            {{ tr.notetypes_occlusion_mask() }}
+          </button>
+          <button
+            type="button"
+            class="io-tab-btn"
+            id="tab-btn-fields"
+            data-class:active="$active_tab === 'fields'"
+            data-on:click="$active_tab = 'fields'">
+            {{ tr.notetypes_occlusion_note() }}
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="io-main-body">
+      <!-- Tab 1: Mask Editor -->
+      <div class="io-tab-pane" id="pane-mask" data-show="$active_tab === 'mask'">
+        <div class="io-canvas-wrapper">
+          <div id="ankiweb-io-editor" data-ankiweb-io-editor>
+            <!-- Canvas or SVG mask editor mounted here by IoEngine -->
+            <img id="io-source-image" src="{{ image_url }}" alt="Occlusion Source" style="display: none;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Fields & Notes -->
+      <div class="io-tab-pane" id="pane-fields" data-show="$active_tab === 'fields'">
+        <!-- Note Format Toolbar -->
+        <div class="io-note-toolbar border-bottom px-3 py-1 bg-body-tertiary d-flex align-items-center gap-1">
+          <button type="button" class="btn btn-sm btn-outline-secondary io-format-btn" onclick="document.execCommand('bold', false, null);" title="{{ tr.editing_bold_text() }} (Ctrl+B)">
+            <b>B</b>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary io-format-btn" onclick="document.execCommand('italic', false, null);" title="{{ tr.editing_italic_text() }} (Ctrl+I)">
+            <i>I</i>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary io-format-btn" onclick="document.execCommand('underline', false, null);" title="{{ tr.editing_underline_text() }} (Ctrl+U)">
+            <u>U</u>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary io-format-btn font-monospace" onclick="document.execCommand('formatBlock', false, 'pre');" title="Code">
+            &lt;/&gt;
+          </button>
+        </div>
+        <div class="io-fields-container">
+          <div class="io-field-group">
+            <label class="io-field-label" for="io-field-header">{{ tr.notetypes_header() }}</label>
+            <textarea
+              id="io-field-header"
+              class="form-control io-field-textarea"
+              rows="3"
+              placeholder="{{ tr.notetypes_header() }}"
+              data-bind="header"></textarea>
+          </div>
+
+          <div class="io-field-group">
+            <label class="io-field-label" for="io-field-back-extra">{{ tr.notetypes_back_extra_field() }}</label>
+            <textarea
+              id="io-field-back-extra"
+              class="form-control io-field-textarea"
+              rows="3"
+              placeholder="{{ tr.notetypes_back_extra_field() }}"
+              data-bind="back_extra"></textarea>
+          </div>
+
+          <div class="io-field-group">
+            <label class="io-field-label" for="io-field-comments">{{ tr.notetypes_comments() if tr.notetypes_comments is defined else "Comments" }}</label>
+            <textarea
+              id="io-field-comments"
+              class="form-control io-field-textarea"
+              rows="2"
+              placeholder="Comments"
+              data-bind="comments"></textarea>
+          </div>
+
+          <div class="io-field-group">
+            <label class="io-field-label" for="io-field-tags">{{ tr.editing_tags() }}</label>
+            <input
+              id="io-field-tags"
+              type="text"
+              class="form-control"
+              placeholder="Tags separated by spaces"
+              data-bind="tags_str" />
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Sticky Footer -->
+    <footer class="io-sticky-footer">
+      <div class="io-footer-left">
+        <!-- Occlusion Mode Switcher -->
+        <div class="io-mode-toggles">
+          <button
+            type="button"
+            class="io-mode-btn"
+            id="mode-btn-hide-all"
+            data-class:active="$hide_all"
+            data-on:click="$hide_all = true; window.AnkiwebIoEditor && window.AnkiwebIoEditor.toCloze && ($occlusions = window.AnkiwebIoEditor.toCloze({ hideAll: true }))">
+            {{ tr.notetypes_hide_all_guess_one() }}
+          </button>
+          <button
+            type="button"
+            class="io-mode-btn"
+            id="mode-btn-hide-one"
+            data-class:active="!$hide_all"
+            data-on:click="$hide_all = false; window.AnkiwebIoEditor && window.AnkiwebIoEditor.toCloze && ($occlusions = window.AnkiwebIoEditor.toCloze({ hideAll: false }))">
+            {{ tr.notetypes_hide_one_guess_one() }}
+          </button>
+        </div>
+      </div>
+
+      <div class="io-footer-center">
+        <span class="text-muted small" id="io-shapes-info">
+          <span data-text="$shapes_count"></span> shape(s)
+        </span>
+      </div>
+
+      <div class="io-footer-right">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          id="io-cancel-btn"
+          data-on:click="window.history.back()">
+          {{ tr.actions_cancel() }}
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-primary btn-sm px-4"
+          id="io-save-btn"
+          data-attr-disabled="$is_saving || $shapes_count === 0"
+          data-on:click="if ($shapes_count > 0 && !$is_saving) { @post('/image-occlusion/save'); }">
+          <span data-show="$is_saving" class="spinner-border spinner-border-sm me-1" role="status"></span>
+          {% if mode == "edit" %}
+            {{ tr.actions_save() }}
+          {% else %}
+            {{ tr.actions_add() }}
+          {% endif %}
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Toast Notice -->
+  <div
+    id="io-toast"
+    class="io-toast alert"
+    data-class:alert-success="$status_type === 'success'"
+    data-class:alert-danger="$status_type === 'danger'"
+    data-show="$status_msg !== ''">
+    <span data-text="$status_msg"></span>
+  </div>
+</div>
+
+<script src="/shell/static/bundles/io-editor.js"></script>
+<script>
+(function() {
+  function initIoEditor() {
+    var imgUrl = {{ image_url|tojson }};
+    var occl = {{ (occlusions or "")|tojson }};
+    if (window.AnkiwebIoEditor) {
+      if (typeof window.AnkiwebIoEditor.loadImage === 'function' && imgUrl) {
+        window.AnkiwebIoEditor.loadImage(imgUrl);
+      }
+      if (typeof window.AnkiwebIoEditor.fromCloze === 'function' && occl) {
+        window.AnkiwebIoEditor.fromCloze(occl);
+      }
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initIoEditor);
+  } else {
+    initIoEditor();
+  }
+})();
+</script>

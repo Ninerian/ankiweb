@@ -21,6 +21,15 @@ _TITLES = {
     "notify": lambda: "Push notifications",
     "about": lambda: "Source",
     "export": lambda: tr.actions_export(),
+    "graphs": lambda: tr.qt_misc_stats(),
+    "deckoptions": lambda: tr.deck_config_title(),
+    "card-info": lambda: tr.actions_card_info(),
+    "changenotetype": lambda: tr.browsing_change_notetype(),
+    "image-occlusion": lambda: tr.editing_image_occlusion_mode(),
+    "importcsv": lambda: tr.actions_import(),
+    "import_package": lambda: tr.actions_import(),
+    "import_page": lambda: tr.actions_import(),
+    "editor": lambda: tr.editing_edit_current(),
 }
 
 
