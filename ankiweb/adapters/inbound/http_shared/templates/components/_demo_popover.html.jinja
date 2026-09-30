@@ -1,31 +1,31 @@
 {% from "components/popover.html.jinja" import popover %}
 {% from "components/floating_arrow.html.jinja" import floating_arrow %}
 
-<div class="border p-3 mb-4 rounded">
-    <h5>1. Popover with Placement Bottom and Floating Arrow</h5>
-    <div class="d-inline-block position-relative">
-        <button type="button" class="btn btn-outline-primary mb-2" id="popoverAnchorBtn">
+<div class="border border-base-300 rounded-box p-4 mb-4 bg-base-100">
+    <h5 class="font-bold text-lg mb-2">1. Popover with Placement Bottom and Floating Arrow</h5>
+    <div class="inline-block relative">
+        <button type="button" class="btn btn-outline btn-primary mb-2" id="popoverAnchorBtn">
             Reference Target
         </button>
         {% call popover(id="demoPopoverBottom", placement="bottom", min_height=80, popover_width="220px") %}
             {{ floating_arrow(style="position: absolute; top: -5px; left: 20px; transform: rotate(45deg);") }}
             <div class="p-2">
                 <strong id="demoPopoverBottomTitle">Popover Title</strong>
-                <p class="small mb-0 mt-1" id="demoPopoverBottomText">Standard elevation-8 styled popover container.</p>
+                <p class="text-sm mb-0 mt-1" id="demoPopoverBottomText">Standard elevation-8 styled popover container.</p>
             </div>
         {% endcall %}
     </div>
 </div>
 
-<div class="border p-3 rounded">
-    <h5>2. Scrollable Popover with Custom Content</h5>
-    <div class="d-inline-block">
+<div class="border border-base-300 rounded-box p-4 bg-base-100">
+    <h5 class="font-bold text-lg mb-2">2. Scrollable Popover with Custom Content</h5>
+    <div class="inline-block">
         {% call popover(id="demoPopoverScrollable", scrollable=true, placement="right", popover_width="240px") %}
             <div class="p-2" id="demoPopoverScrollableContent">
-                <div class="fw-bold mb-2">Scrollable List</div>
-                <ul class="list-unstyled mb-0">
+                <div class="font-bold mb-2">Scrollable List</div>
+                <ul class="mb-0">
                     {% for i in range(1, 15) %}
-                        <li class="py-1 border-bottom small">Scroll item {{ i }}</li>
+                        <li class="py-1 border-b border-base-300 text-sm">Scroll item {{ i }}</li>
                     {% endfor %}
                 </ul>
             </div>

@@ -1,29 +1,29 @@
 {% from "components/button_group.html.jinja" import button_group %}
 {% from "components/button_group_item.html.jinja" import button_group_item %}
 
-<div class="border p-3 mb-3">
-    <h6 class="text-muted">ButtonGroup with explicit ButtonGroupItem positions:</h6>
+<div class="border border-base-300 p-3 mb-3 rounded-box">
+    <h6 class="text-base-content/60 mb-2">ButtonGroup with explicit ButtonGroupItem positions:</h6>
     {% call button_group() %}
         {% call button_group_item(position="start") %}
-            <button type="button" class="btn btn-outline-primary">Start</button>
+            <button type="button" class="btn btn-outline btn-primary join-item">Start</button>
         {% endcall %}
         {% call button_group_item(position="center") %}
-            <button type="button" class="btn btn-outline-primary">Middle</button>
+            <button type="button" class="btn btn-outline btn-primary join-item">Middle</button>
         {% endcall %}
         {% call button_group_item(position="end") %}
-            <button type="button" class="btn btn-outline-primary">End</button>
+            <button type="button" class="btn btn-outline btn-primary join-item">End</button>
         {% endcall %}
     {% endcall %}
 </div>
 
-<div class="border p-3">
-    <h6 class="text-muted">Standalone vs Detached:</h6>
-    <div class="d-flex gap-2">
+<div class="border border-base-300 p-3 rounded-box">
+    <h6 class="text-base-content/60 mb-2">Standalone vs Detached:</h6>
+    <div class="flex gap-2">
         {% call button_group_item(position="standalone") %}
-            <button type="button" class="btn btn-secondary">Standalone Item</button>
+            <button type="button" class="btn btn-neutral">Standalone Item</button>
         {% endcall %}
         {% call button_group_item(detach=true) %}
-            <button type="button" class="btn btn-danger">Detached (Hidden)</button>
+            <button type="button" class="btn btn-error">Detached (Hidden)</button>
         {% endcall %}
     </div>
 </div>

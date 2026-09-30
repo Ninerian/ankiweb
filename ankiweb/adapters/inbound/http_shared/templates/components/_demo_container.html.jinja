@@ -1,15 +1,15 @@
 {% from "components/container.html.jinja" import container %}
 
-<div class="border p-2 mb-2">
-    <p class="text-muted small mb-1">Container breakpoint="fluid":</p>
-    {% call container(breakpoint="fluid", class_="bg-light p-2") %}
+<div class="border border-base-300 p-2 mb-2 rounded-box">
+    <p class="text-base-content/60 text-sm mb-1">Container breakpoint="fluid":</p>
+    {% call container(breakpoint="fluid", class_="bg-base-200 p-2 rounded") %}
         <span>Fluid container content</span>
     {% endcall %}
 </div>
 
-<div class="border p-2 mb-2">
-    <p class="text-muted small mb-1">Container breakpoint="sm":</p>
-    {% call container(id="demo-container-sm", breakpoint="sm", class_="bg-light p-2") %}
+<div class="border border-base-300 p-2 mb-2 rounded-box">
+    <p class="text-base-content/60 text-sm mb-1">Container breakpoint="sm":</p>
+    {% call container(id="demo-container-sm", breakpoint="sm", class_="bg-base-200 p-2 rounded") %}
         <span>Container sm content</span>
     {% endcall %}
 </div>

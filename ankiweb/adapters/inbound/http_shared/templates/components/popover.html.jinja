@@ -1,7 +1,7 @@
 {# Popover component ported from ts/lib/components/Popover.svelte #}
 {#
   Popover component renders:
-  <div class="popover-wrapper d-flex" style="--min-height: ...">
+  <div class="popover-wrapper flex" style="--min-height: ...">
       <div class="popover [scrollable] [hidden] [top|right|bottom|left]" role="listbox" id="...">
           <slot />
       </div>
@@ -27,7 +27,7 @@
     popover_class=""
 ) -%}
 <div
-    class="popover-wrapper d-flex{% if class_ %} {{ class_ }}{% endif %}"
+    class="popover-wrapper flex{% if class_ %} {{ class_ }}{% endif %}"
     style="--min-height: {{ min_height }}{% if min_height is number %}px{% endif %};{% if popover_width %} --popover-width: {{ popover_width }};{% endif %}"
     {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
 >

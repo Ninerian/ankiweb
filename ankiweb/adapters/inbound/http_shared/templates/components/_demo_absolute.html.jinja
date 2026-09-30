@@ -1,16 +1,16 @@
 {% from "components/absolute.html.jinja" import absolute %}
 
-<div class="position-relative p-4 border bg-light" style="height: 120px;">
+<div class="relative p-4 border border-base-300 bg-base-200 rounded-box h-[120px]">
     {% call absolute(top=true, left=true) %}
-        <span class="badge bg-primary">Top Left</span>
+        <span class="badge badge-primary">Top Left</span>
     {% endcall %}
     {% call absolute(top=true, right=true) %}
-        <span class="badge bg-secondary">Top Right</span>
+        <span class="badge badge-neutral">Top Right</span>
     {% endcall %}
     {% call absolute(bottom=true, left=true) %}
-        <span class="badge bg-success">Bottom Left</span>
+        <span class="badge badge-success">Bottom Left</span>
     {% endcall %}
     {% call absolute(bottom=true, right=true) %}
-        <span class="badge bg-danger">Bottom Right</span>
+        <span class="badge badge-error">Bottom Right</span>
     {% endcall %}
 </div>

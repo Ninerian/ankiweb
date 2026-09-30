@@ -28,9 +28,9 @@
     {"id": 1790718292753, "name": "Image Occlusion"}
 ] %}
 
-<div class="border p-3 mb-4 rounded" data-signals="{{ ({'notetype_chooser_result': 1600000000001}|tojson).__str__() }}">
-    <h5>1. NotetypeChooser (Static List)</h5>
-    <p class="text-muted small">
+<div class="border border-base-300 p-4 mb-4 rounded-box bg-base-100" data-signals="{{ ({'notetype_chooser_result': 1600000000001}|tojson).__str__() }}">
+    <h5 class="font-bold text-lg mb-1">1. NotetypeChooser (Static List)</h5>
+    <p class="text-base-content/60 text-sm mb-3">
         Upstream NotetypeChooser wrapper with Newspaper icon and Ctrl+N shortcut.
     </p>
 
@@ -43,14 +43,14 @@
         ) }}
     </div>
 
-    <div class="mt-3 small">
+    <div class="mt-3 text-sm">
         Selected Note Type: <strong id="demo_notetype_chooser_output" data-text="$demo_notetype_chooser_selected_name">Basic</strong>
     </div>
 </div>
 
-<div class="border p-3 mb-4 rounded" data-signals="{{ ({'real_notetype_result': 1790718292748}|tojson).__str__() }}">
-    <h5>2. Real Data Demo: AnkiConnect Scratch Collection Note Types</h5>
-    <p class="text-muted small">
+<div class="border border-base-300 p-4 mb-4 rounded-box bg-base-100" data-signals="{{ ({'real_notetype_result': 1790718292748}|tojson).__str__() }}">
+    <h5 class="font-bold text-lg mb-1">2. Real Data Demo: AnkiConnect Scratch Collection Note Types</h5>
+    <p class="text-base-content/60 text-sm mb-3">
         Fed with the real note types seeded into AnkiConnect (127.0.0.1:8865) matching backend <code>col.models.all_names_and_ids()</code>.
     </p>
 
@@ -64,7 +64,7 @@
         ) }}
     </div>
 
-    <div class="mt-3 small">
+    <div class="mt-3 text-sm">
         Selected Real Note Type: <strong id="demo_real_notetype_output" data-text="$demo_real_notetype_chooser_selected_name">Cloze</strong>
     </div>
 </div>

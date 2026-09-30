@@ -11,8 +11,8 @@
 {% if modal_mode %}
 {# HelpSection rendered in interactive modal/accordion mode with open/close state #}
 <div class="help-section-container{% if class_ %} {{ class_ }}{% endif %}" data-signals:help_section_open_{{ sec_id }}="{{ 'true' if open else 'false' }}"{% for k, v in kwargs.items() %} {{ k|replace('_', '-') }}="{{ v }}"{% endfor %}>
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-on:click="$help_section_open_{{ sec_id }} = !$help_section_open_{{ sec_id }}" onclick="const b = this.closest('.help-section-container').querySelector('.help-section-collapsible'); if (b) b.style.display = b.style.display === 'none' ? '' : 'none';">
+    <div class="flex items-center justify-between mb-2">
+        <button type="button" class="btn btn-outline btn-sm" data-on:click="$help_section_open_{{ sec_id }} = !$help_section_open_{{ sec_id }}" onclick="const b = this.closest('.help-section-container').querySelector('.help-section-collapsible'); if (b) b.style.display = b.style.display === 'none' ? '' : 'none';">
             <span data-show="!$help_section_open_{{ sec_id }}">Show Help: {{ sec_title }}</span>
             <span data-show="$help_section_open_{{ sec_id }}">Hide Help</span>
         </button>
@@ -47,8 +47,8 @@
 {% elif collapsible %}
 {# HelpSection with Datastar collapse toggle #}
 <div class="help-section-collapsible-wrapper{% if class_ %} {{ class_ }}{% endif %}" data-signals:help_open_{{ sec_id }}="{{ 'true' if open else 'false' }}"{% for k, v in kwargs.items() %} {{ k|replace('_', '-') }}="{{ v }}"{% endfor %}>
-    <div class="d-flex align-items-center mb-2">
-        <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none" data-on:click="$help_open_{{ sec_id }} = !$help_open_{{ sec_id }}" onclick="const b = this.closest('.help-section-collapsible-wrapper').querySelector('.help-section-body'); if (b) b.style.display = b.style.display === 'none' ? '' : 'none';" aria-expanded="{{ 'true' if open else 'false' }}">
+    <div class="flex items-center mb-2">
+        <button type="button" class="btn btn-sm btn-link p-0 no-underline" data-on:click="$help_open_{{ sec_id }} = !$help_open_{{ sec_id }}" onclick="const b = this.closest('.help-section-collapsible-wrapper').querySelector('.help-section-body'); if (b) b.style.display = b.style.display === 'none' ? '' : 'none';" aria-expanded="{{ 'true' if open else 'false' }}">
             <span data-show="$help_open_{{ sec_id }}">▾ Collapse</span>
             <span data-show="!$help_open_{{ sec_id }}">▸ Expand</span>
         </button>

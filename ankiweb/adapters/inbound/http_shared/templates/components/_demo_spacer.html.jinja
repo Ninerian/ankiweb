@@ -1,13 +1,13 @@
 {% from "components/spacer.html.jinja" import spacer %}
 
-<div class="d-flex align-items-center border p-2">
-    <span class="badge bg-primary">Start</span>
+<div class="flex items-center border border-base-300 rounded-box p-2">
+    <span class="badge badge-primary">Start</span>
     {{ spacer(width="2rem") }}
-    <span class="badge bg-secondary">After 2rem width spacer</span>
-    {{ spacer(width="auto", class_="flex-grow-1") }}
-    <span class="badge bg-success">End</span>
+    <span class="badge badge-neutral">After 2rem width spacer</span>
+    {{ spacer(width="auto", class_="flex-1") }}
+    <span class="badge badge-success">End</span>
 </div>
-<div class="border p-2 mt-2">
+<div class="border border-base-300 rounded-box p-2 mt-2">
     <div>Top box</div>
     {{ spacer(height="1.5rem") }}
     <div>Bottom box (separated by 1.5rem height spacer)</div>

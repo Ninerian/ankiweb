@@ -16,7 +16,7 @@
 <select
     {% if id %}id="{{ id }}"{% endif %}
     {% if name %}name="{{ name }}"{% endif %}
-    class="form-select {{ class_ }}"
+    class="select w-full {{ class_ }}"
     {% if disabled %}disabled{% endif %}
     {% if signal %}
     data-bind="{{ signal | replace('$', '', 1) }}"

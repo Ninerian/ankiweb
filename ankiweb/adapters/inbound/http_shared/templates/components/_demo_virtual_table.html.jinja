@@ -1,18 +1,18 @@
 {% from "components/virtual_table.html.jinja" import virtual_table %}
 
-<div class="d-flex flex-column gap-4" id="demo-virtual-table">
-    <div class="card p-3">
-        <h5 class="card-title">1. VirtualTable (100,000 Rows)</h5>
-        <p class="text-muted">
+<div class="flex flex-col gap-4" id="demo-virtual-table">
+    <div class="card bg-base-100 border border-base-300 p-4">
+        <h5 class="card-title text-base-content font-bold mb-1">1. VirtualTable (100,000 Rows)</h5>
+        <p class="text-base-content/60 text-sm mb-3">
             High performance virtualized table rendering only visible rows for 100,000 items.
             Uses top and bottom spacer rows with exact height calculations matching upstream VirtualTable.svelte.
         </p>
 
-        <div class="d-flex gap-2 align-items-center mb-3">
-            <button class="btn btn-sm btn-outline-primary" id="vt-jump-top">Jump to Top (Row 0)</button>
-            <button class="btn btn-sm btn-outline-primary" id="vt-jump-middle">Jump to Middle (Row 50,000)</button>
-            <button class="btn btn-sm btn-outline-primary" id="vt-jump-bottom">Jump to Bottom (Row 99,999)</button>
-            <span class="ms-3 text-muted small" id="vt-status">Rendered rows: <span id="vt-slice-count">0</span> | Current slice: <span id="vt-slice-range">0 - 0</span></span>
+        <div class="flex gap-2 items-center mb-3">
+            <button class="btn btn-sm btn-outline btn-primary" id="vt-jump-top">Jump to Top (Row 0)</button>
+            <button class="btn btn-sm btn-outline btn-primary" id="vt-jump-middle">Jump to Middle (Row 50,000)</button>
+            <button class="btn btn-sm btn-outline btn-primary" id="vt-jump-bottom">Jump to Bottom (Row 99,999)</button>
+            <span class="ml-3 text-base-content/60 text-sm" id="vt-status">Rendered rows: <span id="vt-slice-count">0</span> | Current slice: <span id="vt-slice-range">0 - 0</span></span>
         </div>
 
         <div style="height: 350px; border: 1px solid var(--border-subtle, #dee2e6); border-radius: 4px; overflow: hidden;">

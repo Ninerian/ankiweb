@@ -3,7 +3,7 @@
 {%- set btn_wrap = ('--buttons-wrap: ' ~ ('wrap;' if wrap else 'nowrap;')) if wrap is not none else '' -%}
 {%- set extra_style = kwargs.pop('style') if 'style' in kwargs else '' -%}
 {%- set style_str = (btn_size ~ ' ' ~ btn_wrap ~ ' ' ~ extra_style).strip() -%}
-<div{% if id %} id="{{ id }}"{% endif %} class="button-group btn-group{% if class_ %} {{ class_ }}{% endif %}"{% if style_str %} style="{{ style_str }}"{% endif %} dir="ltr" role="group"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+<div{% if id %} id="{{ id }}"{% endif %} class="button-group join{% if class_ %} {{ class_ }}{% endif %}"{% if style_str %} style="{{ style_str }}"{% endif %} dir="ltr" role="group"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
     {{ caller() if caller else '' }}
 </div>
 {%- endmacro %}

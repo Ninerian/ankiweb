@@ -37,7 +37,7 @@
     <div class="progress">
         <div class="spinner {% if night_mode %}nightMode{% endif %}"
              {% if not night_mode %}
-             data-class="{'nightMode': document.documentElement.getAttribute('data-bs-theme') === 'dark' || document.body.classList.contains('nightMode')}"
+             data-class="{'nightMode': document.documentElement.getAttribute('data-theme') === 'dark' || document.body.classList.contains('nightMode') || document.body.classList.contains('night-mode')}"
              {% endif %}
         >
             <div></div>
@@ -51,7 +51,7 @@
              {% endif %}
         >{{ label }}</div>
         {% if percent_signal %}
-        <div class="progress-percent small text-muted text-center mt-1"
+        <div class="progress-percent text-sm text-base-content/60 text-center mt-1"
              data-show="${{ percent_signal }} > 0"
              data-text="'' + ${{ percent_signal }} + '%'"
         ></div>

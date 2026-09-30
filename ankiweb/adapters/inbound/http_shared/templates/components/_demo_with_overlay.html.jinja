@@ -1,36 +1,36 @@
 {% from "components/with_overlay.html.jinja" import with_overlay, overlay %}
 
-<div class="border p-3 mb-4 rounded">
-    <h5>1. Interactive Overlay with Datastar Signal</h5>
-    <p class="text-muted">Toggled via Datastar signal, closes on outside click or Escape key.</p>
+<div class="border border-base-300 rounded-box p-4 mb-4 bg-base-100">
+    <h5 class="font-bold text-lg mb-1">1. Interactive Overlay with Datastar Signal</h5>
+    <p class="text-base-content/60 text-sm mb-3">Toggled via Datastar signal, closes on outside click or Escape key.</p>
 
-    <div class="d-inline-block position-relative" data-signals="{ demoOverlayOpen: false }" data-on:keydown__window="evt.key === 'Escape' && ($demoOverlayOpen = false)">
+    <div class="inline-block relative" data-signals="{ demoOverlayOpen: false }" data-on:keydown__window="evt.key === 'Escape' && ($demoOverlayOpen = false)">
         <div class="overlay-reference">
-            <button type="button" class="btn btn-outline-info" id="demoOverlayToggleBtn" data-on:click="$demoOverlayOpen = !$demoOverlayOpen">
+            <button type="button" class="btn btn-outline btn-info" id="demoOverlayToggleBtn" data-on:click="$demoOverlayOpen = !$demoOverlayOpen">
                 Toggle Datastar Overlay
             </button>
         </div>
 
-        <div class="overlay card p-3 shadow-sm" data-placement="bottom" data-show="$demoOverlayOpen" data-on:click__window="!el.contains(evt.target) && !el.previousElementSibling.contains(evt.target) && ($demoOverlayOpen = false)">
+        <div class="overlay card bg-base-100 border border-base-300 p-3 shadow-sm" data-placement="bottom" data-show="$demoOverlayOpen" data-on:click__window="!el.contains(evt.target) && !el.previousElementSibling.contains(evt.target) && ($demoOverlayOpen = false)">
             <div id="demoOverlayContent">
-                <h6>Overlay Content</h6>
-                <p class="mb-1">Click outside this box or press Escape to close.</p>
-                <button type="button" class="btn btn-sm btn-danger mt-2" data-on:click="$demoOverlayOpen = false" id="demoOverlayCloseBtn">Close</button>
+                <h6 class="font-bold mb-1">Overlay Content</h6>
+                <p class="mb-1 text-sm">Click outside this box or press Escape to close.</p>
+                <button type="button" class="btn btn-sm btn-error mt-2" data-on:click="$demoOverlayOpen = false" id="demoOverlayCloseBtn">Close</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="border p-3 rounded">
-    <h5>2. Static Visible Overlay (Placement: right)</h5>
-    <div class="d-inline-block position-relative">
+<div class="border border-base-300 rounded-box p-4 bg-base-100">
+    <h5 class="font-bold text-lg mb-1">2. Static Visible Overlay (Placement: right)</h5>
+    <div class="inline-block relative">
         <div class="overlay-reference">
-            <button type="button" class="btn btn-secondary disabled" id="demoOverlayStaticAnchor">
+            <button type="button" class="btn btn-neutral disabled" id="demoOverlayStaticAnchor">
                 Anchor Element
             </button>
         </div>
-        <div class="overlay show card p-2 bg-light border" data-placement="right">
-            <span class="small text-muted" id="demoOverlayStaticText">Always visible overlay positioned beside anchor</span>
+        <div class="overlay show card p-2 bg-base-200 border border-base-300" data-placement="right">
+            <span class="text-sm text-base-content/60" id="demoOverlayStaticText">Always visible overlay positioned beside anchor</span>
         </div>
     </div>
 </div>

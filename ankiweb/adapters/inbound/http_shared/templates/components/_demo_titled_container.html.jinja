@@ -1,7 +1,7 @@
 {% from "components/titled_container.html.jinja" import titled_container %}
 {% from "components/badge.html.jinja" import badge %}
 
-<div class="d-flex flex-column gap-4">
+<div class="flex flex-col gap-4">
     <div>
         <h6>Default Light TitledContainer:</h6>
         {% call titled_container(title="Study Options", id="demo-tc-1") %}
@@ -12,7 +12,7 @@
     <div>
         <h6>TitledContainer with Tooltip / Help Badge:</h6>
         {% set demo_tooltip %}
-            <span class="badge bg-secondary">Help ?</span>
+            <span class="badge badge-neutral">Help ?</span>
         {% endset %}
         {% call titled_container(title="Deck Configuration", id="demo-tc-tooltip", tooltip=demo_tooltip) %}
             <p class="mb-0">TitledContainer with help badge positioned at top right.</p>
@@ -22,7 +22,7 @@
     <div>
         <h6>TitledContainer with RTL layout:</h6>
         {% set rtl_tooltip %}
-            <span class="badge bg-info">مساعدة</span>
+            <span class="badge badge-info">مساعدة</span>
         {% endset %}
         {% call titled_container(title="خيارات الرزمة", id="demo-tc-rtl", rtl=true, tooltip=rtl_tooltip) %}
             <p class="mb-0">محتوى الحاوية المعنونة بالاتجاه من اليمين إلى اليسار.</p>

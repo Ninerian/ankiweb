@@ -1,16 +1,16 @@
 {% from "components/error_page.html.jinja" import error_page %}
 
-<div class="p-3 border rounded mb-3">
-    <h5>Default ErrorPage</h5>
+<div class="p-4 border border-base-300 rounded-box mb-4 bg-base-100">
+    <h5 class="font-bold text-lg mb-2">Default ErrorPage</h5>
     {{ error_page(message="An unexpected error occurred while processing your request.") }}
 </div>
 
-<div class="p-3 border rounded mb-3">
-    <h5>ErrorPage with error object dict</h5>
+<div class="p-4 border border-base-300 rounded-box mb-4 bg-base-100">
+    <h5 class="font-bold text-lg mb-2">ErrorPage with error object dict</h5>
     {{ error_page(error={"message": "Failed to import package: Invalid file format."}) }}
 </div>
 
-<div class="p-3 border rounded">
-    <h5>Custom class and extra attributes</h5>
+<div class="p-4 border border-base-300 rounded-box bg-base-100">
+    <h5 class="font-bold text-lg mb-2">Custom class and extra attributes</h5>
     {{ error_page(message="Network timeout while contacting server.", class_="my-custom-error", id="custom-error-banner", data_testid="error-page-demo") }}
 </div>

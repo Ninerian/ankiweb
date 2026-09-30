@@ -1,6 +1,6 @@
 {% macro config_input(grow=true, rtl=false, revert_slot=none, class_="") %}
 <div
-    class="config-input position-relative justify-content-end {{ 'flex-grow-1' if grow else '' }} {{ class_ }}"
+    class="config-input relative justify-end {{ 'grow' if grow else '' }} {{ class_ }}"
     {% for k, v in kwargs.items() %}
     {{ k }}="{{ v }}"
     {% endfor %}

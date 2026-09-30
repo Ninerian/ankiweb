@@ -1,10 +1,10 @@
 {% from "components/sticky_container.html.jinja" import sticky_container %}
 
-<div class="border p-2" style="height: 120px; overflow-y: auto;">
+<div class="border border-base-300 rounded-box p-2" style="height: 120px; overflow-y: auto;">
     {% call sticky_container(breakpoint="fluid", class_="p-2 shadow-sm") %}
         <strong>Sticky Header Inside Scrollable Area</strong>
     {% endcall %}
-    <div style="height: 250px;" class="p-2 text-muted">
+    <div style="height: 250px;" class="p-2 text-base-content/60 text-sm">
         Scroll down to see the header stick to top:
         <p>Line 1</p>
         <p>Line 2</p>

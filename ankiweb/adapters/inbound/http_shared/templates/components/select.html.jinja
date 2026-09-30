@@ -125,7 +125,7 @@
         data-on:keydown__window="evt.key === 'Escape' && (${{ open_sig }} = false)"
         style="position: absolute; top: 100%; left: 0; min-width: 100%; z-index: 890; margin-top: 2px;"
     >
-        {% call popover(id=sel_id ~ "_popover", scrollable=true, placement="bottom", class_="w-100") %}
+        {% call popover(id=sel_id ~ "_popover", scrollable=true, placement="bottom", class_="w-full") %}
             {% for item in list %}
                 {% set item_val = item.value if item is mapping else item %}
                 {% set item_lbl = item.content if item is mapping else item %}

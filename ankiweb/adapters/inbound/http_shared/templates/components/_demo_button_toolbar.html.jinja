@@ -2,27 +2,27 @@
 {% from "components/button_group.html.jinja" import button_group %}
 {% from "components/button_group_item.html.jinja" import button_group_item %}
 
-<div class="border p-3 mb-3">
-    <h6 class="text-muted">Toolbar with wrap=true and size=1.5:</h6>
+<div class="border border-base-300 p-3 mb-3 rounded-box">
+    <h6 class="text-base-content/60 mb-2">Toolbar with wrap=true and size=1.5:</h6>
     {% call button_toolbar(wrap=true, size=1.5) %}
         {% call button_group() %}
-            <button class="btn btn-outline-primary btn-sm">Cut</button>
-            <button class="btn btn-outline-primary btn-sm">Copy</button>
-            <button class="btn btn-outline-primary btn-sm">Paste</button>
+            <button class="btn btn-outline btn-primary btn-sm join-item">Cut</button>
+            <button class="btn btn-outline btn-primary btn-sm join-item">Copy</button>
+            <button class="btn btn-outline btn-primary btn-sm join-item">Paste</button>
         {% endcall %}
         {% call button_group() %}
-            <button class="btn btn-outline-secondary btn-sm">Undo</button>
-            <button class="btn btn-outline-secondary btn-sm">Redo</button>
+            <button class="btn btn-outline btn-sm join-item">Undo</button>
+            <button class="btn btn-outline btn-sm join-item">Redo</button>
         {% endcall %}
     {% endcall %}
 </div>
 
-<div class="border p-3">
-    <h6 class="text-muted">Toolbar with dark mode:</h6>
+<div class="border border-base-300 p-3 rounded-box">
+    <h6 class="text-base-content/60 mb-2">Toolbar with dark mode:</h6>
     {% call button_toolbar(is_dark=true) %}
         {% call button_group() %}
-            <button class="btn btn-secondary btn-sm">Dark 1</button>
-            <button class="btn btn-secondary btn-sm">Dark 2</button>
+            <button class="btn btn-neutral btn-sm join-item">Dark 1</button>
+            <button class="btn btn-neutral btn-sm join-item">Dark 2</button>
         {% endcall %}
     {% endcall %}
 </div>

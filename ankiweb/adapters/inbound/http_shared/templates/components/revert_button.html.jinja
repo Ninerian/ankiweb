@@ -17,7 +17,7 @@
 {# Datastar expressions need the `$` prefix; accept a bare signal name too. #}
 {% set sv = (signal_value if signal_value.startswith("$") else "$" ~ signal_value) if signal_value else signal_value %}
 <div
-    class="revert-button-container position-relative {{ class_ }}{% if not signal_value and not is_static_modified %} hide{% endif %}"
+    class="revert-button-container relative {{ class_ }}{% if not signal_value and not is_static_modified %} hide{% endif %}"
     {% if signal_value %}
         {% if signal_default is not none %}
         data-class="{'hide': String({{ sv }}) === String({{ signal_default }})}"

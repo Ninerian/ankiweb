@@ -2,7 +2,7 @@
 {%- set btn_size = ('--buttons-size: ' ~ size ~ 'rem;') if size is not none else '' -%}
 {%- set btn_wrap = ('--buttons-wrap: ' ~ ('wrap;' if wrap else 'nowrap;')) if wrap is not none else '' -%}
 {%- set extra_style = kwargs.pop('style') if 'style' in kwargs else '' -%}
-<div{% if id %} id="{{ id }}"{% endif %} class="button-toolbar btn-toolbar{% if is_dark %} nightMode{% endif %}{% if class_ %} {{ class_ }}{% endif %}" style="--icon-align: baseline; {{ btn_size }} {{ btn_wrap }} {{ extra_style }}" role="toolbar"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+<div{% if id %} id="{{ id }}"{% endif %} class="button-toolbar flex flex-wrap gap-2 items-center{% if is_dark %} nightMode{% endif %}{% if class_ %} {{ class_ }}{% endif %}" style="--icon-align: baseline; {{ btn_size }} {{ btn_wrap }} {{ extra_style }}" role="toolbar"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
     {{ caller() if caller else '' }}
 </div>
 {%- endmacro %}

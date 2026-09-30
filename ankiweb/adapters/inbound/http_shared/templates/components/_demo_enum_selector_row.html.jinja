@@ -1,7 +1,7 @@
 {% from "components/enum_selector_row.html.jinja" import enum_selector_row %}
 
-<div class="d-flex flex-column gap-3" style="max-width: 600px;" data-signals="{ timerMode: 'custom', defaultTimerMode: 'standard' }">
-    <div class="border p-2 rounded">
+<div class="flex flex-col gap-3 max-w-xl" data-signals="{ timerMode: 'custom', defaultTimerMode: 'standard' }">
+    <div class="border border-base-300 p-3 rounded-box bg-base-100">
         {% call enum_selector_row(
             signal="$timerMode",
             signal_default="$defaultTimerMode",
@@ -14,15 +14,15 @@
         ) %}
             <div>
                 <strong>Timer Mode</strong>
-                <div class="text-secondary small">Controls question review timer behavior</div>
+                <div class="text-base-content/60 text-xs">Controls question review timer behavior</div>
             </div>
         {% endcall %}
-        <div class="mt-2 small text-secondary">
+        <div class="mt-2 text-xs text-base-content/60">
             Selected: <code data-text="$timerMode">custom</code> (revert button visible because it differs from standard)
         </div>
     </div>
 
-    <div class="border p-2 rounded">
+    <div class="border border-base-300 p-3 rounded-box bg-base-100">
         {% call enum_selector_row(
             value="asc",
             default_value="asc",
@@ -33,12 +33,12 @@
         ) %}
             <div>
                 <strong>Sort Order</strong>
-                <div class="text-secondary small">Same as default (revert button hidden)</div>
+                <div class="text-base-content/60 text-xs">Same as default (revert button hidden)</div>
             </div>
         {% endcall %}
     </div>
 
-    <div class="border p-2 rounded">
+    <div class="border border-base-300 p-3 rounded-box bg-base-100">
         {% call enum_selector_row(
             value="locked",
             default_value="locked",
@@ -47,7 +47,7 @@
         ) %}
             <div>
                 <strong>Locked setting</strong>
-                <div class="text-secondary small">Disabled selector row</div>
+                <div class="text-base-content/60 text-xs">Disabled selector row</div>
             </div>
         {% endcall %}
     </div>
