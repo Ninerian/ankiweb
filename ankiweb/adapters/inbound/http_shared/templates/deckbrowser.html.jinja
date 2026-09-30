@@ -58,32 +58,29 @@
       </div>
     </div>
     <div class="opts">
-      <div class="dropdown">
-        <a
-          class="opts dropdown-toggle"
-          href="#"
-          role="button"
-          data-bs-toggle="dropdown"
-          data-bs-boundary="viewport"
-          data-bs-config='{"popperConfig":{"strategy":"fixed"}}'
-          aria-expanded="false"
+      <div class="dropdown dropdown-end">
+        <button
+          class="opts"
+          type="button"
+          tabindex="0"
+          data-testid="deck-options-dropdown"
           aria-label="{{ tr.actions_options() }}"
         >
           <span class="kebab-dots" aria-hidden="true">&#8942;</span>
-        </a>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+        </button>
+        <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-lg z-50 w-44 p-1 border border-base-300">
           <li>
-            <a class="dropdown-item" href="#" data-on:click__prevent="@post('/deckbrowser/opts/{{ node.deck_id }}')">
+            <a href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent="@post('/deckbrowser/opts/{{ node.deck_id }}')">
               {{ tr.actions_options() }}
             </a>
           </li>
           <li>
-            <a class="dropdown-item" href="#" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebPrompt("{{ tr.decks_new_deck_name() }}", {{ node.name | tojson }}).then(function(name) { if (name) @post(&#39;/deckbrowser/rename/{{ node.deck_id }}&#39;, {payload: {name: name}}); })'>
+            <a href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebPrompt("{{ tr.decks_new_deck_name() }}", {{ node.name | tojson }}).then(function(name) { if (name) @post(&#39;/deckbrowser/rename/{{ node.deck_id }}&#39;, {payload: {name: name}}); })'>
               {{ tr.actions_rename() }}
             </a>
           </li>
           <li>
-            <a class="dropdown-item text-danger" href="#" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebConfirm("{{ tr.decks_delete_deck() }}: " + {{ node.name | tojson }} + "?", {danger: true}).then(function(ok) { if (ok) @post(&#39;/deckbrowser/delete/{{ node.deck_id }}&#39;); })'>
+            <a class="text-error" href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebConfirm("{{ tr.decks_delete_deck() }}: " + {{ node.name | tojson }} + "?", {danger: true}).then(function(ok) { if (ok) @post(&#39;/deckbrowser/delete/{{ node.deck_id }}&#39;); })'>
               {{ tr.actions_delete() }}
             </a>
           </li>
@@ -98,17 +95,17 @@
   {% endif %}
 {% endmacro %}
 
-<div class="deckbrowser-page container px-3 py-2 py-md-4">
+<div class="deckbrowser-page mx-auto max-w-2xl px-3 py-2 md:py-4">
   <!-- Header: Serif Due numeral & Continue button -->
-  <header class="d-flex align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
-    <div class="d-flex align-items-baseline gap-2">
+  <header class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-base-300">
+    <div class="flex items-baseline gap-2">
       <div class="deckbrowser-due-numeral">{{ ns.total_due }}</div>
       <div class="deckbrowser-due-label">{{ tr.statistics_due_count() }}</div>
     </div>
     {% if ns.total_due > 0 and current_id %}
       <div>
         <a
-          class="btn btn-primary btn-sm btn-md-lg px-3 px-sm-4 d-inline-flex align-items-center justify-content-center gap-1 gap-sm-2"
+          class="btn btn-primary btn-sm md:btn-lg px-3 sm:px-4 inline-flex items-center justify-center gap-1 sm:gap-2"
           href="#"
           data-on:click__prevent="@post('/deckbrowser/open/{{ current_id }}')"
         >
@@ -128,16 +125,14 @@
     {% endfor %}
   </main>
 
-  <div id="studiedToday" class="text-muted text-center mt-3"><span>{{ studied_today }}</span></div>
-  <div id="err" class="text-danger mt-2 text-center"></div>
+  <div id="studiedToday" class="text-base-content/60 text-center mt-3"><span>{{ studied_today }}</span></div>
+  <div id="err" class="text-error mt-2 text-center"></div>
 
   <!-- Floating Action Button '+' trigger -->
   <button
     class="btn btn-primary deckbrowser-fab-btn"
     type="button"
-    data-bs-toggle="offcanvas"
-    data-bs-target="#deckbrowserActionsSheet"
-    aria-controls="deckbrowserActionsSheet"
+    onclick="document.getElementById('deckbrowserActionsSheet').showModal()"
     aria-label="{{ tr.actions_add() }}"
   >
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -145,24 +140,24 @@
       <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
   </button>
-
   <!-- Bottom sheet for actions -->
-  <div
-    class="offcanvas offcanvas-bottom"
-    tabindex="-1"
+  <dialog
+    class="modal modal-bottom sm:modal-middle"
     id="deckbrowserActionsSheet"
     aria-labelledby="deckbrowserActionsSheetLabel"
   >
-    <div class="offcanvas-header border-bottom py-3">
-      <h5 class="offcanvas-title h6 mb-0" id="deckbrowserActionsSheetLabel">{{ tr.actions_decks() }}</h5>
-      <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body py-3">
-      <div class="d-grid gap-2">
+    <div class="modal-box p-4 border border-base-300">
+      <div class="flex items-center justify-between border-b border-base-300 pb-3 mb-3">
+        <h5 class="text-base font-bold m-0" id="deckbrowserActionsSheetLabel">{{ tr.actions_decks() }}</h5>
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
+        </form>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <button
-          class="btn btn-outline-secondary d-flex align-items-center justify-content-start gap-3 py-2 px-3 text-start"
+          class="btn btn-outline flex items-center justify-start gap-3 py-2 px-3 text-left w-full h-auto min-h-11"
           type="button"
-          data-bs-dismiss="offcanvas"
+          onclick="document.getElementById('deckbrowserActionsSheet').close();"
           data-on:click__prevent="ankiwebPrompt('{{ tr.decks_new_deck_name() }}').then(function(name) { if (name) @post('/deckbrowser/create', {payload: {name: name}}); })"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -174,9 +169,9 @@
         </button>
 
         <button
-          class="btn btn-outline-secondary d-flex align-items-center justify-content-start gap-3 py-2 px-3 text-start"
+          class="btn btn-outline flex items-center justify-start gap-3 py-2 px-3 text-left w-full h-auto min-h-11"
           type="button"
-          data-bs-dismiss="offcanvas"
+          onclick="document.getElementById('deckbrowserActionsSheet').close();"
           data-on:click__prevent="@post('/deckbrowser/createfiltered')"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -186,10 +181,9 @@
         </button>
 
         <button
-          class="btn btn-outline-secondary d-flex align-items-center justify-content-start gap-3 py-2 px-3 text-start"
+          class="btn btn-outline flex items-center justify-start gap-3 py-2 px-3 text-left w-full h-auto min-h-11"
           type="button"
-          data-bs-dismiss="offcanvas"
-          onclick="ankiwebImportFile()"
+          onclick="document.getElementById('deckbrowserActionsSheet').close(); ankiwebImportFile();"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -200,9 +194,9 @@
         </button>
 
         <a
-          class="btn btn-outline-secondary d-flex align-items-center justify-content-start gap-3 py-2 px-3 text-start"
+          class="btn btn-outline flex items-center justify-start gap-3 py-2 px-3 text-left w-full h-auto min-h-11"
           href="/export"
-          data-bs-dismiss="offcanvas"
+          onclick="document.getElementById('deckbrowserActionsSheet').close();"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -213,10 +207,9 @@
         </a>
 
         <button
-          class="btn btn-outline-secondary d-flex align-items-center justify-content-start gap-3 py-2 px-3 text-start"
+          class="btn btn-outline flex items-center justify-start gap-3 py-2 px-3 text-left w-full h-auto min-h-11"
           type="button"
-          data-bs-dismiss="offcanvas"
-          onclick="ankiwebImageOcclusion()"
+          onclick="document.getElementById('deckbrowserActionsSheet').close(); ankiwebImageOcclusion();"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -227,5 +220,8 @@
         </button>
       </div>
     </div>
-  </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
 </div>

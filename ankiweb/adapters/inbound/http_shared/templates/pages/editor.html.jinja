@@ -7,15 +7,15 @@
 
 <div id="editor-root" class="route-editor" data-signals="{{ initial_signals_json | forceescape }}">
   <!-- Top Bar: Deck/Notetype selection (Add mode) or Note details (Edit mode), Action buttons -->
-  <div class="editor-top-bar d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <div class="editor-top-bar flex justify-between items-center flex-wrap gap-2">
     <div class="notetype-deck-bar">
       {% if mode == "add" %}
-        <div class="d-flex align-items-center gap-2">
-          <label class="d-flex align-items-center gap-1 small fw-semibold">
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1 text-sm font-semibold">
             <span>Type:</span>
             <select
               id="editor-notetype-select"
-              class="form-select form-select-sm"
+              class="select select-sm"
               data-bind="notetype_id"
               data-on:change="@post('/editor/change-notetype')"
             >
@@ -27,11 +27,11 @@
             </select>
           </label>
 
-          <label class="d-flex align-items-center gap-1 small fw-semibold">
+          <label class="flex items-center gap-1 text-sm font-semibold">
             <span>Deck:</span>
             <select
               id="editor-deck-select"
-              class="form-select form-select-sm"
+              class="select select-sm"
               data-bind="deck_id"
               data-on:change="@post('/editor/change-deck')"
             >
@@ -44,17 +44,17 @@
           </label>
         </div>
       {% else %}
-        <div class="d-flex align-items-center gap-2">
-          <span class="badge bg-secondary">Note {{ nid }}</span>
-          <span class="small text-muted">{{ notetype_name }}</span>
+        <div class="flex items-center gap-2">
+          <span class="badge badge-neutral">Note {{ nid }}</span>
+          <span class="text-sm text-base-content/60">{{ notetype_name }}</span>
         </div>
       {% endif %}
     </div>
 
-    <div class="d-flex align-items-center gap-2">
+    <div class="flex items-center gap-2">
       <a
         id="editor-fields-btn"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-outline btn-sm"
         title="{{ tr.editing_fields() }}"
         href="/fields/{{ notetype_id }}"
         target="_top"
@@ -64,7 +64,7 @@
 
       <a
         id="editor-cards-btn"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-outline btn-sm"
         title="{{ tr.editing_cards() }}"
         href="/card-layout/{{ notetype_id }}"
         target="_top"
@@ -75,7 +75,7 @@
       {% if nid is not none %}
         <a
           id="editor-preview-btn"
-          class="btn btn-outline-secondary btn-sm"
+          class="btn btn-outline btn-sm"
           title="Preview"
           href="/preview/{{ nid }}"
           target="_blank"
@@ -86,13 +86,12 @@
       <button
         id="editor-undo-btn"
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="btn btn-outline btn-sm"
         title="Undo (Ctrl+Z)"
         data-on:click="@post('/editor/undo')"
       >
         Undo
       </button>
-
       {% if mode == "add" %}
         <button
           id="editor-add-btn"
@@ -113,14 +112,14 @@
     class="duplicate-warning-banner mx-3 mt-2"
     data-class="{'show': $is_duplicate}"
   >
-    <div class="d-flex align-items-center gap-2">
-      <span class="fw-bold">Warning:</span>
+    <div class="flex items-center gap-2">
+      <span class="font-bold">Warning:</span>
       <span>A note with these first field contents already exists in the collection.</span>
     </div>
   </div>
 
   <!-- Editor Toolbar Mount -->
-  <div id="ankiweb-editor-toolbar" class="editor-toolbar-container border-bottom bg-body-tertiary">
+  <div id="ankiweb-editor-toolbar" class="editor-toolbar-container border-b border-base-300 bg-base-200">
     {% include "pages/editor/_toolbar.html.jinja" ignore missing %}
   </div>
 
@@ -140,16 +139,16 @@
               class="field-label-group"
               data-on:click="$field_collapsed_{{ f_idx }} = !$field_collapsed_{{ f_idx }}; @post('/editor/toggle-collapse?idx={{ f_idx }}')"
             >
-              <span class="field-collapse-icon small text-muted">
+              <span class="field-collapse-icon text-sm text-base-content/60">
                 <span data-show="!$field_collapsed_{{ f_idx }}">&#9660;</span>
                 <span data-show="$field_collapsed_{{ f_idx }}">&#9654;</span>
               </span>
               <span class="field-name">{{ fld.name }}</span>
               {% if fld.is_cloze %}
-                <span class="badge bg-info text-dark" style="font-size: 0.65rem;">cloze</span>
+                <span class="badge badge-info badge-sm" style="font-size: 0.65rem;">cloze</span>
               {% endif %}
               {% if fld.description %}
-                <span class="small text-muted fst-italic" style="font-size: 0.75rem;">({{ fld.description }})</span>
+                <span class="text-sm text-base-content/60 italic" style="font-size: 0.75rem;">({{ fld.description }})</span>
               {% endif %}
             </div>
 
@@ -210,7 +209,7 @@
               data-field-index="{{ f_idx }}"
             >
               <textarea
-                class="form-control form-control-sm font-monospace"
+                class="textarea w-full font-mono text-sm"
                 rows="3"
                 data-plain-textarea="{{ f_idx }}"
                 data-bind="field_val_{{ f_idx }}"
@@ -226,12 +225,12 @@
     <div class="editor-bottom-bar">
       <div id="ankiweb-tag-editor">
         {% include "pages/editor/_tags.html.jinja" ignore missing %}
-        <div id="ankiweb-tags-fallback" class="d-none align-items-center gap-2">
-          <label class="small fw-semibold text-muted" for="editor-tags-input">Tags:</label>
+        <div id="ankiweb-tags-fallback" class="hidden items-center gap-2">
+          <label class="text-sm font-semibold text-base-content/60" for="editor-tags-input">Tags:</label>
           <input
             id="editor-tags-input"
             type="text"
-            class="form-control form-control-sm"
+            class="input input-sm"
             placeholder="Tags separated by spaces"
             data-bind="tags_str"
             value="{{ ' '.join(tags) }}"

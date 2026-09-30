@@ -174,7 +174,7 @@ def _extract_limits_from_payload(payload: dict[str, Any]) -> dc.DeckConfigsForUp
 
 def render_preset_selector_html(all_configs: list[dict[str, Any]], current_preset_id: int) -> str:
     html = '<div id="presetSelectorWrap">\n'
-    html += '    <select id="presetSelector" class="form-select form-select-sm w-auto" data-bind="presetId" data-on:change="@post(\'/deck-options/change-preset\')">\n'
+    html += '    <select id="presetSelector" class="select select-sm w-auto" data-bind="presetId" data-on:change="@post(\'/deck-options/change-preset\')">\n'
     for p in all_configs:
         sel = ' selected' if p["id"] == current_preset_id else ''
         count_str = f" ({p['use_count']})" if p.get("use_count") else ""
@@ -205,10 +205,10 @@ def make_router(get_service: Callable) -> APIRouter:
             msg = str(e)
             if "deck not normal" in msg or "dyn" in msg:
                 err_html = """
-                <div class="container py-4">
-                    <div class="error-box p-4 border rounded bg-white shadow-sm">
-                        <h4 class="text-danger">deck not normal</h4>
-                        <p class="text-muted">Options cannot be configured for a filtered deck.</p>
+                <div class="mx-auto max-w-2xl py-4 px-4">
+                    <div class="error-box p-6 border border-base-300 rounded-box bg-base-100 shadow-sm">
+                        <h4 class="text-error font-bold text-lg mb-2">deck not normal</h4>
+                        <p class="text-base-content/60 mb-4">Options cannot be configured for a filtered deck.</p>
                         <a href="/deckbrowser" class="btn btn-primary">Decks</a>
                     </div>
                 </div>
@@ -218,10 +218,10 @@ def make_router(get_service: Callable) -> APIRouter:
 
         if state_info.get("is_dyn"):
             err_html = """
-            <div class="container py-4">
-                <div class="error-box p-4 border rounded bg-white shadow-sm">
-                    <h4 class="text-danger">deck not normal</h4>
-                    <p class="text-muted">Options cannot be configured for a filtered deck.</p>
+            <div class="mx-auto max-w-2xl py-4 px-4">
+                <div class="error-box p-6 border border-base-300 rounded-box bg-base-100 shadow-sm">
+                    <h4 class="text-error font-bold text-lg mb-2">deck not normal</h4>
+                    <p class="text-base-content/60 mb-4">Options cannot be configured for a filtered deck.</p>
                     <a href="/deckbrowser" class="btn btn-primary">Decks</a>
                 </div>
             </div>
@@ -393,7 +393,7 @@ def make_router(get_service: Callable) -> APIRouter:
         return DatastarResponse([
             SSE.patch_elements(selector_html, selector="#presetSelectorWrap"),
             SSE.patch_signals(signals_update),
-            SSE.execute_script("const el = document.getElementById('addPresetModal'); if (el) { const m = bootstrap.Modal.getOrCreateInstance(el); if (m) m.hide(); } document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.removeProperty('padding-right'); document.body.style.removeProperty('overflow');"),
+            SSE.execute_script("document.getElementById('addPresetModal')?.close()"),
         ])
 
     @router.post("/deck-options/clone-preset")
@@ -452,7 +452,7 @@ def make_router(get_service: Callable) -> APIRouter:
         return DatastarResponse([
             SSE.patch_elements(selector_html, selector="#presetSelectorWrap"),
             SSE.patch_signals(signals_update),
-            SSE.execute_script("const el = document.getElementById('clonePresetModal'); if (el) { const m = bootstrap.Modal.getOrCreateInstance(el); if (m) m.hide(); } document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.removeProperty('padding-right'); document.body.style.removeProperty('overflow');"),
+            SSE.execute_script("document.getElementById('clonePresetModal')?.close()"),
         ])
 
     @router.post("/deck-options/rename-preset")
@@ -462,8 +462,10 @@ def make_router(get_service: Callable) -> APIRouter:
         current_preset_id = int(payload.get("presetId", 1))
         rename_to = str(payload.get("renamePresetName", "")).strip()
         if not rename_to:
-            return DatastarResponse(SSE.patch_signals({"statusMessage": "Preset name cannot be empty"}))
-
+            return DatastarResponse([
+                SSE.patch_signals({"statusMessage": "Preset name cannot be empty"}),
+                SSE.execute_script("document.getElementById('renamePresetModal')?.close()"),
+            ])
         def do_rename(col):
             res = col.decks.get_deck_configs_for_update(deck_id)
             target = next((c.config for c in res.all_config if c.config.id == current_preset_id), None)
@@ -498,7 +500,7 @@ def make_router(get_service: Callable) -> APIRouter:
                 "renamePresetName": "",
                 "statusMessage": f"Renamed preset to '{rename_to}'",
             }),
-            SSE.execute_script("const el = document.getElementById('renamePresetModal'); if (el) { const m = bootstrap.Modal.getOrCreateInstance(el); if (m) m.hide(); } document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.removeProperty('padding-right'); document.body.style.removeProperty('overflow');"),
+            SSE.execute_script("document.getElementById('renamePresetModal')?.close()"),
         ])
 
     @router.post("/deck-options/delete-preset")
@@ -510,7 +512,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if current_preset_id == 1:
             return DatastarResponse([
                 SSE.patch_signals({"statusMessage": "The Default preset cannot be deleted."}),
-                SSE.execute_script("const el = document.getElementById('deletePresetModal'); if (el) { const m = bootstrap.Modal.getOrCreateInstance(el); if (m) m.hide(); } document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.removeProperty('padding-right'); document.body.style.removeProperty('overflow');"),
+                SSE.execute_script("document.getElementById('deletePresetModal')?.close()"),
             ])
 
         def do_delete(col):
@@ -542,7 +544,7 @@ def make_router(get_service: Callable) -> APIRouter:
         return DatastarResponse([
             SSE.patch_elements(selector_html, selector="#presetSelectorWrap"),
             SSE.patch_signals(signals_update),
-            SSE.execute_script("const el = document.getElementById('deletePresetModal'); if (el) { const m = bootstrap.Modal.getOrCreateInstance(el); if (m) m.hide(); } document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.removeProperty('padding-right'); document.body.style.removeProperty('overflow');"),
+            SSE.execute_script("document.getElementById('deletePresetModal')?.close()"),
         ])
 
     @router.post("/deck-options/save")

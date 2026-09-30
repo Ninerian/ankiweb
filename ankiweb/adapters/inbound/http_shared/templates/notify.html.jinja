@@ -1,15 +1,15 @@
-<div class="container" style="max-width:760px;padding:8px 16px;">
-  <h2>Push notifications</h2>
-  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-  <p class="text-muted">
+<div class="mx-auto px-4 py-3 max-w-3xl">
+  <h2 class="text-2xl font-bold mb-2">Push notifications</h2>
+  {% if error %}<div class="alert alert-error mb-3">{{ error }}</div>{% endif %}
+  <p class="text-base-content/60 text-sm mb-4">
     An ankiweb-original feature (not part of the Anki/AnkiConnect port). POSTs
     to your endpoint whenever a deck's new/learn/review counts change (any of
     the three). Configuration is live — saving applies without a restart.
   </p>
-  <form method="post" action="/notify">
-    <div class="form-check mb-3">
+  <form method="post" action="/notify" class="space-y-4">
+    <div class="flex items-center gap-2 cursor-pointer">
       <input
-        class="form-check-input"
+        class="checkbox checkbox-primary checkbox-sm"
         type="checkbox"
         id="notify_enabled"
         name="enabled"
@@ -17,13 +17,13 @@
           checked
         {% endif %}
       >
-      <label class="form-check-label" for="notify_enabled">Enabled</label>
+      <label class="cursor-pointer text-sm font-medium" for="notify_enabled">Enabled</label>
     </div>
-    <div class="mb-3 row">
-      <label class="col-sm-4 col-form-label" for="notify_url">POST URL</label>
-      <div class="col-sm-8">
+    <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
+      <label class="sm:col-span-4 text-sm font-medium" for="notify_url">POST URL</label>
+      <div class="sm:col-span-8">
         <input
-          class="form-control"
+          class="input input-sm w-full"
           type="text"
           id="notify_url"
           name="url"
@@ -32,11 +32,11 @@
         >
       </div>
     </div>
-    <div class="mb-3 row">
-      <label class="col-sm-4 col-form-label" for="notify_token">Token (Bearer)</label>
-      <div class="col-sm-8">
+    <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
+      <label class="sm:col-span-4 text-sm font-medium" for="notify_token">Token (Bearer)</label>
+      <div class="sm:col-span-8">
         <input
-          class="form-control"
+          class="input input-sm w-full"
           type="text"
           id="notify_token"
           name="token"
@@ -45,11 +45,11 @@
         >
       </div>
     </div>
-    <div class="mb-3 row">
-      <label class="col-sm-4 col-form-label" for="notify_poll_sec">Poll interval (sec)</label>
-      <div class="col-sm-8">
+    <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
+      <label class="sm:col-span-4 text-sm font-medium" for="notify_poll_sec">Poll interval (sec)</label>
+      <div class="sm:col-span-8">
         <input
-          class="form-control"
+          class="input input-sm w-full"
           type="number"
           id="notify_poll_sec"
           name="poll_sec"
@@ -59,11 +59,11 @@
         >
       </div>
     </div>
-    <div class="mb-3 row">
-      <label class="col-sm-4 col-form-label" for="notify_retry_sec">Retry interval (sec)</label>
-      <div class="col-sm-8">
+    <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
+      <label class="sm:col-span-4 text-sm font-medium" for="notify_retry_sec">Retry interval (sec)</label>
+      <div class="sm:col-span-8">
         <input
-          class="form-control"
+          class="input input-sm w-full"
           type="number"
           id="notify_retry_sec"
           name="retry_sec"
@@ -73,10 +73,10 @@
         >
       </div>
     </div>
-    <div class="mb-3 row">
-      <label class="col-sm-4 col-form-label" for="notify_scope">Scope</label>
-      <div class="col-sm-8">
-        <select class="form-select" id="notify_scope" name="scope">
+    <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-2">
+      <label class="sm:col-span-4 text-sm font-medium" for="notify_scope">Scope</label>
+      <div class="sm:col-span-8">
+        <select class="select select-sm w-full" id="notify_scope" name="scope">
           <option value="leaf" {% if leaf_selected %}selected{% endif %}>
             Leaf only (last-level decks)
           </option>
@@ -86,10 +86,10 @@
         </select>
       </div>
     </div>
-    <p>
-      <button class="btn btn-primary me-2" type="submit" name="action" value="save">{{ tr.actions_save() | tr_clean }}</button>
+    <div class="flex items-center gap-2 pt-2">
+      <button class="btn btn-primary btn-sm" type="submit" name="action" value="save">{{ tr.actions_save() | tr_clean }}</button>
       <button
-        class="btn btn-outline-primary"
+        class="btn btn-outline btn-primary btn-sm"
         type="submit"
         name="action"
         value="resync"
@@ -97,38 +97,43 @@
       >
         {{ tr.actions_save() | tr_clean }} &amp; re-push all
       </button>
-    </p>
+    </div>
   </form>
-  <h3>{{ tr.importing_status() | tr_clean }}</h3>
-    <tr>
-      <td>Active</td>
-      <td>{{ "yes" if active else "no" }}</td>
-    </tr>
-    <tr>
-      <td>Decks watched</td>
-      <td>{{ watching }}</td>
-    </tr>
-    <tr>
-      <td>Learnable now</td>
-      <td>{{ learnable }}</td>
-    </tr>
-    <tr>
-      <td>Pending (unacked)</td>
-      <td>{{ pending }}</td>
-    </tr>
-    <tr>
-      <td>Last attempt</td>
-      <td>{{ last_attempt }}</td>
-    </tr>
-    <tr>
-      <td>Last success</td>
-      <td>{{ last_success }}</td>
-    </tr>
-    <tr>
-      <td>Last error</td>
-      <td>{{ last_error }}</td>
-    </tr>
-  </table>
-  <h3>Request format</h3>
-  <pre class="bg-body-secondary p-3 rounded">{{ schema_doc | safe }}</pre>
+  <h3 class="text-lg font-bold mt-6 mb-2">{{ tr.importing_status() | tr_clean }}</h3>
+  <div class="overflow-x-auto">
+    <table class="table table-sm border border-base-300">
+      <tbody>
+        <tr>
+          <td class="font-medium">Active</td>
+          <td>{{ "yes" if active else "no" }}</td>
+        </tr>
+        <tr>
+          <td class="font-medium">Decks watched</td>
+          <td>{{ watching }}</td>
+        </tr>
+        <tr>
+          <td class="font-medium">Learnable now</td>
+          <td>{{ learnable }}</td>
+        </tr>
+        <tr>
+          <td class="font-medium">Pending (unacked)</td>
+          <td>{{ pending }}</td>
+        </tr>
+        <tr>
+          <td class="font-medium">Last attempt</td>
+          <td>{{ last_attempt }}</td>
+        </tr>
+        <tr>
+          <td class="font-medium">Last success</td>
+          <td>{{ last_success }}</td>
+        </tr>
+        <tr>
+          <td class="font-medium">Last error</td>
+          <td>{{ last_error }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 class="text-lg font-bold mt-6 mb-2">Request format</h3>
+  <pre class="bg-base-200 text-base-content p-3 rounded-box overflow-x-auto text-xs">{{ schema_doc | safe }}</pre>
 </div>

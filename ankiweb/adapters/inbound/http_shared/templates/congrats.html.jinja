@@ -32,7 +32,7 @@
         </div>
       {% endif %}
 
-      <div class="congrats-actions mt-4 pt-2 border-top">
+      <div class="congrats-actions mt-4 pt-2 border-t border-base-300">
         <button class="btn btn-primary" type="button" data-on:click__prevent="@post('/overview/decks')">Back to Decks</button>
       </div>
     </div>
@@ -47,12 +47,16 @@
   }
 
   .congrats a {
-    color: var(--fg-link, var(--bs-link-color, #0d6efd));
+    color: var(--color-primary);
     text-decoration: none;
+  }
+  .congrats a:hover {
+    text-decoration: underline;
   }
 
   .congrats .description {
-    border: 1px solid var(--bs-border-color, #dee2e6);
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
     padding: 1em;
   }
 </style>

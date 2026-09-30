@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel="stylesheet" href="/shell/static/vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="/shell/static/app.css">
     <link rel="stylesheet" href="/shell/static/theme.css">
     <link rel="stylesheet" href="/shell/static/components.css">
     <meta charset="utf-8">
@@ -18,14 +18,13 @@
       }
     </style>
     <script>
-      /* night-mode: theme synchronized via bootstrap.js and data-bs-theme */
+      /* night-mode: theme synchronized via the shell bootstrap.js and the daisyUI data-theme attribute */
       window.__ankiwebContext = {{ context | tojson }}
     </script>
     {% for c in css_files %}<link rel="stylesheet" href="/_anki/{{ c }}">{%
       endfor
     %}
     {% for j in js_files %}<script src="/_anki/{{ j }}"></script>{% endfor %}
-    <script src="/shell/static/vendor/bootstrap.bundle.min.js"></script>
     <script src="/shell/static/bootstrap.js"></script>
     <script src="/shell/static/dialogs.js"></script>
     <script type="module" src="/shell/static/datastar.js"></script>

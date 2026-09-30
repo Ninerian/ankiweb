@@ -50,10 +50,19 @@
   /* Desktop sidebar */
   @media (min-width: 768px) {
     #sidebar-offcanvas {
+      display: block !important;
+      position: static !important;
       width: 200px !important;
+      height: 100% !important;
+      max-height: none !important;
       flex-shrink: 0;
-      border-right: 1px solid var(--bs-border-color);
+      border-right: 1px solid var(--color-base-300);
       overflow-y: auto;
+      background: transparent;
+      padding: 0;
+    }
+    #sidebar-offcanvas::backdrop {
+      display: none !important;
     }
   }
 
@@ -65,24 +74,24 @@
   #sidebar .side-section {
     font-weight: bold;
     margin-top: 8px;
-    color: var(--bs-body-color);
+    color: var(--color-base-content);
   }
 
   #sidebar .side-item {
     display: block;
     padding: 2px 4px;
-    color: var(--bs-link-color);
+    color: var(--color-primary);
     text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     direction: rtl;
     text-align: left;
-    border-radius: var(--bs-border-radius-sm);
+    border-radius: var(--radius-selector, 0.25rem);
   }
 
   #sidebar .side-item:hover {
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--color-base-200);
   }
 
   #results-wrap {
@@ -99,6 +108,7 @@
   }
 
   #results {
+    border-collapse: collapse;
     table-layout: fixed;
     width: 100%;
   }
@@ -116,7 +126,7 @@
   }
 
   .browser-row:hover {
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--color-base-200);
   }
 
   .browser-row.suspended-card {
@@ -124,8 +134,8 @@
   }
 
   #results tr.selected {
-    background-color: var(--bs-primary-bg-subtle) !important;
-    border-left: 3px solid var(--bs-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent) !important;
+    border-left: 3px solid var(--color-primary);
   }
 
   #results tr.selected > td {
@@ -158,10 +168,19 @@
   /* Desktop detail pane */
   @media (min-width: 768px) {
     #detail-offcanvas {
+      display: block !important;
+      position: static !important;
       width: 46% !important;
+      height: 100% !important;
+      max-height: none !important;
       flex-shrink: 0;
-      border-left: 1px solid var(--bs-border-color);
+      border-left: 1px solid var(--color-base-300);
       overflow-y: auto;
+      background: transparent;
+      padding: 0;
+    }
+    #detail-offcanvas::backdrop {
+      display: none !important;
     }
   }
 
@@ -172,7 +191,7 @@
 
   #detail .fldname {
     font-weight: bold;
-    color: var(--bs-secondary-color, #888);
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
     font-size: 11px;
     margin-top: 6px;
   }
@@ -183,20 +202,18 @@
     border: 0;
   }
 </style>
-<div id="browser" class="small">
-  <div id="browser-top" class="d-flex flex-wrap align-items-center gap-2 p-2 border-bottom">
+<div id="browser" class="text-sm">
+  <div id="browser-top" class="flex flex-wrap items-center gap-2 p-2 border-b border-base-300">
     <button
-      class="btn btn-sm btn-outline-secondary d-md-none"
+      class="btn btn-sm btn-outline md:hidden"
       type="button"
-      data-bs-toggle="offcanvas"
-      data-bs-target="#sidebar-offcanvas"
-      aria-controls="sidebar-offcanvas"
+      onclick="document.getElementById('sidebar-offcanvas').showModal()"
     >
       {{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}
     </button>
     <input
       id="search"
-      class="form-control form-control-sm flex-grow-1 flex-md-grow-0"
+      class="input input-sm grow md:grow-0"
       type="text"
       autofocus
       placeholder="{{ tr.actions_search() }}…"
@@ -205,19 +222,19 @@
                               document.getElementById('search-trigger').click();
                           }"
     >
-    <div class="d-inline-flex align-items-center gap-2">
-      <span id="browser-status" class="text-muted">{{ count_label }}</span>
-      <span id="browser-selected-status" class="badge text-bg-secondary" style="display: none;"></span>
+    <div class="inline-flex items-center gap-2">
+      <span id="browser-status" class="text-base-content/60">{{ count_label }}</span>
+      <span id="browser-selected-status" class="badge badge-neutral" style="display: none;"></span>
     </div>
-    <div id="browser-actions" class="d-flex flex-wrap align-items-center gap-1 ms-auto">
+    <div id="browser-actions" class="flex flex-wrap items-center gap-1 ms-auto">
       <button id="search-trigger" style="display:none" data-on:click__prevent="const q = document.getElementById('search').value; @post('/browse/search', {payload: {query: q}})"></button>
       <button id="refresh-trigger" style="display:none" data-on:click__prevent="@post('/browse/refresh')"></button>
       <button id="select-trigger" style="display:none" data-on:click__prevent="const cids = window.__ankiwebGetSel(); @post('/browse/select', {payload: {cids: cids}})"></button>
 
-      <div class="btn-group" role="group">
+      <div class="join" role="group">
         <button
           id="btn-suspend"
-          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           disabled
           data-on:click__prevent="@post('/browse/suspend')"
@@ -226,7 +243,7 @@
         </button>
         <button
           id="btn-unsuspend"
-          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           disabled
           data-on:click__prevent="@post('/browse/unsuspend')"
@@ -235,7 +252,7 @@
         </button>
         <button
           id="btn-forget"
-          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           disabled
           data-on:click__prevent="@post('/browse/forget')"
@@ -244,7 +261,7 @@
         </button>
         <button
           id="btn-setdue"
-          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           disabled
           data-on:click__prevent="ankiwebPrompt('Due in days (e.g. 0, 3, 1-7):').then(function(x) { if (x !== null && x !== '') @post('/browse/setdue', {payload: {value: x}}); })"
@@ -253,7 +270,7 @@
         </button>
         <button
           id="btn-changedeck"
-          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           disabled
           data-on:click__prevent="ankiwebPrompt('Move to deck:').then(function(x) { if (x !== null && x !== '') @post('/browse/changedeck', {payload: {deck: x}}); })"
@@ -262,7 +279,7 @@
         </button>
         <button
           id="btn-addtag"
-          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           disabled
           data-on:click__prevent="ankiwebPrompt('Add tag:').then(function(x) { if (x !== null && x !== '') @post('/browse/addtag', {payload: {tag: x}}); })"
@@ -271,7 +288,7 @@
         </button>
         <button
           id="btn-removetag"
-          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           disabled
           data-on:click__prevent="ankiwebPrompt('Remove tag:').then(function(x) { if (x !== null && x !== '') @post('/browse/removetag', {payload: {tag: x}}); })"
@@ -280,7 +297,7 @@
         </button>
         <button
           id="btn-delete"
-          class="btn btn-sm btn-outline-danger d-none d-md-inline-block"
+          class="btn btn-sm btn-outline btn-error join-item hidden md:inline-flex"
           type="button"
           disabled
           data-on:click__prevent="ankiwebConfirm({{ (tr.browsing_delete_notes() ~ '?') | tojson | forceescape }}, {danger: true}).then(function(ok) { if (ok) @post('/browse/delete'); })"
@@ -289,7 +306,7 @@
         </button>
         <button
           id="btn-cardinfo"
-          class="btn btn-sm btn-outline-secondary d-none d-md-inline-block"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           disabled
           onclick="ankiwebCardInfo()"
@@ -298,128 +315,121 @@
         </button>
 
         <!-- Mobile dropdown collapsible -->
-        <div class="btn-group d-md-none" role="group">
-          <button
+        <details id="mobile-actions-dropdown" class="dropdown dropdown-end md:hidden">
+          <summary
             id="btn-actions-dropdown"
-            type="button"
-            class="btn btn-sm btn-outline-secondary dropdown-toggle"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-            disabled
+            class="btn btn-sm btn-outline"
+            role="button"
           >
             {{ tr.studying_more() }}
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+          </summary>
+          <ul class="dropdown-content menu bg-base-100 rounded-box shadow-sm z-50 p-2 w-48 text-sm">
             <li>
-              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-suspend').click()">
+              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-suspend').click()">
                 {{ tr.studying_suspend() }}
               </button>
             </li>
             <li>
-              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-unsuspend').click()">
+              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-unsuspend').click()">
                 {{ tr.actions_unbury_unsuspend() }}
               </button>
             </li>
-              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-forget').click()">
+            <li>
+              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-forget').click()">
                 {{ tr.actions_forget_card() }}
               </button>
             </li>
             <li>
-              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-setdue').click()">
+              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-setdue').click()">
                 {{ tr.actions_set_due_date() }}
               </button>
             </li>
             <li>
-              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-changedeck').click()">
+              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-changedeck').click()">
                 {{ tr.browsing_change_deck() }}
               </button>
             </li>
             <li>
-              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-addtag').click()">
+              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-addtag').click()">
                 {{ tr.editing_tags_add() }}
               </button>
+            </li>
             <li>
-              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-removetag').click()">
+              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-removetag').click()">
                 {{ tr.actions_remove_tag() }}
               </button>
             </li>
-            <li><hr class="dropdown-divider"></li>
+            <li><hr class="border-base-300 my-1"></li>
             <li>
-              <button class="dropdown-item text-danger" type="button" onclick="document.getElementById('btn-delete').click()">
+              <button class="text-error" type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-delete').click()">
                 {{ tr.actions_delete() }}
               </button>
             </li>
             <li>
-              <button class="dropdown-item" type="button" onclick="document.getElementById('btn-cardinfo').click()">
+              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-cardinfo').click()">
                 {{ tr.actions_card_info() }}
               </button>
             </li>
           </ul>
-        </div>
+        </details>
       </div>
     </div>
   </div>
 
   <div id="browser-main">
-    <!-- Sidebar in offcanvas-md start -->
-    <div
+    <!-- Sidebar in modal dialog on mobile, static pane on md+ -->
+    <dialog
       id="sidebar-offcanvas"
-      class="offcanvas-md offcanvas-start bg-body"
-      tabindex="-1"
+      class="modal modal-bottom sm:modal-middle md:modal-open md:static md:h-full md:max-h-none md:bg-transparent md:border-0 md:p-0 md:shadow-none"
       aria-labelledby="sidebar-offcanvas-label"
     >
-      <div class="offcanvas-header d-md-none border-bottom p-2">
-        <h6 class="offcanvas-title m-0" id="sidebar-offcanvas-label">{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}</h6>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="offcanvas"
-          data-bs-target="#sidebar-offcanvas"
-          aria-label="Close"
-        ></button>
+      <div class="modal-box p-0 md:max-w-none md:w-full md:h-full md:p-0 md:rounded-none md:shadow-none md:bg-transparent">
+        <div class="flex justify-between items-center md:hidden border-b border-base-300 p-2">
+          <h6 class="font-bold text-sm m-0" id="sidebar-offcanvas-label">{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}</h6>
+          <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
+          </form>
+        </div>
+        <div class="p-0 overflow-y-auto">
+          <div id="sidebar">{{ sidebar(decks, tags) }}</div>
+        </div>
       </div>
-      <div class="offcanvas-body p-0">
-        <div id="sidebar">{{ sidebar(decks, tags) }}</div>
-      </div>
-    </div>
-
+      <form method="dialog" class="modal-backdrop md:hidden"><button>close</button></form>
+    </dialog>
     <!-- Results table -->
     <div id="results-wrap">
-      <table id="results" class="table table-sm table-hover mb-0">
-        <thead class="sticky-top bg-body">
-          <tr class="d-none d-md-table-row">
+      <table id="results" class="table table-sm mb-0">
+        <thead class="sticky top-0 bg-base-100 z-10">
+          <tr class="hidden md:table-row">
             <th class="cell-sortfield">{{ tr.browsing_sort_field() }}</th>
             <th class="cell-card">{{ tr.browsing_card() }}</th>
             <th class="cell-deck">{{ tr.decks_deck() }}</th>
             <th class="cell-due">{{ tr.statistics_due_date() }}</th>
-            <th class="cell-tags d-none d-xl-table-cell">{{ tr.editing_tags() }}</th>
+            <th class="cell-tags hidden xl:table-cell">{{ tr.editing_tags() }}</th>
           </tr>
         </thead>
         <tbody id="results-body">{{ initial_rows | safe }}</tbody>
       </table>
     </div>
-
-    <!-- Detail pane in offcanvas-md end -->
-    <div
+    <!-- Detail pane in modal dialog on mobile, static pane on md+ -->
+    <dialog
       id="detail-offcanvas"
-      class="offcanvas-md offcanvas-end bg-body w-100"
-      tabindex="-1"
+      class="modal modal-bottom sm:modal-middle md:modal-open md:static md:h-full md:max-h-none md:w-full md:bg-transparent md:border-0 md:p-0 md:shadow-none"
       aria-labelledby="detail-offcanvas-label"
     >
-      <div class="offcanvas-header d-md-none border-bottom p-2">
-        <h6 class="offcanvas-title m-0" id="detail-offcanvas-label">{{ tr.browsing_card() }} – {{ tr.importing_details() }}</h6>
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="offcanvas"
-          data-bs-target="#detail-offcanvas"
-          aria-label="Close"
-        ></button>
+      <div class="modal-box p-0 max-w-full md:max-w-none md:w-full md:h-full md:p-0 md:rounded-none md:shadow-none md:bg-transparent">
+        <div class="flex justify-between items-center md:hidden border-b border-base-300 p-2">
+          <h6 class="font-bold text-sm m-0" id="detail-offcanvas-label">{{ tr.browsing_card() }} – {{ tr.importing_details() }}</h6>
+          <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
+          </form>
+        </div>
+        <div class="p-0 overflow-y-auto">
+          <div id="detail"></div>
+        </div>
       </div>
-      <div class="offcanvas-body p-0">
-        <div id="detail"></div>
-      </div>
-    </div>
+      <form method="dialog" class="modal-backdrop md:hidden"><button>close</button></form>
+    </dialog>
   </div>
 </div>
 <script>
@@ -437,11 +447,20 @@
           var actionIds = [
               'btn-suspend', 'btn-unsuspend', 'btn-forget', 'btn-setdue',
               'btn-changedeck', 'btn-addtag', 'btn-removetag', 'btn-delete',
-              'btn-cardinfo', 'btn-actions-dropdown'
+              'btn-cardinfo'
           ];
           for (var i = 0; i < actionIds.length; i++) {
               var el = document.getElementById(actionIds[i]);
               if (el) el.disabled = !hasSel;
+          }
+          var moreSummary = document.getElementById('btn-actions-dropdown');
+          var moreDetails = document.getElementById('mobile-actions-dropdown');
+          if (moreSummary) {
+              moreSummary.classList.toggle('btn-disabled', !hasSel);
+              moreSummary.setAttribute('aria-disabled', !hasSel ? 'true' : 'false');
+              if (!hasSel && moreDetails) {
+                  moreDetails.removeAttribute('open');
+              }
           }
           var selBadge = document.getElementById('browser-selected-status');
           if (selBadge) {
@@ -494,9 +513,8 @@
       function _openDetailOnMobile() {
           if (window.innerWidth < 768) {
               var panel = document.getElementById('detail-offcanvas');
-              if (panel && typeof bootstrap !== 'undefined' && bootstrap.Offcanvas) {
-                  var oc = bootstrap.Offcanvas.getInstance(panel) || new bootstrap.Offcanvas(panel);
-                  oc.show();
+              if (panel && typeof panel.showModal === 'function' && !panel.open) {
+                  panel.showModal();
               }
           }
       }
@@ -559,10 +577,23 @@
       if (sidebarEl) {
           sidebarEl.addEventListener('click', function(e) {
               if (e.target.closest('.side-item') && window.innerWidth < 768) {
-                  if (typeof bootstrap !== 'undefined' && bootstrap.Offcanvas) {
-                      var oc = bootstrap.Offcanvas.getInstance(sidebarEl);
-                      if (oc) oc.hide();
+                  if (typeof sidebarEl.close === 'function' && sidebarEl.open) {
+                      sidebarEl.close();
                   }
+              }
+          });
+      }
+
+      // Close mobile dialogs when viewport crosses the md breakpoint
+      if (window.matchMedia) {
+          window.matchMedia('(min-width: 768px)').addEventListener('change', function(e) {
+              if (e.matches) {
+                  ['sidebar-offcanvas', 'detail-offcanvas'].forEach(function(id) {
+                      var d = document.getElementById(id);
+                      if (d && typeof d.close === 'function' && d.open) {
+                          d.close();
+                      }
+                  });
               }
           });
       }

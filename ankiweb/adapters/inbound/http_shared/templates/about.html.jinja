@@ -1,22 +1,23 @@
-<div class="about container" style="max-width:640px;">
-  <h2>ankiweb {{ version }}</h2>
-  <p>
+<div class="about mx-auto px-4 py-3 max-w-xl">
+  <h2 class="text-2xl font-bold mb-3">ankiweb {{ version }}</h2>
+  <p class="mb-3">
     <strong>Unofficial, personal, single-user project.</strong> An independent
     browser port of Anki — not affiliated with or endorsed by Ankitects, and not
     the official AnkiWeb sync service.
   </p>
-  <p>
+  <p class="mb-4">
     ankiweb is free software, licensed under the <strong>GNU Affero General
       Public License, version 3 or later</strong> (AGPL-3.0-or-later). It is
     distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY.
   </p>
-  <h3>Source code (AGPL §13)</h3>
-  <p>
+  <h3 class="text-xl font-bold mb-2">Source code (AGPL §13)</h3>
+  <p class="mb-3">
     Because ankiweb is a network service, you are entitled to the complete
     Corresponding Source of this running version, at no charge.
   </p>
-  <p>
+  <p class="mb-3">
     <strong>This deployment's source:</strong> {% if source_url %}<a
+        class="link link-primary"
         href="{{ source_url }}"
         target="_blank"
         rel="noopener"
@@ -24,10 +25,11 @@
         >ANKIWEB_SOURCE_URL</code> environment variable to the location of this
         deployment's source.</em>{% endif %}
   </p>
-  <p><strong>Upstream sources it derives from and bundles:</strong></p>
-  <ul>
+  <p class="mb-2"><strong>Upstream sources it derives from and bundles:</strong></p>
+  <ul class="list-disc pl-5 mb-4 space-y-1">
     <li>
       Anki / aqt 26.9.2 — AGPL-3.0-or-later — <a
+        class="link link-primary"
         href="{{ anki_src }}"
         target="_blank"
         rel="noopener"
@@ -35,15 +37,16 @@
     </li>
     <li>
       AnkiConnect — GPL-3.0-or-later — <a
+        class="link link-primary"
         href="{{ ac_src }}"
         target="_blank"
         rel="noopener"
       >{{ ac_src }}</a>
     </li>
   </ul>
-  <p>
+  <p class="mb-4">
     Full attribution is in the project's <code>LICENSE</code> and <code
     >THIRD-PARTY-NOTICES.md</code>.
   </p>
-  <p><a href="/deckbrowser">← {{ tr.actions_decks() | tr_clean }}</a></p>
+  <p><a class="link link-primary" href="/deckbrowser">← {{ tr.actions_decks() | tr_clean }}</a></p>
 </div>

@@ -85,17 +85,17 @@
       <!-- Tab 2: Fields & Notes -->
       <div class="io-tab-pane" id="pane-fields" data-show="$active_tab === 'fields'">
         <!-- Note Format Toolbar -->
-        <div class="io-note-toolbar border-bottom px-3 py-1 bg-body-tertiary d-flex align-items-center gap-1">
-          <button type="button" class="btn btn-sm btn-outline-secondary io-format-btn" onclick="document.execCommand('bold', false, null);" title="{{ tr.editing_bold_text() }} (Ctrl+B)">
+        <div class="io-note-toolbar border-b border-base-300 px-3 py-1 bg-base-200 flex items-center gap-1">
+          <button type="button" class="btn btn-sm btn-outline io-format-btn" onclick="document.execCommand('bold', false, null);" title="{{ tr.editing_bold_text() }} (Ctrl+B)">
             <b>B</b>
           </button>
-          <button type="button" class="btn btn-sm btn-outline-secondary io-format-btn" onclick="document.execCommand('italic', false, null);" title="{{ tr.editing_italic_text() }} (Ctrl+I)">
+          <button type="button" class="btn btn-sm btn-outline io-format-btn" onclick="document.execCommand('italic', false, null);" title="{{ tr.editing_italic_text() }} (Ctrl+I)">
             <i>I</i>
           </button>
-          <button type="button" class="btn btn-sm btn-outline-secondary io-format-btn" onclick="document.execCommand('underline', false, null);" title="{{ tr.editing_underline_text() }} (Ctrl+U)">
+          <button type="button" class="btn btn-sm btn-outline io-format-btn" onclick="document.execCommand('underline', false, null);" title="{{ tr.editing_underline_text() }} (Ctrl+U)">
             <u>U</u>
           </button>
-          <button type="button" class="btn btn-sm btn-outline-secondary io-format-btn font-monospace" onclick="document.execCommand('formatBlock', false, 'pre');" title="Code">
+          <button type="button" class="btn btn-sm btn-outline io-format-btn font-mono" onclick="document.execCommand('formatBlock', false, 'pre');" title="Code">
             &lt;/&gt;
           </button>
         </div>
@@ -104,7 +104,7 @@
             <label class="io-field-label" for="io-field-header">{{ tr.notetypes_header() }}</label>
             <textarea
               id="io-field-header"
-              class="form-control io-field-textarea"
+              class="textarea w-full io-field-textarea"
               rows="3"
               placeholder="{{ tr.notetypes_header() }}"
               data-bind="header"></textarea>
@@ -114,7 +114,7 @@
             <label class="io-field-label" for="io-field-back-extra">{{ tr.notetypes_back_extra_field() }}</label>
             <textarea
               id="io-field-back-extra"
-              class="form-control io-field-textarea"
+              class="textarea w-full io-field-textarea"
               rows="3"
               placeholder="{{ tr.notetypes_back_extra_field() }}"
               data-bind="back_extra"></textarea>
@@ -124,7 +124,7 @@
             <label class="io-field-label" for="io-field-comments">{{ tr.notetypes_comments() if tr.notetypes_comments is defined else "Comments" }}</label>
             <textarea
               id="io-field-comments"
-              class="form-control io-field-textarea"
+              class="textarea w-full io-field-textarea"
               rows="2"
               placeholder="Comments"
               data-bind="comments"></textarea>
@@ -135,7 +135,7 @@
             <input
               id="io-field-tags"
               type="text"
-              class="form-control"
+              class="input w-full"
               placeholder="Tags separated by spaces"
               data-bind="tags_str" />
           </div>
@@ -168,7 +168,7 @@
       </div>
 
       <div class="io-footer-center">
-        <span class="text-muted small" id="io-shapes-info">
+        <span class="text-base-content/60 text-sm" id="io-shapes-info">
           <span data-text="$shapes_count"></span> shape(s)
         </span>
       </div>
@@ -176,7 +176,7 @@
       <div class="io-footer-right">
         <button
           type="button"
-          class="btn btn-secondary btn-sm"
+          class="btn btn-sm"
           id="io-cancel-btn"
           data-on:click="window.history.back()">
           {{ tr.actions_cancel() }}
@@ -188,7 +188,7 @@
           id="io-save-btn"
           data-attr-disabled="$is_saving || $shapes_count === 0"
           data-on:click="if ($shapes_count > 0 && !$is_saving) { @post('/image-occlusion/save'); }">
-          <span data-show="$is_saving" class="spinner-border spinner-border-sm me-1" role="status"></span>
+          <span data-show="$is_saving" class="loading loading-spinner loading-xs me-1"></span>
           {% if mode == "edit" %}
             {{ tr.actions_save() }}
           {% else %}
@@ -204,7 +204,7 @@
     id="io-toast"
     class="io-toast alert"
     data-class:alert-success="$status_type === 'success'"
-    data-class:alert-danger="$status_type === 'danger'"
+    data-class:alert-error="$status_type === 'danger'"
     data-show="$status_msg !== ''">
     <span data-text="$status_msg"></span>
   </div>

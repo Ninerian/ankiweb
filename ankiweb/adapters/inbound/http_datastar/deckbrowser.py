@@ -92,7 +92,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_rename, initiator="deckbrowser")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-danger mt-2">{html.escape(str(exc))}</div>'
+            err_html = f'<div id="err" class="text-error mt-2">{html.escape(str(exc))}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
@@ -106,7 +106,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_delete, initiator="deckbrowser")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-danger mt-2">{html.escape(str(exc))}</div>'
+            err_html = f'<div id="err" class="text-error mt-2">{html.escape(str(exc))}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 

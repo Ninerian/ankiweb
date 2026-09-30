@@ -1,105 +1,111 @@
-<div class="export container py-3" style="max-width:640px;">
-  <h3 class="mb-3">{{ tr.actions_export() | tr_clean }}</h3>
+<div class="export mx-auto px-4 py-3 max-w-xl">
+  <h3 class="text-xl font-bold mb-3">{{ tr.actions_export() | tr_clean }}</h3>
   <form id="ex" method="post" action="/export">
-    <div class="mb-3">
-      <label for="target" class="form-label">{{ tr.actions_export() | tr_clean }}:</label>
-      <select name="target" id="target" class="form-select">
+    <div class="mb-4">
+      <label for="target" class="block text-sm font-medium mb-1">{{ tr.actions_export() | tr_clean }}:</label>
+      <select name="target" id="target" class="select select-sm w-full">
         <option value="all">{{ tr.browsing_whole_collection() | tr_clean }}</option>
         {% for d in decks %}<option value="{{ d.id }}">{{ d.name }}</option>{%
           endfor
         %}
       </select>
     </div>
-    <fieldset class="mb-4 border rounded p-3">
-      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.exporting_export_format() | tr_clean }}</legend>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="radio" name="fmt" id="fmt_apkg" value="apkg" checked onchange="onFmt()">
-        <label class="form-check-label" for="fmt_apkg">
-          {{ tr.exporting_anki_deck_package() | tr_clean }} (.apkg)
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="radio" name="fmt" id="fmt_colpkg" value="colpkg" onchange="onFmt()">
-        <label class="form-check-label" for="fmt_colpkg">
-          {{ tr.exporting_anki_collection_package() | tr_clean }} (.colpkg)
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="radio" name="fmt" id="fmt_notes_csv" value="notes_csv" onchange="onFmt()">
-        <label class="form-check-label" for="fmt_notes_csv">
-          {{ tr.exporting_notes_in_plain_text() | tr_clean }} (.csv)
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="radio" name="fmt" id="fmt_cards_csv" value="cards_csv" onchange="onFmt()">
-        <label class="form-check-label" for="fmt_cards_csv">
-          {{ tr.exporting_cards_in_plain_text() | tr_clean }} (.csv)
-        </label>
-      </div>
-    </fieldset>
-    <fieldset id="pkgopts" class="mb-4 border rounded p-3">
-      <legend class="fs-6 fw-bold w-auto float-none px-2">{{ tr.actions_options() | tr_clean }}</legend>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" name="with_scheduling" id="with_scheduling">
-        <label class="form-check-label" for="with_scheduling">
-          {{ tr.exporting_include_scheduling_information() | tr_clean }}
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" name="with_media" id="with_media" checked>
-        <label class="form-check-label" for="with_media">
-          {{ tr.exporting_include_media() | tr_clean }}
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" name="with_deck_configs" id="with_deck_configs">
-        <label class="form-check-label" for="with_deck_configs">
-          {{ tr.exporting_include_deck_configs() | tr_clean }}
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" name="legacy" id="legacy" checked>
-        <label class="form-check-label" for="legacy">
-          {{ tr.exporting_support_older_anki_versions() | tr_clean }}
-        </label>
+    <fieldset class="mb-4 border border-base-300 rounded-box p-3">
+      <legend class="text-sm font-bold px-2">{{ tr.exporting_export_format() | tr_clean }}</legend>
+      <div class="space-y-2">
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_apkg" value="apkg" checked onchange="onFmt()">
+          <label class="cursor-pointer text-sm" for="fmt_apkg">
+            {{ tr.exporting_anki_deck_package() | tr_clean }} (.apkg)
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_colpkg" value="colpkg" onchange="onFmt()">
+          <label class="cursor-pointer text-sm" for="fmt_colpkg">
+            {{ tr.exporting_anki_collection_package() | tr_clean }} (.colpkg)
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_notes_csv" value="notes_csv" onchange="onFmt()">
+          <label class="cursor-pointer text-sm" for="fmt_notes_csv">
+            {{ tr.exporting_notes_in_plain_text() | tr_clean }} (.csv)
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_cards_csv" value="cards_csv" onchange="onFmt()">
+          <label class="cursor-pointer text-sm" for="fmt_cards_csv">
+            {{ tr.exporting_cards_in_plain_text() | tr_clean }} (.csv)
+          </label>
+        </div>
       </div>
     </fieldset>
-    <fieldset id="csvopts" class="mb-4 border rounded p-3" style="display:none;">
-      <legend class="fs-6 fw-bold w-auto float-none px-2">CSV {{ tr.actions_options() | tr_clean }}</legend>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" name="with_html" id="with_html">
-        <label class="form-check-label" for="with_html">
-          {{ tr.exporting_include_html_and_media_references() | tr_clean }}
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" name="with_tags" id="with_tags" checked>
-        <label class="form-check-label" for="with_tags">
-          {{ tr.exporting_include_tags() | tr_clean }}
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" name="with_deck" id="with_deck" checked>
-        <label class="form-check-label" for="with_deck">
-          {{ tr.exporting_include_deck() | tr_clean }}
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" name="with_notetype" id="with_notetype" checked>
-        <label class="form-check-label" for="with_notetype">
-          {{ tr.exporting_include_notetype() | tr_clean }}
-        </label>
-      </div>
-      <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" name="with_guid" id="with_guid">
-        <label class="form-check-label" for="with_guid">
-          {{ tr.exporting_include_guid() | tr_clean }}
-        </label>
+    <fieldset id="pkgopts" class="mb-4 border border-base-300 rounded-box p-3">
+      <legend class="text-sm font-bold px-2">{{ tr.actions_options() | tr_clean }}</legend>
+      <div class="space-y-2">
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="checkbox checkbox-sm" type="checkbox" name="with_scheduling" id="with_scheduling">
+          <label class="cursor-pointer text-sm" for="with_scheduling">
+            {{ tr.exporting_include_scheduling_information() | tr_clean }}
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="checkbox checkbox-sm" type="checkbox" name="with_media" id="with_media" checked>
+          <label class="cursor-pointer text-sm" for="with_media">
+            {{ tr.exporting_include_media() | tr_clean }}
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="checkbox checkbox-sm" type="checkbox" name="with_deck_configs" id="with_deck_configs">
+          <label class="cursor-pointer text-sm" for="with_deck_configs">
+            {{ tr.exporting_include_deck_configs() | tr_clean }}
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="checkbox checkbox-sm" type="checkbox" name="legacy" id="legacy" checked>
+          <label class="cursor-pointer text-sm" for="legacy">
+            {{ tr.exporting_support_older_anki_versions() | tr_clean }}
+          </label>
+        </div>
       </div>
     </fieldset>
-    <div class="mt-3">
-      <button class="btn btn-primary me-2" type="submit" id="go">{{ tr.actions_export() | tr_clean }}</button>
-      <a class="btn btn-secondary" href="/deckbrowser">{{ tr.actions_cancel() | tr_clean }}</a>
+    <fieldset id="csvopts" class="mb-4 border border-base-300 rounded-box p-3" style="display:none;">
+      <legend class="text-sm font-bold px-2">CSV {{ tr.actions_options() | tr_clean }}</legend>
+      <div class="space-y-2">
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="checkbox checkbox-sm" type="checkbox" name="with_html" id="with_html">
+          <label class="cursor-pointer text-sm" for="with_html">
+            {{ tr.exporting_include_html_and_media_references() | tr_clean }}
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="checkbox checkbox-sm" type="checkbox" name="with_tags" id="with_tags" checked>
+          <label class="cursor-pointer text-sm" for="with_tags">
+            {{ tr.exporting_include_tags() | tr_clean }}
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="checkbox checkbox-sm" type="checkbox" name="with_deck" id="with_deck" checked>
+          <label class="cursor-pointer text-sm" for="with_deck">
+            {{ tr.exporting_include_deck() | tr_clean }}
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="checkbox checkbox-sm" type="checkbox" name="with_notetype" id="with_notetype" checked>
+          <label class="cursor-pointer text-sm" for="with_notetype">
+            {{ tr.exporting_include_notetype() | tr_clean }}
+          </label>
+        </div>
+        <div class="flex items-center gap-2 cursor-pointer">
+          <input class="checkbox checkbox-sm" type="checkbox" name="with_guid" id="with_guid">
+          <label class="cursor-pointer text-sm" for="with_guid">
+            {{ tr.exporting_include_guid() | tr_clean }}
+          </label>
+        </div>
+      </div>
+    </fieldset>
+    <div class="mt-4 flex items-center gap-2">
+      <button class="btn btn-primary btn-sm" type="submit" id="go">{{ tr.actions_export() | tr_clean }}</button>
+      <a class="btn btn-neutral btn-sm" href="/deckbrowser">{{ tr.actions_cancel() | tr_clean }}</a>
     </div>
   </form>
 </div>

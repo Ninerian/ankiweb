@@ -92,7 +92,7 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(apply, initiator="fields")
         except Exception as exc:
-            err_html = f'<div id="err" style="color:#c00;margin-top:8px;">{html.escape(str(exc))}</div>'
+            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(str(exc))}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
         return DatastarResponse(SSE.redirect("/deckbrowser"))

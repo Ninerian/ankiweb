@@ -227,14 +227,14 @@ def make_router(get_service: Callable) -> APIRouter:
     async def select_target(payload: ReadSignals):
         service = get_service()
         if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-danger py-2 px-3 mb-3">Invalid payload</div>'
+            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         try:
             old_id = int(payload.get("old_notetype_id"))
             new_id = int(payload.get("target_notetype_id"))
         except (ValueError, TypeError):
-            err_html = '<div class="alert alert-danger py-2 px-3 mb-3">Malformed notetype IDs</div>'
+            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         note_ids = payload.get("note_ids", [])
@@ -250,10 +250,10 @@ def make_router(get_service: Callable) -> APIRouter:
                     note_ids=note_ids,
                 )
             except Exception as exc:
-                return f'<div class="alert alert-danger py-2 px-3 mb-3">{exc}</div>'
+                return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
 
         html = await service.run(render)
-        if html.startswith('<div class="alert alert-danger'):
+        if html.startswith('<div class="alert alert-error'):
             return DatastarResponse(SSE.patch_elements(html, selector="#change-notetype-alert-area"))
         return DatastarResponse(SSE.patch_elements(html, selector="#change-notetype-content"))
 
@@ -264,14 +264,14 @@ def make_router(get_service: Callable) -> APIRouter:
     ):
         service = get_service()
         if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-danger py-2 px-3 mb-3">Invalid payload</div>'
+            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         try:
             old_id = int(payload.get("old_notetype_id"))
             new_id = int(payload.get("target_notetype_id"))
         except (ValueError, TypeError):
-            err_html = '<div class="alert alert-danger py-2 px-3 mb-3">Malformed notetype IDs</div>'
+            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         note_ids = payload.get("note_ids", [])
@@ -288,7 +288,7 @@ def make_router(get_service: Callable) -> APIRouter:
         try:
             num_fields, num_templates = await service.run(get_counts)
         except Exception as exc:
-            err_html = f'<div class="alert alert-danger py-2 px-3 mb-3">{exc}</div>'
+            err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         fields_map: list[int | None] = []
@@ -318,10 +318,10 @@ def make_router(get_service: Callable) -> APIRouter:
                     current_templates_map=templates_map,
                 )
             except Exception as exc:
-                return f'<div class="alert alert-danger py-2 px-3 mb-3">{exc}</div>'
+                return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
 
         html = await service.run(render)
-        if html.startswith('<div class="alert alert-danger'):
+        if html.startswith('<div class="alert alert-error'):
             return DatastarResponse(SSE.patch_elements(html, selector="#change-notetype-alert-area"))
         return DatastarResponse(SSE.patch_elements(html, selector="#change-notetype-content"))
 
@@ -332,14 +332,14 @@ def make_router(get_service: Callable) -> APIRouter:
     ):
         service = get_service()
         if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-danger py-2 px-3 mb-3">Invalid payload</div>'
+            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         try:
             old_id = int(payload.get("old_notetype_id"))
             new_id = int(payload.get("target_notetype_id"))
         except (ValueError, TypeError):
-            err_html = '<div class="alert alert-danger py-2 px-3 mb-3">Malformed notetype IDs</div>'
+            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         note_ids = payload.get("note_ids", [])
@@ -356,7 +356,7 @@ def make_router(get_service: Callable) -> APIRouter:
         try:
             num_fields, num_templates = await service.run(get_counts)
         except Exception as exc:
-            err_html = f'<div class="alert alert-danger py-2 px-3 mb-3">{exc}</div>'
+            err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         fields_map: list[int | None] = []
@@ -400,10 +400,10 @@ def make_router(get_service: Callable) -> APIRouter:
                     current_templates_map=templates_map,
                 )
             except Exception as exc:
-                return f'<div class="alert alert-danger py-2 px-3 mb-3">{exc}</div>'
+                return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
 
         html = await service.run(render)
-        if html.startswith('<div class="alert alert-danger'):
+        if html.startswith('<div class="alert alert-error'):
             return DatastarResponse(SSE.patch_elements(html, selector="#change-notetype-alert-area"))
         return DatastarResponse(SSE.patch_elements(html, selector="#change-notetype-content"))
 
@@ -411,14 +411,14 @@ def make_router(get_service: Callable) -> APIRouter:
     async def save(payload: ReadSignals):
         service = get_service()
         if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-danger py-2 px-3 mb-3">Invalid payload</div>'
+            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         try:
             old_id = int(payload.get("old_notetype_id"))
             new_id = int(payload.get("target_notetype_id"))
         except (ValueError, TypeError):
-            err_html = '<div class="alert alert-danger py-2 px-3 mb-3">Malformed notetype IDs</div>'
+            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         raw_nids = payload.get("note_ids", [])
@@ -439,7 +439,7 @@ def make_router(get_service: Callable) -> APIRouter:
         try:
             info = await service.run(get_info)
         except Exception as exc:
-            err_html = f'<div class="alert alert-danger py-2 px-3 mb-3">{exc}</div>'
+            err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         num_fields = len(info.new_field_names)
@@ -501,7 +501,7 @@ def make_router(get_service: Callable) -> APIRouter:
             await service.run_op(execute_change, initiator="change-notetype")
         except Exception as exc:
             logger.exception("Failed to change notetype")
-            err_html = f'<div class="alert alert-danger py-2 px-3 mb-3">{exc}</div>'
+            err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         return DatastarResponse(SSE.redirect("/deckbrowser"))

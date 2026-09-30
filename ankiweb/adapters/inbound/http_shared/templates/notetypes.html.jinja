@@ -1,74 +1,70 @@
-<div class="notetypes container-fluid py-3" style="max-width: 960px;">
-  <h3 class="mb-3">{{ heading | tr_clean }}</h3>
+<div class="notetypes max-w-4xl mx-auto px-4 py-3">
+  <h3 class="text-xl font-bold mb-3">{{ heading | tr_clean }}</h3>
 
   {# Mobile view (<md): card list with name, note count, and kebab dropdown actions #}
-  <div id="ntcards" class="d-md-none d-flex flex-column gap-2 mb-3">
+  <div id="ntcards" class="md:hidden flex flex-col gap-2 mb-3">
     {% for r in rows %}
-      <div class="nt-row card shadow-sm p-3" data-id="{{ r.id }}" data-name="{{ r.name }}">
-        <div class="d-flex justify-content-between align-items-start gap-2">
-          <div class="min-w-0 flex-grow-1">
-            <div class="nt-name fw-semibold text-truncate">{{ r.name }}</div>
-            <div class="nt-count small text-body-secondary">{{ tr.browsing_note_count(count=r.count) | tr_clean }}</div>
+      <div class="nt-row bg-base-100 border border-base-300 rounded-box shadow-sm p-3" data-id="{{ r.id }}" data-name="{{ r.name }}">
+        <div class="flex justify-between items-start gap-2">
+          <div class="min-w-0 flex-1">
+            <div class="nt-name font-semibold truncate">{{ r.name }}</div>
+            <div class="nt-count text-sm text-base-content/60">{{ tr.browsing_note_count(count=r.count) | tr_clean }}</div>
           </div>
-          <div class="dropdown flex-shrink-0">
-            <button
-              class="btn btn-outline-secondary btn-sm d-flex align-items-center justify-content-center"
-              type="button"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
+          <details class="dropdown dropdown-end shrink-0">
+            <summary
+              class="btn btn-ghost btn-sm btn-circle flex items-center justify-center min-h-[44px] min-w-[44px]"
               aria-label="Actions"
-              style="width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0;"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M3 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
               </svg>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-              <li><a class="dropdown-item py-2" href="/fields/{{ r.id }}">{{ L_fields | tr_clean }}</a></li>
-              <li><a class="dropdown-item py-2" href="/card-layout/{{ r.id }}">{{ L_cards | tr_clean }}</a></li>
-              <li><hr class="dropdown-divider"></li>
+            </summary>
+            <ul class="dropdown-content menu bg-base-100 rounded-box border border-base-300 shadow-lg p-2 z-20 w-48">
+              <li><a class="py-2" href="/fields/{{ r.id }}" onclick="this.closest('details')?.removeAttribute('open')">{{ L_fields | tr_clean }}</a></li>
+              <li><a class="py-2" href="/card-layout/{{ r.id }}" onclick="this.closest('details')?.removeAttribute('open')">{{ L_cards | tr_clean }}</a></li>
+              <div class="divider my-1"></div>
               <li>
                 <button
-                  class="dropdown-item py-2"
+                  class="py-2"
                   type="button"
-                  data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })"
+                  data-on:click__prevent="document.getElementById('err').textContent = ''; el.closest('details')?.removeAttribute('open'); const cur = el.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })"
                 >
                   {{ L_rename | tr_clean }}
                 </button>
               </li>
               <li>
                 <button
-                  class="dropdown-item py-2 text-danger"
+                  class="py-2 text-error"
                   type="button"
-                  data-on:click__prevent="document.getElementById('err').textContent = ''; ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })"
+                  data-on:click__prevent="document.getElementById('err').textContent = ''; el.closest('details')?.removeAttribute('open'); ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })"
                 >
                   {{ L_delete | tr_clean }}
                 </button>
               </li>
             </ul>
-          </div>
+          </details>
         </div>
       </div>
     {% endfor %}
   </div>
 
   {# Desktop view (>=md): table #}
-  <div class="table-responsive d-none d-md-block">
-    <table id="nttbl" class="table table-sm table-hover align-middle">
+  <div class="overflow-x-auto hidden md:block border border-base-300 rounded-box shadow-sm mb-3">
+    <table id="nttbl" class="table table-sm">
       <tbody id="ntrows">
         {% for r in rows %}
-          <tr class="nt-row" data-id="{{ r.id }}" data-name="{{ r.name }}">
-            <td class="nt-name">{{ r.name }}</td>
-            <td class="nt-count">{{ tr.browsing_note_count(count=r.count) | tr_clean }}</td>
-            <td><a href="/fields/{{ r.id }}">{{ L_fields | tr_clean }}</a></td>
-            <td><a href="/card-layout/{{ r.id }}">{{ L_cards | tr_clean }}</a></td>
+          <tr class="nt-row row-hover" data-id="{{ r.id }}" data-name="{{ r.name }}">
+            <td class="nt-name font-medium">{{ r.name }}</td>
+            <td class="nt-count text-base-content/60">{{ tr.browsing_note_count(count=r.count) | tr_clean }}</td>
+            <td><a class="link link-primary" href="/fields/{{ r.id }}">{{ L_fields | tr_clean }}</a></td>
+            <td><a class="link link-primary" href="/card-layout/{{ r.id }}">{{ L_cards | tr_clean }}</a></td>
             <td>
-              <button class="btn btn-sm btn-outline-secondary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = this.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })">
+              <button class="btn btn-sm btn-outline" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = el.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })">
                 {{ L_rename | tr_clean }}
               </button>
             </td>
             <td>
-              <button class="btn btn-sm btn-outline-danger" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })">
+              <button class="btn btn-sm btn-outline btn-error" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })">
                 {{ L_delete | tr_clean }}
               </button>
             </td>
@@ -78,22 +74,22 @@
     </table>
   </div>
 
-  <div id="ntadd" class="row g-2 align-items-center mt-3">
-    <h4 class="mb-2">{{ L_add | tr_clean }}</h4>
-    <div class="col-12 col-sm-auto">
-      <label for="ntnewname" class="visually-hidden">{{ L_name | tr_clean }}</label>
-      <input type="text" id="ntnewname" class="form-control" placeholder="{{ L_name | tr_clean }}" size="24">
+  <div id="ntadd" class="flex flex-wrap items-center gap-2 mt-4">
+    <h4 class="w-full text-base font-semibold mb-1">{{ L_add | tr_clean }}</h4>
+    <div class="w-full sm:w-auto">
+      <label for="ntnewname" class="sr-only">{{ L_name | tr_clean }}</label>
+      <input type="text" id="ntnewname" class="input w-full sm:w-64" placeholder="{{ L_name | tr_clean }}" size="24">
     </div>
-    <div class="col-12 col-sm-auto">
-      <select id="ntbase" class="form-select">
+    <div class="w-full sm:w-auto">
+      <select id="ntbase" class="select w-full sm:w-auto">
         {% for r in rows %}<option value="{{ r.id }}">{{ r.name }}</option>{%
           endfor
         %}
       </select>
     </div>
-    <div class="col-12 col-sm-auto">
+    <div class="w-full sm:w-auto">
       <button class="btn btn-primary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const name = document.getElementById('ntnewname').value; const base = document.getElementById('ntbase').value; if (name && base) @post('/notetypes/add/' + base, {payload: {name: name}})">{{ L_add | tr_clean }}</button>
     </div>
   </div>
-  <div id="err" class="text-danger mt-2"></div>
+  <div id="err" class="text-error text-sm font-semibold mt-2"></div>
 </div>
