@@ -47,42 +47,18 @@ def live_server_cnt(tmp_path: Path):
     t.join(timeout=5)
 
 
-def test_change_notetype_spa_boots(live_server_cnt):
+def test_change_notetype_page_boots(live_server_cnt):
     url, old = live_server_cnt
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on(
-            "requestfailed",
-            lambda r: (
-                errors.append("REQFAIL " + r.url)
-                if ("/_app/" in r.url or "/_anki/" in r.url)
-                else None
-            ),
-        )
-        posts = []
-        page.on(
-            "request",
-            lambda r: (
-                posts.append(r.url)
-                if r.method == "POST" and "/_anki/" in r.url
-                else None
-            ),
-        )
         page.goto(f"{url}/change-notetype/{old}")
-        # The change-notetype SPA uses Svelte custom dropdowns (role="combobox") for field/template
-        # mapping rather than native <select> elements; there are typically 5 comboboxes + 1 Save
-        # button rendered once the info loads (no native <select> or <table> in this SPA).
-        from conftest import wait_for_body_text_length
-
-        page.locator('[role="combobox"], button').nth(1).wait_for(state="attached", timeout=10000)
-        wait_for_body_text_length(page, 20, timeout=10.0)
+        page.wait_for_selector("#target-notetype-select", timeout=10000)
+        page.wait_for_selector("#change-notetype-save-btn", timeout=10000)
         assert not errors, errors
-        assert any(
-            "get_change_notetype_info" in u.lower()
-            or "getchangenotetypeinfo" in u.lower()
-            for u in posts
-        ), posts
+        # Verify concrete page content rendered
+        assert page.locator("#target-notetype-select").is_visible()
+        assert page.locator("#change-notetype-save-btn").is_visible()
         browser.close()

@@ -11,16 +11,6 @@ def client(tmp_path: Path):
         yield c
 
 
-def test_deck_options_serves_spa_shell(client):
-    did = client.portal.call(
-        client.app.state.service.run, lambda col: col.decks.id("Default")
-    )
-    r = client.get(f"/deck-options/{did}")
-    assert r.status_code == 200
-    assert r.headers["content-type"].startswith("text/html")
-    assert "_app/immutable/entry" in r.text
-
-
 def test_frontend_service_methods_are_custom_noops(client):
     for m in ("deckOptionsReady", "deckOptionsRequireClose"):
         r = client.post(

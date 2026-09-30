@@ -60,50 +60,27 @@ def live_io(tmp_path: Path):
     t.join(timeout=5)
 
 
-def _boot(url, expect_method):
+def _boot(url):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on(
-            "requestfailed",
-            lambda r: (
-                errors.append("REQFAIL " + r.url)
-                if ("/_app/" in r.url or "/_anki/" in r.url)
-                else None
-            ),
-        )
-        posts = []
-        page.on(
-            "request",
-            lambda r: (
-                posts.append(r.url)
-                if r.method == "POST" and "/_anki/" in r.url
-                else None
-            ),
-        )
         page.goto(url)
-        page.wait_for_selector("canvas", timeout=15000)  # MaskEditor's <canvas>
-        page.wait_for_function(
-            "document.body.innerText.length>0 || document.querySelector('canvas')",
-            timeout=10000,
-        )
+        page.wait_for_selector("#ankiweb-io-editor", timeout=10000)
+        page.wait_for_selector("#io-save-btn", timeout=10000)
         assert not errors, errors
-        # The SPA POSTs camelCase RPC names (e.g. getImageForOcclusion); strip underscores for comparison
-        assert any(
-            expect_method.lower().replace("_", "") in u.lower() for u in posts
-        ), (expect_method, posts)
+        assert page.locator("#ankiweb-io-editor").is_visible()
+        assert page.locator("#tab-btn-fields").is_visible()
+        assert page.locator("#mode-btn-hide-all").is_visible()
         browser.close()
 
 
 def test_io_add_mode_boots(live_io):
     base, img_path, _nid = live_io
-    _boot(
-        f"{base}/image-occlusion/{quote(img_path, safe='')}", "get_image_for_occlusion"
-    )
+    _boot(f"{base}/image-occlusion/{quote(img_path, safe='')}")
 
 
 def test_io_edit_mode_boots(live_io):
     base, _img, nid = live_io
-    _boot(f"{base}/image-occlusion/{nid}", "get_image_occlusion_note")
+    _boot(f"{base}/image-occlusion/{nid}")

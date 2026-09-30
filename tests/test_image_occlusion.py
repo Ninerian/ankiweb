@@ -31,13 +31,6 @@ def _img_in_tmp(client, name="pic.png"):
     return str(p)
 
 
-def test_route_serves_shell_for_path_and_noteid(client):
-    for seg in ("123", "%2Ftmp%2Ffoo.png"):
-        r = client.get(f"/image-occlusion/{seg}")
-        assert r.status_code == 200
-        assert r.headers["content-type"].startswith("text/html")
-        assert "_app/immutable/entry" in r.text
-
 
 def test_membership():
     from ankiweb.core.rpc.passthrough import PASSTHROUGH

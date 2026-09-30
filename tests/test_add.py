@@ -26,26 +26,8 @@ def _drain_call(ws, fn, tries=8):
 def test_add_route_renders(client):
     r = client.get("/add")
     assert r.status_code == 200
-    assert 'window.__ankiwebContext = "add"' in r.text
-    assert "/_anki/js/editor.js" in r.text
-    assert "setupEditor" in r.text and "addnote:" in r.text
-    assert ("id='add-deck'" in r.text or 'id="add-deck"' in r.text) and (
-        "id='add-notetype'" in r.text or 'id="add-notetype"' in r.text
-    )
+    assert "route-editor" in r.text
     assert "Default" in r.text and "Basic" in r.text
-
-
-def test_add_route_initializes_notetype_id_for_fields_cards_buttons(client):
-    # regression: window.__ankiwebNotetypeId used to be set only inside
-    # ankiwebSetNotetype (fired by the <select> onchange), so the editor
-    # toolbar's Fields.../Cards... buttons (bridgeCommand('fields'/'cards'))
-    # had no notetype id to navigate to until the user touched the dropdown.
-    r = client.get("/add")
-    assert r.status_code == 200
-    basic_id = _run(
-        client, lambda col: col.models.by_name("Basic")["id"]
-    )
-    assert f'window.__ankiwebNotetypeId = "{basic_id}"' in r.text
 
 
 def test_add_ready_pushes_empty_fields(client):

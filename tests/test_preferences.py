@@ -73,6 +73,59 @@ def test_saveprefs_roundtrip(tmp_path: Path):
         assert p.backups.minimum_interval_mins == 45
 
 
+def test_saveprefs_svelte_editor_roundtrip(tmp_path: Path):
+    with TestClient(
+        create_app(Settings(collection_path=tmp_path / "c.anki2"))
+    ) as client:
+        assert client.portal is not None
+        base = client.portal.call(
+            client.app.state.service.run, lambda col: col.get_preferences()
+        )
+        payload = {
+            "rollover": 4,
+            "learn_ahead_mins": 20,
+            "new_review_mix": 0,
+            "new_timezone": True,
+            "day_learn_first": False,
+            "hide_audio_play_buttons": False,
+            "interrupt_audio_when_answering": True,
+            "show_remaining_due_counts": True,
+            "show_intervals_on_buttons": True,
+            "time_limit_mins": 0,
+            "load_balancer_enabled": True,
+            "fsrs_short_term_with_steps_enabled": False,
+            "adding_defaults_to_current_deck": True,
+            "paste_images_as_png": False,
+            "paste_strips_formatting": False,
+            "default_search_text": "",
+            "ignore_accents_in_search": False,
+            "render_latex": False,
+            "daily": 12,
+            "weekly": 10,
+            "monthly": 9,
+            "minimum_interval_mins": 30,
+            "svelte_editor": True,
+        }
+        r = client.post(
+            "/preferences/savePrefs", json=payload, headers={"Datastar-Request": "true"}
+        )
+        assert r.status_code == 200
+        exp = client.portal.call(
+            client.app.state.service.run, lambda col: col.get_config("experimentalFeatures")
+        )
+        assert exp == {"1": True}
+
+        # Now toggle back to False
+        payload["svelte_editor"] = False
+        r = client.post(
+            "/preferences/savePrefs", json=payload, headers={"Datastar-Request": "true"}
+        )
+        assert r.status_code == 200
+        exp = client.portal.call(
+            client.app.state.service.run, lambda col: col.get_config("experimentalFeatures")
+        )
+        assert exp == {"1": False}
+
 def test_saveprefs_inverse_checkboxes(tmp_path: Path):
     """legacy_timezone checked => new_timezone False; show_play_buttons unchecked => hide True."""
     with TestClient(

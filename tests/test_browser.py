@@ -411,3 +411,16 @@ def test_row_data_rich_fields_and_formatted_due(client):
     assert "Card 1" in html
     assert "Card 2" in html
     assert "tag1 tag2" in html
+
+
+def test_browse_q_param_prefills_input(client):
+    r = client.get("/browse?q=deck:Default")
+    assert r.status_code == 200
+    assert 'value="deck:Default"' in r.text
+
+
+def test_browse_q_param_html_escaped(client):
+    r = client.get('/browse?q=front:"a<b>"')
+    assert r.status_code == 200
+    assert "&lt;b&gt;" in r.text
+    assert "<b&gt;" not in r.text

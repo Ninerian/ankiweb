@@ -53,17 +53,26 @@ def test_preview_strips_av_refs(temp_collection):
     assert "anki:play" not in html  # the [anki:play:..] ref was stripped
 
 
-# ---- F3 + editor-links glue ----
+# ---- Editor links and navigation (attach, preview, fields, cards) ----
 
 
-def test_editor_injects_links_interceptor(client):
+def test_editor_links_and_navigation(client):
     nid = _add(client)
-    html = client.get(f"/edit?nid={nid}").text
-    # the interceptor wraps the bridge and handles attach + preview
-    assert "_awCmd" in html and "/upload_media" in html
-    assert "/preview/" in html and "_awAttach" in html
+    r = client.get(f"/edit?nid={nid}")
+    assert r.status_code == 200
+    html = r.text
+    # Edit screen has links to Fields, Cards, and Preview
+    assert f"/fields/" in html and 'id="editor-fields-btn"' in html
+    assert f"/card-layout/" in html and 'id="editor-cards-btn"' in html
+    assert f"/preview/{nid}" in html and 'id="editor-preview-btn"' in html
+    assert 'data-editor-command="attach"' in html
 
 
-def test_add_injects_links_interceptor(client):
-    html = client.get("/add").text
-    assert "_awCmd" in html and "/upload_media" in html
+def test_add_links_and_navigation(client):
+    r = client.get("/add")
+    assert r.status_code == 200
+    html = r.text
+    # Add screen has links to Fields and Cards and media attach button
+    assert f"/fields/" in html and 'id="editor-fields-btn"' in html
+    assert f"/card-layout/" in html and 'id="editor-cards-btn"' in html
+    assert 'data-editor-command="attach"' in html

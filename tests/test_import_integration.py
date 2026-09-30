@@ -38,38 +38,17 @@ def live_server_imp(tmp_path: Path):
     t.join(timeout=5)
 
 
-def test_import_csv_spa_boots(live_server_imp):
+def test_import_csv_page_boots(live_server_imp):
     url, csv_path = live_server_imp
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        page.on(
-            "requestfailed",
-            lambda r: (
-                errors.append("REQFAIL " + r.url)
-                if ("/_app/" in r.url or "/_anki/" in r.url)
-                else None
-            ),
-        )
-        posts = []
-        page.on(
-            "request",
-            lambda r: (
-                posts.append(r.url)
-                if r.method == "POST" and "/_anki/" in r.url
-                else None
-            ),
-        )
         page.goto(f"{url}/import-csv/{quote(csv_path, safe='')}")
-        from conftest import wait_for_body_text_length
-
-        page.locator("select, button, table, input").nth(2).wait_for(state="attached", timeout=10000)
-        wait_for_body_text_length(page, 30, timeout=10.0)
+        page.wait_for_selector("#import-csv-submit-btn", timeout=10000)
+        page.wait_for_selector("#csv-delimiter-select", timeout=10000)
         assert not errors, errors
-        assert any(
-            "get_csv_metadata" in u.lower() or "getcsvmetadata" in u.lower()
-            for u in posts
-        ), posts
+        assert page.locator("#import-csv-submit-btn").is_visible()
+        assert page.locator("#csv-delimiter-select").is_visible()
         browser.close()

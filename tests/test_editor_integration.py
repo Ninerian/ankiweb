@@ -53,21 +53,9 @@ def test_editor_mounts_and_loads(live_server_edit):
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(f"{url}/edit?nid={nid}")
+        page.wait_for_selector("#editor-fields-container", timeout=8000)
         page.wait_for_function(
-            "document.querySelector('.note-editor')!==null", timeout=8000
-        )
-        page.wait_for_function(
-            "(function(){"
-            "var t='';"
-            "function walk(r){"
-            "for(var el of r.querySelectorAll('*')){"
-            "if(el.shadowRoot){walk(el.shadowRoot);}"
-            "}"
-            "t+=r.textContent||'';"
-            "}"
-            "walk(document);"
-            "return t.indexOf('CapitalFrance')>=0;"
-            "})()",
+            "() => document.body && document.body.textContent.includes('CapitalFrance')",
             timeout=8000,
         )
         assert not errors, errors
@@ -89,7 +77,7 @@ def test_browse_single_select_embeds_editor(live_server_edit):
         page.wait_for_function(
             "() => { const f=document.querySelector('#detail iframe.editor-frame'); "
             "return f && f.contentDocument && "
-            "f.contentDocument.querySelector('.note-editor')!==null; }",
+            "f.contentDocument.querySelector('#editor-fields-container')!==null; }",
             timeout=8000,
         )
         browser.close()
@@ -117,39 +105,22 @@ def test_paste_image_uploads_and_inserts(live_server_edit):
         page = browser.new_page()
         page.on("pageerror", lambda e: print("PAGEERROR:", e))
         page.goto(f"{url}/edit?nid={nid}")
-        page.wait_for_function(
-            "document.querySelector('.note-editor')!==null", timeout=8000
-        )
-        page.evaluate("window.focusField(0)")
-        # synthesize an image paste using the same dispatch technique proven in the spike:
-        # construct DataTransfer with a PNG file, then dispatch ClipboardEvent with
-        # clipboardData:dt.  The document-capture handler (paste_handler_js) intercepts,
-        # POSTs to /upload_media, and inserts <img src="filename"> via pasteHTML.
+        page.wait_for_selector("#editor-fields-container", timeout=8000)
+        field0 = page.locator(".rich-text-input[data-ankiweb-rich]").first
+        field0.click()
         page.evaluate(
             "(function(){"
-            "var fc=document.querySelector('.field-container');"
-            "var host=fc.querySelector('.rich-text-editable');"
-            "var ed=host.shadowRoot.querySelector('[contenteditable]');"
+            "var ed=document.querySelector('.rich-text-input[data-ankiweb-rich]');"
             "var bytes=new Uint8Array([137,80,78,71,13,10,26,10]);"
             "var file=new File([bytes],'p.png',{type:'image/png'});"
             "var dt=new DataTransfer(); dt.items.add(file);"
             "ed.focus();"
-            "var evt=new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,"
-            "cancelable:true,composed:true});"
+            "var evt=new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true});"
             "ed.dispatchEvent(evt);"
             "})()"
         )
-        # the handler uploads then inserts <img src="..."> into the field (deep-walk shadow roots)
         page.wait_for_function(
-            "(function(){"
-            "function walk(r,a){"
-            "r.querySelectorAll('*').forEach(function(el){"
-            "if(el.shadowRoot){walk(el.shadowRoot,a);}"
-            "if(el.tagName==='IMG'){a.push(el.getAttribute('src'));}"
-            "});}"
-            "var a=[]; walk(document,a);"
-            "return a.some(function(s){return s&&s.indexOf('.png')>=0;});"
-            "})()",
+            "() => Array.from(document.querySelectorAll('img')).some(el => (el.getAttribute('src') || '').includes('.png'))",
             timeout=8000,
         )
         browser.close()
