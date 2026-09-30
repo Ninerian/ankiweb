@@ -43,6 +43,8 @@ class Settings:
     # Optional web-UI password. Empty = no gate (open, the default). When set, the web app
     # requires a /login session cookie; the AnkiConnect server keeps its own apiKey.
     password: str = ""
+    # Development tools (component gallery at /dev/components, simulated progress). Off by default.
+    dev: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -65,4 +67,5 @@ class Settings:
             source_url=os.environ.get("ANKIWEB_SOURCE_URL", ""),
             lang=os.environ.get("ANKIWEB_LANG", ""),
             password=os.environ.get("ANKIWEB_PASSWORD", ""),
+            dev=os.environ.get("ANKIWEB_DEV", "0") in ("1", "true", "True"),
         )

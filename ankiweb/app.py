@@ -12,7 +12,6 @@ from ankiweb.core.bridge.hub import BridgeHub
 from ankiweb.assets import (
     build_router as build_assets_router,
     build_media_router,
-    build_sveltekit_router,
 )
 from ankiweb.adapters.inbound.rpc_passthrough.route import (
     build_router as build_rpc_router,
@@ -164,12 +163,10 @@ def create_app(
     )  # WS /ws
     app.include_router(
         build_screen_router(
-            lambda: app.state.service, lambda: app.state.notifier, lambda: app.state.hub
+            lambda: app.state.service, lambda: app.state.notifier, lambda: app.state.hub,
+            settings=settings,
         )
     )  # GET / + /notify
-    app.include_router(
-        build_sveltekit_router(settings.assets_dir)
-    )  # GET  /graphs, /_app/{path}, /favicon.ico
     app.include_router(
         build_media_router(lambda: app.state.service)
     )  # GET  /{path} — LAST

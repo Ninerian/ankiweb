@@ -1,8 +1,6 @@
-{% set nav_id = "ankiweb-spa-toolbar" if is_spa else "ankiweb-toolbar" %}
-{% set collapse_id = "spaNavbarNav" if is_spa else "ankiwebNavbarNav" %}
-<nav id="{{ nav_id }}" class="navbar navbar-expand-md bg-body-tertiary border-bottom sticky-top d-none d-md-flex">
+<nav id="ankiweb-toolbar" class="navbar navbar-expand-md bg-body-tertiary border-bottom sticky-top d-none d-md-flex">
   <div class="container-fluid">
-    <div class="collapse navbar-collapse show" id="{{ collapse_id }}">
+    <div class="collapse navbar-collapse show" id="ankiwebNavbarNav">
       <ul class="navbar-nav me-auto mb-2 mb-md-0">
         <li class="nav-item"><a class="nav-link py-2 py-md-1" href="/deckbrowser">{{ tr.actions_decks() }}</a></li>
         <li class="nav-item"><a class="nav-link py-2 py-md-1" href="/add">{{ tr.actions_add() }}</a></li>
@@ -245,7 +243,7 @@
         matched = "/deckbrowser";
       }
       if (matched) {
-        document.querySelectorAll(`#{{ nav_id }} a[href^="${matched}"]`).forEach(a => {
+        document.querySelectorAll(`#ankiweb-toolbar a[href^="${matched}"]`).forEach(a => {
           if (a.getAttribute("href") === matched || a.getAttribute("href").startsWith(matched + "?")) {
             a.classList.add("active");
             a.setAttribute("aria-current", "page");
