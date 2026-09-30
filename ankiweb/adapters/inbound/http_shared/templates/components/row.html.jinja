@@ -1,0 +1,5 @@
+{% macro row(class_="") -%}
+<div class="row{% if class_ %} {{ class_ }}{% endif %}"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {{ caller() if caller else '' }}
+</div>
+{%- endmacro %}

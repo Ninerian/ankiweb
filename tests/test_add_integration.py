@@ -38,21 +38,22 @@ def test_add_note_via_ui(live_server_add):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.on("pageerror", lambda e: print("PAGEERROR:", e))
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(f"{url}/add")
+        page.wait_for_selector("#editor-fields-container", timeout=8000)
         page.wait_for_function(
-            "document.querySelector('.note-editor')!==null", timeout=8000
+            "document.querySelectorAll('.editor-field').length >= 2", timeout=8000
         )
-        page.wait_for_function(
-            "document.querySelectorAll('.field-container').length>=2", timeout=8000
-        )
-        page.evaluate("window.focusField(0)")
+        fields = page.locator(".rich-text-input[data-ankiweb-rich]")
+        fields.nth(0).click()
         page.keyboard.type("FrontText")
-        page.evaluate("window.focusField(1)")
+        fields.nth(1).click()
         page.keyboard.type("BackText")
-        page.click("#add-btn")
+        page.click("#editor-add-btn")
         page.wait_for_function(
-            "document.getElementById('add-toast').textContent.includes('Added')",
+            "document.getElementById('editor-toast') && document.getElementById('editor-toast').textContent.includes('Added')",
             timeout=8000,
         )
+        assert not errors, errors
         browser.close()

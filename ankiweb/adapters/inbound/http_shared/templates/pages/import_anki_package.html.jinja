@@ -1,0 +1,201 @@
+{# Import Package page template ported from ts/routes/import-anki-package/+page.svelte and ImportPage.svelte #}
+{% from "components/switch.html.jinja" import switch %}
+{% from "components/enum_selector.html.jinja" import enum_selector %}
+{% from "components/config_input.html.jinja" import config_input %}
+{% from "components/revert_button.html.jinja" import revert_button %}
+{% from "components/help_modal.html.jinja" import help_modal %}
+{% from "components/container.html.jinja" import container %}
+{% from "components/titled_container.html.jinja" import titled_container %}
+
+{% set help_btn %}
+    {{ help_modal(
+        title=help_title,
+        url=help_url,
+        help_sections=help_sections,
+        id="importAnkiPackageHelpModal"
+    ) }}
+{% endset %}
+
+<div
+    class="route-import-package"
+    id="import-package-container"
+    data-signals="{{ {
+        'package_path': package_path,
+        'with_scheduling': options.with_scheduling,
+        'with_deck_configs': options.with_deck_configs,
+        'merge_notetypes': options.merge_notetypes,
+        'update_notes': options.update_notes,
+        'update_notetypes': options.update_notetypes
+    } | tojson | forceescape }}"
+>
+    <div class="pre-import-page">
+        {# Top bar with filename and Import button #}
+        <div class="sticky-top sticky-top-bar mb-3">
+            <div class="container-sm d-flex justify-content-between align-items-center">
+                <div class="filename">
+                    {{ filename }}
+                </div>
+                <div>
+                    <button
+                        type="button"
+                        class="btn btn-primary btn-sm import"
+                        title="Control+Enter"
+                        data-on:click="@post('/import-anki-package/do-import')"
+                    >
+                        {{ tr.actions_import() }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {# Main options container #}
+        {% call container(breakpoint="sm", class_="container-columns") %}
+            <div class="d-block">
+                {% call titled_container(title=title, tooltip=help_btn) %}
+                    <div class="d-flex flex-column gap-2 mt-2">
+                        {# 1. withScheduling switch row #}
+                        <div class="row align-items-center g-2">
+                            <div class="col-8 col-sm-9 d-flex align-items-center">
+                                <label for="withScheduling" class="anki-label" data-on:click__prevent="void 0">
+                                    <span
+                                        style="cursor: pointer;"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#importAnkiPackageHelpModal"
+                                        onclick="const nav = document.querySelector('#importAnkiPackageHelpModal .help-modal-nav'); if (nav) { const btns = nav.querySelectorAll('button'); btns.forEach(b => b.classList.remove('active')); if (btns[0]) btns[0].classList.add('active'); } const carousel = document.querySelector('#importAnkiPackageHelpModalCarousel'); if (carousel) { const items = carousel.querySelectorAll('.carousel-item'); items.forEach(i => i.classList.remove('active')); if (items[0]) items[0].classList.add('active'); }"
+                                    >
+                                        {{ tr.importing_also_import_progress() }}
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="col-4 col-sm-3 d-flex justify-content-end">
+                                {% set rev %}
+                                    {{ revert_button(signal_value="with_scheduling", signal_default="false", default_value=false) }}
+                                {% endset %}
+                                {% call config_input(grow=false, revert_slot=rev) %}
+                                    {{ switch(id="withScheduling", value=options.with_scheduling, signal="with_scheduling") }}
+                                {% endcall %}
+                            </div>
+                        </div>
+
+                        {# 2. withDeckConfigs switch row #}
+                        <div class="row align-items-center g-2">
+                            <div class="col-8 col-sm-9 d-flex align-items-center">
+                                <label for="withDeckConfigs" class="anki-label" data-on:click__prevent="void 0">
+                                    <span
+                                        style="cursor: pointer;"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#importAnkiPackageHelpModal"
+                                        onclick="const nav = document.querySelector('#importAnkiPackageHelpModal .help-modal-nav'); if (nav) { const btns = nav.querySelectorAll('button'); btns.forEach(b => b.classList.remove('active')); if (btns[1]) btns[1].classList.add('active'); } const carousel = document.querySelector('#importAnkiPackageHelpModalCarousel'); if (carousel) { const items = carousel.querySelectorAll('.carousel-item'); items.forEach(i => i.classList.remove('active')); if (items[1]) items[1].classList.add('active'); }"
+                                    >
+                                        {{ tr.importing_with_deck_configs() }}
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="col-4 col-sm-3 d-flex justify-content-end">
+                                {% set rev %}
+                                    {{ revert_button(signal_value="with_deck_configs", signal_default="false", default_value=false) }}
+                                {% endset %}
+                                {% call config_input(grow=false, revert_slot=rev) %}
+                                    {{ switch(id="withDeckConfigs", value=options.with_deck_configs, signal="with_deck_configs") }}
+                                {% endcall %}
+                            </div>
+                        </div>
+
+                        <hr class="my-2" />
+
+                        {# Collapsible details for Updates #}
+                        <details>
+                            <summary style="cursor: pointer; font-weight: 500;" class="mb-2">
+                                {{ tr.importing_updates() }}
+                            </summary>
+                            <div class="d-flex flex-column gap-2 ps-2">
+                                {# 3. mergeNotetypes switch row #}
+                                <div class="row align-items-center g-2">
+                                    <div class="col-8 col-sm-9 d-flex align-items-center">
+                                        <label for="mergeNotetypes" class="anki-label" data-on:click__prevent="void 0">
+                                            <span
+                                                style="cursor: pointer;"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#importAnkiPackageHelpModal"
+                                                onclick="const nav = document.querySelector('#importAnkiPackageHelpModal .help-modal-nav'); if (nav) { const btns = nav.querySelectorAll('button'); btns.forEach(b => b.classList.remove('active')); if (btns[2]) btns[2].classList.add('active'); } const carousel = document.querySelector('#importAnkiPackageHelpModalCarousel'); if (carousel) { const items = carousel.querySelectorAll('.carousel-item'); items.forEach(i => i.classList.remove('active')); if (items[2]) items[2].classList.add('active'); }"
+                                            >
+                                                {{ tr.importing_merge_notetypes() }}
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="col-4 col-sm-3 d-flex justify-content-end">
+                                        {% set rev %}
+                                            {{ revert_button(signal_value="merge_notetypes", signal_default="false", default_value=false) }}
+                                        {% endset %}
+                                        {% call config_input(grow=false, revert_slot=rev) %}
+                                            {{ switch(id="mergeNotetypes", value=options.merge_notetypes, signal="merge_notetypes") }}
+                                        {% endcall %}
+                                    </div>
+                                </div>
+
+                                {# 4. updateNotes enum selector row #}
+                                <div class="row align-items-center g-3">
+                                    <div class="col-12 col-md-7">
+                                        <label for="updateNotes" class="anki-label" data-on:click__prevent="void 0">
+                                            <span
+                                                style="cursor: pointer;"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#importAnkiPackageHelpModal"
+                                                onclick="const nav = document.querySelector('#importAnkiPackageHelpModal .help-modal-nav'); if (nav) { const btns = nav.querySelectorAll('button'); btns.forEach(b => b.classList.remove('active')); if (btns[3]) btns[3].classList.add('active'); } const carousel = document.querySelector('#importAnkiPackageHelpModalCarousel'); if (carousel) { const items = carousel.querySelectorAll('.carousel-item'); items.forEach(i => i.classList.remove('active')); if (items[3]) items[3].classList.add('active'); }"
+                                            >
+                                                {{ tr.importing_update_notes() }}
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="col-12 col-md-5">
+                                        {% set rev %}
+                                            {{ revert_button(signal_value="update_notes", signal_default="0", default_value=0) }}
+                                        {% endset %}
+                                        {% call config_input(grow=true, revert_slot=rev) %}
+                                            {{ enum_selector(
+                                                id="updateNotes",
+                                                value=options.update_notes,
+                                                choices=update_choices,
+                                                signal="update_notes"
+                                            ) }}
+                                        {% endcall %}
+                                    </div>
+                                </div>
+
+                                {# 5. updateNotetypes enum selector row #}
+                                <div class="row align-items-center g-3">
+                                    <div class="col-12 col-md-7">
+                                        <label for="updateNotetypes" class="anki-label" data-on:click__prevent="void 0">
+                                            <span
+                                                style="cursor: pointer;"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#importAnkiPackageHelpModal"
+                                                onclick="const nav = document.querySelector('#importAnkiPackageHelpModal .help-modal-nav'); if (nav) { const btns = nav.querySelectorAll('button'); btns.forEach(b => b.classList.remove('active')); if (btns[4]) btns[4].classList.add('active'); } const carousel = document.querySelector('#importAnkiPackageHelpModalCarousel'); if (carousel) { const items = carousel.querySelectorAll('.carousel-item'); items.forEach(i => i.classList.remove('active')); if (items[4]) items[4].classList.add('active'); }"
+                                            >
+                                                {{ tr.importing_update_notetypes() }}
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <div class="col-12 col-md-5">
+                                        {% set rev %}
+                                            {{ revert_button(signal_value="update_notetypes", signal_default="0", default_value=0) }}
+                                        {% endset %}
+                                        {% call config_input(grow=true, revert_slot=rev) %}
+                                            {{ enum_selector(
+                                                id="updateNotetypes",
+                                                value=options.update_notetypes,
+                                                choices=update_choices,
+                                                signal="update_notetypes"
+                                            ) }}
+                                        {% endcall %}
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                {% endcall %}
+            </div>
+        {% endcall %}
+    </div>
+
+</div>

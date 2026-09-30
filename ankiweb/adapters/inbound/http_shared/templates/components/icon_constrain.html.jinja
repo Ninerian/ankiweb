@@ -1,0 +1,12 @@
+{# IconConstrain component ported from ts/lib/components/IconConstrain.svelte #}
+{% macro icon_constrain(icon_size=100, width_multiplier=1, flip_x=false, class_="", style="") %}
+  <span
+    class="icon-constrain{% if flip_x %} flip-x{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
+    style="--width-multiplier: {{ width_multiplier }}; --icon-size: {{ icon_size }}%;{% if style %} {{ style }}{% endif %}"
+    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+  >
+    {% if caller is defined %}
+      {{ caller() }}
+    {% endif %}
+  </span>
+{% endmacro %}

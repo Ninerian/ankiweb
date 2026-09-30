@@ -1,0 +1,16 @@
+{% macro label(for_="", prevent_mouse_click=false, class_="") %}
+<label
+    {% if for_ %}for="{{ for_ }}"{% endif %}
+    class="anki-label {{ class_ }}"
+    {% if prevent_mouse_click %}
+    data-on:click__prevent="void 0"
+    {% endif %}
+    {% for k, v in kwargs.items() %}
+    {{ k }}="{{ v }}"
+    {% endfor %}
+>
+    {% if caller %}
+        {{ caller() }}
+    {% endif %}
+</label>
+{% endmacro %}

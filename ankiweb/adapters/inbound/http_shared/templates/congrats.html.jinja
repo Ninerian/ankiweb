@@ -1,13 +1,58 @@
-<div class="congrats container text-center py-4">
-  <h1>{{ heading }}</h1>
-  {% if learn_remaining_mins %}<p>
-      The next learning card will be ready in {{ learn_remaining_mins }}
-      minute(s).
-    </p>{% endif %}
-  {% if show_unbury %}<p>
-      <button class="btn btn-outline-primary mt-2" type="button" data-on:click__prevent="@post('/overview/unbury')">
-        {{ tr.studying_unbury() }}
-      </button> buried cards.
-    </p>{% endif %}
-  <p><button class="btn btn-primary mt-2" type="button" data-on:click__prevent="@post('/overview/decks')">Back to Decks</button></p>
-</div>
+{% from "components/container.html.jinja" import container %}
+{% from "components/col.html.jinja" import col %}
+
+{% call container(breakpoint="sm", style="--gutter-block: 1rem; --gutter-inline: 2px;") %}
+  {% call col(style="--col-justify: center;") %}
+    <div class="congrats" data-on-interval__duration.60s="window.location.reload()">
+      <h1>{{ congrats }}</h1>
+
+      {% if next_learn_msg %}
+        <p>{{ next_learn_msg }}</p>
+      {% endif %}
+
+      {% if review_remaining %}
+        <p>{{ today_reviews }}</p>
+      {% endif %}
+
+      {% if new_remaining %}
+        <p>{{ today_new }}</p>
+      {% endif %}
+
+      {% if show_buried %}
+        <p>{{ buried_msg | safe }}</p>
+      {% endif %}
+
+      {% if show_custom_study %}
+        <p>{{ custom_study_msg | safe }}</p>
+      {% endif %}
+
+      {% if deck_description %}
+        <div class="description">
+          {{ deck_description | safe }}
+        </div>
+      {% endif %}
+
+      <div class="congrats-actions mt-4 pt-2 border-top">
+        <button class="btn btn-primary" type="button" data-on:click__prevent="@post('/overview/decks')">Back to Decks</button>
+      </div>
+    </div>
+  {% endcall %}
+{% endcall %}
+
+<style>
+  .congrats {
+    margin-top: 2em;
+    max-width: 30em;
+    font-size: var(--font-size, 1rem);
+  }
+
+  .congrats a {
+    color: var(--fg-link, var(--bs-link-color, #0d6efd));
+    text-decoration: none;
+  }
+
+  .congrats .description {
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    padding: 1em;
+  }
+</style>

@@ -12,11 +12,13 @@ A **browser port of Anki desktop + AnkiConnect**, built on the official `anki` P
 package (pylib) + FastAPI. It serves Anki's real study UI in a browser and re-implements
 the full AnkiConnect HTTP API — for a single user, on your own machine.
 
-**It is a faithful translation, not a rewrite.** Where Anki ships a compiled frontend
-(the SvelteKit pages for graphs / deck options / change-notetype / imports / image
-occlusion, and the `reviewer.js` / `editor.js` bundles), ankiweb **reuses the vendored
-build** and bridges it to the `anki` backend; the Qt-only dialogs (overview, custom study,
-filtered-deck, export) are rebuilt as small server-rendered pages.
+**Frontend architecture: Jinja + Datastar components.** Anki desktop's frontend was migrated
+from the vendored compiled SvelteKit SPA pages to a lightweight, reactive Jinja + Datastar
+architecture. Reusable components live under `ankiweb/adapters/inbound/http_shared/templates/components/`
+(with an interactive gallery at `/dev/components` when `ANKIWEB_DEV=1`), while page templates
+reside under `ankiweb/adapters/inbound/http_shared/templates/pages/`. Minimal JS bundles
+in `shell_src/bundles/` are built via `npm run build`. Vendored SvelteKit bundles are no longer
+served; only core static assets (reviewer.js, MathJax, jQuery) are retained under `/_anki/`.
 
 **Scope:** everything in the desktop study/edit/manage flow + the AnkiConnect API.
 **Out of scope (by design):** sync (AnkiWeb) and add-ons/plugins.
@@ -277,9 +279,7 @@ render dark too.
 ### Navigation
 
 Every server-rendered screen has an always-present top toolbar — **Decks · Add · Browse ·
-Stats** (Anki's main-window toolbar, minus Sync) plus the night-mode toggle. The SvelteKit
-pages (graphs, deck options, change-notetype, imports, image occlusion) are task pages
-opened from there; use the browser's back button to return.
+Stats** (Anki's main-window toolbar, minus Sync) plus the night-mode toggle.
 
 ## Architecture
 
@@ -320,8 +320,10 @@ for the migration that built it.
   - **`http_shared/`** — routing/templating infrastructure shared by every screen (routes,
     Jinja templating, page shell, about, export, preview, congrats, type-answer, notify).
   - **`rpc_passthrough/`** — the thin `POST /_anki/{method}` FastAPI route over
-    `core/rpc/dispatch.py`, for the reused SvelteKit SPA pages.
-- **`ankiweb/assets.py`** — serves the vendored Anki frontend (`/_anki/...`, `/_app/...`).
+    `core/rpc/dispatch.py`, used by reviewer.js and backend operations.
+  - **`http_pages/`** — pure Jinja + Datastar page routers (graphs, deck options, card info,
+    change notetype, image occlusion, import, editor/add).
+- **`ankiweb/assets.py`** — serves static assets under `/_anki/...` (reviewer.js, MathJax, fonts).
 - **`ankiweb/app.py`**, **`ankiweb/ankiconnect/app.py`**, **`ankiweb/__main__.py`** —
   composition roots: wire adapters to core and run the Web app + AnkiConnect app as two
   uvicorn servers on a shared collection + bridge hub.

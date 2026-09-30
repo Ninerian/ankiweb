@@ -1,0 +1,62 @@
+{# Demo for LabelButton component #}
+{% from "components/label_button.html.jinja" import label_button %}
+
+<div
+  class="d-flex flex-wrap gap-3 align-items-center"
+  data-testid="demo-label-button-container"
+  data-signals="{ label_btn_clicked: 0, label_btn_active: false }"
+>
+  <div>
+    {% call label_button(
+        id="lbl-btn-default",
+        tooltip="Standard button",
+        tabbable=true,
+        onclick="const el = document.getElementById('label-btn-click-count'); el.textContent = String(parseInt(el.textContent || '0') + 1);",
+        **{"data-on:click": "$label_btn_clicked++"}
+    ) %}
+      Default Label
+    {% endcall %}
+  </div>
+
+  <div>
+    {% call label_button(primary=true, tooltip="Primary Action", id="lbl-btn-primary") %}
+      Primary Label
+    {% endcall %}
+  </div>
+
+  <div>
+    {% call label_button(active=true, tooltip="Active state", id="lbl-btn-active") %}
+      Active Label
+    {% endcall %}
+  </div>
+
+  <div>
+    {% call label_button(
+        id="lbl-btn-toggle",
+        tooltip="Toggle Active",
+        onclick="this.classList.toggle('active');",
+        **{
+          "data-on:click": "$label_btn_active = !$label_btn_active",
+          "data-class": "{ 'active': $label_btn_active }"
+        }
+    ) %}
+      Toggle Active
+    {% endcall %}
+  </div>
+
+  <div>
+    {% call label_button(disabled=true, tooltip="Disabled", id="lbl-btn-disabled") %}
+      Disabled Label
+    {% endcall %}
+  </div>
+
+  <div style="max-width: 140px;">
+    {% call label_button(ellipsis=true, tooltip="Very Long Ellipsis Text", id="lbl-btn-ellipsis") %}
+      Very Long Text That Truncates With Ellipsis
+    {% endcall %}
+  </div>
+
+  <div class="mt-2 text-muted small w-100">
+    Clicks recorded: <span id="label-btn-click-count" data-text="$label_btn_clicked">0</span>
+  </div>
+</div>

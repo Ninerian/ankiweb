@@ -1,0 +1,58 @@
+{% from "components/enum_selector.html.jinja" import enum_selector %}
+{% from "components/label.html.jinja" import label %}
+{% from "components/config_input.html.jinja" import config_input %}
+{% from "components/revert_button.html.jinja" import revert_button %}
+
+{% macro enum_selector_row(
+    id="",
+    value=none,
+    default_value=none,
+    choices=[],
+    disabled=false,
+    disabled_choices=[],
+    breakpoint="md",
+    signal=none,
+    signal_default=none,
+    class_=""
+) %}
+{#
+  EnumSelectorRow: Row composing Col for label/title and Col for EnumSelector + RevertButton.
+  Note: Renders inline row/col flex layout matching upstream Row/Col grid.
+#}
+{% set row_id = id if id else ('enum-row-' ~ range(1000, 9999)|random) %}
+<div
+    class="row align-items-center g-3 {{ class_ }}"
+    {% for k, v in kwargs.items() %}
+    {{ k }}="{{ v }}"
+    {% endfor %}
+>
+    <div class="col-12 col-{{ breakpoint }}-7">
+        {% call label(for_=row_id, prevent_mouse_click=true) %}
+            {% if caller %}
+                {{ caller() }}
+            {% else %}
+                Option
+            {% endif %}
+        {% endcall %}
+    </div>
+    <div class="col-12 col-{{ breakpoint }}-5">
+        {% set rev %}
+            {% if signal %}
+                {{ revert_button(signal_value=signal, signal_default=signal_default, default_value=default_value) }}
+            {% else %}
+                {{ revert_button(value=value, default_value=default_value) }}
+            {% endif %}
+        {% endset %}
+        {% call config_input(grow=true, revert_slot=rev) %}
+            {{ enum_selector(
+                id=row_id,
+                value=value,
+                choices=choices,
+                disabled=disabled,
+                disabled_choices=disabled_choices,
+                signal=signal
+            ) }}
+        {% endcall %}
+    </div>
+</div>
+{% endmacro %}

@@ -1,0 +1,93 @@
+{% from "components/context_menu.html.jinja" import context_menu %}
+{% from "components/dropdown_item.html.jinja" import dropdown_item %}
+{% from "components/dropdown_divider.html.jinja" import dropdown_divider %}
+
+<div class="demo-context-menu-section" data-signals="{
+  demoCm: { visible: false, x: 0, y: 0 },
+  cmAction: 'None'
+}">
+  <h6 class="mb-2">Context Menu Demo</h6>
+  <p class="text-muted small">
+    Right-click (contextmenu) on the target zones below to trigger the custom context menu at cursor coordinates. Clamped to viewport boundaries. Supports keyboard nav, Escape to close, click outside, and item selection.
+  </p>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <div
+        id="cm-trigger-zone-1"
+        class="p-4 border border-dashed rounded text-center bg-body-tertiary"
+        style="user-select: none; cursor: context-menu;"
+        data-on:contextmenu__prevent="
+          const menuW = 160;
+          const menuH = 180;
+          let nx = evt.clientX;
+          let ny = evt.clientY;
+          if (nx + menuW > window.innerWidth) nx = Math.max(0, window.innerWidth - menuW);
+          if (ny + menuH > window.innerHeight) ny = Math.max(0, window.innerHeight - menuH);
+          $demoCm.x = Math.max(0, nx);
+          $demoCm.y = Math.max(0, ny);
+          $demoCm.visible = true;
+        "
+      >
+        <strong>Right-click here (Main Area)</strong>
+        <div class="small text-muted mt-1">Normal positioning inside window</div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div
+        id="cm-trigger-zone-edge"
+        class="p-4 border border-dashed rounded text-center bg-body-tertiary"
+        style="user-select: none; cursor: context-menu;"
+        data-on:contextmenu__prevent="
+          const menuW = 160;
+          const menuH = 180;
+          let nx = evt.clientX;
+          let ny = evt.clientY;
+          if (nx + menuW > window.innerWidth) nx = Math.max(0, window.innerWidth - menuW);
+          if (ny + menuH > window.innerHeight) ny = Math.max(0, window.innerHeight - menuH);
+          $demoCm.x = Math.max(0, nx);
+          $demoCm.y = Math.max(0, ny);
+          $demoCm.visible = true;
+        "
+      >
+        <strong>Right-click here (Edge Zone)</strong>
+        <div class="small text-muted mt-1">Tests viewport boundary clamp</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <span>Last action selected: </span>
+    <span id="cm-last-action" class="badge bg-secondary" data-text="$cmAction">None</span>
+  </div>
+
+  {# ContextMenu component instance #}
+  {% call context_menu(signal_name="demoCm", id="demo-context-menu") %}
+    {% call dropdown_item(id="cm-item-cut", tabbable=true, **{"data-on:click": "$cmAction = 'Cut'; $demoCm.visible = false"}) %}
+      Cut
+    {% endcall %}
+    {% call dropdown_item(id="cm-item-copy", tabbable=true, **{"data-on:click": "$cmAction = 'Copy'; $demoCm.visible = false"}) %}
+      Copy
+    {% endcall %}
+    {% call dropdown_item(id="cm-item-paste", tabbable=true, **{"data-on:click": "$cmAction = 'Paste'; $demoCm.visible = false"}) %}
+      Paste
+    {% endcall %}
+
+    {{ dropdown_divider() }}
+
+    <div
+      class="context-menu-item"
+      id="cm-item-custom"
+      role="menuitem"
+      tabindex="-1"
+      data-on:click="$cmAction = 'Custom Item'; $demoCm.visible = false"
+    >
+      Custom Item
+    </div>
+
+    {% call dropdown_item(id="cm-item-delete", class_="text-danger", tabbable=true, **{"data-on:click": "$cmAction = 'Delete'; $demoCm.visible = false"}) %}
+      Delete
+    {% endcall %}
+  {% endcall %}
+</div>

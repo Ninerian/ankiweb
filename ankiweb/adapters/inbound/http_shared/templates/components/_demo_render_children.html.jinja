@@ -1,0 +1,8 @@
+{% from "components/render_children.html.jinja" import render_children %}
+
+<div class="border p-3">
+    <p class="text-muted small mb-1">Pass-through slot execution via render_children():</p>
+    {% call render_children() %}
+        <span class="badge bg-primary">Content passed through RenderChildren</span>
+    {% endcall %}
+</div>

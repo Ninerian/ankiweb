@@ -1,0 +1,65 @@
+{% from "components/help_modal.html.jinja" import help_modal %}
+
+<div class="border p-3 mb-4 rounded">
+    <h5>1. Standard HelpModal with Navigation & Carousel</h5>
+    <p class="text-muted">Click the info badge to trigger the modal.</p>
+
+    {{ help_modal(
+        title="Deck Options Help",
+        url="https://docs.ankiweb.net/deck-options.html",
+        link_label="Deck Options Documentation",
+        id="demoDeckHelpModal",
+        help_sections=[
+            {
+                "title": "Daily Limits",
+                "help": "<p>Daily limits control the maximum number of new cards and review cards introduced each day.</p>",
+                "url": "https://docs.ankiweb.net/deck-options.html#daily-limits",
+                "global": false,
+                "sched": 0
+            },
+            {
+                "title": "Lapses & Leech",
+                "help": "<p>When you forget a card you have previously learned, Anki considers that a lapse.</p>",
+                "url": "https://docs.ankiweb.net/deck-options.html#leeches",
+                "global": true,
+                "sched": 0
+            },
+            {
+                "title": "FSRS Desired Retention",
+                "help": "<p>Target retention rate for the FSRS algorithm (e.g. 0.90 for 90% recall).</p>",
+                "url": "https://docs.ankiweb.net/deck-options.html#fsrs",
+                "global": true,
+                "sched": 1
+            }
+        ],
+        fsrs=false
+    ) }}
+</div>
+
+<div class="border p-3 rounded">
+    <h5>2. HelpModal with FSRS Mode Enabled</h5>
+    <p class="text-muted">In FSRS mode, FSRS-specific help items are displayed while SM2-only items are filtered out.</p>
+
+    {{ help_modal(
+        title="FSRS Scheduling Guide",
+        url="https://docs.ankiweb.net/deck-options.html#fsrs",
+        id="demoFsrsHelpModal",
+        help_sections=[
+            {
+                "title": "Daily Limits",
+                "help": "<p>Daily limits control the maximum number of new cards and review cards introduced each day.</p>",
+                "url": "https://docs.ankiweb.net/deck-options.html#daily-limits",
+                "global": false,
+                "sched": 0
+            },
+            {
+                "title": "FSRS Parameters",
+                "help": "<p>The weights used by the Free Spaced Repetition Scheduler model.</p>",
+                "url": "https://docs.ankiweb.net/deck-options.html#fsrs",
+                "global": true,
+                "sched": 1
+            }
+        ],
+        fsrs=true
+    ) }}
+</div>

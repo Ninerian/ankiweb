@@ -1,0 +1,14 @@
+<main class="component-gallery" data-testid="component-gallery">
+  <h1 class="h3 mb-3">Component gallery</h1>
+  <p class="text-secondary">
+    Ported <code>ts/</code> components. Tracker: <code>docs/ts-component-migration-tracker.md</code>.
+  </p>
+  {% for demo in demos %}
+  <section class="component-demo" id="demo-{{ demo.name }}" data-component="{{ demo.name }}">
+    <h3>{{ demo.name }}</h3>
+    {{ demo.html | safe }}
+  </section>
+  {% else %}
+  <p class="component-demo-empty">No components ported yet.</p>
+  {% endfor %}
+</main>

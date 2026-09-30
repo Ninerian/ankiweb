@@ -1,0 +1,7 @@
+{% macro spacer(width=none, height=none, class_="") -%}
+{%- set w_style = ('--width: ' ~ width ~ ';') if width is not none else '' -%}
+{%- set h_style = ('--height: ' ~ height ~ ';') if height is not none else '' -%}
+{%- set extra_style = kwargs.pop('style') if 'style' in kwargs else '' -%}
+{%- set style_str = (w_style ~ ' ' ~ h_style ~ ' ' ~ extra_style).strip() -%}
+<div class="spacer{% if class_ %} {{ class_ }}{% endif %}"{% if style_str %} style="{{ style_str }}"{% endif %}{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}></div>
+{%- endmacro %}

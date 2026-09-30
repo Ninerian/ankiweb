@@ -30,7 +30,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form id="ankiwebDialogForm">
-            <div class="modal-body">
+            <div class="modal-body" style="--gutter-inline: 1rem;">
               <div id="ankiwebDialogMessage" class="mb-2 text-break"></div>
               <input type="text" id="ankiwebDialogInput" class="form-control" autocomplete="off">
             </div>

@@ -1,0 +1,320 @@
+{# FSRS Simulator and Workload Modal Partial #}
+{% from "components/spin_box.html.jinja" import spin_box %}
+{% from "components/switch.html.jinja" import switch %}
+
+<div class="route-deck-options-sim mt-4" data-signals='{"simDaysToSimulate": 365, "simDeckSize": 0, "simDesiredRetention": 0.9, "simNewLimit": 20, "simReviewLimit": 200, "simMaxInterval": 36500, "simSmooth": true, "simSubgraph": "count", "simSuspendLeeches": false, "simLeechThreshold": 8, "workloadDaysToSimulate": 365, "workloadDeckSize": 0, "workloadNewLimit": 20, "workloadReviewLimit": 9999, "workloadMaxInterval": 36500, "workloadSubgraph": "ratio"}'>
+    <h5 class="fw-bold mb-3 border-bottom pb-2">{{ tr.deck_config_fsrs_simulator_experimental() }}</h5>
+    
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <!-- Button to open FSRS Simulator Modal -->
+        <button
+            type="button"
+            class="btn btn-sm btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#fsrsSimulatorModal"
+            id="openSimulatorBtn"
+        >
+            {{ tr.deck_config_fsrs_simulator_experimental() }}
+        </button>
+
+        <!-- Button to open Workload / Desired Retention Simulator Modal -->
+        <button
+            type="button"
+            class="btn btn-sm btn-outline-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#fsrsWorkloadModal"
+            id="openWorkloadBtn"
+        >
+            {{ tr.deck_config_fsrs_simulate_desired_retention_experimental() }}
+        </button>
+    </div>
+
+    <!-- Simulator Modal -->
+    <div class="modal fade" id="fsrsSimulatorModal" tabindex="-1" aria-labelledby="fsrsSimulatorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header sim-modal-header">
+                    <h5 class="modal-title" id="fsrsSimulatorModalLabel">{{ tr.deck_config_fsrs_simulator_experimental() }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Controls -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label small fw-semibold">{{ tr.deck_config_days_to_simulate() }}</label>
+                            <input type="number" class="form-control form-control-sm" min="1" max="3650" data-bind="simDaysToSimulate" id="simDaysInput" />
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label small fw-semibold">{{ tr.deck_config_additional_new_cards_to_simulate() }}</label>
+                            <input type="number" class="form-control form-control-sm" min="0" max="100000" data-bind="simDeckSize" id="simDeckSizeInput" />
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label small fw-semibold">{{ tr.deck_config_desired_retention() }}</label>
+                            <input type="number" step="0.01" min="0.70" max="0.99" class="form-control form-control-sm" data-bind="simDesiredRetention" id="simRetentionInput" />
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label small fw-semibold">{{ tr.scheduling_new_cardsday() }}</label>
+                            <input type="number" class="form-control form-control-sm" min="0" max="9999" data-bind="simNewLimit" id="simNewLimitInput" />
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label small fw-semibold">{{ tr.scheduling_maximum_reviewsday() }}</label>
+                            <input type="number" class="form-control form-control-sm" min="0" max="9999" data-bind="simReviewLimit" id="simReviewLimitInput" />
+                        </div>
+                    </div>
+
+                    <!-- Easy Days Collapsible -->
+                    <details class="mb-3 border rounded p-2">
+                        <summary class="fw-semibold small cursor-pointer">{{ tr.deck_config_easy_days_title() }}</summary>
+                        <div class="row g-2 mt-2">
+                            {% set day_names = [
+                                tr.deck_config_easy_days_monday(),
+                                tr.deck_config_easy_days_tuesday(),
+                                tr.deck_config_easy_days_wednesday(),
+                                tr.deck_config_easy_days_thursday(),
+                                tr.deck_config_easy_days_friday(),
+                                tr.deck_config_easy_days_saturday(),
+                                tr.deck_config_easy_days_sunday()
+                            ] %}
+                            {% for i in range(7) %}
+                            <div class="col">
+                                <label class="small text-muted d-block text-center">{{ day_names[i] }}</label>
+                                <input type="range" class="form-range" min="0.0" max="1.0" step="0.5" data-bind="simEasyDaysPercentages[{{ i }}]" />
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+
+                    <!-- Advanced Settings Collapsible -->
+                    <details class="mb-3 border rounded p-2">
+                        <summary class="fw-semibold small cursor-pointer">{{ tr.deck_config_advanced_settings() }}</summary>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6 col-lg-4">
+                                <label class="form-label small">{{ tr.scheduling_maximum_interval() }}</label>
+                                <input type="number" class="form-control form-control-sm" min="1" max="36500" data-bind="simMaxInterval" />
+                            </div>
+                            <div class="col-md-6 col-lg-4 d-flex align-items-center mt-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="simSmoothCheck" data-bind="simSmooth" />
+                                    <label class="form-check-label small" for="simSmoothCheck">{{ tr.deck_config_smooth_graph() }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-4 d-flex align-items-center mt-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="simSuspendCheck" data-bind="simSuspendLeeches" />
+                                    <label class="form-check-label small" for="simSuspendCheck">{{ tr.deck_config_suspend_leeches() }}</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-4" data-show="$simSuspendLeeches">
+                                <label class="form-label small">{{ tr.scheduling_leech_threshold() }}</label>
+                                <input type="number" class="form-control form-control-sm" min="1" max="9999" data-bind="simLeechThreshold" />
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-primary"
+                            data-attr:disabled="$simProcessing ? true : false"
+                            data-on:click="$simProcessing = true; @post('/deck-options/sim/run-simulator')"
+                            id="simulateBtn"
+                        >
+                            <span data-show="!$simProcessing">{{ tr.deck_config_simulate() }}</span>
+                            <span data-show="$simProcessing">Simulating...</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            data-attr:disabled="(!$simHistory || $simHistory.length === 0 || $simProcessing) ? true : false"
+                            data-on:click="@post('/deck-options/sim/clear-simulation')"
+                            id="clearSimBtn"
+                        >
+                            {{ tr.deck_config_clear_last_simulate() }}
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-success"
+                            data-attr:disabled="$simProcessing ? true : false"
+                            data-on:click="@post('/deck-options/sim/save-sim-to-preset')"
+                            id="saveSimBtn"
+                        >
+                            {{ tr.deck_config_save_options_to_preset() }}
+                        </button>
+
+                        <span class="small text-muted ms-2" data-show="$simProcessing">
+                            {{ tr.actions_processing() }}
+                        </span>
+                        <span class="small text-danger ms-2" data-show="$simError" data-text="$simError"></span>
+                        <span class="small text-success ms-2" data-show="$simSavedSuccess">Saved to preset!</span>
+                    </div>
+
+                    <!-- Radio Group for Subgraphs -->
+                    <div class="sim-radio-group border-top pt-2">
+                        <label>
+                            <input
+                                type="radio"
+                                name="simSubgraph"
+                                value="count"
+                                data-bind="simSubgraph"
+                                data-on:change="$simMode = 'review'; @post('/deck-options/sim/switch-subgraph')"
+                            />
+                            {{ tr.deck_config_fsrs_simulator_radio_count() }}
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                name="simSubgraph"
+                                value="time"
+                                data-bind="simSubgraph"
+                                data-on:change="$simMode = 'review'; @post('/deck-options/sim/switch-subgraph')"
+                            />
+                            {{ tr.statistics_reviews_time_checkbox() }}
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                name="simSubgraph"
+                                value="memorized"
+                                data-bind="simSubgraph"
+                                data-on:change="$simMode = 'review'; @post('/deck-options/sim/switch-subgraph')"
+                            />
+                            {{ tr.deck_config_fsrs_simulator_radio_memorized() }}
+                        </label>
+                    </div>
+
+                    <!-- SVG Chart Container -->
+                    <div id="simChartContainer" class="sim-svg-container mt-2">
+                        <div class="text-muted small">No simulation data. Click "Simulate" to run.</div>
+                    </div>
+
+                    <!-- Table Data / Legend Summary -->
+                    <div id="simTableContainer" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workload / Desired Retention Modal -->
+    <div class="modal fade" id="fsrsWorkloadModal" tabindex="-1" aria-labelledby="fsrsWorkloadModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header sim-modal-header">
+                    <h5 class="modal-title" id="fsrsWorkloadModalLabel">{{ tr.deck_config_fsrs_simulate_desired_retention_experimental() }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Controls -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label small fw-semibold">{{ tr.deck_config_days_to_simulate() }}</label>
+                            <input type="number" class="form-control form-control-sm" min="1" max="3650" data-bind="workloadDaysToSimulate" id="workloadDaysInput" />
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label small fw-semibold">{{ tr.deck_config_additional_new_cards_to_simulate() }}</label>
+                            <input type="number" class="form-control form-control-sm" min="0" max="100000" data-bind="workloadDeckSize" id="workloadDeckSizeInput" />
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label small fw-semibold">{{ tr.scheduling_new_cardsday() }}</label>
+                            <input type="number" class="form-control form-control-sm" min="0" max="9999" data-bind="workloadNewLimit" id="workloadNewLimitInput" />
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <label class="form-label small fw-semibold">{{ tr.scheduling_maximum_reviewsday() }}</label>
+                            <input type="number" class="form-control form-control-sm" min="0" max="9999" data-bind="workloadReviewLimit" id="workloadReviewLimitInput" />
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-primary"
+                            data-attr:disabled="$workloadProcessing ? true : false"
+                            data-on:click="$workloadProcessing = true; @post('/deck-options/sim/run-workload')"
+                            id="simulateWorkloadBtn"
+                        >
+                            <span data-show="!$workloadProcessing">{{ tr.deck_config_simulate() }}</span>
+                            <span data-show="$workloadProcessing">Simulating...</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            data-attr:disabled="(!$workloadHistory || $workloadHistory.length === 0 || $workloadProcessing) ? true : false"
+                            data-on:click="@post('/deck-options/sim/clear-workload')"
+                            id="clearWorkloadBtn"
+                        >
+                            {{ tr.deck_config_clear_last_simulate() }}
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-success"
+                            data-attr:disabled="$workloadProcessing ? true : false"
+                            data-on:click="$simMode = 'workload'; @post('/deck-options/sim/save-sim-to-preset')"
+                            id="saveWorkloadBtn"
+                        >
+                            {{ tr.deck_config_save_options_to_preset() }}
+                        </button>
+
+                        <span class="small text-muted ms-2" data-show="$workloadProcessing">
+                            {{ tr.actions_processing() }}
+                        </span>
+                        <span class="small text-danger ms-2" data-show="$workloadError" data-text="$workloadError"></span>
+                    </div>
+
+                    <!-- Radio Group for Workload Subgraphs -->
+                    <div class="sim-radio-group border-top pt-2">
+                        <label>
+                            <input
+                                type="radio"
+                                name="workloadSubgraph"
+                                value="ratio"
+                                data-bind="workloadSubgraph"
+                                data-on:change="$simMode = 'workload'; @post('/deck-options/sim/switch-subgraph')"
+                            />
+                            {{ tr.deck_config_fsrs_simulator_radio_ratio() }}
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                name="workloadSubgraph"
+                                value="count"
+                                data-bind="workloadSubgraph"
+                                data-on:change="$simMode = 'workload'; @post('/deck-options/sim/switch-subgraph')"
+                            />
+                            {{ tr.deck_config_fsrs_simulator_radio_count() }}
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                name="workloadSubgraph"
+                                value="time"
+                                data-bind="workloadSubgraph"
+                                data-on:change="$simMode = 'workload'; @post('/deck-options/sim/switch-subgraph')"
+                            />
+                            {{ tr.statistics_reviews_time_checkbox() }}
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                name="workloadSubgraph"
+                                value="memorized"
+                                data-bind="workloadSubgraph"
+                                data-on:change="$simMode = 'workload'; @post('/deck-options/sim/switch-subgraph')"
+                            />
+                            {{ tr.deck_config_fsrs_simulator_radio_memorized() }}
+                        </label>
+                    </div>
+
+                    <!-- SVG Chart Container -->
+                    <div id="workloadChartContainer" class="sim-svg-container mt-2">
+                        <div class="text-muted small">No workload data. Click "Simulate" to run.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

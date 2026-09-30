@@ -1,0 +1,53 @@
+{% from "components/help_section.html.jinja" import help_section %}
+
+<div class="p-3 border rounded mb-4">
+    <h5>1. Standard HelpSection with explanation and URL</h5>
+    {{ help_section(
+        title="Learning Steps",
+        help="<p>Steps are the intervals at which new cards are shown while learning.</p><p>For example, <code>1m 10m</code> shows the card after 1 minute, then 10 minutes.</p>",
+        url="https://docs.ankiweb.net/deck-options.html#learning-steps"
+    ) }}
+</div>
+
+<div class="p-3 border rounded mb-4">
+    <h5>2. Global setting (item.global=true with mdiEarth icon)</h5>
+    {{ help_section(
+        item={
+            "title": "FSRS Parameters",
+            "help": "<p>FSRS (Free Spaced Repetition Scheduler) uses modern machine learning parameters.</p>",
+            "global": true,
+            "url": "https://docs.ankiweb.net/deck-options.html#fsrs"
+        }
+    ) }}
+</div>
+
+<div class="p-3 border rounded mb-4">
+    <h5>3. Missing explanation (triggers upstream fallback message + link to GitHub)</h5>
+    {{ help_section(
+        title="Experimental Retention",
+        url="https://docs.ankiweb.net"
+    ) }}
+</div>
+
+<div class="p-3 border rounded mb-4">
+    <h5>4. Collapsible variant (Datastar open/close behaviour)</h5>
+    {{ help_section(
+        title="Collapsible Maximum Reviews/Day",
+        help="<p>Sets the upper limit of review cards to show each day.</p>",
+        url="https://docs.ankiweb.net/deck-options.html#maximum-reviewsday",
+        collapsible=true,
+        open=false,
+        id="max_reviews"
+    ) }}
+</div>
+
+<div class="p-3 border rounded">
+    <h5>5. Modal / Accordion toggle variant (open/close Datastar signal)</h5>
+    {{ help_section(
+        title="New Cards Ignore Review Limit",
+        help="<p>When enabled, new cards will continue to be introduced even if daily review limit is met.</p>",
+        modal_mode=true,
+        open=true,
+        id="new_cards_ignore"
+    ) }}
+</div>

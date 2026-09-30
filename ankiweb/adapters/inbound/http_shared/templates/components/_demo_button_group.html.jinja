@@ -1,0 +1,20 @@
+{% from "components/button_group.html.jinja" import button_group %}
+{% from "components/button_group_item.html.jinja" import button_group_item %}
+
+<div class="border p-3 mb-3">
+    <h6 class="text-muted">Standard ButtonGroup:</h6>
+    {% call button_group() %}
+        <button type="button" class="btn btn-primary">Left</button>
+        <button type="button" class="btn btn-primary">Middle</button>
+        <button type="button" class="btn btn-primary">Right</button>
+    {% endcall %}
+</div>
+
+<div class="border p-3 mb-3">
+    <h6 class="text-muted">ButtonGroup with size=1.5 and wrap=false:</h6>
+    {% call button_group(size=1.5, wrap=false) %}
+        <button type="button" class="btn btn-outline-info">One</button>
+        <button type="button" class="btn btn-outline-info">Two</button>
+        <button type="button" class="btn btn-outline-info">Three</button>
+    {% endcall %}
+</div>

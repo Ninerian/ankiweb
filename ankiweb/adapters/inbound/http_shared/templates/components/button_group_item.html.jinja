@@ -1,0 +1,31 @@
+{# ButtonGroupItem component: Ported from ts/lib/components/ButtonGroupItem.svelte.
+   In Svelte, ButtonGroupItem reads ButtonGroup slotHostContext to calculate its position
+   (Standalone, InlineStart, Center, InlineEnd) and assigns CSS custom properties:
+   - standalone: --border-left-radius: 5px; --border-right-radius: 5px;
+   - inline-start / start: --border-left-radius: 5px; --border-right-radius: 0;
+   - center: --border-left-radius: 0; --border-right-radius: 0;
+   - inline-end / end: --border-left-radius: 0; --border-right-radius: 5px;
+   In Jinja/Datastar, position can be passed explicitly via `position` ("standalone", "start", "center", "end")
+   or omitted to rely on standard CSS styling.
+#}
+{% macro button_group_item(id=none, position="standalone", detach=false, class_="") -%}
+{%- set radius = "5px" -%}
+{%- if position in ["standalone", "Standalone"] -%}
+    {%- set pos_style = '--border-left-radius: ' ~ radius ~ '; --border-right-radius: ' ~ radius ~ ';' -%}
+{%- elif position in ["start", "InlineStart", "inline-start"] -%}
+    {%- set pos_style = '--border-left-radius: ' ~ radius ~ '; --border-right-radius: 0;' -%}
+{%- elif position in ["center", "Center"] -%}
+    {%- set pos_style = '--border-left-radius: 0; --border-right-radius: 0;' -%}
+{%- elif position in ["end", "InlineEnd", "inline-end"] -%}
+    {%- set pos_style = '--border-left-radius: 0; --border-right-radius: ' ~ radius ~ ';' -%}
+{%- else -%}
+    {%- set pos_style = '' -%}
+{%- endif -%}
+{%- set extra_style = kwargs.pop('style') if 'style' in kwargs else '' -%}
+{%- set style_str = (pos_style ~ ' ' ~ extra_style).strip() -%}
+<div class="button-group-item{% if class_ %} {{ class_ }}{% endif %}"{% if id %} id="{{ id }}"{% endif %}{% if style_str %} style="{{ style_str }}"{% endif %}{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {%- if not detach -%}
+        {{ caller() if caller else '' }}
+    {%- endif -%}
+</div>
+{%- endmacro %}

@@ -1,0 +1,46 @@
+/* ContextMenu & ContextMenuItem styles
+ * Ported from upstream ts/lib/context-menu/ContextMenu.svelte & Item.svelte
+ * Batch: libs
+ */
+
+.context-menu {
+    position: fixed;
+    background: var(--canvas, var(--bs-body-bg, #fff));
+    border: 1px solid var(--border, var(--bs-border-color, #ccc));
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    min-width: 120px;
+    z-index: 1050;
+    font-size: 13px;
+    outline: none;
+}
+
+.context-menu-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    color: var(--bs-body-color, inherit);
+}
+
+.context-menu-item:hover,
+.context-menu-item:focus,
+.context-menu-item:active {
+    background-color: var(--highlight-bg, var(--bs-tertiary-bg, rgba(0, 0, 0, 0.08)));
+    outline: none;
+}
+
+[data-bs-theme="dark"] .context-menu,
+.night-mode .context-menu {
+    background: var(--canvas, #2d2d2d);
+    border-color: var(--border, #444);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-bs-theme="dark"] .context-menu-item:hover,
+.night-mode .context-menu-item:hover,
+[data-bs-theme="dark"] .context-menu-item:focus,
+.night-mode .context-menu-item:focus {
+    background-color: var(--highlight-bg, rgba(255, 255, 255, 0.1));
+}

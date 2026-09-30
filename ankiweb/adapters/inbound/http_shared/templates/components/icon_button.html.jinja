@@ -1,0 +1,31 @@
+{# IconButton component ported from ts/lib/components/IconButton.svelte #}
+{% from "components/icon_constrain.html.jinja" import icon_constrain %}
+
+{% macro icon_button(
+    id=none,
+    class_="",
+    tooltip=none,
+    primary=false,
+    active=false,
+    disabled=false,
+    tabbable=false,
+    icon_size=75,
+    width_multiplier=1,
+    flip_x=false
+) %}
+  {% set outer_caller = caller %}
+  <button
+    {% if id %}id="{{ id }}"{% endif %}
+    class="icon-button{% if class_ %} {{ class_ }}{% endif %}{% if active %} active{% endif %}{% if primary %} primary{% endif %}"
+    {% if tooltip %}title="{{ tooltip }}"{% endif %}
+    {% if disabled %}disabled{% endif %}
+    tabindex="{% if tabbable %}0{% else %}-1{% endif %}"
+    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+  >
+    {% call icon_constrain(flip_x=flip_x, width_multiplier=width_multiplier, icon_size=icon_size) %}
+      {% if outer_caller is defined %}
+        {{ outer_caller() }}
+      {% endif %}
+    {% endcall %}
+  </button>
+{% endmacro %}

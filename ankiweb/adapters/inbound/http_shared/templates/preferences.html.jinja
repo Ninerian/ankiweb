@@ -27,13 +27,13 @@
       <!-- Section navigation index for >= lg -->
       <nav class="col-lg-3 d-none d-lg-block" aria-label="Preferences navigation">
         <div class="sticky-top" style="top: 4.5rem; z-index: 10;">
-          <div id="prefs-index" class="list-group shadow-sm">
-            <a class="list-group-item list-group-item-action active" href="#pref-scheduling">{{ tr.preferences_scheduling() }}</a>
-            <a class="list-group-item list-group-item-action" href="#pref-review">{{ tr.preferences_review() }}</a>
-            <a class="list-group-item list-group-item-action" href="#pref-editing">{{ tr.preferences_editing() }}</a>
-            <a class="list-group-item list-group-item-action" href="#pref-backups">{{ tr.preferences_backups() }}</a>
-          </div>
-        </div>
+            <div id="prefs-index" class="list-group shadow-sm">
+              <a class="list-group-item list-group-item-action active" href="#pref-scheduling">{{ tr.preferences_scheduling() }}</a>
+              <a class="list-group-item list-group-item-action" href="#pref-review">{{ tr.preferences_review() }}</a>
+              <a class="list-group-item list-group-item-action" href="#pref-editing">{{ tr.preferences_editing() }}</a>
+              <a class="list-group-item list-group-item-action" href="#pref-backups">{{ tr.preferences_backups() }}</a>
+              <a class="list-group-item list-group-item-action" href="#pref-experiments">{{ tr.preferences_experimental_features_tab() }}</a>
+            </div>
       </nav>
 
       <!-- Sections column (Cards on >= lg, Accordion on < lg) -->
@@ -140,10 +140,10 @@
                     type="text"
                     class="form-control form-control-sm"
                     id="default_search_text"
+                    placeholder='{{ tr.preferences_default_search_text_example() }}'
                     style="min-height: 38px; max-width: 24rem;"
                     value="{{ e.default_search_text }}"
                   >
-                </div>
                 {{ checkbox_field("ignore_accents_in_search", tr.preferences_ignore_accents_in_search(), e.ignore_accents_in_search) }}
                 {{ checkbox_field("render_latex", tr.preferences_generate_latex_images_automatically(), e.render_latex) }}
               </div>
@@ -169,10 +169,52 @@
             </div>
             <div id="collapse-backups" class="collapse d-lg-block">
               <div class="card-body">
+                <div class="alert alert-secondary small mb-3">
+                  {{ tr.preferences_backup_explanation() }}
+                  <div class="mt-1 text-muted">{{ tr.preferences_media_is_not_backed_up() }}</div>
+                </div>
                 {{ number_field("daily", tr.preferences_daily_backups(), b.daily) }}
                 {{ number_field("weekly", tr.preferences_weekly_backups(), b.weekly) }}
                 {{ number_field("monthly", tr.preferences_monthly_backups(), b.monthly) }}
                 {{ number_field("minimum_interval_mins", tr.preferences_minutes_between_backups(), b.minimum_interval_mins) }}
+              </div>
+            </div>
+          </section>
+
+          <!-- Experiments Section (from upstream Svelte route preferences / LabItem) -->
+          <section id="pref-experiments" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
+            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+              <button
+                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapse-experiments"
+                aria-expanded="false"
+                aria-controls="collapse-experiments"
+                style="min-height: 38px;"
+              >
+                <span>{{ tr.preferences_experimental_features_tab() }}</span>
+                <span class="pref-chevron">▾</span>
+              </button>
+              <span class="d-none d-lg-inline">{{ tr.preferences_experimental_features_tab() }}</span>
+            </div>
+            <div id="collapse-experiments" class="collapse d-lg-block">
+              <div class="card-body">
+                <div class="alert alert-warning small mb-3">
+                  <b>⚠️ Experimental Features</b><br>
+                  These features may change, break, or be removed without notice, use at your own risk.
+                </div>
+                <div class="p-3 border rounded">
+                  <div class="d-flex justify-content-between align-items-start mb-1">
+                    <label class="form-check-label fw-bold" for="svelte_editor">Svelte note editor</label>
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="svelte_editor" role="switch" {% if svelte_editor %}checked{% endif %}>
+                    </div>
+                  </div>
+                  <div class="text-muted small">
+                    Replaces the legacy editor with a new Svelte-based implementation. May affect addon compatibility. You can also hold shift while opening the editor to temporarily toggle this option on or off.
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -271,7 +313,8 @@
           daily: num('daily'),
           weekly: num('weekly'),
           monthly: num('monthly'),
-          minimum_interval_mins: num('minimum_interval_mins')
+          minimum_interval_mins: num('minimum_interval_mins'),
+          svelte_editor: chk('svelte_editor')
       };
   }
 
@@ -345,8 +388,7 @@
                   }
               });
           }, { rootMargin: '-10% 0px -70% 0px' });
-
-          ['pref-scheduling', 'pref-review', 'pref-editing', 'pref-backups'].forEach(function(id) {
+          ['pref-scheduling', 'pref-review', 'pref-editing', 'pref-backups', 'pref-experiments'].forEach(function(id) {
               var el = document.getElementById(id);
               if (el) observer.observe(el);
           });

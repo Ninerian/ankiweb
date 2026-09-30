@@ -1,0 +1,34 @@
+{% from "components/switch_row.html.jinja" import switch_row %}
+
+<div class="d-flex flex-column gap-3" style="max-width: 500px;" data-signals="{ swRow1: true, swRowDef: false }">
+    <div class="border p-2 rounded">
+        {% call switch_row(signal="$swRow1", signal_default="$swRowDef", default_value=false) %}
+            <div>
+                <strong>Show remaining due count</strong>
+                <div class="text-secondary small">Displays the count during card review</div>
+            </div>
+        {% endcall %}
+        <div class="mt-2 small text-secondary">
+            Switch state: <span class="badge bg-secondary" data-text="$swRow1 ? 'ON' : 'OFF'">ON</span>
+            (Default is OFF; click revert button on the right to revert)
+        </div>
+    </div>
+
+    <div class="border p-2 rounded">
+        {% call switch_row(value=false, default_value=false) %}
+            <div>
+                <strong>Auto-play audio</strong>
+                <div class="text-secondary small">Matching default value (revert button hidden)</div>
+            </div>
+        {% endcall %}
+    </div>
+
+    <div class="border p-2 rounded">
+        {% call switch_row(value=true, default_value=true, disabled=true) %}
+            <div>
+                <strong>Hardware acceleration</strong>
+                <div class="text-secondary small">Disabled switch row</div>
+            </div>
+        {% endcall %}
+    </div>
+</div>

@@ -32,12 +32,6 @@ def test_serves_vendor_min_remap(client):
     assert r.headers["content-type"].startswith("application/javascript")
 
 
-def test_sveltekit_spa_fallback(client):
-    # unknown sveltekit path (non-immutable) falls back to index.html
-    r = client.get("/_anki/sveltekit/graphs")
-    assert r.status_code == 200
-    assert "<html" in r.text.lower() or "<!doctype" in r.text.lower()
-
 
 def test_mathjax_font_has_long_cache(client):
     # MathJax CHTML glyph fonts must be cached hard, else they re-download every card render

@@ -1,0 +1,77 @@
+{# WithOverlay component ported from ts/lib/components/WithOverlay.svelte #}
+{#
+  WithOverlay provides an overlay reference wrapper and an overlay floating container.
+  Upstream DOM:
+    <div|span class="overlay-reference">
+      <slot name="reference" />
+    </div|span>
+    <div class="overlay [show]">
+      <slot name="overlay" />
+    </div>
+#}
+{% macro with_overlay(
+    padding=0,
+    inline=false,
+    show=true,
+    close_on_inside_click=false,
+    keep_on_keyup=false,
+    signal_name="",
+    class_="",
+    reference_class="",
+    overlay_class="",
+    placement="bottom"
+) -%}
+{% set ref_tag = "span" if inline else "div" %}
+<div
+    class="with-overlay-wrapper{% if class_ %} {{ class_ }}{% endif %}"
+    style="position: relative; display: {{ 'inline-block' if inline else 'block' }};"
+    {% if signal_name %}
+    data-signals="{ {{ signal_name }}: {{ 'true' if show else 'false' }} }"
+    {% if not keep_on_keyup %}data-on:keydown__window="evt.key === 'Escape' && (${{ signal_name }} = false)"{% endif %}
+    {% endif %}
+    {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
+>
+    <{{ ref_tag }} class="overlay-reference{% if reference_class %} {{ reference_class }}{% endif %}">
+        {% if reference is defined %}
+            {{ reference() }}
+        {% endif %}
+    </{{ ref_tag }}>
+
+    <div
+        class="overlay{% if show and not signal_name %} show{% endif %}{% if overlay_class %} {{ overlay_class }}{% endif %}"
+        data-placement="{{ placement }}"
+        {% if signal_name %}
+        data-show="${{ signal_name }}"
+        data-on:click__window="!el.contains(evt.target) && !el.previousElementSibling.contains(evt.target) && (${{ signal_name }} = false)"
+        {% if close_on_inside_click %}data-on:click="${{ signal_name }} = false"{% endif %}
+        {% endif %}
+    >
+        {% if overlay is defined %}
+            {{ overlay() }}
+        {% elif caller is defined %}
+            {{ caller() }}
+        {% endif %}
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro overlay(
+    show=true,
+    signal_name="",
+    class_="",
+    placement="bottom",
+    close_on_inside_click=false
+) -%}
+<div
+    class="overlay{% if show and not signal_name %} show{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
+    data-placement="{{ placement }}"
+    {% if signal_name %}
+    data-show="${{ signal_name }}"
+    data-on:click__window="!el.contains(evt.target) && !(el.previousElementSibling && el.previousElementSibling.contains(evt.target)) && (${{ signal_name }} = false)"
+    {% if close_on_inside_click %}data-on:click="${{ signal_name }} = false"{% endif %}
+    {% endif %}
+    {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
+>
+    {{ caller() if caller else '' }}
+</div>
+{%- endmacro %}

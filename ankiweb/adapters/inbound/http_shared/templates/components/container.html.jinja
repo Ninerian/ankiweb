@@ -1,0 +1,5 @@
+{% macro container(id=none, breakpoint="fluid", class_="") -%}
+<div{% if id %} id="{{ id }}"{% endif %} class="container{% if class_ %} {{ class_ }}{% endif %}{% if breakpoint == 'xs' %} container-xs{% elif breakpoint == 'sm' %} container-sm{% elif breakpoint == 'md' %} container-md{% elif breakpoint == 'lg' %} container-lg{% elif breakpoint == 'xl' %} container-xl{% elif breakpoint == 'xxl' %} container-xxl{% elif breakpoint == 'fluid' %} container-fluid{% endif %}"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {{ caller() if caller else '' }}
+</div>
+{%- endmacro %}

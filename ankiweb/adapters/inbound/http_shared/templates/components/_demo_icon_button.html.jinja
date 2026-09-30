@@ -1,0 +1,69 @@
+{# Demo for IconButton component #}
+{% from "components/icon_button.html.jinja" import icon_button %}
+{% from "components/icon.html.jinja" import icon %}
+
+<div
+  class="d-flex flex-wrap gap-3 align-items-center"
+  data-testid="demo-icon-button-container"
+  data-signals="{ icon_btn_clicked: 0, icon_btn_active: false }"
+>
+  <div>
+    <span>Default:</span>
+    {% call icon_button(
+        id="icon-btn-default",
+        tooltip="Default button",
+        tabbable=true,
+        onclick="const el = document.getElementById('icon-btn-click-count'); el.textContent = String(parseInt(el.textContent || '0') + 1);",
+        **{"data-on:click": "$icon_btn_clicked++"}
+    ) %}
+      {{ icon(name="magnifyIcon") }}
+    {% endcall %}
+  </div>
+
+  <div>
+    <span>Primary:</span>
+    {% call icon_button(primary=true, tooltip="Primary action", id="icon-btn-primary") %}
+      {{ icon(name="plusIcon") }}
+    {% endcall %}
+  </div>
+
+  <div>
+    <span>Active (static):</span>
+    {% call icon_button(active=true, tooltip="Active state", id="icon-btn-active") %}
+      {{ icon(name="boldIcon") }}
+    {% endcall %}
+  </div>
+
+  <div>
+    <span>Active (toggleable):</span>
+    {% call icon_button(
+        id="icon-btn-toggle",
+        tooltip="Toggle Active",
+        onclick="this.classList.toggle('active');",
+        **{
+          "data-on:click": "$icon_btn_active = !$icon_btn_active",
+          "data-class": "{ 'active': $icon_btn_active }"
+        }
+    ) %}
+      {{ icon(name="italicIcon") }}
+    {% endcall %}
+  </div>
+
+  <div>
+    <span>Disabled:</span>
+    {% call icon_button(disabled=true, tooltip="Disabled button", id="icon-btn-disabled") %}
+      {{ icon(name="deleteIcon") }}
+    {% endcall %}
+  </div>
+
+  <div>
+    <span>Flipped & Scaled:</span>
+    {% call icon_button(flip_x=true, icon_size=90, tooltip="Flipped icon", id="icon-btn-flipped") %}
+      {{ icon(name="arrowRightIcon") }}
+    {% endcall %}
+  </div>
+
+  <div class="mt-2 text-muted small w-100">
+    Clicks recorded: <span id="icon-btn-click-count" data-text="$icon_btn_clicked">0</span>
+  </div>
+</div>

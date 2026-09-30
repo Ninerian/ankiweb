@@ -1,0 +1,49 @@
+{% from "components/portal.html.jinja" import portal %}
+
+<div class="d-flex flex-column gap-4" data-signals="{ demoPortalCount: 0, demoPortalOpen: false }">
+    <div class="card p-3">
+        <h5 class="card-title">1. Teleported Element to Target Container</h5>
+        <p class="text-muted small">
+            Demonstrates teleporting a node to <code>#portal-destination-box</code>.
+            Datastar reactivity (counter and toggle) is verified to continue working after teleportation.
+        </p>
+        
+        <div class="border border-2 border-primary rounded p-3 mb-3 bg-light" id="portal-destination-box">
+            <strong>Target Destination Box (#portal-destination-box):</strong>
+            <div class="text-secondary small">Teleported content will appear below this line:</div>
+        </div>
+
+        <div class="border border-dashed p-3 rounded" id="portal-declaration-origin">
+            <strong>Declaration Origin Container:</strong>
+            <p class="small text-muted mb-2">The portal macro is declared right here inside this dashed box.</p>
+            
+            {% call portal(target="#portal-destination-box", id="teleported-portal-demo", class_="alert alert-success mt-2 mb-0 shadow-sm") %}
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <strong>Teleported Node:</strong> I live in <code>#portal-destination-box</code>!
+                        <div class="mt-1">
+                            Counter: <strong data-text="$demoPortalCount">0</strong>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-primary"
+                                id="btn-portal-increment"
+                                data-on:click="$demoPortalCount++">
+                            Increment from inside portal
+                        </button>
+                    </div>
+                </div>
+            {% endcall %}
+        </div>
+    </div>
+
+    <div class="card p-3">
+        <h5 class="card-title">2. Inline Fallback (target=none)</h5>
+        <p class="text-muted small">When <code>target=none</code>, content renders inline without teleporting:</p>
+        {% call portal(target=none) %}
+            <div class="alert alert-secondary mb-0">
+                This content remains directly inline at its declared location.
+            </div>
+        {% endcall %}
+    </div>
+</div>

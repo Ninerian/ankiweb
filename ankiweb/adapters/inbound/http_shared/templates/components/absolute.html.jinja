@@ -1,0 +1,5 @@
+{% macro absolute(top=false, bottom=false, left=false, right=false, class_="") -%}
+<div class="absolute{% if top %} top{% endif %}{% if bottom %} bottom{% endif %}{% if left %} left{% endif %}{% if right %} right{% endif %}{% if class_ %} {{ class_ }}{% endif %}"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {{ caller() if caller else '' }}
+</div>
+{%- endmacro %}

@@ -1,0 +1,442 @@
+{% from "components/icon.html.jinja" import icon %}
+
+<script src="/shell/static/bundles/editor-engine.js"></script>
+<script src="/shell/static/bundles/editor-plain.js"></script>
+<script src="/shell/static/bundles/editor-overlays.js"></script>
+<script src="/shell/static/bundles/tag-editor.js"></script>
+
+<div id="editor-root" class="route-editor" data-signals="{{ initial_signals_json | forceescape }}">
+  <!-- Top Bar: Deck/Notetype selection (Add mode) or Note details (Edit mode), Action buttons -->
+  <div class="editor-top-bar d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="notetype-deck-bar">
+      {% if mode == "add" %}
+        <div class="d-flex align-items-center gap-2">
+          <label class="d-flex align-items-center gap-1 small fw-semibold">
+            <span>Type:</span>
+            <select
+              id="editor-notetype-select"
+              class="form-select form-select-sm"
+              data-bind="notetype_id"
+              data-on:change="@post('/editor/change-notetype')"
+            >
+              {% for nt in notetypes %}
+                <option value="{{ nt.id }}" {% if nt.id == notetype_id %}selected{% endif %}>
+                  {{ nt.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+
+          <label class="d-flex align-items-center gap-1 small fw-semibold">
+            <span>Deck:</span>
+            <select
+              id="editor-deck-select"
+              class="form-select form-select-sm"
+              data-bind="deck_id"
+              data-on:change="@post('/editor/change-deck')"
+            >
+              {% for d in decks %}
+                <option value="{{ d.id }}" {% if d.id == deck_id %}selected{% endif %}>
+                  {{ d.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+      {% else %}
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-secondary">Note {{ nid }}</span>
+          <span class="small text-muted">{{ notetype_name }}</span>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <a
+        id="editor-fields-btn"
+        class="btn btn-outline-secondary btn-sm"
+        title="{{ tr.editing_fields() }}"
+        href="/fields/{{ notetype_id }}"
+        target="_top"
+      >
+        {{ tr.editing_fields() }}
+      </a>
+
+      <a
+        id="editor-cards-btn"
+        class="btn btn-outline-secondary btn-sm"
+        title="{{ tr.editing_cards() }}"
+        href="/card-layout/{{ notetype_id }}"
+        target="_top"
+      >
+        {{ tr.editing_cards() }}
+      </a>
+
+      {% if nid is not none %}
+        <a
+          id="editor-preview-btn"
+          class="btn btn-outline-secondary btn-sm"
+          title="Preview"
+          href="/preview/{{ nid }}"
+          target="_blank"
+        >
+          Preview
+        </a>
+      {% endif %}
+      <button
+        id="editor-undo-btn"
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        title="Undo (Ctrl+Z)"
+        data-on:click="@post('/editor/undo')"
+      >
+        Undo
+      </button>
+
+      {% if mode == "add" %}
+        <button
+          id="editor-add-btn"
+          type="button"
+          class="btn btn-primary btn-sm"
+          title="Add Note (Ctrl+Enter)"
+          data-on:click="window.__ankiwebSyncAllFields && window.__ankiwebSyncAllFields(); @post('/editor/add-note')"
+        >
+          Add
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Duplicate Warning Banner -->
+  <div
+    id="editor-duplicate-warning"
+    class="duplicate-warning-banner mx-3 mt-2"
+    data-class="{'show': $is_duplicate}"
+  >
+    <div class="d-flex align-items-center gap-2">
+      <span class="fw-bold">Warning:</span>
+      <span>A note with these first field contents already exists in the collection.</span>
+    </div>
+  </div>
+
+  <!-- Editor Toolbar Mount -->
+  <div id="ankiweb-editor-toolbar" class="editor-toolbar-container border-bottom bg-body-tertiary">
+    {% include "pages/editor/_toolbar.html.jinja" ignore missing %}
+  </div>
+
+  <!-- Editor Fields List -->
+  <div class="editor-body">
+    <div id="editor-fields-container" class="editor-fields-list">
+      {% for fld in fields %}
+        {% set f_idx = loop.index0 %}
+        <div
+          class="editor-field {% if fld.collapsed %}is-collapsed{% endif %} {% if fld.plain_text %}has-plain-text{% endif %}"
+          id="editor-field-{{ f_idx }}"
+          data-field-index="{{ f_idx }}"
+          data-class="{'is-collapsed': $field_collapsed_{{ f_idx }}}"
+        >
+          <div class="editor-field-header">
+            <div
+              class="field-label-group"
+              data-on:click="$field_collapsed_{{ f_idx }} = !$field_collapsed_{{ f_idx }}; @post('/editor/toggle-collapse?idx={{ f_idx }}')"
+            >
+              <span class="field-collapse-icon small text-muted">
+                <span data-show="!$field_collapsed_{{ f_idx }}">&#9660;</span>
+                <span data-show="$field_collapsed_{{ f_idx }}">&#9654;</span>
+              </span>
+              <span class="field-name">{{ fld.name }}</span>
+              {% if fld.is_cloze %}
+                <span class="badge bg-info text-dark" style="font-size: 0.65rem;">cloze</span>
+              {% endif %}
+              {% if fld.description %}
+                <span class="small text-muted fst-italic" style="font-size: 0.75rem;">({{ fld.description }})</span>
+              {% endif %}
+            </div>
+
+            <div class="field-actions">
+              <span
+                id="save-hint-{{ f_idx }}"
+                class="field-save-hint"
+                data-class="{'saving': $field_saving_{{ f_idx }}, 'saved': $field_saved_{{ f_idx }}}"
+              >
+                <span data-show="$field_saving_{{ f_idx }}">Saving...</span>
+                <span data-show="$field_saved_{{ f_idx }} && !$field_saving_{{ f_idx }}">Saved</span>
+              </span>
+
+              {% if mode == "add" %}
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="field-action-btn sticky-toggle-btn {% if fld.sticky %}active{% endif %}"
+                  data-class="{'active': $field_sticky_{{ f_idx }}}"
+                  data-on:click="$field_sticky_{{ f_idx }} = !$field_sticky_{{ f_idx }}; @post('/editor/toggle-sticky?idx={{ f_idx }}')"
+                  title="Remember field content (Sticky)"
+                >
+                  <span data-show="$field_sticky_{{ f_idx }}">{{ icon(name="stickyIconSolid") }}</span>
+                  <span data-show="!$field_sticky_{{ f_idx }}">{{ icon(name="stickyIconHollow") }}</span>
+                </button>
+              {% endif %}
+
+              <button
+                type="button"
+                tabindex="-1"
+                class="field-action-btn toggle-html-btn"
+                data-field-index="{{ f_idx }}"
+                title="Toggle HTML (Ctrl+Shift+X)"
+              >
+                &lt;/&gt;
+              </button>
+            </div>
+          </div>
+
+          <div class="field-content-area">
+           <div class="field-content-inner">
+            <!-- Rich text contenteditable host -->
+            <div
+              class="rich-text-input"
+              data-ankiweb-rich
+              data-field-index="{{ f_idx }}"
+              data-on:input="$field_val_{{ f_idx }} = el.innerHTML"
+              contenteditable="true"
+              dir="{{ 'rtl' if fld.rtl else 'ltr' }}"
+              style="font-family: {{ fld.font }}; font-size: {{ fld.size }}px;"
+              placeholder="{{ fld.name }}"
+            >{{ fld.value | safe }}</div>
+
+            <!-- Plain text host (CodeMirror / textarea) -->
+            <div
+              class="plain-text-input"
+              data-ankiweb-plain
+              data-field-index="{{ f_idx }}"
+            >
+              <textarea
+                class="form-control form-control-sm font-monospace"
+                rows="3"
+                data-plain-textarea="{{ f_idx }}"
+                data-bind="field_val_{{ f_idx }}"
+              >{{ fld.value }}</textarea>
+            </div>
+           </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Bottom Bar: Tag Editor -->
+    <div class="editor-bottom-bar">
+      <div id="ankiweb-tag-editor">
+        {% include "pages/editor/_tags.html.jinja" ignore missing %}
+        <div id="ankiweb-tags-fallback" class="d-none align-items-center gap-2">
+          <label class="small fw-semibold text-muted" for="editor-tags-input">Tags:</label>
+          <input
+            id="editor-tags-input"
+            type="text"
+            class="form-control form-control-sm"
+            placeholder="Tags separated by spaces"
+            data-bind="tags_str"
+            value="{{ ' '.join(tags) }}"
+            data-on:input__debounce.300ms="@post('/editor/save-tags')"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notices / Feedback -->
+  <div id="editor-toast" class="toast-notice alert alert-success py-2 px-3 shadow" data-show="$toast_msg !== ''">
+    <span data-text="$toast_msg"></span>
+  </div>
+
+  <!-- Context Menu mount -->
+  <div
+    id="editor-context-menu"
+    class="context-menu"
+    role="menu"
+    tabindex="0"
+    data-show="$context_menu.visible"
+    data-style:left="`${$context_menu.x}px`"
+    data-style:top="`${$context_menu.y}px`"
+    data-on:click="$context_menu.visible = false"
+    data-on:click__outside="$context_menu.visible = false"
+    data-on:keydown__window="evt.key === 'Escape' && ($context_menu.visible = false)"
+  >
+    <div class="context-menu-item" data-on:click="document.execCommand('cut')">Cut</div>
+    <div class="context-menu-item" data-on:click="document.execCommand('copy')">Copy</div>
+    <div class="context-menu-item" data-on:click="document.execCommand('paste')">Paste</div>
+  </div>
+</div>
+
+<script>
+  window.__ankiwebEditNid = {{ nid | tojson if nid is not none else 'null' }};
+  window.__ankiwebNotetypeId = {{ notetype_id | tojson if notetype_id is not none else 'null' }};
+(function() {
+  // Listen for AnkiwebEditor custom events if EditorEngine is active
+  document.addEventListener('ankiweb:field-input', function(e) {
+    if (!e.detail) return;
+    const { index, html } = e.detail;
+    // Notify Datastar or trigger save
+    fetch('/editor/save-field', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Datastar-Request': 'true'
+      },
+      body: JSON.stringify({ index: index, html: html, nid: window.__ankiwebEditNid })
+    }).then(res => {
+      // Handled via SSE patch
+    });
+  });
+
+  document.addEventListener('ankiweb:field-blur', function(e) {
+    if (!e.detail) return;
+    const { index, html } = e.detail;
+    fetch('/editor/blur-field', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Datastar-Request': 'true'
+      },
+      body: JSON.stringify({ index: index, html: html, nid: window.__ankiwebEditNid })
+    });
+  });
+
+  document.addEventListener('ankiweb:tags-changed', function(e) {
+    if (!e.detail) return;
+    const { tags } = e.detail;
+    if (dsMergePaths) {
+      dsMergePaths(Object.entries({ tags_str: (tags || []).join(' ') }));
+    }
+    const inputFallback = document.getElementById('editor-tags-input');
+    if (inputFallback) {
+      inputFallback.value = (tags || []).join(' ');
+    }
+    fetch('/editor/save-tags', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Datastar-Request': 'true'
+      },
+      body: JSON.stringify({ tags: tags, nid: window.__ankiwebEditNid })
+    });
+  });
+
+  // Import datastar mergePaths helper for contenteditable syncing
+  let dsMergePaths = null;
+  import('/shell/static/datastar.js').then(m => {
+    dsMergePaths = m.mergePaths;
+  });
+
+  function syncFieldSignal(idx, html) {
+    if (dsMergePaths) {
+      const patch = {};
+      patch[`field_val_${idx}`] = html;
+      dsMergePaths(Object.entries(patch));
+    }
+  }
+
+  window.__ankiwebSyncAllFields = function() {
+    if (dsMergePaths) {
+      const patch = {};
+      document.querySelectorAll('.rich-text-input[data-ankiweb-rich]').forEach(function(el) {
+        const idx = el.getAttribute('data-field-index');
+        patch[`field_val_${idx}`] = el.innerHTML;
+      });
+      const tagRoot = document.querySelector('[data-ankiweb-tag-editor]');
+      if (tagRoot && tagRoot.__ankiweb_tag_editor) {
+        const tags = tagRoot.__ankiweb_tag_editor.getTags ? tagRoot.__ankiweb_tag_editor.getTags() : [];
+        patch['tags_str'] = tags.join(' ');
+      }
+      dsMergePaths(Object.entries(patch));
+    }
+  };
+
+  // Direct contenteditable input listener as fallback / standalone
+  document.querySelectorAll('.rich-text-input[data-ankiweb-rich]').forEach(function(el) {
+    let saveTimeout = null;
+    const idx = el.getAttribute('data-field-index');
+    el.addEventListener('input', function() {
+      // Sync textarea and datastar signals
+      const ta = document.querySelector(`textarea[data-plain-textarea="${idx}"]`);
+      if (ta) ta.value = el.innerHTML;
+      syncFieldSignal(idx, el.innerHTML);
+
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(function() {
+        syncFieldSignal(idx, el.innerHTML);
+        if (window.__ankiwebEditNid) {
+          fetch('/editor/save-field', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Datastar-Request': 'true'
+            },
+            body: JSON.stringify({ index: parseInt(idx, 10), html: el.innerHTML, nid: window.__ankiwebEditNid })
+          });
+        }
+      }, 300);
+    });
+
+    el.addEventListener('blur', function() {
+      clearTimeout(saveTimeout);
+      if (window.__ankiwebEditNid) {
+        fetch('/editor/blur-field', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Datastar-Request': 'true'
+          },
+          body: JSON.stringify({ index: parseInt(idx, 10), html: el.innerHTML, nid: window.__ankiwebEditNid })
+        });
+      }
+    });
+
+    el.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      const menu = document.getElementById('editor-context-menu');
+      if (menu) {
+        window.dispatchEvent(new CustomEvent('datastar-patch', {
+          detail: {
+            context_menu: { visible: true, x: e.clientX, y: e.clientY }
+          }
+        }));
+      }
+    });
+  });
+
+  // Plain textarea input listener
+  document.querySelectorAll('textarea[data-plain-textarea]').forEach(function(ta) {
+    const idx = ta.getAttribute('data-plain-textarea');
+    ta.addEventListener('input', function() {
+      const rich = document.querySelector(`.rich-text-input[data-field-index="${idx}"]`);
+      if (rich) rich.innerHTML = ta.value;
+      fetch('/editor/save-field', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Datastar-Request': 'true'
+        },
+        body: JSON.stringify({ index: parseInt(idx, 10), html: ta.value })
+      });
+    });
+  });
+
+  // Keyboard shortcut listener: Ctrl+Enter (Add), Ctrl+Z (Undo)
+  window.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      const addBtn = document.getElementById('editor-add-btn');
+      if (addBtn) {
+        e.preventDefault();
+        addBtn.click();
+      }
+    }
+  });
+
+  // Editor links / bridge integration if bridge exists
+  window.addEventListener('message', function(ev) {
+    var d = ev.data;
+    if (d && d.type === 'ankiwebLoadNid' && d.nid) {
+      window.location.href = '/edit?nid=' + d.nid;
+    }
+  });
+})();
+</script>

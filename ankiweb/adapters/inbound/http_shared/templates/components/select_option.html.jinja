@@ -1,0 +1,39 @@
+{% macro select_option(
+    value=none,
+    selected=false,
+    disabled=false,
+    id="",
+    active=false,
+    rtl=false,
+    tooltip="",
+    signal=none,
+    class_=""
+) %}
+{#
+  SelectOption: option item component.
+  Upstream wraps DropdownItem with role="option", active, and click handler.
+  Can be used inside custom dropdowns or rendered as option item.
+#}
+<button
+    type="button"
+    {% if id %}id="{{ id }}"{% endif %}
+    role="option"
+    aria-selected="{{ 'true' if selected else 'false' }}"
+    tabindex="{{ 0 if selected else -1 }}"
+    class="select-option-item dropdown-item {{ 'active' if active else '' }} {{ 'rtl' if rtl else '' }} {{ class_ }}"
+    {% if tooltip %}title="{{ tooltip }}"{% endif %}
+    {% if disabled %}disabled{% endif %}
+    {% if signal and value is not none %}
+    data-on:click="{{ signal }} = '{{ value }}'"
+    {% endif %}
+    {% for k, v in kwargs.items() %}
+    {{ k }}="{{ v }}"
+    {% endfor %}
+>
+    {% if caller %}
+        {{ caller() }}
+    {% elif value is not none %}
+        {{ value }}
+    {% endif %}
+</button>
+{% endmacro %}

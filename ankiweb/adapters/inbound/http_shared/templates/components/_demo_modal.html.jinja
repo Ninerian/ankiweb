@@ -1,0 +1,43 @@
+{% from "components/modal.html.jinja" import modal %}
+
+<div class="border p-3 mb-4 rounded">
+    <h5>1. Standard Modal Dialog (Trigger via Bootstrap data attributes)</h5>
+    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#demoModalBasic" id="openDemoModalBasicBtn">
+        Open Standard Modal
+    </button>
+
+    {% call modal(id="demoModalBasic", dialog_class="modal-dialog-centered", keyboard=true) %}
+        <div class="modal-header">
+            <h5 class="modal-title" id="demoModalBasicLabel">Modal Title</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="closeDemoModalBasicBtn"></button>
+        </div>
+        <div class="modal-body">
+            <p id="demoModalBasicBody">This is the modal body content styled according to upstream theme canvas and text colors.</p>
+            <input type="text" class="form-control" placeholder="Focus target inside modal" id="modalFocusInput">
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelDemoModalBasicBtn">Cancel</button>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="okDemoModalBasicBtn">Save changes</button>
+        </div>
+    {% endcall %}
+</div>
+
+<div class="border p-3 rounded">
+    <h5>2. Large Modal with custom class and static backdrop</h5>
+    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#demoModalStatic" id="openDemoModalStaticBtn">
+        Open Large Static Modal
+    </button>
+
+    {% call modal(id="demoModalStatic", dialog_class="modal-lg", backdrop="static", keyboard=true) %}
+        <div class="modal-header">
+            <h5 class="modal-title">Static Backdrop Modal</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <p>Clicking outside does not dismiss a static backdrop modal.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Understood</button>
+        </div>
+    {% endcall %}
+</div>

@@ -22,21 +22,6 @@ def _add_card(client):
     return client.portal.call(client.app.state.service.run, fn)
 
 
-def test_card_info_serves_spa_shell_one_id(client):
-    cid = _add_card(client)
-    r = client.get(f"/card-info/{cid}")
-    assert r.status_code == 200
-    assert r.headers["content-type"].startswith("text/html")
-    assert "_app/immutable/entry" in r.text
-
-
-def test_card_info_serves_spa_shell_two_ids(client):
-    cid = _add_card(client)
-    r = client.get(f"/card-info/{cid}/{cid}")
-    assert r.status_code == 200
-    assert "_app/immutable/entry" in r.text
-
-
 def test_card_stats_rpc_passthrough(client):
     # the card-info SPA fetches these; they must be reachable
     from ankiweb.core.rpc.passthrough import PASSTHROUGH

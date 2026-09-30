@@ -1,0 +1,37 @@
+{% from "components/enum_selector.html.jinja" import enum_selector %}
+
+<div class="d-flex flex-column gap-3" style="max-width: 320px;" data-signals="{ selectedDeck: 'deck2' }">
+    <div>
+        <label class="form-label">Deck Selection (signal bound)</label>
+        {{ enum_selector(
+            signal="$selectedDeck",
+            choices=[
+                {"value": "deck1", "label": "Default Deck"},
+                {"value": "deck2", "label": "Japanese Vocabulary"},
+                {"value": "deck3", "label": "Anatomy & Physiology (Disabled)"}
+            ],
+            disabled_choices=["deck3"]
+        ) }}
+        <small class="text-secondary d-block mt-1">Current signal value: <code data-text="$selectedDeck">deck2</code></small>
+    </div>
+
+    <div>
+        <label class="form-label">Static Pre-selected (deck1)</label>
+        {{ enum_selector(
+            value="deck1",
+            choices=[
+                {"value": "deck1", "label": "Default Deck"},
+                {"value": "deck2", "label": "Japanese Vocabulary"}
+            ]
+        ) }}
+    </div>
+
+    <div>
+        <label class="form-label">Entirely Disabled Selector</label>
+        {{ enum_selector(
+            value="deck1",
+            disabled=true,
+            choices=[{"value": "deck1", "label": "Locked Option"}]
+        ) }}
+    </div>
+</div>

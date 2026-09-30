@@ -1,0 +1,48 @@
+{% macro enum_selector(
+    value=none,
+    choices=[],
+    disabled=false,
+    disabled_choices=[],
+    id="",
+    name="",
+    class_="",
+    signal=none
+) %}
+{#
+  EnumSelector: Select control for enumerable choices.
+  `choices` is an iterable of items with `value` and `label` (or tuples/dicts).
+  Disabled state can be applied globally or per-choice via `disabled_choices`.
+#}
+<select
+    {% if id %}id="{{ id }}"{% endif %}
+    {% if name %}name="{{ name }}"{% endif %}
+    class="form-select {{ class_ }}"
+    {% if disabled %}disabled{% endif %}
+    {% if signal %}
+    data-bind="{{ signal | replace('$', '', 1) }}"
+    {% endif %}
+    {% for k, v in kwargs.items() %}
+    {{ k }}="{{ v }}"
+    {% endfor %}
+>
+    {% for choice in choices %}
+        {% if choice is mapping %}
+            {% set c_val = choice.value %}
+            {% set c_lbl = choice.label %}
+        {% elif choice is sequence and choice is not string %}
+            {% set c_val = choice[0] %}
+            {% set c_lbl = choice[1] %}
+        {% else %}
+            {% set c_val = choice %}
+            {% set c_lbl = choice %}
+        {% endif %}
+        <option
+            value="{{ c_val }}"
+            {% if (signal is none and value is not none and (value|string) == (c_val|string)) %}selected{% endif %}
+            {% if c_val in disabled_choices %}disabled{% endif %}
+        >
+            {{ c_lbl }}
+        </option>
+    {% endfor %}
+</select>
+{% endmacro %}

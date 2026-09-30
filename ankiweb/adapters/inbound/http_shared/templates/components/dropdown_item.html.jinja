@@ -1,0 +1,27 @@
+{# DropdownItem component ported from ts/lib/components/DropdownItem.svelte #}
+{% macro dropdown_item(
+    id=none,
+    role=none,
+    selected=false,
+    class_="",
+    tooltip=none,
+    active=false,
+    disabled=false,
+    tabbable=false,
+    rtl=false
+) %}
+  <button
+    {% if id %}id="{{ id }}"{% endif %}
+    {% if role %}role="{{ role }}"{% endif %}
+    aria-selected="{% if selected %}true{% else %}false{% endif %}"
+    tabindex="{% if tabbable %}0{% else %}-1{% endif %}"
+    class="dropdown-item{% if class_ %} {{ class_ }}{% endif %}{% if active %} active{% endif %}{% if rtl %} rtl{% endif %}"
+    {% if tooltip %}title="{{ tooltip }}"{% endif %}
+    {% if disabled %}disabled{% endif %}
+    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+  >
+    {% if caller is defined %}
+      {{ caller() }}
+    {% endif %}
+  </button>
+{% endmacro %}

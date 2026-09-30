@@ -1,0 +1,27 @@
+{% from "components/config_input.html.jinja" import config_input %}
+{% from "components/revert_button.html.jinja" import revert_button %}
+
+<div class="d-flex flex-column gap-3" style="max-width: 400px;" data-signals="{ confText: 'edited text' }">
+    <div>
+        <label class="form-label">Input with Revert Button attached</label>
+        {% set rev %}
+            {{ revert_button(signal_value="$confText", default_value="original text") }}
+        {% endset %}
+        {% call config_input(grow=true, revert_slot=rev) %}
+            <input
+                type="text"
+                class="form-control"
+                data-bind="confText"
+                placeholder="Type something..."
+            />
+        {% endcall %}
+        <small class="text-secondary d-block mt-1">Current: <span data-text="$confText"></span></small>
+    </div>
+
+    <div>
+        <label class="form-label">Without grow (grow=false)</label>
+        {% call config_input(grow=false) %}
+            <input type="text" class="form-control" style="width: 180px;" value="Fixed width" />
+        {% endcall %}
+    </div>
+</div>

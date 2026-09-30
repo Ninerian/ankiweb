@@ -68,7 +68,7 @@ def test_browse_search_and_open(live_server_browse):
         page.wait_for_function(
             "() => { const f=document.querySelector('#detail iframe.editor-frame'); "
             "return f && /[/]edit[?]nid=/.test(f.getAttribute('src') || '') && f.contentDocument "
-            "&& f.contentDocument.querySelector('.note-editor')!==null; }",
+            "&& f.contentDocument.querySelector('#editor-fields-container')!==null; }",
             timeout=8000,
         )
         browser.close()

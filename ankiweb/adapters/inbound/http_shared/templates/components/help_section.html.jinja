@@ -1,0 +1,108 @@
+{% from "components/row.html.jinja" import row %}
+{% from "components/icon.html.jinja" import icon %}
+
+{% macro help_section(item=none, title="", help="", url="", global=false, class_="", collapsible=false, open=true, modal_mode=false, id="", help_sections=none) -%}
+{% set sec_title = title or (item.title if item is defined and item.title is defined else "") %}
+{% set sec_help = help or (item.help if item is defined and item.help is defined else "") %}
+{% set sec_url = url or (item.url if item is defined and item.url is defined else "") %}
+{% set is_global = global or (item.global if item is defined and item.global is defined else false) %}
+{% set sec_id = id or (sec_title|lower|replace(' ', '_')|replace('-', '_')|replace('/', '_')|replace(':', '') if sec_title else 'help_section') %}
+
+{% if modal_mode %}
+{# HelpSection rendered in interactive modal/accordion mode with open/close state #}
+<div class="help-section-container{% if class_ %} {{ class_ }}{% endif %}" data-signals:help_section_open_{{ sec_id }}="{{ 'true' if open else 'false' }}"{% for k, v in kwargs.items() %} {{ k|replace('_', '-') }}="{{ v }}"{% endfor %}>
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-on:click="$help_section_open_{{ sec_id }} = !$help_section_open_{{ sec_id }}" onclick="const b = this.closest('.help-section-container').querySelector('.help-section-collapsible'); if (b) b.style.display = b.style.display === 'none' ? '' : 'none';">
+            <span data-show="!$help_section_open_{{ sec_id }}">Show Help: {{ sec_title }}</span>
+            <span data-show="$help_section_open_{{ sec_id }}">Hide Help</span>
+        </button>
+    </div>
+    <div class="help-section-collapsible" data-show="$help_section_open_{{ sec_id }}" style="{% if not open %}display: none;{% endif %}">
+        <div class="card card-body">
+            {% call row() %}
+                <h2>{{ sec_title|safe }}</h2>
+                {% if sec_help %}
+                    {% if is_global %}
+                        <div class="icon">
+                            {{ icon(name="mdiEarth") }}
+                        </div>
+                    {% endif %}
+                    <div class="help-content">{{ sec_help|safe }}</div>
+                {% else %}
+                    <div class="help-content">
+                        Whoops! There doesn't seem to be an explanation for this setting yet.<br><br>
+                        You can help us complete this help page on <a href="https://github.com/ankitects/anki" target="_blank" rel="noopener">GitHub</a>.
+                    </div>
+                {% endif %}
+            {% endcall %}
+            {% if sec_url %}
+                <hr>
+                <div class="chapter-redirect">
+                    For more information, see <a href="{{ sec_url }}" title="Open {{ sec_title }} in the manual" target="_blank" rel="noopener">{{ sec_title }}</a> in the manual.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% elif collapsible %}
+{# HelpSection with Datastar collapse toggle #}
+<div class="help-section-collapsible-wrapper{% if class_ %} {{ class_ }}{% endif %}" data-signals:help_open_{{ sec_id }}="{{ 'true' if open else 'false' }}"{% for k, v in kwargs.items() %} {{ k|replace('_', '-') }}="{{ v }}"{% endfor %}>
+    <div class="d-flex align-items-center mb-2">
+        <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none" data-on:click="$help_open_{{ sec_id }} = !$help_open_{{ sec_id }}" onclick="const b = this.closest('.help-section-collapsible-wrapper').querySelector('.help-section-body'); if (b) b.style.display = b.style.display === 'none' ? '' : 'none';" aria-expanded="{{ 'true' if open else 'false' }}">
+            <span data-show="$help_open_{{ sec_id }}">▾ Collapse</span>
+            <span data-show="!$help_open_{{ sec_id }}">▸ Expand</span>
+        </button>
+    </div>
+    <div class="help-section-body" data-show="$help_open_{{ sec_id }}" style="{% if not open %}display: none;{% endif %}">
+        {% call row() %}
+            <h2>{{ sec_title|safe }}</h2>
+            {% if sec_help %}
+                {% if is_global %}
+                    <div class="icon">
+                        {{ icon(name="mdiEarth") }}
+                    </div>
+                {% endif %}
+                <div class="help-content">{{ sec_help|safe }}</div>
+            {% else %}
+                <div class="help-content">
+                    Whoops! There doesn't seem to be an explanation for this setting yet.<br><br>
+                    You can help us complete this help page on <a href="https://github.com/ankitects/anki" target="_blank" rel="noopener">GitHub</a>.
+                </div>
+            {% endif %}
+        {% endcall %}
+        {% if sec_url %}
+            <hr>
+            <div class="chapter-redirect">
+                For more information, see <a href="{{ sec_url }}" title="Open {{ sec_title }} in the manual" target="_blank" rel="noopener">{{ sec_title }}</a> in the manual.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+{# Exact upstream DOM layout: Row > h2, (optional icon + content / fallback), (optional hr + chapter-redirect) #}
+<div class="help-section{% if class_ %} {{ class_ }}{% endif %}"{% for k, v in kwargs.items() %} {{ k|replace('_', '-') }}="{{ v }}"{% endfor %}>
+    {% call row() %}
+        <h2>{{ sec_title|safe }}</h2>
+        {% if sec_help %}
+            {% if is_global %}
+                <div class="icon">
+                    {{ icon(name="mdiEarth") }}
+                </div>
+            {% endif %}
+            <div class="help-content">{{ sec_help|safe }}</div>
+        {% else %}
+            <div class="help-content">
+                Whoops! There doesn't seem to be an explanation for this setting yet.<br><br>
+                You can help us complete this help page on <a href="https://github.com/ankitects/anki" target="_blank" rel="noopener">GitHub</a>.
+            </div>
+        {% endif %}
+    {% endcall %}
+    {% if sec_url %}
+        <hr>
+        <div class="chapter-redirect">
+            For more information, see <a href="{{ sec_url }}" title="Open {{ sec_title }} in the manual" target="_blank" rel="noopener">{{ sec_title }}</a> in the manual.
+        </div>
+    {% endif %}
+</div>
+{% endif %}
+{%- endmacro %}

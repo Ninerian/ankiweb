@@ -1,0 +1,108 @@
+{# Import Page / Log / Results template ported from ts/routes/import-page/ and ImportLogPage.svelte #}
+{% from "components/container.html.jinja" import container %}
+{% from "components/titled_container.html.jinja" import titled_container %}
+{% from "components/icon.html.jinja" import icon %}
+
+<div class="route-import-package" id="import-package-container">
+    {% if error %}
+        {# Error state #}
+        <div class="error-box">
+            <p class="error-text">{{ error }}</p>
+            <a href="/" class="btn btn-primary">
+                {{ tr.actions_close() }}
+            </a>
+        </div>
+    {% else %}
+        {# Results state: Overview and Details #}
+        {% call container(breakpoint="sm", class_="py-3") %}
+            {# Overview section #}
+            {% call titled_container(title=tr.importing_overview()) %}
+                <p class="mt-2 text-muted">
+                    {{ tr.importing_notes_found_in_file2(notes=found_notes) }}
+                </p>
+                <ul class="ps-0 mt-2">
+                    {% for item in summaries %}
+                        {% if item.count > 0 %}
+                            <li class="summary-item">
+                                <span class="d-inline-flex align-items-center">
+                                    {{ icon(name=item.icon) }}
+                                </span>
+                                <span>
+                                    {{ item.summary_text }}
+                                </span>
+                                {% if item.can_browse and item.browse_query %}
+                                    <a
+                                        href="/browse?q={{ item.browse_query | urlencode }}"
+                                        class="btn btn-link btn-sm p-0 desktop-only text-decoration-none"
+                                        title="{{ tr.importing_show() }}"
+                                    >
+                                        {{ tr.importing_show() }}
+                                    </a>
+                                {% endif %}
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            {% endcall %}
+
+            <div class="my-4"></div>
+
+            {# Details table section #}
+            {% call titled_container(title=tr.importing_details()) %}
+                <div class="outer details-table mt-2">
+                    <table class="table" tabindex="-1">
+                        <thead>
+                            <tr>
+                                <th class="index-cell">#</th>
+                                <th class="status-cell">{{ tr.importing_status() }}</th>
+                                <th class="contents-cell">{{ tr.editing_fields() }}</th>
+                                <th class="search-cell"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if rows %}
+                                {% for r in rows %}
+                                    <tr>
+                                        <td class="index-cell text-center">{{ loop.index }}</td>
+                                        <td class="status-cell text-center" title="{{ r.reason }}">
+                                            {{ r.action }}
+                                        </td>
+                                        <td class="contents-cell text-truncate" title="{{ r.fields_joined }}">
+                                            {{ r.fields_joined }}
+                                        </td>
+                                        <td class="search-cell text-center">
+                                            {% if r.can_browse and r.nid %}
+                                                <a
+                                                    href="/browse?q={{ ('nid:' ~ r.nid) | urlencode }}"
+                                                    class="search-icon"
+                                                    title="Search note {{ r.nid }} in browser"
+                                                >
+                                                    {{ icon(name="magnifyIcon") }}
+                                                </a>
+                                            {% else %}
+                                                <button
+                                                    type="button"
+                                                    class="search-icon"
+                                                    disabled
+                                                    title="Cannot browse"
+                                                >
+                                                    {{ icon(name="magnifyIcon") }}
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-3">
+                                        No notes to display
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endcall %}
+        {% endcall %}
+    {% endif %}
+</div>

@@ -18,21 +18,6 @@ def _basic_cloze(client):
     return client.portal.call(client.app.state.service.run, ids)
 
 
-def test_change_notetype_serves_spa_shell_one_id(client):
-    old, _new = _basic_cloze(client)
-    r = client.get(f"/change-notetype/{old}")
-    assert r.status_code == 200
-    assert r.headers["content-type"].startswith("text/html")
-    assert "_app/immutable/entry" in r.text
-
-
-def test_change_notetype_serves_spa_shell_two_ids(client):
-    old, new = _basic_cloze(client)
-    r = client.get(f"/change-notetype/{old}/{new}")
-    assert r.status_code == 200
-    assert "_app/immutable/entry" in r.text
-
-
 def test_changenotetype_registered_custom():
     from ankiweb.core.rpc.custom_handlers import CUSTOM
 

@@ -53,18 +53,6 @@ def test_upload_unknown_extension_400(client):
     assert r.status_code == 400
 
 
-def test_import_csv_route_serves_spa_shell(client):
-    r = client.get("/import-csv/%2Ftmp%2Ffake.csv")
-    assert r.status_code == 200
-    assert r.headers["content-type"].startswith("text/html")
-    assert "_app/immutable/entry" in r.text
-
-
-def test_import_anki_package_route_serves_spa_shell(client):
-    r = client.get("/import-anki-package/%2Ftmp%2Ffake.apkg")
-    assert r.status_code == 200
-    assert "_app/immutable/entry" in r.text
-
 
 def test_gc_removes_old_files(client, tmp_path):
     import os

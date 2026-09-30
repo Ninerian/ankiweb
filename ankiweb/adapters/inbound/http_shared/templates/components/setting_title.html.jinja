@@ -1,0 +1,12 @@
+{% macro setting_title(class_="") %}
+<div
+    class="setting-title {{ class_ }}"
+    {% for k, v in kwargs.items() %}
+    {{ k }}="{{ v }}"
+    {% endfor %}
+>
+    {% if caller %}
+        {{ caller() }}
+    {% endif %}
+</div>
+{% endmacro %}

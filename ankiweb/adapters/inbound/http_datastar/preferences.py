@@ -12,11 +12,12 @@ from ankiweb.adapters.inbound.http_shared import templating
 
 
 def render_preferences_html(col) -> str:
-    """Server-rendered Preferences form over col.get_preferences()/set_preferences().
-    Mirrors the E4/E5 form screens. The 2 INVERSE checkboxes (legacy timezone, show play
-    buttons) render the negated proto value; savePrefs() inverts them back."""
+    """Server-rendered Preferences form over col.get_preferences()/set_preferences()
+    and col.get_config("experimentalFeatures")."""
     p = col.get_preferences()
     s, r, e, b = p.scheduling, p.reviewing, p.editing, p.backups
+    exp = col.get_config("experimentalFeatures") or {}
+    svelte_editor = bool(exp.get("1", False))
 
     mix_opts = [
         (0, tr.scheduling_mix_new_cards_and_reviews()),
@@ -30,9 +31,9 @@ def render_preferences_html(col) -> str:
         r=r,
         e=e,
         b=b,
+        svelte_editor=svelte_editor,
         mix_opts=mix_opts,
     )
-
 
 def make_preferences_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/preferences")
@@ -82,7 +83,12 @@ def make_preferences_routes(get_service: Callable) -> APIRouter:
             bk.weekly = int(p["weekly"])
             bk.monthly = int(p["monthly"])
             bk.minimum_interval_mins = int(p["minimum_interval_mins"])
-            return col.set_preferences(prefs)
+            col.set_preferences(prefs)
+
+            exp = col.get_config("experimentalFeatures") or {}
+            exp["1"] = bool(p.get("svelte_editor", False))
+            col.set_config("experimentalFeatures", exp)
+            return col.get_preferences()
 
         try:
             await service.run_op(apply, initiator="preferences")

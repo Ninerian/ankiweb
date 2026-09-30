@@ -1,0 +1,152 @@
+{% from "components/switch.html.jinja" import switch %}
+{% from "components/switch_row.html.jinja" import switch_row %}
+{% from "components/spin_box.html.jinja" import spin_box %}
+{% from "components/backend_progress.html.jinja" import backend_progress %}
+{% from "components/help_modal.html.jinja" import help_modal %}
+{% from "components/revert_button.html.jinja" import revert_button %}
+
+<div class="route-deck-options-fsrs">
+    <div class="row align-items-center mb-3">
+        <div class="col-8 col-sm-9">
+            <label class="form-label fw-bold mb-0" for="fsrs-desired-retention">
+                {{ tr.deck_config_desired_retention() }}
+            </label>
+        </div>
+        <div class="col-4 col-sm-3 d-flex justify-content-end align-items-center gap-2">
+            <input
+                id="fsrs-desired-retention"
+                type="number"
+                class="form-control form-control-sm text-end"
+                style="max-width: 100px;"
+                min="0.70"
+                max="0.99"
+                step="0.01"
+                data-bind="cfg.desired_retention"
+                data-on:change="@post('/deck-options/fsrs/workload')"
+            />
+        </div>
+    </div>
+
+    <!-- Workload Factor Alert / Info -->
+    <div
+        class="alert alert-info py-2 px-3 small mb-3"
+        data-show="$fsrsWorkloadMsg && $fsrsWorkloadMsg !== ''"
+        data-text="$fsrsWorkloadMsg"
+    ></div>
+
+    <!-- FSRS Parameters / Weights -->
+    <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label fw-bold mb-0">
+                {{ tr.deck_config_weights() }}
+            </label>
+            <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-on:click="$cfg.fsrs_params_6 = {{ default_weights | tojson }}; $dirty = true"
+                title="Restore default parameters"
+            >
+                Reset
+            </button>
+        </div>
+        <div
+            class="form-control font-monospace small fsrs-weights-box"
+            style="min-height: 4.5rem; max-height: 8rem; overflow-y: auto;"
+            data-text="Array.isArray($cfg.fsrs_params_6) ? $cfg.fsrs_params_6.join(', ') : ($cfg.fsrs_params_6 || '')"
+        ></div>
+    </div>
+
+    <!-- Param Search Input -->
+    <div class="mb-3">
+        <label class="form-label small text-muted mb-1">
+            Search filter for optimization / evaluation:
+        </label>
+        <input
+            type="text"
+            class="form-control form-control-sm"
+            data-bind="cfg.param_search"
+            placeholder='preset:"..." -is:suspended'
+        />
+    </div>
+
+    <!-- Health Check Switch -->
+    <div class="row align-items-center mb-3">
+        <div class="col-8 col-sm-9">
+            <label class="form-check-label small" for="fsrs-health-check-toggle">
+                {{ tr.deck_config_health_check() }}
+            </label>
+        </div>
+        <div class="col-4 col-sm-3 d-flex justify-content-end">
+            <div class="form-check form-switch">
+                <input
+                    id="fsrs-health-check-toggle"
+                    type="checkbox"
+                    class="form-check-input"
+                    data-bind="fsrs_health_check"
+                />
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress indicator -->
+    <div class="mb-3" data-show="$fsrsComputing || $fsrsEvaluating || $fsrsComputingRetention">
+        {{ backend_progress(
+            progress_signal="",
+            label_signal="fsrsProgressLabel",
+            percent_signal="fsrsProgressPercent",
+            night_mode=false
+        ) }}
+    </div>
+    <!-- Action Buttons -->
+    <div class="fsrs-actions-bar mt-2 mb-3">
+        <!-- Optimize Button (or Cancel when running) -->
+        <button
+            type="button"
+            class="btn btn-sm"
+            data-class="{'btn-warning': $fsrsComputing, 'btn-primary': !$fsrsComputing}"
+            data-attr:disabled="(!$fsrsComputing && ($fsrsEvaluating || $fsrsComputingRetention)) ? true : false"
+            data-on:click="$fsrsComputing ? @post('/deck-options/fsrs/abort') : @post('/deck-options/fsrs/optimize')"
+        >
+            <span data-show="$fsrsComputing">{{ tr.actions_cancel() }}</span>
+            <span data-show="!$fsrsComputing">{{ tr.deck_config_optimize_button() }}</span>
+        </button>
+
+        <!-- Evaluate Button (or Cancel when evaluating) -->
+        <button
+            type="button"
+            class="btn btn-sm"
+            data-class="{'btn-warning': $fsrsEvaluating, 'btn-outline-primary': !$fsrsEvaluating}"
+            data-attr:disabled="(!$fsrsEvaluating && ($fsrsComputing || $fsrsComputingRetention)) ? true : false"
+            data-on:click="$fsrsEvaluating ? @post('/deck-options/fsrs/abort') : @post('/deck-options/fsrs/evaluate')"
+        >
+            <span data-show="$fsrsEvaluating">{{ tr.actions_cancel() }}</span>
+            <span data-show="!$fsrsEvaluating">{{ tr.deck_config_evaluate_button() }}</span>
+        </button>
+
+        <!-- Calculate Optimal Retention Button -->
+        <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-attr:disabled="($fsrsComputing || $fsrsEvaluating || $fsrsComputingRetention) ? true : false"
+            data-on:click="@post('/deck-options/fsrs/calculate-retention')"
+        >
+            <span data-show="$fsrsComputingRetention">Calculating...</span>
+            <span data-show="!$fsrsComputingRetention">Calculate Optimal Retention</span>
+        </button>
+    </div>
+
+    <!-- Display optimal retention result if calculated -->
+    <div
+        class="alert alert-success py-2 px-3 small mb-2"
+        data-show="$fsrsOptimalRetention && $fsrsOptimalRetention > 0"
+    >
+        Optimal retention suggestion: <strong data-text="($fsrsOptimalRetention * 100).toFixed(1) + '%'"></strong>
+        <button
+            type="button"
+            class="btn btn-xs btn-outline-success ms-2 py-0 px-2"
+            data-on:click="$cfg.desired_retention = $fsrsOptimalRetention; $dirty = true; @post('/deck-options/fsrs/workload')"
+        >
+            Apply
+        </button>
+    </div>
+</div>

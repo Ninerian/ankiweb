@@ -1,0 +1,30 @@
+{% from "components/switch.html.jinja" import switch %}
+
+<div class="d-flex flex-column gap-3" data-signals="{ switchVal1: false, switchVal2: true }">
+    <div class="d-flex align-items-center gap-2">
+        {{ switch(id="demo-sw-1", signal="switchVal1") }}
+        <label for="demo-sw-1">Off by default</label>
+        <span class="badge bg-secondary ms-2" data-text="$switchVal1 ? 'ON' : 'OFF'">OFF</span>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        {{ switch(id="demo-sw-2", value=true, signal="switchVal2") }}
+        <label for="demo-sw-2">On by default</label>
+        <span class="badge bg-secondary ms-2" data-text="$switchVal2 ? 'ON' : 'OFF'">ON</span>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        {{ switch(id="demo-sw-3", disabled=true) }}
+        <label for="demo-sw-3">Disabled off</label>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        {{ switch(id="demo-sw-4", value=true, disabled=true) }}
+        <label for="demo-sw-4">Disabled on</label>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        {{ switch(id="demo-sw-rtl", rtl=true, value=true) }}
+        <label for="demo-sw-rtl">RTL layout switch</label>
+    </div>
+</div>

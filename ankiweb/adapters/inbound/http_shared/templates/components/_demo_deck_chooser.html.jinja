@@ -1,0 +1,29 @@
+{% from "components/deck_chooser.html.jinja" import deck_chooser %}
+
+{% set static_decks = [
+    {"id": 1, "name": "Default"},
+    {"id": 2, "name": "Languages::Spanish \"Castilian\" & 'Latin' <A>"},
+    {"id": 3, "name": "Languages::Japanese \\ 日本語 <B>"},
+    {"id": 4, "name": "Science::Physics"},
+    {"id": 5, "name": "Science::Biology"}
+] %}
+
+<div class="border p-3 mb-4 rounded" data-signals="{{ ({'deck_chooser_result': 1}|tojson).__str__() }}">
+    <h5>1. DeckChooser (Static Deck List)</h5>
+    <p class="text-muted small">
+        Pre-populated with hierarchical deck names, shortcut Ctrl+D, book icon.
+    </p>
+
+    <div style="max-width: 320px;">
+        {{ deck_chooser(
+            decks=static_decks,
+            selected_deck_id=1,
+            id="demo_deck_chooser",
+            on_change="$deck_chooser_result = evt.detail.id;"
+        ) }}
+    </div>
+
+    <div class="mt-3 small">
+        Selected Deck: <strong id="demo_deck_chooser_output" data-text="$demo_deck_chooser_selected_name">Default</strong>
+    </div>
+</div>

@@ -1,0 +1,189 @@
+{% if fatal_error %}
+<div id="change-notetype-content" class="route-change-notetype p-3">
+  {{ fatal_error }}
+</div>
+{% else %}
+{% macro alert_box(unused, is_field) %}
+  {% set max_items = 3 %}
+  {% set unused_count = unused | length %}
+  {% set unused_msg = tr.change_notetype_will_discard_content() if is_field else tr.change_notetype_will_discard_cards() %}
+  <div class="alert alert-warning py-2 px-3 mb-3">
+    {% if unused_count > max_items %}
+      <div
+        class="clickable-collapse d-flex align-items-center mb-1"
+        data-on:click="{{ '$collapsed_' + ('fields' if is_field else 'templates') + ' = !$' + ('collapsed_' + ('fields' if is_field else 'templates')) }}"
+        role="button"
+        tabindex="0"
+      >
+        <span class="badge bg-secondary me-2 p-1 d-inline-flex align-items-center">
+          <span data-show="{{ '$collapsed_' + ('fields' if is_field else 'templates') }}">
+            +
+          </span>
+          <span data-show="{{ '!$' + ('collapsed_' + ('fields' if is_field else 'templates')) }}">
+            &minus;
+          </span>
+        </span>
+        <span data-show="{{ '$collapsed_' + ('fields' if is_field else 'templates') }}">
+          {{ tr.change_notetype_expand() }}
+        </span>
+        <span data-show="{{ '!$' + ('collapsed_' + ('fields' if is_field else 'templates')) }}">
+          {{ tr.change_notetype_collapse() }}
+        </span>
+      </div>
+    {% endif %}
+    <div>{{ unused_msg }}</div>
+    <div data-show="{{ '$collapsed_' + ('fields' if is_field else 'templates') }}">
+      {{ unused[:max_items] | join(', ') }}{% if unused_count > max_items %} ... (+{{ unused_count - max_items }}){% endif %}
+    </div>
+    {% if unused_count > max_items %}
+      <div data-show="{{ '!$' + ('collapsed_' + ('fields' if is_field else 'templates')) }}">
+        <ul class="mb-0 ps-3 mt-1">
+          {% for entry in unused %}
+            <li>{{ entry }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+<div id="change-notetype-content" class="route-change-notetype" data-signals="{{ initial_signals_json }}">
+  <!-- Sticky Top Bar -->
+  <div class="sticky-top sticky-top-bar d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-row align-items-center flex-grow-1 me-3">
+      <div style="min-width: 180px; max-width: 250px;">
+        <select class="form-select form-select-sm" disabled>
+          <option selected>{{ old_notetype_name }}</option>
+        </select>
+      </div>
+      <div class="arrow-container">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8"/>
+        </svg>
+      </div>
+      <div style="min-width: 180px; max-width: 250px;">
+        <select
+          id="target-notetype-select"
+          class="form-select form-select-sm"
+          data-bind="target_notetype_id"
+          data-on:change="@post('/change-notetype/select-target')"
+        >
+          {% for nt in notetypes %}
+            <option value="{{ nt.id }}" {% if nt.id == new_notetype_id %}selected{% endif %}>
+              {{ nt.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div>
+      <div class="btn-group">
+        <button
+          id="change-notetype-save-btn"
+          type="button"
+          class="btn btn-primary btn-sm save-btn-inner"
+          title="Ctrl+Enter"
+          data-on:click="@post('/change-notetype/save')"
+        >
+          {{ tr.actions_save() }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="change-notetype-alert-area">
+    <!-- Feedback / Flash messages -->
+    {% if error_msg %}
+      <div class="alert alert-danger py-2 px-3 mb-3">{{ error_msg }}</div>
+    {% endif %}
+    {% if info_msg %}
+      <div class="alert alert-info py-2 px-3 mb-3">{{ info_msg }}</div>
+    {% endif %}
+  </div>
+
+  <!-- Main Containers -->
+  <div class="container-fluid px-1">
+    <!-- Fields Container -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-body-tertiary py-2">
+        <h5 class="card-title mb-0 fs-6">{{ tr.change_notetype_fields() }}</h5>
+      </div>
+      <div class="card-body p-3">
+        {% if unused_fields %}
+          {{ alert_box(unused_fields, true) }}
+        {% endif %}
+
+        <div class="row g-2 mb-2 fw-bold text-muted small border-bottom pb-1">
+          <div class="col-6">{{ tr.change_notetype_current() }}</div>
+          <div class="col-6">{{ tr.change_notetype_new() }}</div>
+        </div>
+
+        {% for row in field_rows %}
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-6">
+              <select
+                class="form-select form-select-sm"
+                data-bind="field_map_{{ row.new_index }}"
+                data-on:change="@post('/change-notetype/remap-field?new_index={{ row.new_index }}')"
+              >
+                {% for opt in old_field_options %}
+                  <option value="{{ opt.value }}" {% if opt.value == row.selected_value %}selected{% endif %}>
+                    {{ opt.label }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <span class="small">{{ row.new_name }}</span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Templates Container -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-body-tertiary py-2">
+        <h5 class="card-title mb-0 fs-6">{{ tr.change_notetype_templates() }}</h5>
+      </div>
+      <div class="card-body p-3">
+        {% if has_templates %}
+          {% if unused_templates %}
+            {{ alert_box(unused_templates, false) }}
+          {% endif %}
+
+          <div class="row g-2 mb-2 fw-bold text-muted small border-bottom pb-1">
+            <div class="col-6">{{ tr.change_notetype_current() }}</div>
+            <div class="col-6">{{ tr.change_notetype_new() }}</div>
+          </div>
+
+          {% for row in template_rows %}
+            <div class="row g-2 align-items-center mb-2">
+              <div class="col-6">
+                <select
+                  class="form-select form-select-sm"
+                  data-bind="template_map_{{ row.new_index }}"
+                  data-on:change="@post('/change-notetype/remap-template?new_index={{ row.new_index }}')"
+                >
+                  {% for opt in old_template_options %}
+                    <option value="{{ opt.value }}" {% if opt.value == row.selected_value %}selected{% endif %}>
+                      {{ opt.label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-6">
+                <span class="small">{{ row.new_name }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted small">
+            {{ tr.change_notetype_to_from_cloze() | replace('\n', '<br>') | safe }}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}

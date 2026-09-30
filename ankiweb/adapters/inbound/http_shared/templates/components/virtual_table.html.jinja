@@ -1,0 +1,51 @@
+{# VirtualTable component ported from ts/lib/components/VirtualTable.svelte #}
+
+{% macro virtual_table(
+    items_count=0,
+    item_height=30,
+    bottom_offset=0,
+    class_="",
+    id=none,
+    headers_html="",
+    tbody_html="",
+    load_bundle=true
+) -%}
+{%- set vt_id = id or ('vt-' ~ range(10000, 99999)|random) -%}
+<div
+    class="outer vt-outer"
+    id="{{ vt_id }}"
+    data-virtual-table
+    data-items-count="{{ items_count }}"
+    data-item-height="{{ item_height }}"
+    data-bottom-offset="{{ bottom_offset }}"
+    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+>
+    <table class="table vt-table{% if class_ %} {{ class_ }}{% endif %}" tabindex="-1">
+        <thead>
+            {% if caller is defined %}
+                {{ caller() }}
+            {% elif headers_html %}
+                {{ headers_html | safe }}
+            {% else %}
+                <tr><th>#</th><th>Item</th></tr>
+            {% endif %}
+        </thead>
+        <tbody>
+            {% if tbody_html %}
+                {{ tbody_html | safe }}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{%- if load_bundle -%}
+<script>
+if (!window.AnkiwebTables && !document.querySelector('script[data-ankiweb-bundle="tables"]')) {
+    const s = document.createElement('script');
+    s.src = '/shell/static/bundles/tables.js';
+    s.setAttribute('data-ankiweb-bundle', 'tables');
+    document.head.appendChild(s);
+}
+</script>
+{%- endif -%}
+{%- endmacro %}

@@ -1,0 +1,190 @@
+{# WithFloating component ported from ts/lib/components/WithFloating.svelte #}
+{#
+  WithFloating contract:
+  - reference: caller-provided HTML or slot for the reference element
+  - floating: caller-provided HTML or slot for the floating element (.floating)
+  - placement: "bottom" | "top" | "left" | "right" (default: "bottom")
+  - offset: distance between reference and floating element (default: 5)
+  - shift: padding from viewport boundary (default: 30)
+  - inline: boolean, whether reference wrapper is inline (<span>) or block (<div>)
+  - show: boolean or Datastar signal expression controlling visibility
+  - signal_name: Datastar signal name if state is driven by a Datastar signal
+  - hide_arrow: boolean, whether to hide the floating arrow
+  - close_on_inside_click: boolean, whether clicking inside floating closes it
+  - keep_on_keyup: boolean, whether Escape key is ignored (default false, Esc closes)
+  - class_: extra class on wrapper
+  - reference_class: extra class on .floating-reference
+  - floating_class: extra class on .floating
+  - id: optional element id
+  
+  Implementation Mechanism:
+  Matches upstream @floating-ui/dom (computePosition with flip, shift, offset, arrow).
+  Calculates viewport bounding rects, flips placement when near viewport boundary, clamps within viewport padding (shift),
+  positions floating element absolutely, and automatically updates position on window scroll and resize.
+#}
+{% from "components/floating_arrow.html.jinja" import floating_arrow %}
+
+{% macro with_floating(
+    reference="",
+    floating="",
+    placement="bottom",
+    offset=5,
+    shift=30,
+    inline=false,
+    show=true,
+    signal_name="",
+    caller_provides_signals=false,
+    hide_arrow=false,
+    close_on_inside_click=false,
+    keep_on_keyup=false,
+    class_="",
+    reference_class="",
+    floating_class="",
+    id=none
+) %}
+{% set ref_tag = "span" if inline else "div" %}
+{% set inst_id = id or ("wf_" ~ range(100000, 999999)|random) %}
+
+<div
+    class="with-floating-container{% if class_ %} {{ class_ }}{% endif %}"
+    style="display: {{ 'inline-block' if inline else 'block' }}; position: relative;"
+    id="{{ inst_id }}"
+    {% if signal_name and not caller_provides_signals %}
+    data-signals="{ {{ signal_name }}: {{ 'true' if show else 'false' }} }"
+    {% endif %}
+    {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
+>
+    {# Reference slot wrapper #}
+    <{{ ref_tag }}
+        class="floating-reference{% if reference_class %} {{ reference_class }}{% endif %}"
+        id="{{ inst_id }}_ref"
+    >
+        {% if reference %}
+            {{ reference|safe }}
+        {% endif %}
+    </{{ ref_tag }}>
+
+    {# Floating slot and Arrow element #}
+    <div
+        class="floating{% if show and not signal_name %} show{% endif %}{% if floating_class %} {{ floating_class }}{% endif %}"
+        id="{{ inst_id }}_floating"
+        data-placement="{{ placement }}"
+        data-preferred-placement="{{ placement }}"
+        data-offset="{{ offset }}"
+        data-shift="{{ shift }}"
+        {% if signal_name %}
+        data-class="{'show': ${{ signal_name }}}"
+        data-show="${{ signal_name }}"
+        data-on:click__window="!el.contains(evt.target) && !document.getElementById('{{ inst_id }}_ref').contains(evt.target) && (${{ signal_name }} = false)"
+        {% if not keep_on_keyup %}
+        data-on:keydown__window="evt.key === 'Escape' && (${{ signal_name }} = false)"
+        {% endif %}
+        {% if close_on_inside_click %}
+        data-on:click="${{ signal_name }} = false"
+        {% endif %}
+        {% endif %}
+    >
+        {% if floating %}
+            {{ floating|safe }}
+        {% elif caller is defined %}
+            {{ caller() }}
+        {% endif %}
+
+        {% if not hide_arrow %}
+        <div class="floating-arrow" style="position: absolute;">
+            {{ floating_arrow() }}
+        </div>
+        {% endif %}
+    </div>
+    <script>
+    (() => {
+        const flt = document.getElementById("{{ inst_id }}_floating");
+        const ref = document.getElementById("{{ inst_id }}_ref");
+        const arrow = flt.querySelector(".floating-arrow");
+        const preferred = "{{ placement }}";
+        const offsetPx = Number({{ offset }});
+        const shiftPx = Number({{ shift }});
+        
+        function updatePos() {
+            if (!flt.classList.contains("show") && window.getComputedStyle(flt).display === "none") return;
+            const rRect = ref.getBoundingClientRect();
+            const fRect = flt.getBoundingClientRect();
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            
+            let actual = preferred;
+            if (preferred.startsWith("bottom") && rRect.bottom + offsetPx + fRect.height > vh && rRect.top - offsetPx - fRect.height >= 0) {
+                actual = preferred.replace("bottom", "top");
+            } else if (preferred.startsWith("top") && rRect.top - offsetPx - fRect.height < 0 && rRect.bottom + offsetPx + fRect.height <= vh) {
+                actual = preferred.replace("top", "bottom");
+            } else if (preferred.startsWith("right") && rRect.right + offsetPx + fRect.width > vw && rRect.left - offsetPx - fRect.width >= 0) {
+                actual = preferred.replace("right", "left");
+            } else if (preferred.startsWith("left") && rRect.left - offsetPx - fRect.width < 0 && rRect.right + offsetPx + fRect.width <= vw) {
+                actual = preferred.replace("left", "right");
+            }
+            
+            let top = 0;
+            let left = 0;
+            if (actual.startsWith("bottom")) {
+                top = rRect.height + offsetPx;
+                left = 0;
+            } else if (actual.startsWith("top")) {
+                top = -fRect.height - offsetPx;
+                left = 0;
+            } else if (actual.startsWith("right")) {
+                top = 0;
+                left = rRect.width + offsetPx;
+            } else if (actual.startsWith("left")) {
+                top = 0;
+                left = -fRect.width - offsetPx;
+            }
+            
+            // Shift clamp to stay inside viewport
+            const absLeft = rRect.left + left;
+            if (absLeft < shiftPx) {
+                left += (shiftPx - absLeft);
+            } else if (absLeft + fRect.width > vw - shiftPx) {
+                left -= (absLeft + fRect.width - (vw - shiftPx));
+            }
+            
+            flt.style.position = "absolute";
+            flt.style.left = left + "px";
+            flt.style.top = top + "px";
+            flt.setAttribute("data-placement", actual);
+            
+            if (arrow) {
+                let rot = 45;
+                let ax = 0;
+                let ay = 0;
+                if (actual.startsWith("bottom")) {
+                    rot = 45;
+                    ax = Math.max(10, Math.min(fRect.width - 20, (rRect.width / 2) - left - 5));
+                    ay = -5;
+                } else if (actual.startsWith("top")) {
+                    rot = 225;
+                    ax = Math.max(10, Math.min(fRect.width - 20, (rRect.width / 2) - left - 5));
+                    ay = Math.max(0, fRect.height - 5);
+                } else if (actual.startsWith("left")) {
+                    rot = 135;
+                    ax = Math.max(0, fRect.width - 5);
+                    ay = Math.max(5, Math.min(fRect.height - 15, (rRect.height / 2) - top - 5));
+                } else {
+                    rot = 315;
+                    ax = -5;
+                    ay = Math.max(5, Math.min(fRect.height - 15, (rRect.height / 2) - top - 5));
+                }
+                arrow.style.left = ax + "px";
+                arrow.style.top = ay + "px";
+                arrow.style.transform = "rotate(" + rot + "deg)";
+            }
+        }
+        
+        window.addEventListener("scroll", updatePos, { passive: true });
+        window.addEventListener("resize", updatePos, { passive: true });
+        const obs = new MutationObserver(updatePos);
+        obs.observe(flt, { attributes: true, attributeFilter: ["class", "style"] });
+        setTimeout(updatePos, 0);
+    })();
+    </script>
+</div>
+{% endmacro %}

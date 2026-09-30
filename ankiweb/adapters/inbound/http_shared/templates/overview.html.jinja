@@ -91,9 +91,6 @@
         >
           {% if tr.studying_edit() == 'Bearbeiten' %}{{ tr.fields_description() | tr_clean }} {{ tr.studying_edit() | tr_clean | lower }}{% else %}{{ tr.studying_edit() | tr_clean }} {{ tr.fields_description() | tr_clean }}{% endif %}
         </button>
-        <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/decks')">
-          {{ tr.actions_decks() | tr_clean }}
-        </button>
       </div>
       <div id="descedit" class="mt-3 text-start" style="display:none;">
         <textarea id="descbox" class="form-control" rows="4" cols="50"

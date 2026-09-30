@@ -1,0 +1,7 @@
+{% macro error_page(error=none, message="", class_="") -%}
+{% set error_msg = message or (error.message if error is mapping or error is sequence or error is not string and error.message is defined else error)|string %}
+<div class="error-box{% if class_ %} {{ class_ }}{% endif %}"{% for k, v in kwargs.items() %} {{ k|replace('_', '-') }}="{{ v }}"{% endfor %}>
+    <p class="error-text">{{ error_msg }}</p>
+    <button class="btn btn-primary" type="button" data-on:click="window.close ? window.close() : null">{{ tr.help_ok() }}</button>
+</div>
+{%- endmacro %}

@@ -1,0 +1,36 @@
+{# NotetypeChooser component ported from ts/lib/components/NotetypeChooser.svelte #}
+{#
+  Props:
+    notetypes: List of dicts/objects: [{"id": 1, "name": "Basic"}, ...]
+    selected_notetype_id: Initially selected notetype ID (default: None -> first notetype)
+    on_change: Datastar expression or JS callback to run on selection change
+    id: Unique ID prefix (default: "notetype_chooser")
+    title: Custom title (default: "Choose Note Type")
+    tooltip: Tooltip (default: "Change Note Type (Ctrl+N)")
+    key_combination: Shortcut (default: "Control+N")
+    class_: Extra class on chooser button
+#}
+{% from "components/item_chooser.html.jinja" import item_chooser %}
+
+{% macro notetype_chooser(
+    notetypes=[],
+    selected_notetype_id=none,
+    on_change="",
+    id="notetype_chooser",
+    title="Choose Note Type",
+    tooltip="Change Note Type (Ctrl+N)",
+    key_combination="Control+N",
+    class_=""
+) -%}
+{{ item_chooser(
+    title=title,
+    items=notetypes,
+    selected_id=selected_notetype_id,
+    icon="mdiNewspaper",
+    key_combination=key_combination,
+    tooltip=tooltip,
+    on_change=on_change,
+    id=id,
+    class_=class_
+) }}
+{%- endmacro %}

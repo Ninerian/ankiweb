@@ -1,0 +1,39 @@
+{# context_menu component ported from ts/lib/context-menu/ContextMenu.svelte
+   Upstream DOM:
+   <div class="context-menu" style="left: {x}px; top: {y}px;" role="menu" tabindex="0">
+     {@render children?.()}
+   </div>
+   
+   Datastar reactivity:
+   - Uses signal_name (default: "contextMenu") to hold state: { visible: false, x: 0, y: 0 }
+   - data-show="$[signal_name].visible"
+   - data-style:left="`${$[signal_name].x}px`"
+   - data-style:top="`${$[signal_name].y}px`"
+   - Listens for window click / keydown to close, or click inside to hide.
+   - Positioning clamp logic accounts for element dimensions and viewport bounds.
+#}
+{% macro context_menu(
+    signal_name="contextMenu",
+    id=none,
+    class_="",
+    items=[]
+) %}
+  <div
+    {% if id %}id="{{ id }}"{% endif %}
+    class="context-menu{% if class_ %} {{ class_ }}{% endif %}"
+    role="menu"
+    tabindex="0"
+    data-show="${{ signal_name }}.visible"
+    data-style:left="`${${{ signal_name }}.x}px`"
+    data-style:top="`${${{ signal_name }}.y}px`"
+    data-on:click="${{ signal_name }}.visible = false"
+    data-on:click__outside="${{ signal_name }}.visible = false"
+    data-on:keydown__window="evt.key === 'Escape' && (${{ signal_name }}.visible = false)"
+    data-on:keydown="evt.key === 'Escape' ? (${{ signal_name }}.visible = false) : (evt.key === 'ArrowDown' ? (el.querySelector('.dropdown-item, .context-menu-item')?.focus()) : void 0)"
+    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+  >
+    {% if caller is defined %}
+      {{ caller() }}
+    {% endif %}
+  </div>
+{% endmacro %}

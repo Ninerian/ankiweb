@@ -1,0 +1,52 @@
+{% from "components/collapsible.html.jinja" import collapsible %}
+
+<div class="d-flex flex-column gap-4" data-signals="{ demoCollapsible1: false, demoCollapsible2: true, demoCollapsibleDisplay: false }">
+    <div class="card p-3">
+        <h5 class="card-title">1. Animated Collapsible (Expanded by default)</h5>
+        <div class="mb-2">
+            <button type="button" class="btn btn-outline-primary btn-sm"
+                    id="btn-toggle-collapsible-1"
+                    data-on:click="$demoCollapsible1 = !$demoCollapsible1">
+                Toggle Collapse (<span data-text="$demoCollapsible1 ? 'Show' : 'Hide'">Hide</span>)
+            </button>
+        </div>
+        {% call collapsible(collapse=false, animated=true, signal_name="demoCollapsible1", id="demo-collapsible-1") %}
+            <div class="p-3 bg-light border rounded">
+                <p class="mb-0">This is collapsible content. It smoothly animates height when toggled using CSS grid-template-rows.</p>
+                <small class="text-muted">Line 2 of collapsible content to provide realistic height.</small>
+            </div>
+        {% endcall %}
+    </div>
+
+    <div class="card p-3">
+        <h5 class="card-title">2. Animated Collapsible (Collapsed by default)</h5>
+        <div class="mb-2">
+            <button type="button" class="btn btn-outline-primary btn-sm"
+                    id="btn-toggle-collapsible-2"
+                    data-on:click="$demoCollapsible2 = !$demoCollapsible2">
+                Toggle Collapse (<span data-text="$demoCollapsible2 ? 'Show' : 'Hide'">Show</span>)
+            </button>
+        </div>
+        {% call collapsible(collapse=true, animated=true, signal_name="demoCollapsible2", id="demo-collapsible-2") %}
+            <div class="p-3 bg-light border rounded">
+                <p class="mb-0">Initially hidden collapsible content now revealed!</p>
+            </div>
+        {% endcall %}
+    </div>
+
+    <div class="card p-3">
+        <h5 class="card-title">3. Collapsible with fullHide (toggleDisplay = true)</h5>
+        <div class="mb-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                    id="btn-toggle-collapsible-display"
+                    data-on:click="$demoCollapsibleDisplay = !$demoCollapsibleDisplay">
+                Toggle Display (<span data-text="$demoCollapsibleDisplay ? 'Show' : 'Hide'">Hide</span>)
+            </button>
+        </div>
+        {% call collapsible(collapse=false, toggle_display=true, signal_name="demoCollapsibleDisplay", id="demo-collapsible-display") %}
+            <div class="p-3 bg-light border rounded">
+                <p class="mb-0">When collapsed, this has <code>display: none</code> via the <code>.hidden</code> class.</p>
+            </div>
+        {% endcall %}
+    </div>
+</div>

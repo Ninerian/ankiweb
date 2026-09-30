@@ -1,0 +1,83 @@
+/* Scoped CSS for Import CSV route */
+
+.route-import-csv .sticky-top-bar {
+  background: var(--canvas, var(--bs-body-bg, #fff));
+  z-index: 100;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--border, #dee2e6);
+}
+
+.route-import-csv .import-btn-inner {
+  margin: 0.2rem 0.75rem;
+}
+
+.route-import-csv .filename {
+  word-break: break-word;
+  font-weight: 500;
+}
+
+.route-import-csv .preview-outer {
+  width: 100%;
+  overflow: auto;
+  margin-bottom: 0.5rem;
+}
+
+.route-import-csv .preview-table {
+  border-collapse: collapse;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.route-import-csv .preview-table th,
+.route-import-csv .preview-table td {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle, #dee2e6);
+  padding: 0.25rem 0.5rem;
+  max-width: 15em;
+}
+
+.route-import-csv .preview-table th {
+  background: var(--border, #e9ecef);
+  text-align: center;
+  font-weight: 600;
+}
+
+.route-import-csv .preview-table tr:nth-child(2n) {
+  background: var(--canvas, #f8f9fa);
+}
+
+.route-import-csv .preview-table td {
+  text-align: start;
+}
+
+.route-import-csv .details-table {
+  margin: 0 auto;
+  width: 100%;
+}
+
+.route-import-csv .details-table th,
+.route-import-csv .details-table td {
+  border: 1px solid var(--border-subtle, #dee2e6);
+  padding: 0.35rem 0.5rem;
+  vertical-align: middle;
+}
+
+.route-import-csv .details-table tr {
+  height: 40px;
+}
+
+.route-import-csv .details-table .index-cell {
+  width: 3.5em;
+  text-align: center;
+}
+
+.route-import-csv .details-table .status-cell {
+  width: 6em;
+  text-align: center;
+}
+
+.route-import-csv .details-table .contents-cell {
+  text-align: left;
+  word-break: break-word;
+}

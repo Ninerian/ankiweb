@@ -1,0 +1,24 @@
+{# Badge component ported from ts/lib/components/Badge.svelte #}
+{% from "components/icon_constrain.html.jinja" import icon_constrain %}
+
+{% macro badge(
+    class_="",
+    tooltip=none,
+    icon_size=100,
+    width_multiplier=1,
+    flip_x=false
+) %}
+  {% set outer_caller = caller %}
+  <button
+    class="badge{% if class_ %} {{ class_ }}{% endif %}"
+    {% if tooltip %}title="{{ tooltip }}"{% endif %}
+    tabindex="-1"
+    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+  >
+    {% call icon_constrain(icon_size=icon_size, width_multiplier=width_multiplier, flip_x=flip_x) %}
+      {% if outer_caller is defined %}
+        {{ outer_caller() }}
+      {% endif %}
+    {% endcall %}
+  </button>
+{% endmacro %}

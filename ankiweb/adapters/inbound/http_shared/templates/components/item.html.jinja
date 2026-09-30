@@ -1,0 +1,7 @@
+{% macro item(id=none, detach=false, class_="") -%}
+<div class="item{% if class_ %} {{ class_ }}{% endif %}"{% if id %} id="{{ id }}"{% endif %}{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {%- if not detach -%}
+        {{ caller() if caller else '' }}
+    {%- endif -%}
+</div>
+{%- endmacro %}

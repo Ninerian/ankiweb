@@ -1,0 +1,94 @@
+/* Route Deck Options styles */
+.route-deck-options {
+  padding-bottom: 4rem;
+}
+
+.route-deck-options .deck-options-header {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  background-color: var(--bs-body-bg, #ffffff);
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+  padding: 0.75rem 1rem;
+}
+
+.route-deck-options .preset-selector-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.route-deck-options .deck-options-nav {
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.route-deck-options .section-card {
+  margin-bottom: 1.5rem;
+  background-color: var(--bs-card-bg, #ffffff);
+  color: var(--bs-card-color, var(--bs-body-color, inherit));
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.375rem;
+  padding: 1.25rem;
+}
+
+.route-deck-options .setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,0.05));
+}
+
+.route-deck-options .setting-row:last-child {
+  border-bottom: none;
+}
+
+.route-deck-options .setting-label-col {
+  flex: 1 1 60%;
+  padding-right: 1rem;
+}
+
+.route-deck-options .setting-input-col {
+  flex: 0 0 auto;
+  min-width: 140px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.route-deck-options .help-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+}
+
+.route-deck-options .easy-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.route-deck-options .easy-day-cell {
+  text-align: center;
+  padding: 0.5rem;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0.25rem;
+}
+
+[data-bs-theme="dark"] .route-deck-options .deck-options-header,
+html.night-mode .route-deck-options .deck-options-header {
+  background-color: var(--bs-body-bg, #1e1d1a);
+  border-bottom-color: var(--bs-border-color, #423f38);
+}
+
+[data-bs-theme="dark"] .route-deck-options .section-card,
+html.night-mode .route-deck-options .section-card {
+  background-color: var(--bs-card-bg, #282622);
+  color: var(--bs-body-color, #e8e5de);
+  border-color: var(--bs-border-color, #423f38);
+}

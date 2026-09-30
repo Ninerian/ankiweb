@@ -32,6 +32,9 @@ from ankiweb.adapters.inbound.http_datastar.custom_study import (
     make_custom_study_routes,
 )
 from ankiweb.adapters.inbound.http_shared.about import render_about_html
+from ankiweb.adapters.inbound.http_shared.component_gallery import render_component_gallery_html
+from ankiweb.adapters.inbound.http_datastar.dev_progress import router as dev_progress_router
+from ankiweb.adapters.inbound.http_pages import make_pages_router
 from ankiweb.adapters.inbound.http_datastar.filtered_deck import (
     render_filtered_deck_html,
     make_filtered_deck_routes,
@@ -74,7 +77,7 @@ _MIME_EXT = {
 }
 
 
-def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRouter:
+def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=None) -> APIRouter:
     router = APIRouter()
     router.include_router(make_deckbrowser_routes(get_service))
     router.include_router(make_overview_routes(get_service))
@@ -222,37 +225,21 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
         return HTMLResponse(
             render_page("about", render_about_html(get_service().settings))
         )
+    is_dev = settings.dev if settings is not None else False
+    if is_dev:
+        @router.get("/dev/components", response_class=HTMLResponse)
+        async def component_gallery_page():
+            # Dev harness for the ts/ -> Jinja component migration; needs no collection.
+            return HTMLResponse(render_page("components", render_component_gallery_html()))
 
-    @router.get("/edit", response_class=HTMLResponse)
-    async def edit_page(nid: int):
-        # No global toolbar: /edit is embedded as the Browser's detail iframe.
-        return HTMLResponse(
-            render_page(
-                "editor",
-                editor_page_body(nid),
-                ["css/editor.css", "css/editable.css"],
-                ["js/webview.js", "js/mathjax.js", "js/editor.js"],
-                toolbar=False,
-            )
-        )
+        # Dev-only simulated backend progress stream for the BackendProgressIndicator demo.
+        router.include_router(dev_progress_router)
 
     @router.get("/preview/{nid}", response_class=HTMLResponse)
     async def preview_page(nid: int):
         service = get_service()
         body = await service.run(lambda col: render_preview_html(col, nid))
         return HTMLResponse(render_page("preview", body))
-    @router.get("/add", response_class=HTMLResponse)
-    async def add_page():
-        service = get_service()
-        body = await service.run(render_add_html)
-        return HTMLResponse(
-            render_page(
-                "add",
-                body,
-                ["css/editor.css", "css/editable.css"],
-                ["js/webview.js", "js/mathjax.js", "js/editor.js"],
-            )
-        )
 
     @router.post("/upload_media")
     async def upload_media(file: UploadFile):
@@ -426,6 +413,8 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None) -> APIRout
         dest.write_bytes(await file.read())
         return {"route": route, "path": str(dest)}
 
+    # Replacements for vendored SvelteKit pages, served at original URLs.
+    router.include_router(make_pages_router(get_service))
     return router
 
 

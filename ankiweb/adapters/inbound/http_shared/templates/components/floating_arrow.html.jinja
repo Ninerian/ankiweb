@@ -1,0 +1,15 @@
+{# FloatingArrow component ported from ts/lib/components/FloatingArrow.svelte #}
+{#
+  FloatingArrow contract:
+  Expects inline styles such as:
+    transform: rotate(45deg); (or 135deg, 225deg, etc. depending on placement)
+    position: absolute;
+    top/bottom/left/right: <coords> (as computed by WithFloating / Floating UI)
+#}
+{% macro floating_arrow(class_="", style="") %}
+  <div
+    class="arrow{% if class_ %} {{ class_ }}{% endif %}"
+    {% if style %}style="{{ style }}"{% endif %}
+    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+  ></div>
+{% endmacro %}

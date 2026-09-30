@@ -1,0 +1,18 @@
+{% macro checkbox(value=false, disabled=false, class_="", signal=none) %}
+<label class="form-checkbox-label {{ class_ }}">
+    <input
+        type="checkbox"
+        {% if disabled %}disabled{% endif %}
+        {% if signal %}
+        data-bind="{{ signal | replace('$', '', 1) }}"
+        {% endif %}
+        {% if value %}checked{% endif %}
+        {% for k, v in kwargs.items() %}
+        {{ k }}="{{ v }}"
+        {% endfor %}
+    />
+    {% if caller %}
+        {{ caller() }}
+    {% endif %}
+</label>
+{% endmacro %}

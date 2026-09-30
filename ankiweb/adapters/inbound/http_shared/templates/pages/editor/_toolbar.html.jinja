@@ -1,0 +1,302 @@
+{#
+  Formatting toolbar partial for the editor.
+  Emits buttons for Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Remove Format,
+  Text/Highlight Colors, Lists (UL/OL), Alignment, media Attach/Record, Cloze ([...], [+]) and MathJax.
+#}
+{% from "components/icon.html.jinja" import icon %}
+{% from "components/icon_button.html.jinja" import icon_button %}
+{% from "components/button_group.html.jinja" import button_group %}
+
+
+
+<div class="editor-toolbar d-flex flex-wrap align-items-center gap-1 p-1">
+  {# Inline Formatting Group #}
+  {% call button_group(class_="editor-btn-group") %}
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="bold"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('bold');"
+      title="{{ tr.editing_bold_text() }} (Ctrl+B)"
+      aria-label="{{ tr.editing_bold_text() }}"
+    >
+      {{ icon(name="boldIcon", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="italic"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('italic');"
+      title="{{ tr.editing_italic_text() }} (Ctrl+I)"
+      aria-label="{{ tr.editing_italic_text() }}"
+    >
+      {{ icon(name="italicIcon", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="underline"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('underline');"
+      title="{{ tr.editing_underline_text() }} (Ctrl+U)"
+      aria-label="{{ tr.editing_underline_text() }}"
+    >
+      {{ icon(name="underlineIcon", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="strikethrough"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('strikethrough');"
+      title="Strikethrough text (Ctrl+Shift+X)"
+      aria-label="Strikethrough"
+    >
+      {{ icon(name="strikethroughIcon", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="superscript"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('superscript');"
+      title="{{ tr.editing_superscript() }} (Ctrl+=)"
+      aria-label="{{ tr.editing_superscript() }}"
+    >
+      {{ icon(name="superscriptIcon", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="subscript"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('subscript');"
+      title="{{ tr.editing_subscript() }} (Ctrl+Shift+=)"
+      aria-label="{{ tr.editing_subscript() }}"
+    >
+      {{ icon(name="subscriptIcon", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="removeFormat"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat');"
+      title="{{ tr.editing_remove_formatting() }} (Ctrl+R)"
+      aria-label="{{ tr.editing_remove_formatting() }}"
+    >
+      {{ icon(name="eraserIcon", size="sm") }}
+    </button>
+
+    <div class="dropdown d-inline-block">
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary icon-button dropdown-toggle dropdown-toggle-split"
+        data-bs-toggle="dropdown"
+        title="{{ tr.editing_select_remove_formatting() }}"
+        aria-label="{{ tr.editing_select_remove_formatting() }}"
+        style="padding-left: 0.25rem; padding-right: 0.25rem;"
+      ></button>
+      <ul class="dropdown-menu shadow-sm py-1">
+        <li><button class="dropdown-item small" type="button" onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat', 'bold')">Remove Bold</button></li>
+        <li><button class="dropdown-item small" type="button" onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat', 'italic')">Remove Italic</button></li>
+        <li><button class="dropdown-item small" type="button" onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat', 'underline')">Remove Underline</button></li>
+        <li><button class="dropdown-item small" type="button" onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat', 'strikethrough')">Remove Strikethrough</button></li>
+        <li><button class="dropdown-item small" type="button" onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat')">Clear All Formatting</button></li>
+      </ul>
+    </div>
+  {% endcall %}
+
+  {# Font Family and Size #}
+  {% call button_group(class_="editor-btn-group d-none d-md-inline-flex") %}
+    <select
+      class="form-select form-select-sm"
+      style="width: auto; max-width: 120px; font-size: 0.8rem;"
+      title="Font family"
+      aria-label="Font family"
+      onchange="window.AnkiwebEditor?.exec('fontName', this.value)"
+    >
+      <option value="">Font</option>
+      <option value="Arial">Arial</option>
+      <option value="Helvetica">Helvetica</option>
+      <option value="Times New Roman">Times New Roman</option>
+      <option value="Courier New">Courier New</option>
+      <option value="Georgia">Georgia</option>
+      <option value="Verdana">Verdana</option>
+    </select>
+
+    <select
+      class="form-select form-select-sm"
+      style="width: auto; max-width: 80px; font-size: 0.8rem;"
+      title="Font size"
+      aria-label="Font size"
+      onchange="window.AnkiwebEditor?.exec('fontSize', this.value)"
+    >
+      <option value="">Size</option>
+      <option value="1">10px</option>
+      <option value="2">13px</option>
+      <option value="3">16px</option>
+      <option value="4">18px</option>
+      <option value="5">24px</option>
+      <option value="6">32px</option>
+      <option value="7">48px</option>
+    </select>
+  {% endcall %}
+
+  {# Colors Group #}
+  {% call button_group(class_="editor-btn-group") %}
+    <label
+      class="btn btn-sm btn-outline-secondary icon-button m-0 d-inline-flex align-items-center position-relative overflow-hidden"
+      title="{{ tr.editing_text_color() }} (F7)"
+      aria-label="{{ tr.editing_text_color() }}"
+    >
+      {{ icon(name="textColorIcon", size="sm") }}
+      <input
+        type="color"
+        class="position-absolute opacity-0"
+        style="width: 100%; height: 100%; top: 0; left: 0; cursor: pointer;"
+        value="#000000"
+        onchange="window.AnkiwebEditor?.exec('foreColor', this.value)"
+      />
+    </label>
+
+    <label
+      class="btn btn-sm btn-outline-secondary icon-button m-0 d-inline-flex align-items-center position-relative overflow-hidden"
+      title="{{ tr.editing_text_highlight_color() }}"
+      aria-label="{{ tr.editing_text_highlight_color() }}"
+    >
+      {{ icon(name="highlightColorIcon", size="sm") }}
+      <input
+        type="color"
+        class="position-absolute opacity-0"
+        style="width: 100%; height: 100%; top: 0; left: 0; cursor: pointer;"
+        value="#ffff00"
+        onchange="window.AnkiwebEditor?.exec('hiliteColor', this.value)"
+      />
+    </label>
+  {% endcall %}
+
+  {# Lists & Alignment Group #}
+  {% call button_group(class_="editor-btn-group") %}
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="insertUnorderedList"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('insertUnorderedList');"
+      title="{{ tr.editing_unordered_list() }} (Ctrl+,)"
+      aria-label="{{ tr.editing_unordered_list() }}"
+    >
+      {{ icon(name="ulIcon", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="insertOrderedList"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('insertOrderedList');"
+      title="{{ tr.editing_ordered_list() }} (Ctrl+.)"
+      aria-label="{{ tr.editing_ordered_list() }}"
+    >
+      {{ icon(name="olIcon", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="justifyLeft"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('justifyLeft');"
+      title="{{ tr.editing_align_left() }}"
+      aria-label="{{ tr.editing_align_left() }}"
+    >
+      {{ icon(name="mdiAlignHorizontalLeft", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="justifyCenter"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('justifyCenter');"
+      title="{{ tr.editing_center() }}"
+      aria-label="{{ tr.editing_center() }}"
+    >
+      {{ icon(name="mdiFormatAlignCenter", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="justifyRight"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('justifyRight');"
+      title="{{ tr.editing_align_right() }}"
+      aria-label="{{ tr.editing_align_right() }}"
+    >
+      {{ icon(name="mdiAlignHorizontalRight", size="sm") }}
+    </button>
+  {% endcall %}
+
+  {# Media Triggers: Attach F3 & Record F5 #}
+  {% call button_group(class_="editor-btn-group") %}
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="attach"
+      onclick="window.AnkiwebEditor?.attachMedia ? window.AnkiwebEditor.attachMedia() : void 0"
+      title="{{ tr.editing_attach_picturesaudiovideo() }} (F3)"
+      aria-label="{{ tr.editing_attach_picturesaudiovideo() }}"
+    >
+      {{ icon(name="paperclipIcon", size="sm") }}
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="record"
+      onclick="window.AnkiwebEditor?.recordAudio ? window.AnkiwebEditor.recordAudio() : void 0"
+      title="{{ tr.editing_record_audio() }} (F5)"
+      aria-label="{{ tr.editing_record_audio() }}"
+    >
+      {{ icon(name="micIcon", size="sm") }}
+    </button>
+  {% endcall %}
+
+  {# Cloze Group #}
+  {% call button_group(class_="editor-btn-group") %}
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button fw-bold"
+      data-editor-command="cloze"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('cloze');"
+      title="{{ tr.editing_cloze_deletion() }} (Ctrl+Shift+C)"
+      aria-label="{{ tr.editing_cloze_deletion() }}"
+    >
+      {{ icon(name="clozeIcon", size="sm") }}
+      <span class="ms-1 small">c1</span>
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      data-editor-command="cloze-same-number"
+      onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('cloze-same-number');"
+      title="{{ tr.editing_cloze_deletion_repeat() }} (Ctrl+Alt+Shift+C)"
+      aria-label="{{ tr.editing_cloze_deletion_repeat() }}"
+    >
+      {{ icon(name="incrementClozeIcon", size="sm") }}
+      <span class="ms-1 small">c=</span>
+    </button>
+  {% endcall %}
+
+  {# MathJax Trigger #}
+  {% call button_group(class_="editor-btn-group") %}
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary icon-button"
+      title="{{ tr.editing_equations() }} (Ctrl+M)"
+      aria-label="{{ tr.editing_equations() }}"
+      onclick="document.body.dispatchEvent(new CustomEvent('ankiweb:insert-mathjax', { detail: { block: false } }))"
+    >
+      {{ icon(name="mathIcon", size="sm") }}
+    </button>
+  {% endcall %}
+</div>

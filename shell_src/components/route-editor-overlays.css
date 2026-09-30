@@ -1,0 +1,58 @@
+/* route-editor-overlays.css: Styles for CodeMirror plain text, MathJax overlay/modal, image handles */
+
+/* Plain text CodeMirror host */
+.plain-text-input {
+    border: 1px solid var(--bs-border-color, #ced4da);
+    border-radius: 0.375rem;
+    background-color: var(--bs-body-bg, #fff);
+    min-height: 120px;
+}
+
+.editor-field.has-plain-text .rich-text-input {
+    display: none !important;
+}
+
+.editor-field:not(.has-plain-text) .plain-text-input {
+    display: none !important;
+}
+
+/* MathJax element presentation */
+anki-mathjax {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 2px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background-color: rgba(13, 110, 253, 0.05);
+    border: 1px dashed rgba(13, 110, 253, 0.4);
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+anki-mathjax:hover {
+    background-color: rgba(13, 110, 253, 0.15);
+    border-color: #0d6efd;
+}
+
+anki-mathjax.anki-mathjax-block {
+    display: block !important;
+    margin: 6px 0;
+    text-align: center;
+}
+
+/* Image overlay handles */
+.ankiweb-image-overlay-layer {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1050;
+}
+
+.ankiweb-image-handle {
+    border: 1px solid #fff;
+    box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    border-radius: 2px;
+}
+
+.ankiweb-image-handle:hover {
+    transform: scale(1.2);
+}

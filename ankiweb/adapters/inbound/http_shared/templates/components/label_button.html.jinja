@@ -1,0 +1,24 @@
+{# LabelButton component ported from ts/lib/components/LabelButton.svelte #}
+{% macro label_button(
+    id=none,
+    class_="",
+    primary=false,
+    tooltip=none,
+    active=false,
+    disabled=false,
+    tabbable=false,
+    ellipsis=false
+) %}
+  <button
+    {% if id %}id="{{ id }}"{% endif %}
+    class="label-button{% if class_ %} {{ class_ }}{% endif %}{% if active %} active{% endif %}{% if primary %} primary{% endif %}{% if ellipsis %} ellipsis{% endif %}"
+    {% if tooltip %}title="{{ tooltip }}"{% endif %}
+    {% if disabled %}disabled{% endif %}
+    tabindex="{% if tabbable %}0{% else %}-1{% endif %}"
+    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+  >
+    {% if caller is defined %}
+      {{ caller() }}
+    {% endif %}
+  </button>
+{% endmacro %}

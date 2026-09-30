@@ -1,0 +1,42 @@
+{# Popover component ported from ts/lib/components/Popover.svelte #}
+{#
+  Popover component renders:
+  <div class="popover-wrapper d-flex" style="--min-height: ...">
+      <div class="popover [scrollable] [hidden] [top|right|bottom|left]" role="listbox" id="...">
+          <slot />
+      </div>
+  </div>
+  Props:
+    id: DOM ID for the popover element
+    scrollable: boolean (adds .scrollable)
+    hidden: boolean (adds .hidden)
+    placement: "top" | "right" | "bottom" | "left" (adds corresponding class)
+    min_height: min-height css string/number
+    popover_width: custom width var(--popover-width)
+    class_: extra class on root wrapper
+    popover_class: extra class on .popover
+#}
+{% macro popover(
+    id="",
+    scrollable=false,
+    hidden=false,
+    placement="bottom",
+    min_height=0,
+    popover_width="",
+    class_="",
+    popover_class=""
+) -%}
+<div
+    class="popover-wrapper d-flex{% if class_ %} {{ class_ }}{% endif %}"
+    style="--min-height: {{ min_height }}{% if min_height is number %}px{% endif %};{% if popover_width %} --popover-width: {{ popover_width }};{% endif %}"
+    {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
+>
+    <div
+        class="popover{% if scrollable %} scrollable{% endif %}{% if hidden %} hidden{% endif %}{% if placement in ['top', 'right', 'bottom', 'left'] %} {{ placement }}{% endif %}{% if popover_class %} {{ popover_class }}{% endif %}"
+        {% if id %}id="{{ id }}"{% endif %}
+        role="listbox"
+    >
+        {{ caller() if caller else '' }}
+    </div>
+</div>
+{%- endmacro %}

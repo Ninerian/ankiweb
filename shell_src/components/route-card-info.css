@@ -1,0 +1,104 @@
+/* shell_src/components/route-card-info.css
+ * Ported from upstream ts/routes/card-info/ CardInfo.svelte, CardStats.svelte, Revlog.svelte, ForgettingCurve.svelte
+ */
+
+.route-card-info .card-info-placeholder {
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: gray;
+}
+
+.route-card-info .stats-table {
+    width: 100%;
+    border-spacing: 1em 0;
+    border-collapse: collapse;
+}
+
+.route-card-info .align-start {
+    text-align: start;
+}
+
+.route-card-info .revlog-table {
+    width: 100%;
+    max-width: 50em;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.route-card-info .column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.route-card-info .column:not(:last-child) {
+    margin-right: 0.5em;
+}
+
+.route-card-info .column-head {
+    font-weight: 700;
+}
+
+.route-card-info .column-content {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.route-card-info .column-content.right {
+    align-items: flex-end;
+}
+
+.route-card-info .column-content > div:empty:after {
+    content: "\00a0";
+}
+
+.route-card-info .revlog-learn {
+    color: var(--state-new, #007bff);
+}
+
+.route-card-info .revlog-review {
+    color: var(--state-review, #28a745);
+}
+
+.route-card-info .revlog-relearn,
+.route-card-info .revlog-ease1 {
+    color: var(--state-learn, #dc3545);
+}
+
+@media only screen and (max-device-width: 480px) and (orientation: portrait) {
+    .route-card-info .hidden-xs {
+        display: none;
+    }
+}
+
+.route-card-info .forgetting-curve {
+    width: 100%;
+    max-width: 50em;
+    margin-bottom: 10em;
+}
+
+.route-card-info .time-range-selector {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 1em;
+    width: 100%;
+    max-width: 50em;
+}
+
+.route-card-info .time-range-selector label {
+    display: flex;
+    align-items: center;
+}
+
+.route-card-info .time-range-selector input {
+    margin-right: 0.5em;
+}

@@ -1,0 +1,9 @@
+{# Demo for DropdownDivider component #}
+{% from "components/dropdown_divider.html.jinja" import dropdown_divider %}
+{% from "components/dropdown_item.html.jinja" import dropdown_item %}
+
+<div class="border p-2 rounded" style="max-width: 250px;" data-testid="demo-dropdown-divider-container">
+  {% call dropdown_item() %}Before Divider{% endcall %}
+  {{ dropdown_divider(id="demo-test-divider") }}
+  {% call dropdown_item() %}After Divider{% endcall %}
+</div>

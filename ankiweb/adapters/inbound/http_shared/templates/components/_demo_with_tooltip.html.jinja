@@ -1,0 +1,28 @@
+{% from "components/with_tooltip.html.jinja" import with_tooltip %}
+
+<div class="border p-3 mb-4 rounded">
+    <h5>1. Hover / Focus Tooltip (Placement: Top)</h5>
+    {% call with_tooltip(tooltip="Helpful tooltip text on top", placement="top", id="demoTooltipTop") %}
+        <button type="button" class="btn btn-outline-secondary" id="demoTooltipTopBtn">
+            Hover or Focus me (Top)
+        </button>
+    {% endcall %}
+</div>
+
+<div class="border p-3 mb-4 rounded">
+    <h5>2. Click Triggered Tooltip with HTML content (Placement: Right)</h5>
+    {% call with_tooltip(tooltip="<em>Rich HTML</em> <strong>Tooltip</strong> content", trigger="click", placement="right", id="demoTooltipClick") %}
+        <button type="button" class="btn btn-outline-info" id="demoTooltipClickBtn">
+            Click me for Tooltip (Right)
+        </button>
+    {% endcall %}
+</div>
+
+<div class="border p-3 rounded">
+    <h5>3. Tooltip with Delays (Placement: Bottom)</h5>
+    {% call with_tooltip(tooltip="Delayed tooltip after 100ms", placement="bottom", show_delay=100, hide_delay=100, id="demoTooltipBottom") %}
+        <button type="button" class="btn btn-outline-dark" id="demoTooltipBottomBtn">
+            Delayed Tooltip (Bottom)
+        </button>
+    {% endcall %}
+</div>

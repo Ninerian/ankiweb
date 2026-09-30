@@ -1,32 +1,15 @@
 from __future__ import annotations
 from pathlib import Path
-import html
 from typing import Callable
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared.templating import tr_clean
-# Injected into the served SvelteKit shell so the SPA's bridgeCommand("browserSearch:<q>")
-# (e.g. graphs count-links) opens ankiweb's browser instead of being a no-op. The SPA has no
-# pycmd host otherwise; this defines a minimal one before the app modules load. Other bridge
-# commands are intentionally ignored (same as before).
-_SPA_HEAD = (
-    '<link rel="stylesheet" href="/shell/static/vendor/bootstrap.min.css">'
-    '<script src="/shell/static/vendor/bootstrap.bundle.min.js"></script>'
-    '<script src="/shell/static/spa_bridge.js"></script>'
-)
-
-def _spa_navbar() -> str:
-    """Render the shared toolbar template in SPA mode."""
-    from ankiweb.adapters.inbound.http_shared import templating
-    return templating.render("_toolbar.html.jinja", is_spa=True)
+from fastapi.responses import FileResponse, PlainTextResponse
 
 # subset of mediasrv _mime_for_path (mediasrv.py:171-210)
 MIME = {
     ".css": "text/css",
     ".js": "application/javascript",
     ".mjs": "application/javascript",
-    ".html": "text/html",
+    ".json": "application/json",
     ".svg": "image/svg+xml",
     ".png": "image/png",
     ".jpg": "image/jpeg",
@@ -34,37 +17,20 @@ MIME = {
     ".gif": "image/gif",
     ".webp": "image/webp",
     ".ico": "image/x-icon",
-    ".json": "application/json",
     ".woff": "font/woff",
     ".woff2": "font/woff2",
     ".ttf": "font/ttf",
     ".otf": "font/otf",
-    ".map": "application/json",
+    ".eot": "application/vnd.ms-fontobject",
     ".mp3": "audio/mpeg",
     ".ogg": "audio/ogg",
-    ".oga": "audio/ogg",
-    ".opus": "audio/opus",
     ".wav": "audio/wav",
-    ".flac": "audio/flac",
     ".m4a": "audio/mp4",
     ".aac": "audio/aac",
     ".mp4": "video/mp4",
     ".webm": "video/webm",
     ".mov": "video/quicktime",
 }
-SVELTEKIT_PAGES = {
-    "editor",
-    "graphs",
-    "congrats",
-    "card-info",
-    "change-notetype",
-    "deck-options",
-    "import-anki-package",
-    "import-csv",
-    "import-page",
-    "image-occlusion",
-}
-
 
 # vendored binary assets that are content-stable across the pinned anki version: cache hard.
 # (fonts are the big one — MathJax CHTML lazy-loads ~dozens of woff glyph files per render.)
@@ -91,11 +57,6 @@ def _mime(path: str) -> str:
 
 def _resolve(rel: str) -> str:
     """Replicate mediasrv _extract_internal_request rewrites for the _anki/ namespace."""
-    first = rel.split("/", 1)[0]
-    if first in SVELTEKIT_PAGES:
-        return f"sveltekit/{rel}"
-    if rel.startswith("_app/"):
-        return f"sveltekit/{rel}"
     if "/" not in rel:  # bare file at /_anki/<file>
         if rel.endswith(".css"):
             return f"css/{rel}"
@@ -110,6 +71,13 @@ def _resolve(rel: str) -> str:
 def build_router(assets_dir: Path) -> APIRouter:
     router = APIRouter()
 
+    @router.get("/favicon.ico")
+    def favicon() -> Response:
+        f = assets_dir / "imgs" / "favicon.ico"
+        if f.is_file():
+            return FileResponse(f, media_type="image/x-icon")
+        return Response(status_code=204)
+
     @router.get("/_anki/{path:path}")
     def serve(path: str, request: Request) -> Response:
         rel = _resolve(path)
@@ -120,11 +88,6 @@ def build_router(assets_dir: Path) -> APIRouter:
             return PlainTextResponse("forbidden", status_code=403)
 
         if not target.is_file():
-            # SvelteKit SPA fallback for non-immutable sveltekit paths
-            if rel.startswith("sveltekit/") and "immutable" not in rel:
-                fallback = assets_dir / "sveltekit" / "index.html"
-                if fallback.is_file():
-                    return FileResponse(fallback, media_type="text/html")
             return PlainTextResponse("not found", status_code=404)
 
         headers = {}
@@ -144,79 +107,6 @@ def build_router(assets_dir: Path) -> APIRouter:
             # picked up within a day, or immediately via a hard refresh.
             headers["Cache-Control"] = "max-age=86400"
         return FileResponse(target, media_type=_mime(rel), headers=headers)
-
-    return router
-
-
-def build_sveltekit_router(assets_dir: Path) -> APIRouter:
-    """Serve the vendored SvelteKit SPA at ROOT paths (its index.html imports /_app/...
-    and client-routes by location.pathname). E2/E3 add more page routes here."""
-    router = APIRouter()
-    index = assets_dir / "sveltekit" / "index.html"
-    def _shell_with_bridge(title: str = "") -> str:
-        html_content = index.read_text(encoding="utf-8")
-        if title:
-            title_tag = f"<title>{html.escape(title)}</title>"
-            if "</head>" in html_content:
-                html_content = html_content.replace("</head>", f"{title_tag}</head>", 1)
-            else:
-                html_content = title_tag + html_content
-        html_content = html_content.replace('<body data-sveltekit-preload-data="hover">', '<body data-sveltekit-preload-data="hover">' + _spa_navbar(), 1)
-        return html_content.replace("</body>", _SPA_HEAD + "</body>", 1)
-
-    @router.get("/graphs")
-    def graphs_page() -> Response:
-        raw = tr.qt_misc_stats()
-        clean = tr_clean(raw)
-        title = f"{clean} \u2013 AnkiWeb" if clean else "AnkiWeb"
-        return HTMLResponse(_shell_with_bridge(title=title))
-    @router.get("/editor")
-    @router.get("/editor/{path:path}")
-    def editor_page(path: str = "") -> Response:
-        return HTMLResponse(_shell_with_bridge())
-
-    @router.get("/deck-options/{deck_id}")
-    def deck_options_page(deck_id: str) -> Response:
-        return HTMLResponse(_shell_with_bridge())
-
-    @router.get("/change-notetype/{ids:path}")
-    def change_notetype_page(ids: str) -> Response:
-        return HTMLResponse(_shell_with_bridge())
-
-    @router.get("/card-info/{ids:path}")
-    def card_info_page(ids: str) -> Response:
-        return HTMLResponse(_shell_with_bridge())
-
-    @router.get("/import-csv/{path:path}")
-    def import_csv_page(path: str) -> Response:
-        return HTMLResponse(_shell_with_bridge())
-
-    @router.get("/import-anki-package/{path:path}")
-    def import_anki_package_page(path: str) -> Response:
-        return HTMLResponse(_shell_with_bridge())
-
-    @router.get("/image-occlusion/{path:path}")
-    def image_occlusion_page(path: str) -> Response:
-        return HTMLResponse(_shell_with_bridge())
-    @router.get("/_app/{path:path}")
-    def app_asset(path: str) -> Response:
-        rel = _resolve("_app/" + path)
-        target = (assets_dir / rel).resolve()
-        try:
-            target.relative_to(assets_dir.resolve())
-        except ValueError:
-            return PlainTextResponse("forbidden", status_code=403)
-        if not target.is_file():
-            return PlainTextResponse("not found", status_code=404)
-        headers = {"Cache-Control": "max-age=31536000"} if "immutable" in rel else {}
-        return FileResponse(target, media_type=_mime(rel), headers=headers)
-
-    @router.get("/favicon.ico")
-    def favicon() -> Response:
-        f = assets_dir / "imgs" / "favicon.ico"
-        if f.is_file():
-            return FileResponse(f, media_type="image/x-icon")
-        return Response(status_code=204)
 
     return router
 

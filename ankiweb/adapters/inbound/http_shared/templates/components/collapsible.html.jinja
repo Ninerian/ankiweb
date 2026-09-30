@@ -1,0 +1,29 @@
+{# Collapsible component: Ported from ts/lib/components/Collapsible.svelte.
+   Upstream uses Svelte tweened size + dynamic duration based on measured height.
+   In this Jinja + Datastar stack, expand/collapse is driven by Datastar reactive classes
+   and a modern CSS grid-template-rows (0fr -> 1fr) transition, which animates smoothly
+   without needing hardcoded max-height or measuring JavaScript.
+   
+   Props:
+   - collapse: initial collapsed boolean state (default: false)
+   - toggle_display: if true, adds `full-hide` / `hidden` behaviour (display: none when collapsed)
+   - animated: whether animation is enabled (default: true)
+   - signal_name: Datastar signal name to bind collapsed state to (optional)
+   - id: optional DOM id
+   - class_: additional CSS classes
+#}
+{% macro collapsible(collapse=false, toggle_display=false, animated=true, signal_name=none, id=none, class_="") -%}
+{%- set is_collapsed = collapse | default(false, true) -%}
+{%- set is_animated = animated | default(true, true) -%}
+{%- set is_toggle_display = toggle_display | default(false, true) -%}
+<div{% if id %} id="{{ id }}"{% endif %}
+    class="collapsible{% if is_animated %} animated{% endif %}{% if is_toggle_display %} full-hide{% endif %}{% if is_collapsed %} collapsed{% if is_toggle_display %} hidden{% endif %}{% else %} expanded{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
+    {% if signal_name %}
+    data-class="{'collapsed': ${{ signal_name }}, 'expanded': !${{ signal_name }}{% if is_toggle_display %}, 'hidden': ${{ signal_name }}{% endif %}}"
+    {% endif %}
+    {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    <div class="collapsible-inner">
+        {{ caller() if caller else '' }}
+    </div>
+</div>
+{%- endmacro %}

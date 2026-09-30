@@ -1,0 +1,45 @@
+{% from "components/select.html.jinja" import select %}
+
+<div class="d-flex flex-column gap-4" data-signals="{ demoSelVal: 'deck2', demoSelDisabled: 'opt1' }">
+    <div class="card p-3">
+        <h5 class="card-title">1. Standard Select Component (Datastar Signal Bound)</h5>
+        <p class="text-muted small">
+            Accessible combobox listbox matching upstream Anki Select.svelte.
+            Supports mouse click and full keyboard navigation (ArrowUp, ArrowDown, Home, End, Enter, Space, Escape).
+        </p>
+        <div class="d-flex align-items-center gap-3">
+            <div style="width: 240px;">
+                {{ select(
+                    list=[
+                        {"content": "Default Deck", "value": "default"},
+                        {"content": "Deck 1: Languages", "value": "deck1"},
+                        {"content": "Deck 2: Science & Tech", "value": "deck2"},
+                        {"content": "Deck 3: History (Disabled)", "value": "deck3", "disabled": true},
+                        {"content": "Deck 4: Geography", "value": "deck4"}
+                    ],
+                    value="deck2",
+                    signal="demoSelVal",
+                    label="Deck 2: Science & Tech",
+                    id="demoSelectStandard"
+                ) }}
+            </div>
+            <div>
+                Selected Deck Signal: <code data-text="$demoSelVal">deck2</code>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-3">
+        <h5 class="card-title">2. Disabled Select</h5>
+        <p class="text-muted small">Disabled variant matching upstream styling and pointer events suppression.</p>
+        <div style="width: 240px;">
+            {{ select(
+                list=["Option A", "Option B", "Option C"],
+                value="Option A",
+                label="Disabled State",
+                disabled=true,
+                id="demoSelectDisabled"
+            ) }}
+        </div>
+    </div>
+</div>
