@@ -1,0 +1,17 @@
+{% macro config_input(grow=true, rtl=false, revert_slot=none, class_="") %}
+<div
+    class="config-input position-relative justify-content-end {{ 'flex-grow-1' if grow else '' }} {{ class_ }}"
+    {% for k, v in kwargs.items() %}
+    {{ k }}="{{ v }}"
+    {% endfor %}
+>
+    {% if revert_slot %}
+    <div class="revert {{ 'rtl' if rtl else '' }}">
+        {{ revert_slot }}
+    </div>
+    {% endif %}
+    {% if caller %}
+        {{ caller() }}
+    {% endif %}
+</div>
+{% endmacro %}

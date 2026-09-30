@@ -1,0 +1,17 @@
+{% from "components/label.html.jinja" import label %}
+
+<div class="d-flex flex-column gap-2">
+    <div>
+        {% call label(for_="demo-input-1") %}
+            Standard clickable label for input
+        {% endcall %}
+        <input id="demo-input-1" class="form-control form-control-sm mt-1" style="max-width: 200px;" placeholder="Focuses on label click" />
+    </div>
+
+    <div>
+        {% call label(for_="demo-input-2", prevent_mouse_click=true) %}
+            Prevent-mouse-click label (clicking this will NOT focus input)
+        {% endcall %}
+        <input id="demo-input-2" class="form-control form-control-sm mt-1" style="max-width: 200px;" placeholder="Won't focus on label click" />
+    </div>
+</div>

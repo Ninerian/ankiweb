@@ -1,0 +1,33 @@
+{# Demo for IconConstrain component #}
+{% from "components/icon_constrain.html.jinja" import icon_constrain %}
+{% from "components/icon.html.jinja" import icon %}
+
+<div class="d-flex flex-wrap gap-4 align-items-center" data-testid="demo-icon-constrain-container">
+  <div class="border p-2">
+    <div>Standard 100% (chevronDown)</div>
+    {% call icon_constrain(icon_size=100) %}
+      {{ icon(name="chevronDown") }}
+    {% endcall %}
+  </div>
+
+  <div class="border p-2">
+    <div>Smaller 50% (magnifyIcon)</div>
+    {% call icon_constrain(icon_size=50) %}
+      {{ icon(name="magnifyIcon") }}
+    {% endcall %}
+  </div>
+
+  <div class="border p-2">
+    <div>Flipped X (arrowRightIcon)</div>
+    {% call icon_constrain(icon_size=80, flip_x=true) %}
+      {{ icon(name="arrowRightIcon") }}
+    {% endcall %}
+  </div>
+
+  <div class="border p-2">
+    <div>Width Multiplier 2x</div>
+    {% call icon_constrain(width_multiplier=2, icon_size=75) %}
+      {{ icon(name="horizontalHandle") }}
+    {% endcall %}
+  </div>
+</div>

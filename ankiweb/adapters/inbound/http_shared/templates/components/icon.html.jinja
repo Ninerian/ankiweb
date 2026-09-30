@@ -1,0 +1,11 @@
+{# Icon component ported from ts/lib/components/Icon.svelte #}
+{% from "components/icons.html.jinja" import icon as get_icon %}
+
+{% macro icon(name=none, icon_data=none, size=none, class_="") %}
+  {% set icon_name = name or (icon_data.url if icon_data is mapping else icon_data) or "" %}
+  {% if icon_name %}
+    {{ get_icon(icon_name, size=size, class_=class_, **kwargs) }}
+  {% elif caller is defined %}
+    {{ caller() }}
+  {% endif %}
+{% endmacro %}

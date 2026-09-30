@@ -1,0 +1,84 @@
+{% macro shortcut(combination="", event="keydown", action=none, class_="", signal=none) %}
+{#
+  Shortcut component: Ported from ts/lib/components/Shortcut.svelte + ts/lib/tslib/shortcuts.ts.
+  Emits a global window key event listener using Datastar's `data-on:keydown__window` or `data-on:keyup__window`.
+
+  Props:
+  - combination: Key combination string (e.g. "Control+Enter", "Alt+Shift+KeyB", "j", "k", "Escape")
+  - event: "keydown" (default) or "keyup"
+  - action: Datastar expression to run on match (e.g. "@post('/...')", "$count++", or any JS expression)
+  - signal: Optional signal to toggle/increment or execute
+  - class_: Optional CSS class for the hidden/span element
+#}
+{% set evt_name = "keyup" if event == "keyup" else "keydown" %}
+{% set combo = combination.strip() %}
+{% if combo and action %}
+  {# Build match condition based on upstream ts/lib/tslib/shortcuts.ts logic #}
+  {# Parse segments e.g. "Control+Enter", "Shift+?", "KeyA" #}
+  {% set parts = combo.split('+') %}
+  {% set req_ctrl = 'Control' in parts or 'Ctrl' in parts %}
+  {% set req_alt = 'Alt' in parts %}
+  {% set req_shift = 'Shift' in parts %}
+  {% set req_meta = 'Meta' in parts or 'Cmd' in parts or 'Command' in parts %}
+  {% set key_part = parts[-1] %}
+  {% set conds = [] %}
+
+  {# Ctrl / Meta checking #}
+  {% if req_ctrl %}
+    {% set _ = conds.append('(evt.ctrlKey || (evt.metaKey && navigator.platform.indexOf("Mac") >= 0))') %}
+  {% else %}
+    {% if not req_meta %}
+      {% set _ = conds.append('!evt.ctrlKey') %}
+    {% endif %}
+  {% endif %}
+
+  {% if req_meta %}
+    {% set _ = conds.append('evt.metaKey') %}
+  {% else %}
+    {% if not req_ctrl %}
+      {% set _ = conds.append('!evt.metaKey') %}
+    {% endif %}
+  {% endif %}
+
+  {# Alt checking #}
+  {% if req_alt %}
+    {% set _ = conds.append('evt.altKey') %}
+  {% else %}
+    {% set _ = conds.append('!evt.altKey') %}
+  {% endif %}
+
+  {# Shift checking #}
+  {% if req_shift %}
+    {% set _ = conds.append('evt.shiftKey') %}
+  {% else %}
+    {% set _ = conds.append('!evt.shiftKey') %}
+  {% endif %}
+
+  {# Key code or key checking #}
+  {% if key_part | lower == 'enter' %}
+    {% set _ = conds.append('(evt.key === "Enter" || evt.code === "Enter")') %}
+  {% elif key_part | lower == 'escape' or key_part | lower == 'esc' %}
+    {% set _ = conds.append('(evt.key === "Escape" || evt.code === "Escape")') %}
+  {% elif key_part | lower == 'tab' %}
+    {% set _ = conds.append('(evt.key === "Tab" || evt.code === "Tab")') %}
+  {% elif key_part | lower == 'backspace' %}
+    {% set _ = conds.append('(evt.key === "Backspace" || evt.code === "Backspace")') %}
+  {% elif key_part | lower == 'space' %}
+    {% set _ = conds.append('(evt.key === " " || evt.code === "Space")') %}
+  {% elif key_part | length == 1 %}
+    {% set _ = conds.append('(evt.key.toLowerCase() === "' ~ (key_part | lower) ~ '" || evt.code === "Key' ~ (key_part | upper) ~ '")') %}
+  {% else %}
+    {% set _ = conds.append('(evt.key === "' ~ key_part ~ '" || evt.code === "' ~ key_part ~ '")') %}
+  {% endif %}
+
+  {% set match_expr = conds | join(' && ') %}
+  <span
+    class="anki-shortcut {{ class_ }}"
+    data-on:{{ evt_name }}__window="if ({{ match_expr }}) { evt.preventDefault(); {{ action }}; }"
+    style="display:none;"
+    aria-hidden="true"
+    data-combination="{{ combo }}"
+    {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}
+  ></span>
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,16 @@
+{# WithState component: Ported from ts/lib/components/WithState.svelte.
+   Upstream WithState provides scoped reactive state to child slot `<slot {state} {updateState} />`.
+   In this stack, reactive state is managed via Datastar (`data-signals`, `data-on:click`, etc.)
+   or via Jinja macro parameters passed down to the caller block.
+   If signal_name is provided, it outputs a container or transparent element binding the signal;
+   it can also pass `initial` state into the caller.
+#}
+{% macro with_state(key=none, initial=false, signal_name=none, as_element="div", class_="") -%}
+{%- if signal_name -%}
+<{{ as_element }}{% if class_ %} class="{{ class_ }}"{% endif %} data-signals="{ {{ signal_name }}: {{ 'true' if initial else 'false' }} }"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {{ caller(initial, signal_name) if caller else '' }}
+</{{ as_element }}>
+{%- else -%}
+{{ caller(initial, none) if caller else '' }}
+{%- endif -%}
+{%- endmacro %}

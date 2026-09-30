@@ -1,0 +1,126 @@
+{# HelpModal component ported from ts/lib/components/HelpModal.svelte #}
+{#
+  HelpModal composes Badge + Icon + Modal + Row + Col + HelpSection + Carousel.
+  Props:
+    title: Modal title
+    url: Optional manual URL link
+    link_label: Optional label for the URL link (defaults to title)
+    start_index: Initial carousel active index (default: 0)
+    help_sections: List of HelpItem objects/dicts:
+      - title: string
+      - help: html/text
+      - url: string
+      - sched: 0 (SM2) or 1 (FSRS)
+      - global: boolean
+    fsrs: boolean (filters sections based on scheduler)
+    id: DOM ID prefix for modal / carousel
+    modal_key: alias for id
+#}
+{% from "components/badge.html.jinja" import badge %}
+{% from "components/icon.html.jinja" import icon %}
+{% from "components/modal.html.jinja" import modal %}
+{% from "components/row.html.jinja" import row %}
+{% from "components/col.html.jinja" import col %}
+{% from "components/help_section.html.jinja" import help_section %}
+
+{% macro help_modal(
+    title="",
+    url="",
+    link_label=none,
+    start_index=0,
+    help_sections=none,
+    fsrs=false,
+    id="",
+    modal_key="",
+    class_="",
+    button_label=""
+) -%}
+{% set mid = id or modal_key or ("helpModal_" ~ range(1000, 999999)|random) %}
+{% set sections = help_sections if help_sections is not none else [] %}
+{% set effective_link_label = link_label if link_label is not none else title %}
+
+<span class="help-modal-trigger{% if class_ %} {{ class_ }}{% endif %}">
+    <button
+        type="button"
+        class="badge"
+        data-bs-toggle="modal"
+        data-bs-target="#{{ mid }}"
+        title="{{ button_label or ('Help: ' ~ title) }}"
+    >
+        <span class="icon-constrain" style="--width-multiplier: 1; --icon-size: 125%;">
+            {{ icon(name="infoCircle") }}
+        </span>
+    </button>
+</span>
+
+{% call modal(id=mid, dialog_class="modal-lg help-modal", class_="help-modal-dialog", keyboard=true) %}
+    <div class="modal-header help-modal-header">
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+            <h1 class="modal-title fs-5" id="{{ mid }}Label">
+                {{ title }}
+            </h1>
+            <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+            ></button>
+        </div>
+        {% if url %}
+            <div class="chapter-redirect mt-2">
+                For more information, see <a href="{{ url }}" title="Open {{ effective_link_label }} in the manual" target="_blank" rel="noopener">{{ effective_link_label }}</a> in the manual.
+            </div>
+        {% endif %}
+    </div>
+    <div class="modal-body" style="--gutter-inline: 1rem;">
+        {% call row() %}
+            {% call col(breakpoint="xs", class_="col-md-4") %}
+                <nav>
+                    <div id="nav" class="help-modal-nav">
+                        <ul>
+                            {% for item in sections %}
+                                {% set is_hidden = (item.sched == 0 if fsrs else item.sched == 1) if (item.sched is defined and item.sched is not none) else false %}
+                                <li{% if is_hidden %} class="d-none"{% endif %}>
+                                    <button
+                                        type="button"
+                                        class="{% if loop.index0 == start_index %}active{% endif %}"
+                                        data-bs-target="#{{ mid }}Carousel"
+                                        data-bs-slide-to="{{ loop.index0 }}"
+                                        onclick="const nav = this.closest('.help-modal-nav'); nav.querySelectorAll('button').forEach(b => b.classList.remove('active')); this.classList.add('active');"
+                                    >
+                                        {{ item.title }}
+                                    </button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </nav>
+            {% endcall %}
+            {% call col(breakpoint="xs", class_="col-md-8") %}
+                <div
+                    id="{{ mid }}Carousel"
+                    class="carousel slide"
+                    data-bs-interval="false"
+                    data-bs-ride="false"
+                >
+                    <div class="carousel-inner">
+                        {% for item in sections %}
+                            {% set is_hidden = (item.sched == 0 if fsrs else item.sched == 1) if (item.sched is defined and item.sched is not none) else false %}
+                            <div
+                                class="carousel-item{% if loop.index0 == start_index %} active{% endif %}{% if is_hidden %} d-none{% endif %}"
+                            >
+                                {{ help_section(item=item) }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endcall %}
+        {% endcall %}
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+            OK
+        </button>
+    </div>
+{% endcall %}
+{%- endmacro %}

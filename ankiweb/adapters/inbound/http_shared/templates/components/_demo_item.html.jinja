@@ -1,0 +1,13 @@
+{% from "components/item.html.jinja" import item %}
+
+<div class="border p-3 d-flex gap-2">
+    {% call item(id="item-normal") %}
+        <span class="badge bg-success p-2">Item 1 (rendered)</span>
+    {% endcall %}
+    {% call item(id="item-detached", detach=true) %}
+        <span class="badge bg-danger p-2">Item 2 (detached / hidden)</span>
+    {% endcall %}
+    {% call item(id="item-normal-2") %}
+        <span class="badge bg-info p-2">Item 3 (rendered)</span>
+    {% endcall %}
+</div>

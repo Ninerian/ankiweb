@@ -1,0 +1,285 @@
+{# SpinBox component ported from ts/lib/components/SpinBox.svelte #}
+{% from "components/icon.html.jinja" import icon %}
+{% from "components/icon_constrain.html.jinja" import icon_constrain %}
+
+{% macro spin_box(
+    value=1,
+    min=1,
+    max=9999,
+    step=1,
+    percentage=false,
+    signal=none,
+    id=none,
+    disabled=false,
+    class_=""
+) -%}
+{%- set mult = 100 if percentage else 1 -%}
+{%- set min_disp = min * mult -%}
+{%- set max_disp = max * mult -%}
+{%- set step_disp = step * mult -%}
+{%- set val_disp = value * mult -%}
+{%- set sig_name = (signal | replace('$', '', 1)) if signal else none -%}
+{%- set spin_id = id or ('spin-box-' ~ range(10000, 99999)|random) -%}
+<div
+    class="spin-box{% if class_ %} {{ class_ }}{% endif %}"
+    id="{{ spin_id }}"
+    tabindex="-1"
+    data-min="{{ min }}"
+    data-max="{{ max }}"
+    data-step="{{ step }}"
+    data-mult="{{ mult }}"
+    data-percentage="{{ 'true' if percentage else 'false' }}"
+    {% if sig_name %}
+    data-signal-name="{{ sig_name }}"
+    {% endif %}
+    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+>
+    <input
+        type="number"
+        pattern="[0-9]*"
+        inputmode="numeric"
+        min="{{ min_disp }}"
+        max="{{ max_disp }}"
+        step="{{ step_disp }}"
+        value="{{ val_disp }}"
+        {% if disabled %}disabled{% endif %}
+        {% if percentage %}style="padding-left: 0.5em;"{% endif %}
+        {% if sig_name %}
+        data-bind="{{ sig_name }}"
+        {% endif %}
+    />
+    {%- if percentage -%}
+    <span class="suffix" aria-hidden="true">
+        <span class="invisible">{{ val_disp }}</span>%
+    </span>
+    {%- endif -%}
+    <div
+        class="spinner decrement"
+        tabindex="-1"
+        title="Decrement value"
+        role="button"
+        aria-label="Decrement value"
+    >
+        {% call icon_constrain(icon_size=100) %}
+            {{ icon(name="chevronDown") }}
+        {% endcall %}
+    </div>
+    <div
+        class="spinner increment"
+        tabindex="-1"
+        title="Increment value"
+        role="button"
+        aria-label="Increment value"
+    >
+        {% call icon_constrain(icon_size=100) %}
+            {{ icon(name="chevronUp") }}
+        {% endcall %}
+    </div>
+    <script>
+    (() => {
+        const root = document.getElementById('{{ spin_id }}');
+        if (!root || root._spinBoxInitialized) return;
+        root._spinBoxInitialized = true;
+
+        const input = root.querySelector('input[type="number"]');
+        const decBtn = root.querySelector('.spinner.decrement');
+        const incBtn = root.querySelector('.spinner.increment');
+        const invisibleSpan = root.querySelector('.suffix .invisible');
+
+        const min = parseFloat(root.getAttribute('data-min') || '1');
+        const max = parseFloat(root.getAttribute('data-max') || '9999');
+        const step = parseFloat(root.getAttribute('data-step') || '1');
+        const mult = parseFloat(root.getAttribute('data-mult') || '1');
+        const percentage = root.getAttribute('data-percentage') === 'true';
+        const signalName = root.getAttribute('data-signal-name');
+
+        let rawVal = parseFloat(input.value);
+        let curValue = isNaN(rawVal) ? min : (rawVal / mult);
+        let focused = false;
+        let pressed = false;
+        let pressTimer = null;
+        let repeatTimer = null;
+        let accelTimer = null;
+        let curInterval = 128;
+
+        function decimalPlaces() {
+            if (Math.floor(step) === step) return 0;
+            const parts = step.toString().split('.');
+            const places = parts[1] ? parts[1].length : 0;
+            return Math.max(0, percentage ? places - 2 : places);
+        }
+
+        function formatDisplay(val) {
+            return (val * mult).toFixed(decimalPlaces());
+        }
+
+        function clamp(val) {
+            if (isNaN(val)) return curValue;
+            return Math.min(max, Math.max(min, val));
+        }
+
+        function syncUI() {
+            const formatted = formatDisplay(curValue);
+            if (input && document.activeElement !== input) {
+                input.value = formatted;
+            }
+            if (invisibleSpan) {
+                invisibleSpan.textContent = formatted;
+            }
+            if (decBtn) {
+                if (curValue > min) {
+                    decBtn.classList.add('active');
+                } else {
+                    decBtn.classList.remove('active');
+                }
+            }
+            if (incBtn) {
+                if (curValue < max) {
+                    incBtn.classList.add('active');
+                } else {
+                    incBtn.classList.remove('active');
+                }
+            }
+        }
+
+        function syncSignal() {
+            if (!signalName) return;
+            try {
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch (e) {}
+        }
+
+        function setValue(val) {
+            if (isNaN(val)) return;
+            curValue = clamp(val);
+            input.value = formatDisplay(curValue);
+            syncUI();
+            syncSignal();
+        }
+
+        function stepBy(direction) {
+            setValue(curValue + direction * step);
+        }
+
+        function clampFromInput() {
+            const parsed = parseFloat(input.value);
+            if (isNaN(parsed)) {
+                input.value = formatDisplay(curValue);
+            } else {
+                setValue(parsed / mult);
+                input.value = formatDisplay(curValue);
+            }
+            if (invisibleSpan) {
+                invisibleSpan.textContent = input.value;
+            }
+        }
+
+        input.addEventListener('focus', () => { focused = true; });
+        input.addEventListener('blur', () => {
+            focused = false;
+            clampFromInput();
+        });
+        input.addEventListener('input', () => {
+            if (invisibleSpan) invisibleSpan.textContent = input.value;
+        });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                stepBy(1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                stepBy(-1);
+            }
+        });
+
+        root.addEventListener('wheel', (e) => {
+            if (focused) {
+                e.preventDefault();
+                stepBy(e.deltaY < 0 ? 1 : -1);
+            }
+        }, { passive: false });
+
+        const progression = [1500, 1250, 1000, 750, 500, 250];
+
+        function startLongPress(dir) {
+            stopLongPress();
+            pressed = true;
+            curInterval = 128;
+
+            const tick = () => {
+                if (!pressed) return;
+                stepBy(dir);
+                repeatTimer = setTimeout(tick, curInterval);
+            };
+
+            pressTimer = setTimeout(tick, 250);
+
+            let idx = 0;
+            const stepAccel = () => {
+                if (!pressed || idx >= progression.length) return;
+                accelTimer = setTimeout(() => {
+                    if (pressed) {
+                        curInterval = Math.max(16, curInterval / 2);
+                        idx++;
+                        stepAccel();
+                    }
+                }, progression[idx]);
+            };
+            stepAccel();
+        }
+
+        function stopLongPress() {
+            pressed = false;
+            clearTimeout(pressTimer);
+            clearTimeout(repeatTimer);
+            clearTimeout(accelTimer);
+            pressTimer = null;
+            repeatTimer = null;
+            accelTimer = null;
+            syncUI();
+        }
+
+        if (decBtn) {
+            decBtn.addEventListener('click', () => {
+                input.focus();
+                if (curValue > min) {
+                    stepBy(-1);
+                }
+            });
+            decBtn.addEventListener('mousedown', (e) => {
+                if (e.button === 0 && curValue > min) startLongPress(-1);
+            });
+            decBtn.addEventListener('mouseup', stopLongPress);
+            decBtn.addEventListener('mouseleave', stopLongPress);
+        }
+
+        if (incBtn) {
+            incBtn.addEventListener('click', () => {
+                input.focus();
+                if (curValue < max) {
+                    stepBy(1);
+                }
+            });
+            incBtn.addEventListener('mousedown', (e) => {
+                if (e.button === 0 && curValue < max) startLongPress(1);
+            });
+            incBtn.addEventListener('mouseup', stopLongPress);
+            incBtn.addEventListener('mouseleave', stopLongPress);
+        }
+
+        root._spinBox = {
+            getValue: () => curValue,
+            setValue: (v) => setValue(v),
+            stepBy: (d) => stepBy(d),
+            clampFromInput: () => clampFromInput(),
+            input: input,
+            decBtn: decBtn,
+            incBtn: incBtn
+        };
+
+        syncUI();
+    })();
+    </script>
+</div>
+{%- endmacro %}

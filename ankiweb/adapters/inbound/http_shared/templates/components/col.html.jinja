@@ -1,0 +1,5 @@
+{% macro col(breakpoint="xs", class_="") -%}
+<div class="col{% if class_ %} {{ class_ }}{% endif %}{% if breakpoint == 'xs' %} col-xs{% elif breakpoint == 'sm' %} col-sm{% elif breakpoint == 'md' %} col-md{% elif breakpoint == 'lg' %} col-lg{% elif breakpoint == 'xl' %} col-xl{% elif breakpoint == 'xxl' %} col-xxl{% endif %}"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {{ caller() if caller else '' }}
+</div>
+{%- endmacro %}

@@ -1,0 +1,37 @@
+{# DynamicallySlottable component: Ported from ts/lib/components/DynamicallySlottable.svelte.
+   In upstream Anki (Svelte):
+   DynamicallySlottable is a wrapper (<div class="dynamically-slottable" style="display: contents;">)
+   that mounts default slot children, and allows dynamic items to be injected, appended, reordered,
+   or hidden/shown (detached) via slotHostContext.
+   In Jinja + Datastar:
+   - Renders caller slot content inside <div class="dynamically-slottable" style="display: contents;">
+   - Optional `items` list (or caller block) can be rendered.
+   - If slot_host macro is provided and items is a list of dicts/callables, it renders each item wrapped in the slot_host.
+   - Supports ordering/detach semantics compatible with Item and ButtonGroupItem.
+#}
+{% macro dynamically_slottable(items=none, slot_host=none, class_="") -%}
+<div class="dynamically-slottable{% if class_ %} {{ class_ }}{% endif %}" style="display: contents;"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {%- if caller is defined and caller -%}
+        {{ caller() }}
+    {%- endif -%}
+    {%- if items and slot_host -%}
+        {%- for itm in items -%}
+            {%- set itm_id = itm.get('id') if itm is mapping else none -%}
+            {%- set itm_detach = itm.get('detach', false) if itm is mapping else false -%}
+            {%- set itm_props = itm.get('props', {}) if itm is mapping else {} -%}
+            {%- set itm_content = itm.get('content', '') if itm is mapping else (itm if itm is string else '') -%}
+            {%- call slot_host(id=itm_id, detach=itm_detach, **itm_props) -%}
+                {{ itm_content|safe }}
+            {%- endcall -%}
+        {%- endfor -%}
+    {%- elif items -%}
+        {%- for itm in items -%}
+            {%- if itm is mapping and not itm.get('detach', false) -%}
+                {{ itm.get('content', '')|safe }}
+            {%- elif itm is string -%}
+                {{ itm|safe }}
+            {%- endif -%}
+        {%- endfor -%}
+    {%- endif -%}
+</div>
+{%- endmacro %}

@@ -1,0 +1,45 @@
+{# WithContext component: Ported from ts/lib/components/WithContext.svelte.
+   Upstream WithContext is Svelte Dependency Injection (no DOM element itself).
+   It retrieves a store or value by key from Svelte component context:
+     `const store = getContext<Readable<T>>(key);`
+     `<slot context={$store} />`
+
+   In this Jinja + Datastar architecture:
+   - Jinja has lexical and macro parameter scoping: `context_value` can be passed to child templates via `caller(context_value)`.
+   - Datastar manages client reactive state: if `signal_name` or `signals` is provided, a wrapper element (or custom tag)
+     sets the Datastar signal scope via `data-signals`.
+   - If no wrapper is desired (`as_element=none`), it acts as a pure template-level context injector without emitting any DOM.
+   
+   Props:
+   - key: contextual identifier / key name
+   - context_value: static value or object injected into the caller slot
+   - signal_name: optional Datastar signal name to initialize/bind
+   - signal_value: initial value for the Datastar signal (default: none)
+   - signals: optional dictionary/JSON string of signals for `data-signals`
+   - as_element: tag name for wrapper when reactive signals are used (default: "div"; set to none for zero DOM wrapper)
+   - class_: additional CSS classes on wrapper element
+#}
+{% macro with_context(key="", context_value=none, signal_name=none, signal_value=none, signals=none, as_element=none, class_="") -%}
+{%- if signals or signal_name -%}
+    {%- set tag = as_element | default("div", true) -%}
+    <{{ tag }}{% if class_ %} class="{{ class_ }}"{% endif %}
+        {%- if signals %}
+            {%- if signals is mapping %}
+                data-signals='{{ signals | tojson }}'
+            {%- else %}
+                data-signals='{{ signals }}'
+            {%- endif -%}
+        {%- elif signal_name %}
+            data-signals='{ {{ signal_name }}: {{ signal_value | tojson | safe if signal_value is not none else "null" }} }'
+        {%- endif %}
+        {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+        {{ caller(context_value, signal_name) if caller else '' }}
+    </{{ tag }}>
+{%- elif as_element -%}
+    <{{ as_element }}{% if class_ %} class="{{ class_ }}"{% endif %}{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+        {{ caller(context_value, none) if caller else '' }}
+    </{{ as_element }}>
+{%- else -%}
+    {{ caller(context_value, none) if caller else '' }}
+{%- endif -%}
+{%- endmacro %}

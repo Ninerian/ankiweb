@@ -1,0 +1,39 @@
+{% from "components/with_context.html.jinja" import with_context %}
+
+<div class="d-flex flex-column gap-4">
+    <div class="card p-3">
+        <h5 class="card-title">1. Pure Jinja Context (Zero DOM Wrapper)</h5>
+        <p class="text-muted small">Passes context value directly to slot without creating an extra DOM element:</p>
+        {% call(ctx, sig) with_context(key="deck-settings", context_value={"deckName": "Default Deck", "maxReviews": 20}) %}
+            <div class="alert alert-info mb-0">
+                Injected context: Deck <strong>{{ ctx.deckName }}</strong> (limit: {{ ctx.maxReviews }})
+            </div>
+        {% endcall %}
+    </div>
+
+    <div class="card p-3">
+        <h5 class="card-title">2. Reactive Datastar Signal Context</h5>
+        <p class="text-muted small">Injects a scoped Datastar signal (e.g. active tab or selection state):</p>
+        {% call(ctx, sig) with_context(key="tab-selection", signal_name="demoContextTab", signal_value="summary", as_element="div", class_="border p-3 rounded") %}
+            <div class="d-flex gap-2 mb-3">
+                <button type="button" class="btn btn-sm btn-outline-primary"
+                        id="btn-context-tab-summary"
+                        data-on:click="$demoContextTab = 'summary'">
+                    Select Summary
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary"
+                        id="btn-context-tab-details"
+                        data-on:click="$demoContextTab = 'details'">
+                    Select Details
+                </button>
+            </div>
+            <div>
+                Current Context Signal: <code data-text="$demoContextTab">summary</code>
+            </div>
+            <div class="mt-2">
+                <span class="badge bg-primary" data-show="$demoContextTab === 'summary'">Summary Panel Visible</span>
+                <span class="badge bg-success" data-show="$demoContextTab === 'details'">Details Panel Visible</span>
+            </div>
+        {% endcall %}
+    </div>
+</div>

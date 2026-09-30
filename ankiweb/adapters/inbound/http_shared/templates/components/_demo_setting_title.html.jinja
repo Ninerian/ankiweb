@@ -1,0 +1,16 @@
+{% from "components/setting_title.html.jinja" import setting_title %}
+
+<div class="d-flex flex-column gap-2">
+    <div>
+        {% call setting_title() %}
+            <span class="fw-bold">Maximum reviews/day</span>
+        {% endcall %}
+        <small class="text-secondary d-block">Hover over the title above to see the dotted help underline.</small>
+    </div>
+
+    <div>
+        {% call setting_title(title="Click to view help documentation") %}
+            <span class="fw-bold">New cards/day</span>
+        {% endcall %}
+    </div>
+</div>

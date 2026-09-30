@@ -1,0 +1,82 @@
+{% from "components/virtual_table.html.jinja" import virtual_table %}
+
+<div class="d-flex flex-column gap-4" id="demo-virtual-table">
+    <div class="card p-3">
+        <h5 class="card-title">1. VirtualTable (100,000 Rows)</h5>
+        <p class="text-muted">
+            High performance virtualized table rendering only visible rows for 100,000 items.
+            Uses top and bottom spacer rows with exact height calculations matching upstream VirtualTable.svelte.
+        </p>
+
+        <div class="d-flex gap-2 align-items-center mb-3">
+            <button class="btn btn-sm btn-outline-primary" id="vt-jump-top">Jump to Top (Row 0)</button>
+            <button class="btn btn-sm btn-outline-primary" id="vt-jump-middle">Jump to Middle (Row 50,000)</button>
+            <button class="btn btn-sm btn-outline-primary" id="vt-jump-bottom">Jump to Bottom (Row 99,999)</button>
+            <span class="ms-3 text-muted small" id="vt-status">Rendered rows: <span id="vt-slice-count">0</span> | Current slice: <span id="vt-slice-range">0 - 0</span></span>
+        </div>
+
+        <div style="height: 350px; border: 1px solid var(--border-subtle, #dee2e6); border-radius: 4px; overflow: hidden;">
+            {{ virtual_table(
+                id="demo-vt-100k",
+                items_count=100000,
+                item_height=32,
+                headers_html="<tr><th style='width: 120px;'>Index</th><th>Card Front</th><th>Due Date</th><th>Interval</th></tr>"
+            ) }}
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    function setupDemoVT() {
+        const vtEl = document.getElementById('demo-vt-100k');
+        if (!vtEl || !window.AnkiwebTables) {
+            setTimeout(setupDemoVT, 50);
+            return;
+        }
+
+        const vt = vtEl._virtualTableInstance || new window.AnkiwebTables.VirtualTable(vtEl, {
+            itemsCount: 100000,
+            itemHeight: 32,
+            renderRow: (index) => {
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-row-index', index.toString());
+                tr.innerHTML = `<td><strong>#${index}</strong></td><td>Vocabulary item #${index}</td><td>In ${index % 30} days</td><td>${(index % 50) + 1} days</td>`;
+                return tr;
+            },
+            onSliceChange: (start, end) => {
+                const rangeEl = document.getElementById('vt-slice-range');
+                const countEl = document.getElementById('vt-slice-count');
+                if (rangeEl) rangeEl.textContent = `${start} - ${end}`;
+                if (countEl) countEl.textContent = `${end - start}`;
+            }
+        });
+
+        vt.renderRow = (index) => {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-row-index', index.toString());
+            tr.innerHTML = `<td><strong>#${index}</strong></td><td>Vocabulary item #${index}</td><td>In ${index % 30} days</td><td>${(index % 50) + 1} days</td>`;
+            return tr;
+        };
+
+        vt.onSliceChange = (start, end) => {
+            const rangeEl = document.getElementById('vt-slice-range');
+            const countEl = document.getElementById('vt-slice-count');
+            if (rangeEl) rangeEl.textContent = `${start} - ${end}`;
+            if (countEl) countEl.textContent = `${end - start}`;
+        };
+
+        vt.update();
+
+        document.getElementById('vt-jump-top')?.addEventListener('click', () => vt.scrollToIndex(0));
+        document.getElementById('vt-jump-middle')?.addEventListener('click', () => vt.scrollToIndex(50000));
+        document.getElementById('vt-jump-bottom')?.addEventListener('click', () => vt.scrollToIndex(99999));
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupDemoVT);
+    } else {
+        setupDemoVT();
+    }
+})();
+</script>

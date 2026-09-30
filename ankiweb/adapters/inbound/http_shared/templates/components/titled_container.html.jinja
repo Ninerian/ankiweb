@@ -1,0 +1,36 @@
+{# TitledContainer component: Ported from ts/lib/components/TitledContainer.svelte.
+   Upstream structure:
+   <div id class="container {className}" class:light class:dark class:rtl style="--gutter-block: 2px; --container-margin: 0">
+       <div class="position-relative">
+           <h1>{title}</h1>
+           <div class="help-badge position-absolute" class:rtl>
+               <slot name="tooltip" />
+           </div>
+       </div>
+       <slot />
+   </div>
+   
+   Props:
+   - title: header title string (required)
+   - id: optional element id
+   - class_: additional CSS classes
+   - is_dark: force dark elevation shadow (default: false; auto-inherits dark theme via CSS)
+   - rtl: right-to-left layout flag (default: false)
+   - tooltip: optional tooltip content or HTML string (or pass caller for body)
+#}
+{% macro titled_container(title="", id=none, class_="", is_dark=false, rtl=false, tooltip=none) -%}
+<div{% if id %} id="{{ id }}"{% endif %}
+    class="container titled-container{% if is_dark %} dark{% else %} light{% endif %}{% if rtl %} rtl{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
+    style="--gutter-block: 2px; --container-margin: 0;"
+    {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    <div class="position-relative">
+        <h1>{{ title }}</h1>
+        <div class="help-badge position-absolute{% if rtl %} rtl{% endif %}">
+            {%- if tooltip is not none -%}
+                {{ tooltip | safe }}
+            {%- endif -%}
+        </div>
+    </div>
+    {{ caller() if caller else '' }}
+</div>
+{%- endmacro %}

@@ -1,0 +1,15 @@
+{% from "components/col.html.jinja" import col %}
+
+<div class="border p-2 mb-2" style="--cols: 3; --col-size: 1;">
+    <p class="text-muted small mb-1">Col breakpoint="xs":</p>
+    {% call col(breakpoint="xs", class_="bg-info bg-opacity-25 p-2") %}
+        <span>Col XS (1/3)</span>
+    {% endcall %}
+</div>
+
+<div class="border p-2 mb-2" style="--cols: 2; --col-size: 1;">
+    <p class="text-muted small mb-1">Col breakpoint="md":</p>
+    {% call col(breakpoint="md", class_="bg-warning bg-opacity-25 p-2") %}
+        <span>Col MD (1/2 at md+)</span>
+    {% endcall %}
+</div>

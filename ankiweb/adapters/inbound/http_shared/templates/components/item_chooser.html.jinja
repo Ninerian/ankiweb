@@ -1,0 +1,253 @@
+{# ItemChooser component ported from ts/lib/components/ItemChooser.svelte #}
+{#
+  Props:
+    title: Modal title string (e.g. "Choose Deck", "Choose Note Type")
+    items: List of dicts/objects: [{"id": 1, "name": "Basic"}, ...]
+    selected_id: Initially selected item ID (default: items[0].id if items else None)
+    icon: Icon name string or icon_data mapping (default: "mdiBookOutline")
+    key_combination: Shortcut combo (default: "Control+D")
+    tooltip: Tooltip for trigger button
+    on_change: Datastar expression or JS callback to run on selection change (e.g. "$selected_deck = evt.detail.id")
+    id: Unique ID prefix for modal and signals (default: random)
+    class_: Extra class on trigger button
+    modal_dialog_class: Extra class on modal-dialog (default: "modal-lg")
+#}
+{% from "components/label_button.html.jinja" import label_button %}
+{% from "components/shortcut.html.jinja" import shortcut %}
+{% from "components/modal.html.jinja" import modal %}
+{% from "components/icon_constrain.html.jinja" import icon_constrain %}
+{% from "components/icon.html.jinja" import icon as render_icon %}
+
+{% macro item_chooser(
+    title="Choose Item",
+    items=[],
+    selected_id=none,
+    icon="mdiBookOutline",
+    key_combination="",
+    tooltip="",
+    on_change="",
+    id="",
+    class_="",
+    modal_dialog_class="modal-lg"
+) -%}
+{% set cid = id or ("chooser_" ~ range(1000, 999999)|random) %}
+{% set ns = namespace(item=none) %}
+{% set initial_id = selected_id if selected_id is not none else (items[0].id if (items and items|length > 0) else "") %}
+{% for it in items %}
+    {% if it.id|string == initial_id|string and ns.item is none %}
+        {% set ns.item = it %}
+    {% endif %}
+{% endfor %}
+{% if ns.item is none and items and items|length > 0 %}
+    {% set ns.item = items[0] %}
+    {% set initial_id = items[0].id %}
+{% endif %}
+{% set initial_name = ns.item.name if ns.item else "…" %}
+
+<div class="item-chooser-container d-inline-block w-100"
+     id="{{ cid }}_container"
+     data-signals="{{ ({
+         cid ~ "_selected_id": initial_id,
+         cid ~ "_selected_name": initial_name,
+         cid ~ "_search": ""
+     }|tojson).__str__() }}">
+    <button
+        type="button"
+        class="label-button chooser-button{% if class_ %} {{ class_ }}{% endif %}"
+        {% if tooltip %}title="{{ tooltip }}"{% endif %}
+        tabindex="0"
+        id="{{ cid }}_btn"
+        data-bs-toggle="modal"
+        data-bs-target="#{{ cid }}_modal"
+    >
+        <span class="chooser-label-text">{{ initial_name }}</span>
+    </button>
+
+    {# Global window shortcut if configured #}
+    {% if key_combination %}
+        {{ shortcut(
+            combination=key_combination,
+            action="const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('" ~ cid ~ "_modal')); m.toggle();"
+        ) }}
+    {% endif %}
+
+    {# ItemChooser Modal Dialog #}
+    {% call modal(
+        id=cid ~ "_modal",
+        dialog_class=modal_dialog_class,
+        class_="item-chooser-modal",
+        keyboard=true
+    ) %}
+        <div class="modal-header">
+            {% call icon_constrain(icon_size=90) %}
+                {{ render_icon(name=icon) }}
+            {% endcall %}
+            <h5 class="modal-title" id="{{ cid }}_modalLabel">{{ title }}</h5>
+            <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+            ></button>
+        </div>
+
+        <div class="modal-body"
+             data-on:keydown="
+                if (evt.key === 'ArrowDown') {
+                    evt.preventDefault();
+                    const visible = Array.from(this.querySelectorAll('.item-grid .item-card:not([style*=\'display: none\'])'));
+                    if (visible.length === 0) return;
+                    let cur = visible.findIndex(el => el.classList.contains('active-focus') || el.classList.contains('selected'));
+                    cur = (cur + 1) % visible.length;
+                    visible.forEach(el => el.classList.remove('active-focus'));
+                    visible[cur].classList.add('active-focus');
+                    visible[cur].focus();
+                    visible[cur].scrollIntoView({ block: 'nearest' });
+                } else if (evt.key === 'ArrowUp') {
+                    evt.preventDefault();
+                    const visible = Array.from(this.querySelectorAll('.item-grid .item-card:not([style*=\'display: none\'])'));
+                    if (visible.length === 0) return;
+                    let cur = visible.findIndex(el => el.classList.contains('active-focus') || el.classList.contains('selected'));
+                    cur = (cur - 1 + visible.length) % visible.length;
+                    visible.forEach(el => el.classList.remove('active-focus'));
+                    visible[cur].classList.add('active-focus');
+                    visible[cur].focus();
+                    visible[cur].scrollIntoView({ block: 'nearest' });
+                }
+             ">
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <div class="search-icon">
+                        {% call icon_constrain(icon_size=70) %}
+                            {{ render_icon(name="magnifyIcon") }}
+                        {% endcall %}
+                    </div>
+                    <input
+                        type="text"
+                        class="search-input"
+                        placeholder="Search"
+                        id="{{ cid }}_search_input"
+                        data-bind="{{ cid }}_search"
+                        data-on:keydown="if (evt.key === 'Enter') { evt.preventDefault(); const first = this.closest('.modal-body').querySelector('.item-grid .item-card:not([style*=\'display: none\'])'); if (first) first.click(); }"
+                        onkeydown="
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                const grid = this.closest('.modal-body').querySelector('.item-grid');
+                                const active = grid.querySelector('.item-card.active-focus:not([style*=\'display: none\'])');
+                                if (active) {
+                                    active.click();
+                                } else {
+                                    const first = grid.querySelector('.item-card:not([style*=\'display: none\'])');
+                                    if (first) first.click();
+                                }
+                            }
+                        "
+                        oninput="
+                            const q = this.value.trim().toLowerCase();
+                            const grid = this.closest('.modal-body').querySelector('.item-grid');
+                            const cards = grid.querySelectorAll('.item-card');
+                            cards.forEach(c => {
+                                const name = (c.getAttribute('data-item-name') || '').toLowerCase();
+                                c.style.display = (q === '' || name.includes(q)) ? '' : 'none';
+                            });
+                            const clear = document.getElementById('{{ cid }}_clear_btn');
+                            if (clear) clear.style.display = q === '' ? 'none' : '';
+                        "
+                    />
+                    <button
+                        type="button"
+                        class="clear-search"
+                        id="{{ cid }}_clear_btn"
+                        data-show="${{ cid }}_search !== ''"
+                        onclick="
+                            const inp = document.getElementById('{{ cid }}_search_input');
+                            if (inp) {
+                                inp.value = '';
+                                inp.dispatchEvent(new Event('input', { bubbles: true }));
+                                inp.focus();
+                            }
+                        "
+                        data-on:click="${{ cid }}_search = ''; document.getElementById('{{ cid }}_search_input').focus();"
+                        aria-label="Clear search"
+                        style="display: none;"
+                    >
+                        {% call icon_constrain(icon_size=60) %}
+                            {{ render_icon(name="mdiClose") }}
+                        {% endcall %}
+                    </button>
+                </div>
+            </div>
+
+            <div class="item-grid" id="{{ cid }}_grid">
+                {% for item in items %}
+                {% set item_norm = item.name|lower %}
+                {% set show_code = ("$" ~ cid ~ "_search.trim() === '' || " ~ (item_norm|tojson).__str__() ~ ".includes($" ~ cid ~ "_search.toLowerCase())") %}
+                {% set class_code = ("{selected: $" ~ cid ~ "_selected_id == " ~ (item.id|tojson).__str__() ~ "}") %}
+                {% set click_prefix = ("$" ~ cid ~ "_selected_id = " ~ (item.id|tojson).__str__() ~ "; $" ~ cid ~ "_selected_name = " ~ (item.name|tojson).__str__() ~ "; const m = bootstrap.Modal.getInstance(document.getElementById(\x27" ~ cid ~ "_modal\x27)); if (m) m.hide();") %}
+                {% if on_change %}
+                    {% set click_code = click_prefix ~ " if (evt) evt.detail = { id: " ~ (item.id|tojson).__str__() ~ ", name: " ~ (item.name|tojson).__str__() ~ " }; " ~ on_change ~ ";" %}
+                {% else %}
+                    {% set click_code = click_prefix %}
+                {% endif %}
+                <button
+                    type="button"
+                    class="item-card"
+                    id="{{ cid }}_item_{{ loop.index0 }}"
+                    data-item-id="{{ item.id }}"
+                    data-item-name="{{ item.name|e }}"
+                    data-show="{{ show_code }}"
+                    data-class="{{ class_code }}"
+                    onclick="const container = document.getElementById('{{ cid }}_container'); const btn = document.getElementById('{{ cid }}_btn'); if (btn) { const span = btn.querySelector('.chooser-label-text'); if (span) span.textContent = this.getAttribute('data-item-name'); } container.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected')); this.classList.add('selected'); const m = bootstrap.Modal.getInstance(document.getElementById('{{ cid }}_modal')); if (m) m.hide();"
+                    data-on:click="{{ click_code }}"
+                    aria-label="Select {{ item.name|e }}"
+                >
+                    <h6 class="item-title">{{ item.name }}</h6>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    {% endcall %}
+
+    <script>
+    (() => {
+        const modalEl = document.getElementById('{{ cid }}_modal');
+        if (!modalEl) return;
+        modalEl.addEventListener('show.bs.modal', () => {
+            const input = document.getElementById('{{ cid }}_search_input');
+            if (input) {
+                input.value = '';
+                const grid = modalEl.querySelector('.item-grid');
+                if (grid) {
+                    grid.querySelectorAll('.item-card').forEach(c => c.style.display = '');
+                }
+                const clear = document.getElementById('{{ cid }}_clear_btn');
+                if (clear) clear.style.display = 'none';
+            }
+        });
+        modalEl.addEventListener('shown.bs.modal', () => {
+            const input = document.getElementById('{{ cid }}_search_input');
+            if (input) {
+                input.focus();
+                input.select();
+            }
+            const selected = modalEl.querySelector('.item-card.selected');
+            if (selected) {
+                selected.scrollIntoView({ block: 'start' });
+            }
+        });
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            const input = document.getElementById('{{ cid }}_search_input');
+            if (input) {
+                input.value = '';
+                const grid = modalEl.querySelector('.item-grid');
+                if (grid) {
+                    grid.querySelectorAll('.item-card').forEach(c => c.style.display = '');
+                }
+                const clear = document.getElementById('{{ cid }}_clear_btn');
+                if (clear) clear.style.display = 'none';
+            }
+        });
+    })();
+    </script>
+</div>
+{%- endmacro %}

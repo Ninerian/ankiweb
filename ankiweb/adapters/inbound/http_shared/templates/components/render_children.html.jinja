@@ -1,0 +1,7 @@
+{# RenderChildren component: Ported from ts/lib/components/RenderChildren.svelte.
+   Upstream RenderChildren is a transparent pass-through component `<slot />`.
+   In Jinja templates, it invokes the caller block directly without wrapping DOM.
+#}
+{% macro render_children() -%}
+{{ caller() if caller else '' }}
+{%- endmacro %}

@@ -1,0 +1,36 @@
+{# DeckChooser component ported from ts/lib/components/DeckChooser.svelte #}
+{#
+  Props:
+    decks: List of dicts/objects: [{"id": 1, "name": "Default"}, ...]
+    selected_deck_id: Initially selected deck ID (default: None -> first deck)
+    on_change: Datastar expression or JS callback to run on selection change
+    id: Unique ID prefix (default: "deck_chooser")
+    title: Custom title (default: "Choose Deck")
+    tooltip: Tooltip (default: "Target Deck (Ctrl+D)")
+    key_combination: Shortcut (default: "Control+D")
+    class_: Extra class on chooser button
+#}
+{% from "components/item_chooser.html.jinja" import item_chooser %}
+
+{% macro deck_chooser(
+    decks=[],
+    selected_deck_id=none,
+    on_change="",
+    id="deck_chooser",
+    title="Choose Deck",
+    tooltip="Target Deck (Ctrl+D)",
+    key_combination="Control+D",
+    class_=""
+) -%}
+{{ item_chooser(
+    title=title,
+    items=decks,
+    selected_id=selected_deck_id,
+    icon="mdiBookOutline",
+    key_combination=key_combination,
+    tooltip=tooltip,
+    on_change=on_change,
+    id=id,
+    class_=class_
+) }}
+{%- endmacro %}

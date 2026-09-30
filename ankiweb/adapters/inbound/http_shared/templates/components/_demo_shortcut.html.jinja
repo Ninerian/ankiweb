@@ -1,0 +1,36 @@
+{% from "components/shortcut.html.jinja" import shortcut %}
+
+<div class="card p-3" data-signals="{ shortcutTriggerCount: 0, lastShortcutKey: 'none', helperModalOpen: false }">
+    <h5 class="card-title">Shortcut Demonstrations</h5>
+    <p class="text-muted">Global window keyboard shortcuts with Datastar reactive binders. Press the hotkeys below or test them via automation.</p>
+
+    {# 1. Control+Enter (or Cmd+Enter on Mac) #}
+    {{ shortcut(combination="Control+Enter", action="$shortcutTriggerCount++; $lastShortcutKey = 'Control+Enter'") }}
+
+    {# 2. Single key 'j' #}
+    {{ shortcut(combination="j", action="$shortcutTriggerCount++; $lastShortcutKey = 'j'") }}
+
+    {# 3. Single key 'k' #}
+    {{ shortcut(combination="k", action="$shortcutTriggerCount++; $lastShortcutKey = 'k'") }}
+
+    {# 4. Escape #}
+    {{ shortcut(combination="Escape", action="$lastShortcutKey = 'Escape'; $helperModalOpen = false") }}
+
+    <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
+        <div class="border rounded p-2 bg-light">
+            <span class="fw-bold">Total triggers: </span>
+            <span id="demo-shortcut-count" class="badge bg-primary" data-text="$shortcutTriggerCount">0</span>
+        </div>
+        <div class="border rounded p-2 bg-light">
+            <span class="fw-bold">Last key combination: </span>
+            <span id="demo-shortcut-last" class="badge bg-secondary" data-text="$lastShortcutKey">none</span>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <span class="badge bg-info text-dark me-2">Ctrl+Enter</span>
+        <span class="badge bg-info text-dark me-2">j</span>
+        <span class="badge bg-info text-dark me-2">k</span>
+        <span class="badge bg-info text-dark me-2">Escape</span>
+    </div>
+</div>

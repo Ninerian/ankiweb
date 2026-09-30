@@ -1,0 +1,36 @@
+{% from "components/with_overlay.html.jinja" import with_overlay, overlay %}
+
+<div class="border p-3 mb-4 rounded">
+    <h5>1. Interactive Overlay with Datastar Signal</h5>
+    <p class="text-muted">Toggled via Datastar signal, closes on outside click or Escape key.</p>
+
+    <div class="d-inline-block position-relative" data-signals="{ demoOverlayOpen: false }" data-on:keydown__window="evt.key === 'Escape' && ($demoOverlayOpen = false)">
+        <div class="overlay-reference">
+            <button type="button" class="btn btn-outline-info" id="demoOverlayToggleBtn" data-on:click="$demoOverlayOpen = !$demoOverlayOpen">
+                Toggle Datastar Overlay
+            </button>
+        </div>
+
+        <div class="overlay card p-3 shadow-sm" data-placement="bottom" data-show="$demoOverlayOpen" data-on:click__window="!el.contains(evt.target) && !el.previousElementSibling.contains(evt.target) && ($demoOverlayOpen = false)">
+            <div id="demoOverlayContent">
+                <h6>Overlay Content</h6>
+                <p class="mb-1">Click outside this box or press Escape to close.</p>
+                <button type="button" class="btn btn-sm btn-danger mt-2" data-on:click="$demoOverlayOpen = false" id="demoOverlayCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="border p-3 rounded">
+    <h5>2. Static Visible Overlay (Placement: right)</h5>
+    <div class="d-inline-block position-relative">
+        <div class="overlay-reference">
+            <button type="button" class="btn btn-secondary disabled" id="demoOverlayStaticAnchor">
+                Anchor Element
+            </button>
+        </div>
+        <div class="overlay show card p-2 bg-light border" data-placement="right">
+            <span class="small text-muted" id="demoOverlayStaticText">Always visible overlay positioned beside anchor</span>
+        </div>
+    </div>
+</div>

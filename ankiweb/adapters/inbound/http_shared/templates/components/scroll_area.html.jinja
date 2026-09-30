@@ -1,0 +1,58 @@
+{# ScrollArea component ported from ts/lib/components/ScrollArea.svelte #}
+
+{% macro scroll_area(
+    scroll_x=false,
+    scroll_y=true,
+    class_="",
+    id=none,
+    height="100%",
+    dir="ltr",
+    load_bundle=true
+) -%}
+{%- set sa_id = id or ('scroll-area-' ~ range(10000, 99999)|random) -%}
+<div class="scroll-area-relative" style="--height: {{ height }};">
+    <div
+        class="scroll-area-wrapper{% if class_ %} {{ class_ }}{% endif %}"
+        id="{{ sa_id }}"
+        data-scroll-area-wrapper
+        data-scroll-x="{{ 'true' if scroll_x else 'false' }}"
+        data-scroll-y="{{ 'true' if scroll_y else 'false' }}"
+        dir="{{ dir }}"
+        {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
+    >
+        <div
+            class="scroll-area measuring{% if scroll_x %} scroll-x{% endif %}{% if scroll_y %} scroll-y{% endif %}"
+        >
+            <div class="d-flex flex-column flex-grow-1">
+                <div class="scroll-edge" data-edge="top"></div>
+                <div class="d-flex flex-row flex-grow-1">
+                    <div class="scroll-edge" data-edge="left"></div>
+                    <div class="scroll-content flex-grow-1">
+                        {% if caller is defined %}
+                            {{ caller() }}
+                        {% endif %}
+                    </div>
+                    <div class="scroll-edge" data-edge="right"></div>
+                </div>
+                <div class="scroll-edge" data-edge="bottom"></div>
+            </div>
+        </div>
+
+        <div class="scroll-shadow top-0" style="display: none;"></div>
+        <div class="scroll-shadow bottom-0" style="display: none;"></div>
+        <div class="scroll-shadow start-0" style="display: none;"></div>
+        <div class="scroll-shadow end-0" style="display: none;"></div>
+    </div>
+</div>
+
+{%- if load_bundle -%}
+<script>
+if (!window.AnkiwebTables && !document.querySelector('script[data-ankiweb-bundle="tables"]')) {
+    const s = document.createElement('script');
+    s.src = '/shell/static/bundles/tables.js';
+    s.setAttribute('data-ankiweb-bundle', 'tables');
+    document.head.appendChild(s);
+}
+</script>
+{%- endif -%}
+{%- endmacro %}

@@ -1,0 +1,65 @@
+{% macro revert_button(
+    value=none,
+    default_value=none,
+    signal_value=none,
+    signal_default=none,
+    tooltip="Restore default value",
+    class_=""
+) %}
+{#
+  RevertButton: reset-to-default button.
+  Upstream uses WithFloating + Popover + Badge + revertIcon (arrow-counterclockwise).
+  In Datastar:
+  - modified: computed whether value != defaultValue (or $signal_value != default).
+  - Popover opens on click, offering a confirmation item to revert.
+#}
+{% set is_static_modified = (value != default_value) if (value is not none and default_value is not none) else false %}
+{# Datastar expressions need the `$` prefix; accept a bare signal name too. #}
+{% set sv = (signal_value if signal_value.startswith("$") else "$" ~ signal_value) if signal_value else signal_value %}
+<div
+    class="revert-button-container position-relative {{ class_ }}{% if not signal_value and not is_static_modified %} hide{% endif %}"
+    {% if signal_value %}
+        {% if signal_default is not none %}
+        data-class="{'hide': String({{ sv }}) === String({{ signal_default }})}"
+        {% else %}
+        data-class="{'hide': String({{ sv }}) === '{{ default_value }}'}"
+        {% endif %}
+    {% endif %}
+    data-on:click__window="!el.contains(evt.target) && el.classList.remove('open')"
+    {% for k, v in kwargs.items() %}
+    {{ k }}="{{ v }}"
+    {% endfor %}
+>
+    <button
+        type="button"
+        class="badge revert-btn"
+        title="{{ tooltip }}"
+        tabindex="-1"
+        data-on:click="el.parentElement.classList.toggle('open')"
+        aria-label="{{ tooltip }}"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+        </svg>
+    </button>
+
+    <div
+        class="revert-popover-menu"
+    >
+        <button
+            type="button"
+            class="dropdown-item select-option-item"
+            {% if signal_value %}
+                {% if signal_default is not none %}
+                data-on:click="{{ sv }} = {{ signal_default }}; el.closest('.revert-button-container').classList.remove('open')"
+                {% else %}
+                data-on:click="{{ sv }} = '{{ default_value }}'; el.closest('.revert-button-container').classList.remove('open')"
+                {% endif %}
+            {% endif %}
+        >
+            {{ tooltip }}
+        </button>
+    </div>
+</div>
+{% endmacro %}

@@ -1,0 +1,109 @@
+{% from "components/with_floating.html.jinja" import with_floating %}
+{% from "components/popover.html.jinja" import popover %}
+
+<div class="d-flex flex-column gap-4" data-signals="{ demoFltOpen1: false, demoFltOpen2: false, demoFltOpen3: false }">
+    <div class="card p-3">
+        <h5 class="card-title">1. WithFloating (Basic Bottom with Arrow & Outside Click)</h5>
+        <p class="text-muted small">
+            Click the reference button to open the floating popover. Closes on click outside or pressing Escape.
+            Automatically positions below the reference element with an arrow pointing upward.
+        </p>
+        <div class="d-inline-block">
+            {% set basic_ref %}
+                <button
+                    type="button"
+                    class="btn btn-outline-primary"
+                    id="demoFltBasicBtn"
+                    data-on:click="$demoFltOpen1 = !$demoFltOpen1"
+                >
+                    Toggle Floating Element
+                </button>
+            {% endset %}
+            {% set basic_flt %}
+                {% call popover(id="demoFltBasicPopover", min_height=60, popover_width="220px") %}
+                    <div class="p-2">
+                        <strong>Floating Content</strong>
+                        <p class="small mb-0 text-muted">Positioned via WithFloating with automatic flip and shift.</p>
+                    </div>
+                {% endcall %}
+            {% endset %}
+            {{ with_floating(
+                reference=basic_ref,
+                floating=basic_flt,
+                placement="bottom",
+                offset=8,
+                shift=20,
+                signal_name="demoFltOpen1",
+                caller_provides_signals=true,
+                id="demo_wf_basic"
+            ) }}
+        </div>
+    </div>
+
+    <div class="card p-3">
+        <h5 class="card-title">2. Edge Placement & Viewport Flip Test</h5>
+        <p class="text-muted small">
+            Preferred placement is "bottom", but when near the bottom of the viewport or container, it automatically flips to "top".
+        </p>
+        <div class="d-flex justify-content-between">
+            <div>
+                {% set flip_ref %}
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        id="demoFltFlipBtn"
+                        data-on:click="$demoFltOpen2 = !$demoFltOpen2"
+                    >
+                        Test Flip Placement
+                    </button>
+                {% endset %}
+                {% set flip_flt %}
+                    {% call popover(id="demoFltFlipPopover", popover_width="200px") %}
+                        <div class="p-2">
+                            <div class="fw-bold">Flipped Element</div>
+                            <span class="small text-muted">Adapts based on available viewport space.</span>
+                        </div>
+                    {% endcall %}
+                {% endset %}
+                {{ with_floating(
+                    reference=flip_ref,
+                    floating=flip_flt,
+                    placement="bottom",
+                    offset=6,
+                    signal_name="demoFltOpen2",
+                    caller_provides_signals=true,
+                    id="demo_wf_flip"
+                ) }}
+            </div>
+
+            <div>
+                {% set right_ref %}
+                    <button
+                        type="button"
+                        class="btn btn-outline-info"
+                        id="demoFltRightBtn"
+                        data-on:click="$demoFltOpen3 = !$demoFltOpen3"
+                    >
+                        Right Placement
+                    </button>
+                {% endset %}
+                {% set right_flt %}
+                    {% call popover(id="demoFltRightPopover", popover_width="180px") %}
+                        <div class="p-2">
+                            <span class="small">Right-side floating popover</span>
+                        </div>
+                    {% endcall %}
+                {% endset %}
+                {{ with_floating(
+                    reference=right_ref,
+                    floating=right_flt,
+                    placement="right",
+                    offset=10,
+                    signal_name="demoFltOpen3",
+                    caller_provides_signals=true,
+                    id="demo_wf_right"
+                ) }}
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,33 @@
+{# Portal component: Ported from ts/lib/components/Portal.svelte.
+   Upstream mounts children into a remote target DOM node (defaulting to document.body).
+   
+   In this stack, teleportation is implemented with an inline Datastar `data-init` expression.
+   When the element initializes, it teleports itself to the specified target node
+   (e.g. `document.querySelector(target)` or `document.body` if target="body" or omitted).
+   
+   Characteristics and Limits:
+   - Teleportation happens once during element initialization via `data-init`.
+   - Datastar 1.0.3 processes attributes and event handlers on the element and its children;
+     even after being moved to the target node, Datastar signal reactivity (`data-text`, `data-show`,
+     `data-on:click`, etc.) continues to function correctly inside the teleported subtree.
+   - If `target` is none or empty, children render inline where declared without teleporting
+     (mirroring upstream `{#if !target}<slot />{/if}`).
+   
+   Props:
+   - target: CSS selector or DOM query string (e.g. "body", "#modal-root", or none for inline).
+   - as_element: tag name for the portal wrapper element (default: "div")
+   - class_: additional CSS classes
+   - id: optional element id
+#}
+{% macro portal(target="body", as_element="div", id=none, class_="") -%}
+{%- if target -%}
+<{{ as_element }}{% if id %} id="{{ id }}"{% endif %}
+    class="portal-node{% if class_ %} {{ class_ }}{% endif %}"
+    data-init="const dest = '{{ target }}' === 'body' ? document.body : document.querySelector('{{ target }}'); if (dest && el.parentElement !== dest) dest.appendChild(el);"
+    {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {{ caller() if caller else '' }}
+</{{ as_element }}>
+{%- else -%}
+    {{ caller() if caller else '' }}
+{%- endif -%}
+{%- endmacro %}

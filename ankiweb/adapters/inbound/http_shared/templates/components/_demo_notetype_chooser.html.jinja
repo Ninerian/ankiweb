@@ -1,0 +1,70 @@
+{% from "components/notetype_chooser.html.jinja" import notetype_chooser %}
+
+{% set static_notetypes = [
+    {"id": 1600000000001, "name": "Basic"},
+    {"id": 1600000000002, "name": "Basic (and reversed card) \"Special\" & <Reverse> 'X' \\ Y"},
+    {"id": 1600000000003, "name": "Basic (optional reversed card)"},
+    {"id": 1600000000004, "name": "Basic (type in the answer)"},
+    {"id": 1600000000005, "name": "Cloze"},
+    {"id": 1600000000006, "name": "Image Occlusion"}
+] %}
+
+{# Real-collection note types read from scratch AnkiConnect collection if accessible #}
+{% set real_seeded_decks = [
+    {"id": 1, "name": "Default"},
+    {"id": 1790722546344, "name": "Biology"},
+    {"id": 1790722546345, "name": "Biology::Anatomy"},
+    {"id": 1790722546338, "name": "Japanese"},
+    {"id": 1790722546342, "name": "Japanese::Grammar"},
+    {"id": 1790722546339, "name": "Japanese::Vocabulary"}
+] %}
+
+{% set real_seeded_notetypes = [
+    {"id": 1790718292748, "name": "Basic"},
+    {"id": 1790718292749, "name": "Basic (and reversed card)"},
+    {"id": 1790718292750, "name": "Basic (optional reversed card)"},
+    {"id": 1790718292751, "name": "Basic (type in the answer)"},
+    {"id": 1790718292752, "name": "Cloze"},
+    {"id": 1790718292753, "name": "Image Occlusion"}
+] %}
+
+<div class="border p-3 mb-4 rounded" data-signals="{{ ({'notetype_chooser_result': 1600000000001}|tojson).__str__() }}">
+    <h5>1. NotetypeChooser (Static List)</h5>
+    <p class="text-muted small">
+        Upstream NotetypeChooser wrapper with Newspaper icon and Ctrl+N shortcut.
+    </p>
+
+    <div style="max-width: 320px;">
+        {{ notetype_chooser(
+            notetypes=static_notetypes,
+            selected_notetype_id=1600000000001,
+            id="demo_notetype_chooser",
+            on_change="$notetype_chooser_result = evt.detail.id;"
+        ) }}
+    </div>
+
+    <div class="mt-3 small">
+        Selected Note Type: <strong id="demo_notetype_chooser_output" data-text="$demo_notetype_chooser_selected_name">Basic</strong>
+    </div>
+</div>
+
+<div class="border p-3 mb-4 rounded" data-signals="{{ ({'real_notetype_result': 1790718292748}|tojson).__str__() }}">
+    <h5>2. Real Data Demo: AnkiConnect Scratch Collection Note Types</h5>
+    <p class="text-muted small">
+        Fed with the real note types seeded into AnkiConnect (127.0.0.1:8865) matching backend <code>col.models.all_names_and_ids()</code>.
+    </p>
+
+    <div style="max-width: 350px;">
+        {{ notetype_chooser(
+            notetypes=real_seeded_notetypes,
+            selected_notetype_id=1790718292752,
+            id="demo_real_notetype_chooser",
+            title="Choose Note Type (Real Collection)",
+            on_change="$real_notetype_result = evt.detail.id;"
+        ) }}
+    </div>
+
+    <div class="mt-3 small">
+        Selected Real Note Type: <strong id="demo_real_notetype_output" data-text="$demo_real_notetype_chooser_selected_name">Cloze</strong>
+    </div>
+</div>

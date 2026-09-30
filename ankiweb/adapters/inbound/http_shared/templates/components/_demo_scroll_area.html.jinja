@@ -1,0 +1,87 @@
+{% from "components/scroll_area.html.jinja" import scroll_area %}
+
+<div class="d-flex flex-column gap-4" id="demo-scroll-area">
+    <div class="card p-3">
+        <h5 class="card-title">1. Vertical ScrollArea with Custom Scrollbar & Shadows</h5>
+        <p class="text-muted">
+            Features upstream overflow edge-detection shadows (top/bottom), custom scrollbar with exact thumb ratio,
+            smooth track click-to-jump, wheel event forwarding, and keyboard navigation.
+        </p>
+
+        <div class="d-flex gap-2 mb-2">
+            <button class="btn btn-sm btn-outline-secondary" id="sa-scroll-top">Scroll to Top</button>
+            <button class="btn btn-sm btn-outline-secondary" id="sa-scroll-mid">Scroll to Middle</button>
+            <button class="btn btn-sm btn-outline-secondary" id="sa-scroll-bot">Scroll to Bottom</button>
+        </div>
+
+        <div style="height: 220px; border: 1px solid var(--border-subtle, #dee2e6); border-radius: 4px; position: relative;">
+            {% call scroll_area(id="demo-sa-vert", height="220px", scroll_y=true, scroll_x=false) %}
+                <div class="p-3" style="line-height: 1.8;">
+                    <h6>Long Content Section</h6>
+                    <p>Line 1: AnkiWeb component system rewritten cleanly in Jinja, Datastar, and modern TypeScript.</p>
+                    <p>Line 2: ScrollArea reproduces Svelte lib/components/ScrollArea.svelte edge observers.</p>
+                    <p>Line 3: Top, bottom, start, and end edge shadows appear when scrolled away from boundary.</p>
+                    <p>Line 4: Custom scrollbar thumb size conforms to upstream ratio formula: thumbSize = max(trackSize * (viewport / content), 18).</p>
+                    <p>Line 5: Dragging thumb adjusts scrollTop smoothly and proportionally.</p>
+                    <p>Line 6: Clicking track jumps thumb center to clicked location.</p>
+                    <p>Line 7: Wheel events over custom scrollbar track forward to viewport.</p>
+                    <p>Line 8: Keyboard navigation (ArrowUp, ArrowDown, PageUp, PageDown, Home, End) supported when thumb focused.</p>
+                    <p>Line 9: Disappears when content fits viewport without overflow.</p>
+                    <p>Line 10: Supports smooth scrollTo API programmatically.</p>
+                    <p>Line 11: End of sample content for vertical scrolling verification.</p>
+                </div>
+            {% endcall %}
+        </div>
+    </div>
+
+    <div class="card p-3">
+        <h5 class="card-title">2. Horizontal & RTL ScrollArea</h5>
+        <p class="text-muted">
+            Demonstrates horizontal scrollbar with start/end shadows, thumb dragging, and RTL direction support.
+        </p>
+        <div style="height: 120px; border: 1px solid var(--border-subtle, #dee2e6); border-radius: 4px; position: relative;">
+            {% call scroll_area(id="demo-sa-horiz", height="120px", scroll_x=true, scroll_y=false) %}
+                <div class="p-3 d-flex gap-3" style="width: 1400px;">
+                    <div class="card p-2 bg-light text-center" style="min-width: 180px;">Item Box 1</div>
+                    <div class="card p-2 bg-light text-center" style="min-width: 180px;">Item Box 2</div>
+                    <div class="card p-2 bg-light text-center" style="min-width: 180px;">Item Box 3</div>
+                    <div class="card p-2 bg-light text-center" style="min-width: 180px;">Item Box 4</div>
+                    <div class="card p-2 bg-light text-center" style="min-width: 180px;">Item Box 5</div>
+                    <div class="card p-2 bg-light text-center" style="min-width: 180px;">Item Box 6</div>
+                    <div class="card p-2 bg-light text-center" style="min-width: 180px;">Item Box 7</div>
+                </div>
+            {% endcall %}
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    function setupDemoSA() {
+        const vertEl = document.getElementById('demo-sa-vert');
+        if (!vertEl || !window.AnkiwebTables) {
+            setTimeout(setupDemoSA, 50);
+            return;
+        }
+
+        const vertSA = vertEl._scrollAreaInstance;
+        if (vertSA) {
+            document.getElementById('sa-scroll-top')?.addEventListener('click', () => {
+                vertSA.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+            document.getElementById('sa-scroll-mid')?.addEventListener('click', () => {
+                vertSA.scrollTo({ top: 150, behavior: 'smooth' });
+            });
+            document.getElementById('sa-scroll-bot')?.addEventListener('click', () => {
+                vertSA.scrollTo({ top: 1000, behavior: 'smooth' });
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupDemoSA);
+    } else {
+        setupDemoSA();
+    }
+})();
+</script>

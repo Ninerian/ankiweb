@@ -1,0 +1,43 @@
+{# WithTooltip component ported from ts/lib/components/WithTooltip.svelte #}
+{#
+  WithTooltip wraps an element or slot with Bootstrap 5 tooltip initialization.
+  Props:
+    tooltip: Tooltip content string (or HTML if html=true)
+    trigger: "hover focus" | "click" | "hover" | "focus" (default: "hover focus")
+    placement: "auto" | "top" | "bottom" | "left" | "right" (default: "top")
+    html: boolean (default: true)
+    offset: string/list (e.g. "[0,0]" or "0,0")
+    show_delay: ms
+    hide_delay: ms
+    as_element: wrapper tag ("span", "div", or empty string to attach to caller if caller is element)
+    class_: extra class
+#}
+{% macro with_tooltip(
+    tooltip="",
+    trigger="hover focus",
+    placement="top",
+    html=true,
+    offset="0,0",
+    show_delay=0,
+    hide_delay=0,
+    as_element="span",
+    class_=""
+) -%}
+{% if as_element %}
+<{{ as_element }}
+    class="with-tooltip{% if class_ %} {{ class_ }}{% endif %}"
+    data-bs-toggle="tooltip"
+    data-bs-placement="{{ placement }}"
+    data-bs-trigger="{{ trigger }}"
+    {% if html %}data-bs-html="true"{% endif %}
+    {% if offset %}data-bs-offset="{{ offset }}"{% endif %}
+    {% if show_delay or hide_delay %}data-bs-delay='{"show":{{ show_delay }},"hide":{{ hide_delay }}}'{% endif %}
+    title="{{ tooltip }}"
+    {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
+>
+    {{ caller() if caller else '' }}
+</{{ as_element }}>
+{% else %}
+    {{ caller() if caller else '' }}
+{% endif %}
+{%- endmacro %}

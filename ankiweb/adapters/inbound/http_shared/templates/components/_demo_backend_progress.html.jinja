@@ -1,0 +1,50 @@
+{% from "components/backend_progress.html.jinja" import backend_progress %}
+
+<div class="card p-3" data-signals="{ progressRunning: false, progressDone: false, progressFraction: 0.0, progressPercent: 0, progressLabel: 'Idle', progressError: '' }">
+    <h5 class="card-title">BackendProgressIndicator Demonstration</h5>
+    <p class="text-muted">Simulates an asynchronous background task (e.g. FSRS parameter optimization, database consistency check, or media scan) sending Datastar SSE updates.</p>
+
+    <div class="d-flex gap-2 mb-3">
+        <button
+            id="demo-start-progress-btn"
+            class="btn btn-primary btn-sm"
+            type="button"
+            data-on:click__prevent="@post('/dev/progress/simulate')"
+            data-attr:disabled="$progressRunning"
+        >
+            Start Background Task
+        </button>
+        <button
+            id="demo-reset-progress-btn"
+            class="btn btn-outline-secondary btn-sm"
+            type="button"
+            data-on:click__prevent="@post('/dev/progress/reset')"
+            data-attr:disabled="$progressRunning"
+        >
+            Reset
+        </button>
+    </div>
+
+    <!-- Active Indicator -->
+    <div class="border rounded p-3 bg-light position-relative" style="min-height: 200px;">
+        <!-- Idle status -->
+        <div id="demo-progress-idle" class="text-center text-muted py-5" data-show="!$progressRunning && !$progressDone">
+            Task is idle. Click "Start Background Task" to initiate progress stream.
+        </div>
+
+        <!-- Progress Indicator Component -->
+        {{ backend_progress(
+            progress_signal="progressRunning",
+            label_signal="progressLabel",
+            percent_signal="progressPercent",
+            done_signal="progressDone",
+            error_signal="progressError"
+        ) }}
+
+        <!-- Completion status -->
+        <div id="demo-progress-success" class="alert alert-success text-center mb-0 mt-3" data-show="$progressDone && !$progressRunning">
+            <h6 class="alert-heading mb-1">Task Finished!</h6>
+            <span data-text="$progressLabel">Complete!</span>
+        </div>
+    </div>
+</div>

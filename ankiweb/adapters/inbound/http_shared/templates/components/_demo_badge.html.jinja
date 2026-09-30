@@ -1,0 +1,40 @@
+{# Demo for Badge component #}
+{% from "components/badge.html.jinja" import badge %}
+{% from "components/icon.html.jinja" import icon %}
+
+<div
+  class="d-flex flex-wrap gap-4 align-items-center"
+  data-testid="demo-badge-container"
+  data-signals="{ badge_clicks: 0 }"
+>
+  <div>
+    <span>Badge with Revert Icon:</span>
+    {% call badge(
+        id="badge-revert-btn",
+        icon_size=85,
+        tooltip="Revert to default",
+        class_="p-1 text-primary",
+        **{"data-on:click": "$badge_clicks++"}
+    ) %}
+      {{ icon(name="revertIcon") }}
+    {% endcall %}
+  </div>
+
+  <div>
+    <span>Badge with Info Icon:</span>
+    {% call badge(id="badge-info-btn", icon_size=100, tooltip="Info Badge") %}
+      {{ icon(name="infoCircle") }}
+    {% endcall %}
+  </div>
+
+  <div>
+    <span>Badge with Custom Text/Slot:</span>
+    {% call badge(id="badge-custom-btn", class_="bg-secondary text-white px-2 py-1") %}
+      Custom Badge
+    {% endcall %}
+  </div>
+
+  <div class="mt-2 text-muted small w-100">
+    Badge clicks: <span id="badge-click-count" data-text="$badge_clicks">0</span>
+  </div>
+</div>

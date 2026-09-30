@@ -1,0 +1,28 @@
+{% from "components/button_toolbar.html.jinja" import button_toolbar %}
+{% from "components/button_group.html.jinja" import button_group %}
+{% from "components/button_group_item.html.jinja" import button_group_item %}
+
+<div class="border p-3 mb-3">
+    <h6 class="text-muted">Toolbar with wrap=true and size=1.5:</h6>
+    {% call button_toolbar(wrap=true, size=1.5) %}
+        {% call button_group() %}
+            <button class="btn btn-outline-primary btn-sm">Cut</button>
+            <button class="btn btn-outline-primary btn-sm">Copy</button>
+            <button class="btn btn-outline-primary btn-sm">Paste</button>
+        {% endcall %}
+        {% call button_group() %}
+            <button class="btn btn-outline-secondary btn-sm">Undo</button>
+            <button class="btn btn-outline-secondary btn-sm">Redo</button>
+        {% endcall %}
+    {% endcall %}
+</div>
+
+<div class="border p-3">
+    <h6 class="text-muted">Toolbar with dark mode:</h6>
+    {% call button_toolbar(is_dark=true) %}
+        {% call button_group() %}
+            <button class="btn btn-secondary btn-sm">Dark 1</button>
+            <button class="btn btn-secondary btn-sm">Dark 2</button>
+        {% endcall %}
+    {% endcall %}
+</div>

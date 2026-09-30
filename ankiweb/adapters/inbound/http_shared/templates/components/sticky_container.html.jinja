@@ -1,0 +1,9 @@
+{% from "components/container.html.jinja" import container %}
+
+{% macro sticky_container(id=none, breakpoint="fluid", height=0, class_="") -%}
+<div{% if id %} id="{{ id }}"{% endif %} class="sticky-container{% if class_ %} {{ class_ }}{% endif %}"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {% call container(breakpoint=breakpoint) %}
+        {{ caller() if caller else '' }}
+    {% endcall %}
+</div>
+{%- endmacro %}

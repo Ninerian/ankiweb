@@ -1,0 +1,23 @@
+{% from "components/checkbox.html.jinja" import checkbox %}
+
+<div class="d-flex flex-column gap-2" data-signals="{ check1: false, check2: true }">
+    <div>
+        {% call checkbox(signal="check1") %}
+            <span>Unchecked default</span>
+        {% endcall %}
+        <span class="ms-2 badge bg-secondary" data-text="$check1 ? 'Checked' : 'Unchecked'">Unchecked</span>
+    </div>
+
+    <div>
+        {% call checkbox(value=true, signal="check2") %}
+            <span>Checked default</span>
+        {% endcall %}
+        <span class="ms-2 badge bg-secondary" data-text="$check2 ? 'Checked' : 'Unchecked'">Checked</span>
+    </div>
+
+    <div>
+        {% call checkbox(value=false, disabled=true) %}
+            <span>Disabled checkbox</span>
+        {% endcall %}
+    </div>
+</div>
