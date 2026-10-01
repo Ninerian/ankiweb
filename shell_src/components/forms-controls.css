@@ -48,9 +48,10 @@
 }
 
 .config-input .revert {
-    position: absolute;
-    right: -1.7em;
-    bottom: -1px;
+    position: static;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
     opacity: 0.5;
     transition: opacity 0.15s ease-in-out, color 0.15s ease-in-out;
@@ -58,7 +59,7 @@
 
 .config-input .revert.rtl {
     right: unset;
-    left: -1.7em;
+    left: unset;
 }
 
 .config-input:hover .revert,

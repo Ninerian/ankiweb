@@ -170,14 +170,24 @@ button.label-button:active:not([disabled]) {
 button.label-button.active {
   box-shadow: inset 0 calc(var(--buttons-size, 10px) / 15) calc(var(--buttons-size, 10px) / 5) rgba(0, 0, 0, 0.35);
   background: var(--button-primary-bg);
-  color: #ffffff;
-  border-color: var(--border-focus);
+  color: var(--color-primary-content, #ffffff);
+  border: 1px solid var(--border-focus);
+}
+
+button.label-button.active:hover:not([disabled]) {
+  background: linear-gradient(
+    180deg,
+    var(--button-primary-gradient-start) 0%,
+    var(--button-primary-gradient-end) 100%
+  );
+  color: var(--color-primary-content, #ffffff);
+  border: 1px solid var(--border-focus);
 }
 
 button.label-button.primary {
-  border: none;
+  border: 1px solid transparent;
   background: var(--button-primary-bg);
-  color: #ffffff;
+  color: var(--color-primary-content, #ffffff);
 }
 
 button.label-button.primary:hover:not([disabled]) {
@@ -186,6 +196,8 @@ button.label-button.primary:hover:not([disabled]) {
     var(--button-primary-gradient-start) 0%,
     var(--button-primary-gradient-end) 100%
   );
+  color: var(--color-primary-content, #ffffff);
+  border: 1px solid transparent;
 }
 
 button.label-button[disabled],
@@ -287,13 +299,13 @@ button.badge:active {
    FloatingArrow
    ========================================================================== */
 div.arrow {
-  background-color: var(--canvas-elevated);
+  background-color: var(--canvas-elevated, var(--color-base-100));
   width: 10px;
   height: 10px;
   z-index: 60;
 
-  /* outer border */
-  border: 1px solid var(--border-subtle);
+  /* outer border using daisyUI theme token */
+  border: 1.5px solid var(--color-primary);
 
   /* Rotate the box to indicate the different directions */
   border-right: none;
