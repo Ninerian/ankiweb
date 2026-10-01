@@ -2,7 +2,7 @@
 {# Full content fragment for all graph cards #}
 <div id="graphs-cards-container">
   {# 1. Today #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header">
       <h1 class="graph-title">{{ today.title }}</h1>
     </div>
@@ -23,7 +23,7 @@
   </div>
 
   {# 2. Future Due #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header flex flex-wrap justify-between items-center">
       <div>
         <h1 class="graph-title">{{ future_due.title }}</h1>
@@ -47,8 +47,8 @@
     <div class="graph-svg-wrap">
       {{ future_due.svg | safe }}
     </div>
-    <div class="graph-summary-table">
-      <table>
+    <div class="graph-summary-table overflow-x-auto">
+      <table class="table table-xs table-zebra">
         <tbody>
           {% for row in future_due.summary %}
             <tr>
@@ -62,7 +62,7 @@
   </div>
 
   {# 3. Calendar #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header flex justify-between items-center">
       <div>
         <h1 class="graph-title">{{ calendar.title }}</h1>
@@ -79,7 +79,7 @@
   </div>
 
   {# 4. Reviews #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header flex flex-wrap justify-between items-center">
       <div>
         <h1 class="graph-title">{{ reviews.title }}</h1>
@@ -100,8 +100,8 @@
     <div class="graph-svg-wrap">
       {{ reviews.svg | safe }}
     </div>
-    <div class="graph-summary-table">
-      <table>
+    <div class="graph-summary-table overflow-x-auto">
+      <table class="table table-xs table-zebra">
         <tbody>
           {% for row in reviews.summary %}
             <tr>
@@ -115,7 +115,7 @@
   </div>
 
   {# 5. Card Counts #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header">
       <div>
         <h1 class="graph-title">{{ card_counts.title }}</h1>
@@ -161,7 +161,7 @@
   </div>
 
   {# 6. Review Intervals #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header flex flex-wrap justify-between items-center">
       <div>
         <h1 class="graph-title">{{ intervals.title }}</h1>
@@ -178,8 +178,8 @@
       {{ intervals.svg | safe }}
     </div>
     {% if intervals.summary %}
-      <div class="graph-summary-table">
-        <table>
+      <div class="graph-summary-table overflow-x-auto">
+        <table class="table table-xs table-zebra">
           <tbody>
             {% for row in intervals.summary %}
               <tr>
@@ -195,7 +195,7 @@
 
   {# 7. Card Ease / Difficulty #}
   {% if fsrs_enabled and difficulty %}
-    <div class="graph-card">
+    <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
       <div class="graph-header">
         <div>
           <h1 class="graph-title">{{ difficulty.title }}</h1>
@@ -221,7 +221,7 @@
       {% endif %}
     </div>
   {% else %}
-    <div class="graph-card">
+    <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
       <div class="graph-header">
         <div>
           <h1 class="graph-title">{{ ease.title }}</h1>
@@ -249,7 +249,7 @@
   {% endif %}
 
   {# 8. True Retention #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header flex flex-wrap justify-between items-center">
       <div>
         <div class="flex items-center gap-2">
@@ -353,7 +353,7 @@
   </div>
 
   {# 9. Hourly Breakdown #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header flex flex-wrap justify-between items-center">
       <div>
         <h1 class="graph-title">{{ hours.title }}</h1>
@@ -371,7 +371,7 @@
   </div>
 
   {# 10. Answer Buttons #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header flex flex-wrap justify-between items-center">
       <div>
         <h1 class="graph-title">{{ buttons.title }}</h1>
@@ -389,7 +389,7 @@
   </div>
 
   {# 11. Added #}
-  <div class="graph-card">
+  <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
     <div class="graph-header flex flex-wrap justify-between items-center">
       <div>
         <h1 class="graph-title">{{ added.title }}</h1>
@@ -405,8 +405,8 @@
     <div class="graph-svg-wrap">
       {{ added.svg | safe }}
     </div>
-    <div class="graph-summary-table">
-      <table>
+    <div class="graph-summary-table overflow-x-auto">
+      <table class="table table-xs table-zebra">
         <tbody>
           {% for row in added.summary %}
             <tr>
@@ -421,7 +421,7 @@
 
   {# 12. Retrievability (FSRS) #}
   {% if fsrs_enabled and retrievability %}
-    <div class="graph-card">
+    <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
       <div class="graph-header">
         <div>
           <h1 class="graph-title">{{ retrievability.title }}</h1>
@@ -450,7 +450,7 @@
 
   {# 13. Stability (FSRS) #}
   {% if fsrs_enabled and stability %}
-    <div class="graph-card">
+    <div class="graph-card card card-bordered bg-base-100 shadow-sm p-4 mb-6 border-base-300">
       <div class="graph-header flex flex-wrap justify-between items-center">
         <div>
           <h1 class="graph-title">{{ stability.title }}</h1>

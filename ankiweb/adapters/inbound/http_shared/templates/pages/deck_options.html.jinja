@@ -25,12 +25,12 @@
                     ⚙️
                 </summary>
                 <ul class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow border border-base-300">
-                    <li><button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('addPresetModal').showModal()">{{ tr.deck_config_add_group() }}</button></li>
-                    <li><button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('clonePresetModal').showModal()">{{ tr.deck_config_clone_group() }}</button></li>
-                    <li><button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('renamePresetModal').showModal()">{{ tr.deck_config_rename_group() }}</button></li>
-                    <li><button class="text-error" type="button" data-attr:disabled="$presetId == 1" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('deletePresetModal').showModal()">{{ tr.deck_config_remove_group() }}</button></li>
+                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('addPresetModal').showModal()">{{ tr.deck_config_add_group() }}</button></li>
+                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('clonePresetModal').showModal()">{{ tr.deck_config_clone_group() }}</button></li>
+                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('renamePresetModal').showModal()">{{ tr.deck_config_rename_group() }}</button></li>
+                    <li><button class="btn btn-ghost btn-sm justify-start font-normal text-error" type="button" data-attr:disabled="$presetId == 1" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('deletePresetModal').showModal()">{{ tr.deck_config_remove_group() }}</button></li>
                     <li><hr class="border-base-300 my-1"></li>
-                    <li><button type="button" onclick="this.closest('details')?.removeAttribute('open')" data-on:click="$applyToSubdecks = true; @post('/deck-options/save'); $applyToSubdecks = false;">{{ tr.deck_config_save_to_all_subdecks() }}</button></li>
+                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open')" data-on:click="$applyToSubdecks = true; @post('/deck-options/save'); $applyToSubdecks = false;">{{ tr.deck_config_save_to_all_subdecks() }}</button></li>
                 </ul>
             </details>
 
