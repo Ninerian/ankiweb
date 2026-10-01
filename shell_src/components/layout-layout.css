@@ -59,59 +59,83 @@
 }
 
 /* Container */
+.anki-container,
 .container {
   display: flex;
   flex-direction: var(--container-direction, column);
   padding: var(--gutter-block, 0) var(--gutter-inline, 0);
   margin: 0 auto;
 }
+.anki-container.container-fluid,
 .container.container-fluid {
   width: 100%;
+  max-width: 100% !important;
   height: 100%;
   margin: 0;
 }
 
+.anki-container.container-xs,
 .container.container-xs {
-  max-width: 360px;
+  max-width: 360px !important;
 }
 @media (min-width: 576px) {
+  .anki-container.container-xs,
   .container.container-xs,
+  .anki-container.container-sm,
   .container.container-sm {
-    max-width: 540px;
+    max-width: 540px !important;
   }
 }
 @media (min-width: 768px) {
+  .anki-container.container-xs,
   .container.container-xs,
+  .anki-container.container-sm,
   .container.container-sm,
+  .anki-container.container-md,
   .container.container-md {
-    max-width: 720px;
+    max-width: 720px !important;
   }
 }
 @media (min-width: 992px) {
+  .anki-container.container-xs,
   .container.container-xs,
+  .anki-container.container-sm,
   .container.container-sm,
+  .anki-container.container-md,
   .container.container-md,
+  .anki-container.container-lg,
   .container.container-lg {
-    max-width: 960px;
+    max-width: 960px !important;
   }
 }
 @media (min-width: 1200px) {
+  .anki-container.container-xs,
   .container.container-xs,
+  .anki-container.container-sm,
   .container.container-sm,
+  .anki-container.container-md,
   .container.container-md,
+  .anki-container.container-lg,
   .container.container-lg,
+  .anki-container.container-xl,
   .container.container-xl {
-    max-width: 1140px;
+    max-width: 1140px !important;
   }
 }
 @media (min-width: 1400px) {
+  .anki-container.container-xs,
   .container.container-xs,
+  .anki-container.container-sm,
   .container.container-sm,
+  .anki-container.container-md,
   .container.container-md,
+  .anki-container.container-lg,
   .container.container-lg,
+  .anki-container.container-xl,
   .container.container-xl,
+  .anki-container.container-xxl,
   .container.container-xxl {
-    max-width: 1320px;
+    max-width: 1320px !important;
   }
 }
 

@@ -8,7 +8,7 @@
 
 .range-box {
     position: sticky;
-    top: 49px; /* AnkiWeb navbar height */
+    top: 49px; /* AnkiWeb desktop navbar height */
     z-index: 1020;
     background: var(--color-base-100);
     color: var(--color-base-content);
@@ -24,15 +24,7 @@
     gap: 0.75rem;
 }
 
-.graph-card {
-    background: var(--color-base-100);
-    color: var(--color-base-content);
-    border: 1px solid var(--color-base-300);
-    border-radius: var(--radius-box, 0.5rem);
-    padding: 1.25rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
+/* .graph-card styling handled via daisyUI card card-bordered bg-base-100 shadow-sm */
 
 .graph-header {
     display: flex;
@@ -81,19 +73,7 @@
     stroke: color-mix(in oklab, var(--color-base-content) 40%, transparent);
 }
 
-.graph-summary-table {
-    margin-top: 0.75rem;
-    font-size: 0.875rem;
-}
-
-.graph-summary-table table {
-    margin: 0 auto;
-    border-collapse: collapse;
-}
-
-.graph-summary-table td {
-    padding: 0.2rem 0.5rem;
-}
+/* .graph-summary-table styling handled via daisyUI table table-xs table-zebra */
 
 .graph-element-clickable {
     cursor: pointer;
@@ -124,12 +104,6 @@
 }
 
 /* Calendar Heatmap styles */
-.calendar-grid rect:hover {
-    stroke: currentColor;
-    stroke-width: 1px;
-}
-
-.calendar-grid rect[fill="#ddd"],
 .days rect[fill="#ddd"] {
     fill: var(--color-base-300);
 }

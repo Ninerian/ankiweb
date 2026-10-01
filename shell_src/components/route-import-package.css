@@ -88,23 +88,6 @@
   margin: 0 auto;
 }
 
-.route-import-package .import {
-  margin: 0.2rem 0.75rem;
-}
-
-.route-import-package .filename {
-  word-break: break-word;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-}
-
-.route-import-package .sticky-top-bar {
-  background: var(--canvas, var(--color-base-100));
-  z-index: 100;
-  padding: 0.5rem 0.25rem;
-  border-bottom: 1px solid var(--color-base-300);
-}
 
 .route-import-package .error-box {
   background-color: var(--window-bg, var(--color-base-100));

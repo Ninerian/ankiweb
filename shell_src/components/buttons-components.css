@@ -275,7 +275,7 @@ button.dropdown-item.active.rtl {
 /* ==========================================================================
    Badge
    ========================================================================== */
-button.badge {
+button.badge:not([class*="badge-"]) {
   color: var(--badge-color, inherit);
   border: none;
   background: transparent;
@@ -287,8 +287,8 @@ button.badge {
   justify-content: center;
 }
 
-button.badge:hover,
-button.badge:active {
+button.badge:not([class*="badge-"]):hover,
+button.badge:not([class*="badge-"]):active {
   border: none;
   background: transparent;
   box-shadow: none;

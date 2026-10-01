@@ -80,8 +80,7 @@ html[data-theme="dark"] {
 
 /* Mobile tap targets (44px min-height) with flex alignment to protect inline elements */
 @media (max-width: 767.98px) {
-  .btn-sm,
-  .page-link {
+  .btn-sm {
     min-height: 44px;
     align-items: center;
   }
@@ -104,7 +103,6 @@ html[data-theme="dark"] {
    ========================================================================== */
 
 .deckbrowser-page {
-  max-width: 44rem;
   margin-inline: auto;
   padding-bottom: calc(var(--ankiweb-bottomnav-h, 4rem) + 4.5rem);
 }
@@ -148,11 +146,9 @@ html[data-theme="dark"] {
 
 /* Stacking context: when dropdown is open, raise above neighboring rows */
 .deck:has(.dropdown:focus-within),
-.deck:has(.dropdown[open]),
-.deck:has(.dropdown-open) {
+.deck:has(.dropdown[open]) {
   z-index: 1050;
 }
-
 .deck:last-child {
   border-bottom: none;
 }
@@ -360,35 +356,16 @@ a.opts[aria-expanded="true"] {
   font-weight: bold;
 }
 
-/* Floating Action Button (FAB) */
-.deckbrowser-fab-btn {
-  position: fixed;
-  right: 1.25rem;
+/* Floating Action Button (daisyUI .fab): lift above the mobile bottom nav */
+.deckbrowser-fab {
   bottom: calc(var(--ankiweb-bottomnav-h, 3.5rem) + 1rem);
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.1);
-  z-index: 1040;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.deckbrowser-fab-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22), 0 2px 4px rgba(0, 0, 0, 0.12);
-}
-
-.deckbrowser-fab-btn:active {
-  transform: scale(0.96);
+  inset-inline-end: 1.25rem;
 }
 
 @media (min-width: 768px) {
-  .deckbrowser-fab-btn {
+  .deckbrowser-fab {
     bottom: 2rem;
-    right: 2rem;
+    inset-inline-end: 2rem;
   }
 }
 
