@@ -57,55 +57,51 @@
   </div>
 </nav>
 
-<nav id="ankiweb-bottom-nav" class="navbar min-h-0 fixed bottom-0 left-0 right-0 bg-base-200 border-t border-base-300 md:hidden p-0 z-30" aria-label="Mobile navigation">
-  <div class="w-full px-0 h-full">
-    <div class="flex w-full h-full justify-around text-center items-stretch">
-      <a href="/deckbrowser" class="py-2 px-1 flex-1 flex flex-col items-center justify-center gap-1 text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold transition-colors" data-nav-path="/deckbrowser">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-          <path d="M16 3 8 3"></path>
-        </svg>
-        <span class="text-xs" style="font-size: 0.72rem; line-height: 1;">{{ tr.actions_decks() }}</span>
-      </a>
-      <a href="/add" class="py-2 px-1 flex-1 flex flex-col items-center justify-center gap-1 text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold transition-colors" data-nav-path="/add">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="16"></line>
-          <line x1="8" y1="12" x2="16" y2="12"></line>
-        </svg>
-        <span class="text-xs" style="font-size: 0.72rem; line-height: 1;">{{ tr.actions_add() }}</span>
-      </a>
-      <a href="/browse" class="py-2 px-1 flex-1 flex flex-col items-center justify-center gap-1 text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold transition-colors" data-nav-path="/browse">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <span class="text-xs" style="font-size: 0.72rem; line-height: 1;">{{ tr.qt_misc_browse() }}</span>
-      </a>
-      <a href="/graphs" class="py-2 px-1 flex-1 flex flex-col items-center justify-center gap-1 text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold transition-colors" data-nav-path="/graphs">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="18" y1="20" x2="18" y2="10"></line>
-          <line x1="12" y1="20" x2="12" y2="4"></line>
-          <line x1="6" y1="20" x2="6" y2="14"></line>
-        </svg>
-        <span class="text-xs" style="font-size: 0.72rem; line-height: 1;">{{ tr.qt_misc_stats() }}</span>
-      </a>
-      <button
-        type="button"
-        id="ankiweb-bottom-more-btn"
-        class="btn btn-ghost py-2 px-1 flex-1 flex flex-col items-center justify-center gap-1 h-auto font-normal text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold border-none rounded-none"
-        onclick="document.getElementById('ankiwebMoreSheet').showModal()"
-        data-nav-path="more"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="1"></circle>
-          <circle cx="19" cy="12" r="1"></circle>
-          <circle cx="5" cy="12" r="1"></circle>
-        </svg>
-        <span class="text-xs" style="font-size: 0.72rem; line-height: 1;">{{ tr.studying_more() }}</span>
-      </button>
-    </div>
-  </div>
+<nav id="ankiweb-bottom-nav" class="dock md:hidden bg-base-200 border-t border-base-300 z-30" aria-label="Mobile navigation">
+  <a href="/deckbrowser" class="text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold transition-colors" data-nav-path="/deckbrowser">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+      <path d="M16 3 8 3"></path>
+    </svg>
+    <span class="dock-label text-xs">{{ tr.actions_decks() }}</span>
+  </a>
+  <a href="/add" class="text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold transition-colors" data-nav-path="/add">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="16"></line>
+      <line x1="8" y1="12" x2="16" y2="12"></line>
+    </svg>
+    <span class="dock-label text-xs">{{ tr.actions_add() }}</span>
+  </a>
+  <a href="/browse" class="text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold transition-colors" data-nav-path="/browse">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <span class="dock-label text-xs">{{ tr.qt_misc_browse() }}</span>
+  </a>
+  <a href="/graphs" class="text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold transition-colors" data-nav-path="/graphs">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="18" y1="20" x2="18" y2="10"></line>
+      <line x1="12" y1="20" x2="12" y2="4"></line>
+      <line x1="6" y1="20" x2="6" y2="14"></line>
+    </svg>
+    <span class="dock-label text-xs">{{ tr.qt_misc_stats() }}</span>
+  </a>
+  <button
+    type="button"
+    id="ankiweb-bottom-more-btn"
+    class="text-base-content/75 hover:text-primary aria-[current=page]:text-primary aria-[current=page]:font-semibold transition-colors border-none bg-transparent"
+    onclick="document.getElementById('ankiwebMoreSheet').showModal()"
+    data-nav-path="more"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="1"></circle>
+      <circle cx="19" cy="12" r="1"></circle>
+      <circle cx="5" cy="12" r="1"></circle>
+    </svg>
+    <span class="dock-label text-xs">{{ tr.studying_more() }}</span>
+  </button>
 </nav>
 
 <!-- Mobile More Bottom-Sheet Modal -->
