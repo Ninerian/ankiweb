@@ -36,6 +36,24 @@ bridge.registerCalls({
     const resp = await fetch("/import/upload", { method: "POST", body: fd });
     if (!resp.ok) { window.alert("Import failed: " + (await resp.text())); return; }
     const { route, path } = await resp.json();
+    if (route === "import-anki-package" && (window as any).__ankiwebContext === "deckbrowser") {
+      const modalResp = await fetch("/import-anki-package/modal/" + encodeURIComponent(path));
+      if (modalResp.ok) {
+        const modalHtml = await modalResp.text();
+        let container = document.getElementById("deckbrowserImportModalContainer");
+        if (!container) {
+          container = document.createElement("div");
+          container.id = "deckbrowserImportModalContainer";
+          document.body.appendChild(container);
+        }
+        container.innerHTML = modalHtml;
+        const modalEl = document.getElementById("importPackageModal") as HTMLDialogElement | null;
+        if (modalEl && typeof modalEl.showModal === "function") {
+          modalEl.showModal();
+          return;
+        }
+      }
+    }
     window.location.href = "/" + route + "/" + encodeURIComponent(path);
   };
   input.click();

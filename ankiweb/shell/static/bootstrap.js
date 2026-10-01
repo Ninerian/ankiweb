@@ -112,6 +112,24 @@
         return;
       }
       const { route, path } = await resp.json();
+      if (route === "import-anki-package" && window.__ankiwebContext === "deckbrowser") {
+        const modalResp = await fetch("/import-anki-package/modal/" + encodeURIComponent(path));
+        if (modalResp.ok) {
+          const modalHtml = await modalResp.text();
+          let container = document.getElementById("deckbrowserImportModalContainer");
+          if (!container) {
+            container = document.createElement("div");
+            container.id = "deckbrowserImportModalContainer";
+            document.body.appendChild(container);
+          }
+          container.innerHTML = modalHtml;
+          const modalEl = document.getElementById("importPackageModal");
+          if (modalEl && typeof modalEl.showModal === "function") {
+            modalEl.showModal();
+            return;
+          }
+        }
+      }
       window.location.href = "/" + route + "/" + encodeURIComponent(path);
     };
     input.click();
