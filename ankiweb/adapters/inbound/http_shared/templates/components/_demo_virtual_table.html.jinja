@@ -51,6 +51,7 @@
                 if (countEl) countEl.textContent = `${end - start}`;
             }
         });
+        vtEl._virtualTableInstance = vt;
 
         vt.renderRow = (index) => {
             const tr = document.createElement('tr');

@@ -1,0 +1,42 @@
+{% macro daisy_radial_progress(
+    progress_signal="progressRunning",
+    label_signal="progressLabel",
+    percent_signal="progressPercent",
+    done_signal="progressDone",
+    error_signal="progressError",
+    class_="",
+    label="Loading...",
+    size="5rem",
+    thickness="6px"
+) %}
+{#
+  DaisyRadialProgress: daisyUI native radial-progress component.
+  Replaces the custom 4-segment CSS ring spinner with daisyUI's circular progress indicator.
+  Dynamically binds `--value`, percentage text, and aria attributes via Datastar signals.
+#}
+<div
+    class="daisy-radial-progress-container flex flex-col items-center justify-center gap-3 p-4 w-full {{ class_ }}"
+    {% if progress_signal %}
+    data-show="${{ progress_signal }}"
+    {% endif %}
+    {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}
+>
+    <div
+        class="radial-progress text-primary font-bold text-sm"
+        style="--size: {{ size }}; --thickness: {{ thickness }}; --value: 0;"
+        data-style:--value="${{ percent_signal }} || 0"
+        data-attr:aria-valuenow="${{ percent_signal }} || 0"
+        role="progressbar"
+    >
+        <span data-show="(${{ percent_signal }} || 0) > 0" data-text="'' + (${{ percent_signal }} || 0) + '%'">0%</span>
+        <span class="loading loading-spinner loading-md text-primary" data-show="!${{ percent_signal }} || (${{ percent_signal }} || 0) === 0"></span>
+    </div>
+
+    <div
+        class="progress-label text-sm text-base-content/80 text-center font-medium"
+        {% if label_signal %}data-text="${{ label_signal }}"{% endif %}
+    >
+        {{ label }}
+    </div>
+</div>
+{% endmacro %}

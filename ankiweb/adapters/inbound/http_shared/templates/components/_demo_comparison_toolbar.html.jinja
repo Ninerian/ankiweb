@@ -1,0 +1,101 @@
+{% from "components/button_toolbar.html.jinja" import button_toolbar %}
+{% from "components/button_group.html.jinja" import button_group %}
+{% from "components/button_group_item.html.jinja" import button_group_item %}
+
+<div class="card bg-base-100 border border-base-300 p-6 flex flex-col gap-6">
+    <div>
+        <div class="flex items-center justify-between mb-2">
+            <h5 class="card-title text-base-content font-bold m-0">Toolbar & ButtonGroup Patterns: Existing vs daisyUI Join</h5>
+            <div class="badge badge-secondary badge-sm">Design Spike</div>
+        </div>
+        <p class="text-base-content/70 text-sm">
+            Exploring how <code>button_toolbar</code> and <code>button_group_item</code> can be modernized using daisyUI 5 <code>join</code>, <code>join-item</code>, and flexible toolbar wrappers.
+        </p>
+    </div>
+
+    <!-- 1. Toolbar Comparison -->
+    <div class="flex flex-col gap-3">
+        <h6 class="font-bold text-sm text-base-content">1. Button Toolbar Architecture</h6>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Pattern A: Existing -->
+            <div class="p-4 border border-base-300 rounded-box bg-base-200/40">
+                <div class="badge badge-neutral mb-2">A. Existing button_toolbar</div>
+                <p class="text-xs text-base-content/60 mb-3">Uses flexbox wrap with CSS variables (--buttons-size, --buttons-wrap).</p>
+                {% call button_toolbar(wrap=true) %}
+                    {% call button_group() %}
+                        <button type="button" class="btn btn-sm btn-outline btn-primary join-item">Cut</button>
+                        <button type="button" class="btn btn-sm btn-outline btn-primary join-item">Copy</button>
+                        <button type="button" class="btn btn-sm btn-outline btn-primary join-item">Paste</button>
+                    {% endcall %}
+                    {% call button_group() %}
+                        <button type="button" class="btn btn-sm btn-outline join-item">Undo</button>
+                        <button type="button" class="btn btn-sm btn-outline join-item">Redo</button>
+                    {% endcall %}
+                {% endcall %}
+            </div>
+
+            <!-- Pattern B: daisyUI Toolbar / Navbar wrapper -->
+            <div class="p-4 border border-base-300 rounded-box bg-base-200/40">
+                <div class="badge badge-primary mb-2">B. daisyUI Join + Toolbar Flex Container</div>
+                <p class="text-xs text-base-content/60 mb-3">Pure Tailwind/daisyUI: <code>flex flex-wrap items-center gap-2 p-1 bg-base-200 rounded-box</code></p>
+                <div class="flex flex-wrap items-center gap-2 p-1.5 bg-base-300/40 rounded-box border border-base-300">
+                    <div class="join">
+                        <button type="button" class="btn btn-sm btn-primary join-item">Cut</button>
+                        <button type="button" class="btn btn-sm btn-primary join-item">Copy</button>
+                        <button type="button" class="btn btn-sm btn-primary join-item">Paste</button>
+                    </div>
+                    <div class="join">
+                        <button type="button" class="btn btn-sm btn-outline join-item">Undo</button>
+                        <button type="button" class="btn btn-sm btn-outline join-item">Redo</button>
+                    </div>
+                    <div class="divider divider-horizontal my-0 h-6"></div>
+                    <div class="join">
+                        <button type="button" class="btn btn-sm btn-ghost btn-square join-item" title="Bold"><strong>B</strong></button>
+                        <button type="button" class="btn btn-sm btn-ghost btn-square join-item" title="Italic"><em>I</em></button>
+                        <button type="button" class="btn btn-sm btn-ghost btn-square join-item" title="Underline"><u>U</u></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="divider my-0"></div>
+
+    <!-- 2. ButtonGroupItem vs daisyUI join-item Comparison -->
+    <div class="flex flex-col gap-3">
+        <h6 class="font-bold text-sm text-base-content">2. ButtonGroupItem Position Architecture</h6>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Pattern A: Existing custom property system -->
+            <div class="p-4 border border-base-300 rounded-box bg-base-200/40">
+                <div class="badge badge-neutral mb-2">A. Svelte/Anki Custom Property System</div>
+                <p class="text-xs text-base-content/60 mb-3">
+                    Uses <code>display: contents</code> wrapper setting <code>--border-left-radius</code> and <code>--border-right-radius</code> inline.
+                </p>
+                {% call button_group() %}
+                    {% call button_group_item(position="start") %}
+                        <button type="button" class="btn btn-sm btn-outline btn-secondary">Start</button>
+                    {% endcall %}
+                    {% call button_group_item(position="center") %}
+                        <button type="button" class="btn btn-sm btn-outline btn-secondary">Middle</button>
+                    {% endcall %}
+                    {% call button_group_item(position="end") %}
+                        <button type="button" class="btn btn-sm btn-outline btn-secondary">End</button>
+                    {% endcall %}
+                {% endcall %}
+            </div>
+
+            <!-- Pattern B: daisyUI Native join-item -->
+            <div class="p-4 border border-base-300 rounded-box bg-base-200/40">
+                <div class="badge badge-primary mb-2">B. daisyUI Native join-item</div>
+                <p class="text-xs text-base-content/60 mb-3">
+                    daisyUI <code>join</code> + <code>join-item</code> automatically calculates first/middle/last child border radii with zero custom CSS or JS props.
+                </p>
+                <div class="join">
+                    <button type="button" class="btn btn-sm btn-secondary join-item">Start</button>
+                    <button type="button" class="btn btn-sm btn-secondary join-item">Middle</button>
+                    <button type="button" class="btn btn-sm btn-secondary join-item">End</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

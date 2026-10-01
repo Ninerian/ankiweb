@@ -20,7 +20,7 @@
 #}
 {% macro titled_container(title="", id=none, class_="", is_dark=false, rtl=false, tooltip=none) -%}
 <div{% if id %} id="{{ id }}"{% endif %}
-    class="container titled-container{% if is_dark %} dark{% else %} light{% endif %}{% if rtl %} rtl{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
+    class="container titled-container card bg-base-100 border border-base-300 shadow-sm p-4{% if is_dark %} dark{% else %} light{% endif %}{% if rtl %} rtl{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
     style="--gutter-block: 2px; --container-margin: 0;"
     {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
     <div class="relative">
