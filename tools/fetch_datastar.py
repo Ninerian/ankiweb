@@ -4,7 +4,7 @@ from __future__ import annotations
 import urllib.request
 from pathlib import Path
 
-DATASTAR_VERSION = "1.0.3"
+DATASTAR_VERSION = "1.0.4"
 DEST = Path(__file__).resolve().parent.parent / "ankiweb" / "shell" / "static"
 BUNDLE_URL = f"https://raw.githubusercontent.com/starfederation/datastar/v{DATASTAR_VERSION}/bundles/datastar.js"
 
