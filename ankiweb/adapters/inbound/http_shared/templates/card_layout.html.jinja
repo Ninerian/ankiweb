@@ -30,8 +30,7 @@
 {% endmacro %}
 <div class="card-layout max-w-4xl mx-auto px-4 py-3">
   <h3 class="text-xl font-bold mb-3">Card Types</h3>
-  <input type="hidden" id="ntid" value="{{ ntid }}">
-  <form id="clf" onsubmit="return false">
+  <form id="clf" onsubmit="return false" data-signals='{{ {"notetypeId": ntid} | tojson }}'>
     <div id="tmplblocks">
       {% for t in templates %}{{ tmpl_block(t) }}{% endfor %}
     </div>
@@ -42,10 +41,10 @@
     </div>
     <div class="mt-4">
       <div class="tmpl-label text-sm font-semibold mb-1">{{ tr.card_templates_template_styling() }}</div>
-      <textarea id="css" class="textarea font-mono w-full" rows="8">{{ css }}</textarea>
+      <textarea id="css" class="textarea font-mono w-full" rows="8" data-bind="css">{{ css }}</textarea>
     </div>
     <div class="mt-4 flex flex-wrap gap-2">
-      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="const payload = buildLayoutPayload(); @post('/card-layout/savelayout', {payload: payload})">
+      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="const payload = buildLayoutPayload(); payload.notetypeId = $notetypeId; payload.css = $css; @post('/card-layout/savelayout', {payload: payload})">
         {{ tr.actions_save() }}
       </button>
       <button class="btn btn-neutral" type="button" data-on:click__prevent="@post('/card-layout/cancel')">
@@ -55,7 +54,7 @@
         class="btn btn-outline"
         type="button"
         id="preview"
-        data-on:click__prevent="@post('/card-layout/previewlayout/' + document.getElementById('ntid').value)"
+        data-on:click__prevent="@post('/card-layout/previewlayout/' + $notetypeId)"
       >
         {{ tr.actions_preview() }}
       </button>
@@ -66,6 +65,7 @@
 <template id="blankblock">{{
   tmpl_block({"ord": "new", "name": "", "qfmt": "", "afmt": ""})
 }}</template>
+<!-- Das Template-Array wird bewusst per Vanilla-JS/DOM gelesen, da Datastar v1.0.3 kein Listen-Rendering für dynamisch geklonte Templates bietet. -->
 <script>
   function addBlock() {
       var tpl = document.getElementById('blankblock');
@@ -104,8 +104,6 @@
           };
       });
       return {
-          notetypeId: parseInt(document.getElementById('ntid').value),
-          css: document.getElementById('css').value,
           templates: templates
       };
   }

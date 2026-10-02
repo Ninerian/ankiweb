@@ -218,9 +218,7 @@
       autofocus
       placeholder="{{ tr.actions_search() }}…"
       value="{{ query }}"
-      onkeydown="if (event.key === 'Enter') {
-                              document.getElementById('search-trigger').click();
-                          }"
+      data-on:keydown__enter__prevent="document.getElementById('search-trigger').click()"
     >
     <div class="inline-flex items-center gap-2">
       <span id="browser-status" class="text-base-content/60">{{ count_label }}</span>

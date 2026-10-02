@@ -3,7 +3,10 @@
   <div class="avail text-base-content/60 text-sm mb-3">
     New available: {{ avail_new }} &nbsp; Review available: {{ avail_rev }}
   </div>
-  <form id="cs" onsubmit="return false">
+  {# cfg_json is pre-serialized JSON; HTML-escape it so translated apostrophes do not close this single-quoted attribute. #}
+  <form id="cs" onsubmit="return false" data-signals='{"radio": 1, "spin": {{ spin_default }}, "cfg": {{ cfg_json | e }}}'>
+    {# Datastar v1.0.3 bind values are signal keys; omit the $ prefix used in expressions. #}
+    {# Keep translation HTML escaped, but leave apostrophes literal in this text node. #}
     <div class="space-y-2 mb-3">
       {% for v, t in radios %}
         <div class="flex items-center gap-2 cursor-pointer">
@@ -16,23 +19,26 @@
             {% if v == 1 %}
               checked
             {% endif %}
-            onchange="onRadio()"
+            data-bind="radio"
+            data-on:change="$spin = $cfg[$radio][1]"
           >
-          <label class="cursor-pointer text-sm" for="cs_r_{{ v }}">{{ t }}</label>
+          <label class="cursor-pointer text-sm" for="cs_r_{{ v }}">{{ t | e | replace('&#39;' | safe, "'" | safe) | safe }}</label>
         </div>
       {% endfor %}
     </div>
     <div class="spinrow my-3 flex items-center gap-2">
-      <span id="spinlabel" class="text-sm"></span>
+      <span id="spinlabel" class="text-sm" data-text="$cfg[$radio][0]"></span>
       <input
         class="input input-sm w-24"
         type="number"
         id="spin"
         value="{{ spin_default }}"
+        data-bind="spin"
+        data-attr="{min: $cfg[$radio][3]}"
       >
-      <span id="spinsuffix" class="text-sm"></span>
+      <span id="spinsuffix" class="text-sm" data-text="$cfg[$radio][2]"></span>
     </div>
-    <div id="cramblock" class="space-y-3 mb-3" style="display:none;">
+    <div id="cramblock" class="space-y-3 mb-3" style="display:none;" data-show="$radio == 6">
       <div>
         <label for="cramkind" class="block text-sm font-medium mb-1">{{ tr.browsing_sidebar_card_state() }}</label>
         <select id="cramkind" class="select select-sm w-full">
@@ -59,7 +65,7 @@
       </div>
     </div>
     <div class="mt-4 flex items-center gap-2">
-      <button class="btn btn-primary btn-sm" type="button" id="go" data-on:click__prevent="const payload = buildCsPayload(); @post('/custom-study/submit', {payload: payload})">
+      <button class="btn btn-primary btn-sm" type="button" id="go" data-on:click__prevent="const payload = {radio: parseInt($radio), value: parseInt($spin || '0')}; if (parseInt($radio) === 6) { payload.cram_kind = parseInt(document.getElementById('cramkind').value); payload.include = multiVals('inc'); payload.exclude = multiVals('exc'); }; document.getElementById('err').textContent = ''; @post('/custom-study/submit', {payload: payload})">
         {{ tr.custom_study_ok() }}
       </button>
       <button class="btn btn-neutral btn-sm" type="button" data-on:click__prevent="@post('/custom-study/cancel')">
@@ -70,25 +76,7 @@
   </form>
 </div>
 <script>
-  var CFG = {{ cfg_json | safe }};
-
-  function selectedRadio() {
-      var els = document.getElementsByName('r');
-      for (var i = 0; i < els.length; i++)
-          if (els[i].checked) return parseInt(els[i].value);
-      return 1;
-  }
-
-  function onRadio() {
-      var r = selectedRadio();
-      var c = CFG[r];
-      document.getElementById('spinlabel').textContent = c[0];
-      document.getElementById('spin').value = c[1];
-      document.getElementById('spin').min = c[3];
-      document.getElementById('spinsuffix').textContent = c[2];
-      document.getElementById('cramblock').style.display = (r === 6) ? '' : 'none';
-  }
-
+  // Keep DOM reads for cramkind and the multi-selects; multi-select values have no scalar signal binding.
   function multiVals(id) {
       var out = [],
           el = document.getElementById(id);
@@ -96,20 +84,4 @@
           if (el.options[i].selected) out.push(el.options[i].value);
       return out;
   }
-
-  function buildCsPayload() {
-      document.getElementById('err').textContent = '';
-      var r = selectedRadio();
-      var payload = {
-          radio: r,
-          value: parseInt(document.getElementById('spin').value || '0')
-      };
-      if (r === 6) {
-          payload.cram_kind = parseInt(document.getElementById('cramkind').value);
-          payload.include = multiVals('inc');
-          payload.exclude = multiVals('exc');
-      }
-      return payload;
-  }
-  onRadio();
 </script>

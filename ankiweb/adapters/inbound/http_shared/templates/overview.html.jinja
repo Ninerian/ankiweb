@@ -87,19 +87,25 @@
         <button
           class="btn btn-outline btn-sm"
           type="button"
-          onclick="document.getElementById('descedit').style.display = ''"
+          data-on:click="$showDescEdit = true"
         >
           {% if tr.studying_edit() == 'Bearbeiten' %}{{ tr.fields_description() | tr_clean }} {{ tr.studying_edit() | tr_clean | lower }}{% else %}{{ tr.studying_edit() | tr_clean }} {{ tr.fields_description() | tr_clean }}{% endif %}
         </button>
       </div>
-      <div id="descedit" class="mt-3 text-left" style="display:none;">
-        <textarea id="descbox" class="textarea w-full" rows="4" cols="50"
-        >{{ raw_desc }}</textarea>
+      <div
+        id="descedit"
+        class="mt-3 text-left"
+        data-signals='{"showDescEdit": false, "desc": {{ raw_desc | tojson }}, "md": {{ "true" if md_checked else "false" }}}'
+        data-show="$showDescEdit"
+        style="display:none;"
+      >
+        <textarea id="descbox" class="textarea w-full" data-bind="desc" rows="4" cols="50">{{ raw_desc }}</textarea>
         <div class="flex items-center gap-2 my-2 cursor-pointer">
           <input
             class="checkbox checkbox-sm"
             type="checkbox"
             id="descmd"
+            data-bind="md"
             {% if md_checked %}
               checked
             {% endif %}
@@ -110,14 +116,14 @@
           <button
             class="btn btn-primary btn-sm"
             type="button"
-            data-on:click__prevent="const d = document.getElementById('descbox').value; const m = document.getElementById('descmd').checked; @post('/overview/setdesc', {payload: {desc: d, md: m}})"
+            data-on:click__prevent="@post('/overview/setdesc', {payload: {desc: $desc, md: $md}})"
           >
             {{ tr.actions_save() | tr_clean }}
           </button>
           <button
             class="btn btn-neutral btn-sm"
             type="button"
-            onclick="document.getElementById('descedit').style.display = 'none'"
+            data-on:click="$showDescEdit = false"
           >
             {{ tr.actions_cancel() | tr_clean }}
           </button>

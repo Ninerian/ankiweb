@@ -30,8 +30,9 @@
     <script type="module" src="/shell/static/datastar.js"></script>
   </head>
   <body class="context-{{ context }}">
-    {% if toolbar %}{% include "_toolbar.html.jinja" %}{% endif %}{{
-      body | safe
-    }}
+    {% if toolbar %}{% include "_toolbar.html.jinja" %}{% endif %}
+    <main id="screen">
+      {{ body | safe }}
+    </main>
   </body>
 </html>

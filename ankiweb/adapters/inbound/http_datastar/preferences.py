@@ -42,6 +42,7 @@ def render_preferences_html(col) -> str:
         "weekly": b.weekly,
         "monthly": b.monthly,
         "minimum_interval_mins": b.minimum_interval_mins,
+        "svelte_editor": svelte_editor,
     }
     mix_opts = [
         (0, tr.scheduling_mix_new_cards_and_reviews()),

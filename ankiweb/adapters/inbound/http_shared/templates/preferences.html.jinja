@@ -1,17 +1,17 @@
-{% macro checkbox_field(field_id, label, checked, hint="") %}
+{% macro checkbox_field(field_id, label, checked, signal_name, hint="") %}
   <div class="mb-3">
     <label class="cursor-pointer inline-flex items-center gap-2 py-1">
-      <input class="checkbox checkbox-primary" type="checkbox" id="{{ field_id }}" {% if checked %}checked{% endif %}>
+      <input class="checkbox checkbox-primary" type="checkbox" id="{{ field_id }}" data-bind="{{ signal_name }}" {% if checked %}checked{% endif %}>
       <span>{{ label }}</span>
     </label>
     {% if hint %}<div class="text-xs text-base-content/60 mt-0 ms-8">{{ hint }}</div>{% endif %}
   </div>
 {% endmacro %}
-{% macro number_field(field_id, label, value, minv=0, maxv=None, suffix="", hint="") %}
+{% macro number_field(field_id, label, value, signal_name, minv=0, maxv=None, suffix="", hint="") %}
   <div class="mb-3">
     <label for="{{ field_id }}" class="block text-sm font-medium mb-1 py-0">{{ label }}</label>
     <div class="flex items-center gap-2">
-      <input type="number" class="input input-sm w-auto" style="min-width: 7rem; min-height: 38px;" id="{{ field_id }}" value="{{ value }}" min="{{ minv }}" {% if maxv is not none %}max="{{ maxv }}"{% endif %}>
+      <input type="number" class="input input-sm w-auto" style="min-width: 7rem; min-height: 38px;" id="{{ field_id }}" data-bind="{{ signal_name }}" value="{{ value }}" min="{{ minv }}" {% if maxv is not none %}max="{{ maxv }}"{% endif %}>
       {% if suffix %}<span class="text-base-content/60 text-sm">{{ suffix }}</span>{% endif %}
     </div>
     {% if hint %}<div class="text-xs text-base-content/60 mt-1">{{ hint }}</div>{% endif %}
@@ -24,7 +24,12 @@
     </div>
   </div>
 
-  <form id="pf" onsubmit="return false">
+  <form
+    id="pf"
+    onsubmit="return false"
+    data-signals='{{ initial_signals | tojson }}'
+    data-computed="{new_timezone: () => !$legacy_timezone, hide_audio_play_buttons: () => !$show_play_buttons}"
+  >
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <!-- Section navigation index for >= lg -->
       <nav class="hidden lg:block lg:col-span-3" aria-label="Preferences navigation">
@@ -57,14 +62,14 @@
             </div>
             <div id="collapse-scheduling" class="pref-collapse-content block">
               <div class="p-4">
-                {{ number_field("rollover", tr.preferences_next_day_starts_at(), s.rollover, 0, 23) }}
-                {{ number_field("learn_ahead_mins", tr.preferences_learn_ahead_limit(), s.learn_ahead_secs // 60, suffix=tr.preferences_mins()) }}
+                {{ number_field("rollover", tr.preferences_next_day_starts_at(), s.rollover, "rollover", 0, 23) }}
+                {{ number_field("learn_ahead_mins", tr.preferences_learn_ahead_limit(), s.learn_ahead_secs // 60, "learn_ahead_mins", suffix=tr.preferences_mins()) }}
                 <div class="mb-3">
                   <label for="new_review_mix" class="block text-sm font-medium mb-1 py-0">
                     {{ tr.deck_config_new_review_priority() }}
                   </label>
                   <div>
-                    <select id="new_review_mix" class="select select-sm w-auto" style="min-width: 14rem; min-height: 38px;">
+                    <select id="new_review_mix" class="select select-sm w-auto" style="min-width: 14rem; min-height: 38px;" data-bind="new_review_mix">
                       {% for v, lbl in mix_opts %}
                         <option value="{{ v }}" {% if s.new_review_mix == v %}selected{% endif %}>
                           {{ lbl }}
@@ -73,8 +78,8 @@
                     </select>
                   </div>
                 </div>
-                {{ checkbox_field("legacy_timezone", tr.preferences_legacy_timezone_handling(), not s.new_timezone) }}
-                {{ checkbox_field("day_learn_first", tr.preferences_show_learning_cards_with_larger_steps(), s.day_learn_first) }}
+                {{ checkbox_field("legacy_timezone", tr.preferences_legacy_timezone_handling(), not s.new_timezone, "legacy_timezone") }}
+                {{ checkbox_field("day_learn_first", tr.preferences_show_learning_cards_with_larger_steps(), s.day_learn_first, "day_learn_first") }}
               </div>
             </div>
           </section>
@@ -96,14 +101,13 @@
             </div>
             <div id="collapse-review" class="pref-collapse-content hidden lg:block">
               <div class="p-4">
-                {{ checkbox_field("show_play_buttons", tr.preferences_show_play_buttons_on_cards_with(), not r.hide_audio_play_buttons) }}
-                {{ checkbox_field("interrupt_audio_when_answering", tr.preferences_interrupt_current_audio_when_answering(), r.interrupt_audio_when_answering) }}
-                {{ checkbox_field("show_remaining_due_counts", tr.preferences_show_remaining_card_count(), r.show_remaining_due_counts) }}
-                {{ checkbox_field("show_intervals_on_buttons", tr.preferences_show_next_review_time_above_answer(), r.show_intervals_on_buttons) }}
-                {{ number_field("time_limit_mins", tr.preferences_timebox_time_limit(), r.time_limit_secs // 60, suffix=tr.preferences_mins()) }}
-                {{ checkbox_field("load_balancer_enabled", "Enable load balancer", r.load_balancer_enabled) }}
-                {{ checkbox_field("fsrs_short_term_with_steps_enabled", "Use FSRS for short-term scheduling (with steps)", r.fsrs_short_term_with_steps_enabled) }}
-              </div>
+                {{ checkbox_field("show_play_buttons", tr.preferences_show_play_buttons_on_cards_with(), not r.hide_audio_play_buttons, "show_play_buttons") }}
+                {{ checkbox_field("interrupt_audio_when_answering", tr.preferences_interrupt_current_audio_when_answering(), r.interrupt_audio_when_answering, "interrupt_audio_when_answering") }}
+                {{ checkbox_field("show_remaining_due_counts", tr.preferences_show_remaining_card_count(), r.show_remaining_due_counts, "show_remaining_due_counts") }}
+                {{ checkbox_field("show_intervals_on_buttons", tr.preferences_show_next_review_time_above_answer(), r.show_intervals_on_buttons, "show_intervals_on_buttons") }}
+                {{ number_field("time_limit_mins", tr.preferences_timebox_time_limit(), r.time_limit_secs // 60, "time_limit_mins", suffix=tr.preferences_mins()) }}
+                {{ checkbox_field("load_balancer_enabled", "Enable load balancer", r.load_balancer_enabled, "load_balancer_enabled") }}
+                {{ checkbox_field("fsrs_short_term_with_steps_enabled", "Use FSRS for short-term scheduling (with steps)", r.fsrs_short_term_with_steps_enabled, "fsrs_short_term_with_steps_enabled") }}
             </div>
           </section>
 
@@ -124,9 +128,9 @@
             </div>
             <div id="collapse-editing" class="pref-collapse-content hidden lg:block">
               <div class="p-4">
-                {{ checkbox_field("adding_defaults_to_current_deck", tr.preferences_when_adding_default_to_current_deck(), e.adding_defaults_to_current_deck) }}
-                {{ checkbox_field("paste_images_as_png", tr.preferences_paste_clipboard_images_as_png(), e.paste_images_as_png) }}
-                {{ checkbox_field("paste_strips_formatting", tr.preferences_paste_without_shift_key_strips_formatting(), e.paste_strips_formatting) }}
+                {{ checkbox_field("adding_defaults_to_current_deck", tr.preferences_when_adding_default_to_current_deck(), e.adding_defaults_to_current_deck, "adding_defaults_to_current_deck") }}
+                {{ checkbox_field("paste_images_as_png", tr.preferences_paste_clipboard_images_as_png(), e.paste_images_as_png, "paste_images_as_png") }}
+                {{ checkbox_field("paste_strips_formatting", tr.preferences_paste_without_shift_key_strips_formatting(), e.paste_strips_formatting, "paste_strips_formatting") }}
                 <div class="mb-3">
                   <label for="default_search_text" class="block text-sm font-medium mb-1 py-0">
                     {{ tr.preferences_default_search_text() }}
@@ -135,13 +139,14 @@
                     type="text"
                     class="input input-sm w-full max-w-sm"
                     id="default_search_text"
+                    data-bind="default_search_text"
                     placeholder='{{ tr.preferences_default_search_text_example() }}'
                     style="min-height: 38px;"
                     value="{{ e.default_search_text }}"
                   >
                 </div>
-                {{ checkbox_field("ignore_accents_in_search", tr.preferences_ignore_accents_in_search(), e.ignore_accents_in_search) }}
-                {{ checkbox_field("render_latex", tr.preferences_generate_latex_images_automatically(), e.render_latex) }}
+                {{ checkbox_field("ignore_accents_in_search", tr.preferences_ignore_accents_in_search(), e.ignore_accents_in_search, "ignore_accents_in_search") }}
+                {{ checkbox_field("render_latex", tr.preferences_generate_latex_images_automatically(), e.render_latex, "render_latex") }}
               </div>
             </div>
           </section>
@@ -169,10 +174,10 @@
                     <div class="mt-1 text-base-content/60">{{ tr.preferences_media_is_not_backed_up() }}</div>
                   </div>
                 </div>
-                {{ number_field("daily", tr.preferences_daily_backups(), b.daily) }}
-                {{ number_field("weekly", tr.preferences_weekly_backups(), b.weekly) }}
-                {{ number_field("monthly", tr.preferences_monthly_backups(), b.monthly) }}
-                {{ number_field("minimum_interval_mins", tr.preferences_minutes_between_backups(), b.minimum_interval_mins) }}
+                {{ number_field("daily", tr.preferences_daily_backups(), b.daily, "daily") }}
+                {{ number_field("weekly", tr.preferences_weekly_backups(), b.weekly, "weekly") }}
+                {{ number_field("monthly", tr.preferences_monthly_backups(), b.monthly, "monthly") }}
+                {{ number_field("minimum_interval_mins", tr.preferences_minutes_between_backups(), b.minimum_interval_mins, "minimum_interval_mins") }}
               </div>
             </div>
           </section>
@@ -204,7 +209,7 @@
                   <div class="flex justify-between items-start mb-1">
                     <label class="font-bold cursor-pointer" for="svelte_editor">Svelte note editor</label>
                     <div>
-                      <input class="toggle toggle-primary" type="checkbox" id="svelte_editor" {% if svelte_editor %}checked{% endif %}>
+                      <input class="toggle toggle-primary" type="checkbox" id="svelte_editor" data-bind="svelte_editor">
                     </div>
                   </div>
                   <div class="text-base-content/60 text-sm">
@@ -226,7 +231,7 @@
             class="btn btn-outline px-4 font-semibold min-h-[44px]"
             type="button"
             id="save"
-            data-on:click__prevent="const payload = buildPrefsPayload(); @post('/preferences/savePrefs', {payload: payload})"
+            data-on:click__prevent="@post('/preferences/savePrefs', {payload: {rollover: $rollover, learn_ahead_mins: $learn_ahead_mins, new_review_mix: $new_review_mix, new_timezone: $new_timezone, day_learn_first: $day_learn_first, hide_audio_play_buttons: $hide_audio_play_buttons, interrupt_audio_when_answering: $interrupt_audio_when_answering, show_remaining_due_counts: $show_remaining_due_counts, show_intervals_on_buttons: $show_intervals_on_buttons, time_limit_mins: $time_limit_mins, load_balancer_enabled: $load_balancer_enabled, fsrs_short_term_with_steps_enabled: $fsrs_short_term_with_steps_enabled, adding_defaults_to_current_deck: $adding_defaults_to_current_deck, paste_images_as_png: $paste_images_as_png, paste_strips_formatting: $paste_strips_formatting, default_search_text: $default_search_text, ignore_accents_in_search: $ignore_accents_in_search, render_latex: $render_latex, daily: $daily, weekly: $weekly, monthly: $monthly, minimum_interval_mins: $minimum_interval_mins, svelte_editor: $svelte_editor}})"
           >
             {{ tr.actions_save() }}
           </button>
@@ -243,6 +248,7 @@
           <div id="err" class="text-error text-sm font-semibold"></div>
         </div>
       </div>
+
     </div>
   </form>
 </div>
@@ -290,50 +296,6 @@
     }
   }
 
-  function chk(id) {
-      var el = document.getElementById(id);
-      return el ? el.checked : false;
-  }
-
-  function num(id) {
-      var el = document.getElementById(id);
-      return el ? parseInt(el.value || '0', 10) : 0;
-  }
-
-  function val(id) {
-      var el = document.getElementById(id);
-      return el ? el.value : '';
-  }
-
-  function buildPrefsPayload() {
-      var errEl = document.getElementById('err');
-      if (errEl) errEl.textContent = '';
-      return {
-          rollover: num('rollover'),
-          learn_ahead_mins: num('learn_ahead_mins'),
-          new_review_mix: parseInt(document.getElementById('new_review_mix').value, 10),
-          new_timezone: !chk('legacy_timezone'),
-          day_learn_first: chk('day_learn_first'),
-          hide_audio_play_buttons: !chk('show_play_buttons'),
-          interrupt_audio_when_answering: chk('interrupt_audio_when_answering'),
-          show_remaining_due_counts: chk('show_remaining_due_counts'),
-          show_intervals_on_buttons: chk('show_intervals_on_buttons'),
-          time_limit_mins: num('time_limit_mins'),
-          load_balancer_enabled: chk('load_balancer_enabled'),
-          fsrs_short_term_with_steps_enabled: chk('fsrs_short_term_with_steps_enabled'),
-          adding_defaults_to_current_deck: chk('adding_defaults_to_current_deck'),
-          paste_images_as_png: chk('paste_images_as_png'),
-          paste_strips_formatting: chk('paste_strips_formatting'),
-          default_search_text: val('default_search_text'),
-          ignore_accents_in_search: chk('ignore_accents_in_search'),
-          render_latex: chk('render_latex'),
-          daily: num('daily'),
-          weekly: num('weekly'),
-          monthly: num('monthly'),
-          minimum_interval_mins: num('minimum_interval_mins'),
-          svelte_editor: chk('svelte_editor')
-      };
-  }
 
   (function() {
       // Unsaved changes tracking

@@ -74,21 +74,25 @@
     </table>
   </div>
 
-  <div id="ntadd" class="flex flex-wrap items-center gap-2 mt-4">
+  <div
+    id="ntadd"
+    class="flex flex-wrap items-center gap-2 mt-4"
+    data-signals="{newname: '', base: '{{ rows[0].id if rows else '' }}'}"
+  >
     <h4 class="w-full text-base font-semibold mb-1">{{ L_add | tr_clean }}</h4>
     <div class="w-full sm:w-auto">
       <label for="ntnewname" class="sr-only">{{ L_name | tr_clean }}</label>
-      <input type="text" id="ntnewname" class="input w-full sm:w-64" placeholder="{{ L_name | tr_clean }}" size="24">
+      <input type="text" id="ntnewname" class="input w-full sm:w-64" placeholder="{{ L_name | tr_clean }}" size="24" data-bind="newname">
     </div>
     <div class="w-full sm:w-auto">
-      <select id="ntbase" class="select w-full sm:w-auto">
+      <select id="ntbase" class="select w-full sm:w-auto" data-bind="base">
         {% for r in rows %}<option value="{{ r.id }}">{{ r.name }}</option>{%
           endfor
         %}
       </select>
     </div>
     <div class="w-full sm:w-auto">
-      <button class="btn btn-primary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const name = document.getElementById('ntnewname').value; const base = document.getElementById('ntbase').value; if (name && base) @post('/notetypes/add/' + base, {payload: {name: name}})">{{ L_add | tr_clean }}</button>
+      <button class="btn btn-primary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; if ($newname && $base) @post('/notetypes/add/' + $base, {payload: {name: $newname}})">{{ L_add | tr_clean }}</button>
     </div>
   </div>
   <div id="err" class="text-error text-sm font-semibold mt-2"></div>
