@@ -232,7 +232,7 @@ export function updateToolbarState(): void {
         if (!cmd) return;
 
         if (!richHost) {
-            btn.classList.remove("active");
+            btn.classList.remove("btn-active");
             return;
         }
 
@@ -241,13 +241,9 @@ export function updateToolbarState(): void {
             if (["bold", "italic", "underline", "strikethrough", "strikeThrough", "subscript", "superscript", "insertUnorderedList", "insertOrderedList", "justifyLeft", "justifyCenter", "justifyRight", "justifyFull"].includes(cmd)) {
                 isActive = document.queryCommandState(cmd === "strikethrough" ? "strikeThrough" : cmd);
             }
-            if (isActive) {
-                btn.classList.add("active");
-            } else {
-                btn.classList.remove("active");
-            }
+            btn.classList.toggle("btn-active", isActive);
         } catch {
-            btn.classList.remove("active");
+            btn.classList.remove("btn-active");
         }
     });
 }

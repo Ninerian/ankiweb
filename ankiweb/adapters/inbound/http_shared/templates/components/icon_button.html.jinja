@@ -1,6 +1,9 @@
-{# IconButton component ported from ts/lib/components/IconButton.svelte #}
-{% from "components/icon_constrain.html.jinja" import icon_constrain %}
-
+{# IconButton: daisyUI icon-only button (btn btn-square). Replaces ts/lib/components/IconButton.svelte.
+   - primary: filled btn-primary
+   - active: pressed, primary-filled state (btn-primary btn-active); toggle both classes at runtime
+   - size: daisyUI button size modifier (xs, sm, md, lg); xs is 1.5rem, the former 26px button
+   - flip_x: mirror the icon horizontally
+   - tooltip: rendered as title (shown by the daisyUI tooltip shim) #}
 {% macro icon_button(
     id=none,
     class_="",
@@ -9,23 +12,17 @@
     active=false,
     disabled=false,
     tabbable=false,
-    icon_size=75,
-    width_multiplier=1,
+    size="xs",
     flip_x=false
 ) %}
-  {% set outer_caller = caller %}
   <button
     {% if id %}id="{{ id }}"{% endif %}
-    class="icon-button{% if class_ %} {{ class_ }}{% endif %}{% if active %} active{% endif %}{% if primary %} primary{% endif %}"
+    class="btn btn-square btn-{{ size }}{% if primary or active %} btn-primary{% endif %}{% if active %} btn-active{% endif %}{% if flip_x %} [&_svg]:-scale-x-100{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
     {% if tooltip %}title="{{ tooltip }}"{% endif %}
     {% if disabled %}disabled{% endif %}
     tabindex="{% if tabbable %}0{% else %}-1{% endif %}"
     {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
   >
-    {% call icon_constrain(flip_x=flip_x, width_multiplier=width_multiplier, icon_size=icon_size) %}
-      {% if outer_caller is defined %}
-        {{ outer_caller() }}
-      {% endif %}
-    {% endcall %}
+    {% if caller %}{{ caller() }}{% endif %}
   </button>
 {% endmacro %}

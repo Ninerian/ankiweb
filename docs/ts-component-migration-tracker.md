@@ -61,7 +61,7 @@ Reviewer runtime (`ts/reviewer/*`), MathJax setup, `sveltelib` and `tslib` are *
 | **FloatingArrow** | `lib/components/FloatingArrow.svelte` | `<div class="floating-arrow">` | `templates/components/floating_arrow.html.jinja` | Ported, agent-verified; gallery render confirmed | Floating popper arrow |
 | **HelpSection** | `lib/components/HelpSection.svelte` | `<div class="help-section">` | `templates/components/help_section.html.jinja` | Ported, agent-verified; gallery render confirmed | Help text / link snippet |
 | **Icon** | `lib/components/Icon.svelte` | `<svg class="anki-icon">` | `templates/components/icon.html.jinja` | Ported, agent-verified; gallery render confirmed | Inline SVG presenter |
-| **IconButton** | `lib/components/IconButton.svelte` | `<button class="btn btn-icon">` | `templates/components/icon_button.html.jinja` | Ported, verified by lead in orca browser | Icon-only button |
+| **IconButton** | `lib/components/IconButton.svelte` | `<button class="btn btn-square">` | `templates/components/icon_button.html.jinja` | Ported to the daisyUI icon button (`btn-square btn-xs`; `btn-primary` / `btn-active` modifiers), no custom CSS | Icon-only button |
 | **IconConstrain** | `lib/components/IconConstrain.svelte` | `<span class="icon-constrain">` | `templates/components/icon_constrain.html.jinja` | Ported, agent-verified; gallery render confirmed | Aspect ratio wrapper |
 | **Item** | `lib/components/Item.svelte` | `<div class="item ...">` | `templates/components/item.html.jinja` | Ported, agent-verified; gallery render confirmed | Generic item container |
 | **Label** | `lib/components/Label.svelte` | `<label class="form-label">` | `templates/components/label.html.jinja` | Ported, verified by lead in orca browser | Form label |

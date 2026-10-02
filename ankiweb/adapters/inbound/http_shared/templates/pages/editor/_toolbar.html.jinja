@@ -4,7 +4,6 @@
   Text/Highlight Colors, Lists (UL/OL), Alignment, media Attach/Record, Cloze ([...], [+]) and MathJax.
 #}
 {% from "components/icon.html.jinja" import icon %}
-{% from "components/icon_button.html.jinja" import icon_button %}
 {% from "components/button_group.html.jinja" import button_group %}
 
 
@@ -14,7 +13,7 @@
   {% call button_group(class_="editor-btn-group join") %}
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="bold"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('bold');"
       title="{{ tr.editing_bold_text() }} (Ctrl+B)"
@@ -25,7 +24,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="italic"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('italic');"
       title="{{ tr.editing_italic_text() }} (Ctrl+I)"
@@ -36,7 +35,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="underline"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('underline');"
       title="{{ tr.editing_underline_text() }} (Ctrl+U)"
@@ -47,7 +46,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="strikethrough"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('strikethrough');"
       title="Strikethrough text (Ctrl+Shift+X)"
@@ -58,7 +57,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="superscript"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('superscript');"
       title="{{ tr.editing_superscript() }} (Ctrl+=)"
@@ -69,7 +68,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="subscript"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('subscript');"
       title="{{ tr.editing_subscript() }} (Ctrl+Shift+=)"
@@ -80,7 +79,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="removeFormat"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat');"
       title="{{ tr.editing_remove_formatting() }} (Ctrl+R)"
@@ -91,7 +90,7 @@
 
     <details class="dropdown join-item inline-block">
       <summary
-        class="btn btn-sm btn-ghost icon-button"
+        class="btn btn-sm btn-ghost"
         title="{{ tr.editing_select_remove_formatting() }}"
         aria-label="{{ tr.editing_select_remove_formatting() }}"
         style="padding-left: 0.25rem; padding-right: 0.25rem;"
@@ -145,7 +144,7 @@
   {# Colors Group #}
   {% call button_group(class_="editor-btn-group join") %}
     <label
-      class="btn btn-sm btn-ghost join-item icon-button m-0 inline-flex items-center relative"
+      class="btn btn-sm btn-square btn-ghost join-item relative"
       title="{{ tr.editing_text_color() }} (F7)"
       aria-label="{{ tr.editing_text_color() }}"
     >
@@ -160,7 +159,7 @@
     </label>
 
     <label
-      class="btn btn-sm btn-ghost join-item icon-button m-0 inline-flex items-center relative"
+      class="btn btn-sm btn-square btn-ghost join-item relative"
       title="{{ tr.editing_text_highlight_color() }}"
       aria-label="{{ tr.editing_text_highlight_color() }}"
     >
@@ -179,7 +178,7 @@
   {% call button_group(class_="editor-btn-group join") %}
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="insertUnorderedList"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('insertUnorderedList');"
       title="{{ tr.editing_unordered_list() }} (Ctrl+,)"
@@ -190,7 +189,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="insertOrderedList"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('insertOrderedList');"
       title="{{ tr.editing_ordered_list() }} (Ctrl+.)"
@@ -201,7 +200,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="justifyLeft"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('justifyLeft');"
       title="{{ tr.editing_align_left() }}"
@@ -212,7 +211,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="justifyCenter"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('justifyCenter');"
       title="{{ tr.editing_center() }}"
@@ -223,7 +222,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="justifyRight"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('justifyRight');"
       title="{{ tr.editing_align_right() }}"
@@ -237,7 +236,7 @@
   {% call button_group(class_="editor-btn-group join") %}
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="attach"
       onclick="window.AnkiwebEditor?.attachMedia ? window.AnkiwebEditor.attachMedia() : void 0"
       title="{{ tr.editing_attach_picturesaudiovideo() }} (F3)"
@@ -248,7 +247,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       data-editor-command="record"
       onclick="window.AnkiwebEditor?.recordAudio ? window.AnkiwebEditor.recordAudio() : void 0"
       title="{{ tr.editing_record_audio() }} (F5)"
@@ -262,7 +261,7 @@
   {% call button_group(class_="editor-btn-group join") %}
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button font-bold"
+      class="btn btn-sm btn-ghost join-item font-bold"
       data-editor-command="cloze"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('cloze');"
       title="{{ tr.editing_cloze_deletion() }} (Ctrl+Shift+C)"
@@ -274,7 +273,7 @@
 
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-ghost join-item"
       data-editor-command="cloze-same-number"
       onclick="window.AnkiwebEditor && window.AnkiwebEditor.exec('cloze-same-number');"
       title="{{ tr.editing_cloze_deletion_repeat() }} (Ctrl+Alt+Shift+C)"
@@ -289,7 +288,7 @@
   {% call button_group(class_="editor-btn-group join") %}
     <button
       type="button"
-      class="btn btn-sm btn-ghost join-item icon-button"
+      class="btn btn-sm btn-square btn-ghost join-item"
       title="{{ tr.editing_equations() }} (Ctrl+M)"
       aria-label="{{ tr.editing_equations() }}"
       onclick="document.body.dispatchEvent(new CustomEvent('ankiweb:insert-mathjax', { detail: { block: false } }))"
