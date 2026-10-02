@@ -1,5 +1,5 @@
 from __future__ import annotations
-import html
+from ankiweb.adapters.inbound.http_datastar.common import error_response
 from typing import Callable
 from fastapi import APIRouter
 from datastar_py.fastapi import (
@@ -32,10 +32,31 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
     allow_empty = bool(g.allow_empty)
     oklabel = tr.actions_rebuild() if is_edit else tr.decks_build()
     heading = f"{tr.studying_edit() if is_edit else 'Create'} Filtered Deck"
+    did = g.id
+    preview_again = cfg.preview_again_secs
+    preview_hard = cfg.preview_hard_secs
+    preview_good = cfg.preview_good_secs
+    initial_signals = {
+        "id": did,
+        "name": name,
+        "allow_empty": allow_empty,
+        "resched": resched,
+        "preview_again": preview_again,
+        "preview_hard": preview_hard,
+        "preview_good": preview_good,
+        "search1": search1,
+        "limit1": limit1,
+        "order1": order1,
+        "second": has2,
+        "search2": search2,
+        "limit2": limit2,
+        "order2": order2,
+    }
 
     return templating.render(
         "filtered_deck.html.jinja",
-        did=g.id,
+        did=did,
+        initial_signals=initial_signals,
         name=name,
         heading=heading,
         labels=labels,
@@ -48,9 +69,9 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
         order2=order2,
         resched=resched,
         allow_empty=allow_empty,
-        preview_again=cfg.preview_again_secs,
-        preview_hard=cfg.preview_hard_secs,
-        preview_good=cfg.preview_good_secs,
+        preview_again=preview_again,
+        preview_hard=preview_hard,
+        preview_good=preview_good,
         oklabel=oklabel,
     )
 
@@ -112,8 +133,7 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
                 if isinstance(e, FilteredDeckError)
                 else "Could not build the filtered deck."
             )
-            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(msg)}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            return error_response(msg)
 
         return DatastarResponse(SSE.redirect("/overview"))
 

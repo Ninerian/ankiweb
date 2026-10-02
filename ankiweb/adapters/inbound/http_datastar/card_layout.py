@@ -1,5 +1,5 @@
 from __future__ import annotations
-import html
+from ankiweb.adapters.inbound.http_datastar.common import error_response
 from typing import Callable
 from fastapi import APIRouter
 from datastar_py.fastapi import (
@@ -58,8 +58,7 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
         if nid is not None:
             return DatastarResponse(SSE.redirect(f"/preview/{nid}"))
         else:
-            err_html = '<div id="err" class="text-error text-sm font-semibold mt-2">Add a note of this type first to preview.</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            return error_response("Add a note of this type first to preview.")
 
     @router.post("/savelayout")
     async def save_layout(payload: ReadSignals):
@@ -110,8 +109,7 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(apply, initiator="cardlayout")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(str(exc))}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            return error_response(exc)
 
         return DatastarResponse(SSE.redirect("/deckbrowser"))
 

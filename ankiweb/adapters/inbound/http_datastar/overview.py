@@ -6,6 +6,7 @@ from datastar_py.fastapi import (
     ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from ankiweb.adapters.inbound.http_datastar.common import refresh_screen
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 from ankiweb.core.html_sanitize import sanitize_html
@@ -35,7 +36,7 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             )
 
         await service.run_op(do_unbury, initiator="overview")
-        return DatastarResponse(SSE.execute_script("window.location.reload()"))
+        return await refresh_screen(service, render_overview_html)
 
     @router.post("/refresh")
     async def refresh():
@@ -46,7 +47,7 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             await service.run_op(
                 lambda col: col.sched.rebuild_filtered_deck(did), initiator="overview"
             )
-            return DatastarResponse(SSE.execute_script("window.location.reload()"))
+            return await refresh_screen(service, render_overview_html)
         return DatastarResponse()
 
     @router.post("/empty")
@@ -58,7 +59,7 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             await service.run_op(
                 lambda col: col.sched.empty_filtered_deck(did), initiator="overview"
             )
-            return DatastarResponse(SSE.execute_script("window.location.reload()"))
+            return await refresh_screen(service, render_overview_html)
         return DatastarResponse()
 
     @router.post("/studymore")

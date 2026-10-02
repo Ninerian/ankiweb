@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json
+import html
 import datetime
 import re
 import time
@@ -47,6 +47,13 @@ def _card_count_str(count: int) -> str:
     raw = tr.card_templates_card_count(count=count)
     return re.sub(r"[\u2068\u2069]", "", raw).replace("\xa0", " ")
 
+
+def _status_html(count: int) -> str:
+    """``#browser-status`` element (same markup/classes as browser.html.jinja) for a morph patch."""
+    return (
+        '<span id="browser-status" class="text-base-content/60">'
+        f"{html.escape(_card_count_str(count))}</span>"
+    )
 
 
 def render_browser_html(col, query: str = "") -> str:
@@ -147,27 +154,22 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         cids, rows_html = await service.run(run)
         if cids is None:
             err_body = '<tbody id="results-body"><tr><td colspan="5">invalid search</td></tr></tbody>'
-            zero_label = json.dumps(_card_count_str(0))
+            status_html = _status_html(0)
             return [
                 SSE.patch_elements(err_body, selector="#results-body"),
-                SSE.execute_script(
-                    f"document.getElementById('browser-status').textContent = {zero_label}; "
-                    "window.__ankiwebResetSel && window.__ankiwebResetSel();"
-                ),
+                SSE.patch_elements(status_html, selector="#browser-status"),
+                SSE.execute_script("window.__ankiwebResetSel && window.__ankiwebResetSel();"),
             ]
         if hub:
             hub.ui_state.browser_open = True
             hub.ui_state.last_browse_query = query
             hub.ui_state.matched_card_ids = cids
         body_html = f'<tbody id="results-body">{rows_html}</tbody>'
-        count_label = json.dumps(_card_count_str(len(cids)))
-        count_js = (
-            f"document.getElementById('browser-status').textContent = {count_label}; "
-            "window.__ankiwebResetSel && window.__ankiwebResetSel();"
-        )
+        status_html = _status_html(len(cids))
         return [
             SSE.patch_elements(body_html, selector="#results-body"),
-            SSE.execute_script(count_js),
+            SSE.patch_elements(status_html, selector="#browser-status"),
+            SSE.execute_script("window.__ankiwebResetSel && window.__ankiwebResetSel();"),
         ]
 
     async def _do_search(query: str):

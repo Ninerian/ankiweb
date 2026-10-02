@@ -1,5 +1,5 @@
 from __future__ import annotations
-import html
+from ankiweb.adapters.inbound.http_datastar.common import error_response
 import json
 from typing import Callable
 from fastapi import APIRouter
@@ -125,8 +125,7 @@ def make_custom_study_routes(get_service: Callable) -> APIRouter:
                 if isinstance(e, CustomStudyError)
                 else "Could not create a custom study session."
             )
-            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(msg)}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            return error_response(msg)
 
         return DatastarResponse(SSE.redirect("/overview"))
 

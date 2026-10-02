@@ -7,6 +7,7 @@ from datastar_py.fastapi import (
     ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from ankiweb.adapters.inbound.http_datastar.common import refresh_screen
 from ankiweb.adapters.inbound.http_shared import templating
 
 
@@ -50,7 +51,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         await service.run_op(
             lambda col: col.decks.set_current(did), initiator="deckbrowser"
         )
-        return DatastarResponse(SSE.execute_script("window.location.reload()"))
+        return await refresh_screen(service, render_deckbrowser_html)
 
     @router.post("/collapse/{did}")
     async def collapse_deck(did: int):
@@ -81,7 +82,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
                 lambda col: col.decks.add_normal_deck_with_name(name),
                 initiator="deckbrowser",
             )
-            return DatastarResponse(SSE.execute_script("window.location.reload()"))
+            return await refresh_screen(service, render_deckbrowser_html)
         return DatastarResponse()
 
     @router.post("/opts/{did}")

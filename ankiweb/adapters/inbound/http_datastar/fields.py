@@ -1,5 +1,5 @@
 from __future__ import annotations
-import html
+from ankiweb.adapters.inbound.http_datastar.common import error_response
 from typing import Callable
 from fastapi import APIRouter
 from datastar_py.fastapi import (
@@ -92,8 +92,7 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(apply, initiator="fields")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(str(exc))}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            return error_response(exc)
 
         return DatastarResponse(SSE.redirect("/deckbrowser"))
 
