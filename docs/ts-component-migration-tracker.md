@@ -1,6 +1,6 @@
 # Anki Frontend Component & Subsystem Migration Tracker (`ts/`)
 
-This document tracks the strangler-fig migration of frontend components from [ankitects/anki `ts/`](https://github.com/ankitects/anki/tree/main/ts) into this Datastar + Jinja + Bootstrap stack.
+This document tracks the strangler-fig migration of frontend components from [ankitects/anki `ts/`](https://github.com/ankitects/anki/tree/main/ts) into this Datastar + Jinja + Tailwind/daisyUI stack.
 
 **Verification Approach:** In-Repo Component Gallery & Harness (`/dev/components`) using the Orca browser CLI (`agent-browser`) to inspect rendered DOM, verify interactive events, and ensure feature equality with upstream behavior.
 
@@ -47,12 +47,12 @@ Reviewer runtime (`ts/reviewer/*`), MathJax setup, `sveltelib` and `tslib` are *
 | Component / Subsystem | Upstream Path | Primary DOM Tags & Key Classes | Target In This Stack | Status | Verification Notes |
 |---|---|---|---|---|---|
 | **Absolute** | `lib/components/Absolute.svelte` | `<div class="absolute ...">` | `templates/components/absolute.html.jinja` | Ported, agent-verified; gallery render confirmed | Pure CSS positioning container |
-| **Badge** | `lib/components/Badge.svelte` | `<span class="badge ...">` | `templates/components/badge.html.jinja` | Ported, agent-verified; gallery render confirmed | Bootstrap badge wrapper |
+| **Badge** | `lib/components/Badge.svelte` | `<span class="badge ...">` | `templates/components/badge.html.jinja` | Ported, agent-verified; gallery render confirmed | daisyUI badge wrapper |
 | **ButtonGroup** | `lib/components/ButtonGroup.svelte` | `<div class="btn-group ...">` | `templates/components/button_group.html.jinja` | Ported, agent-verified; gallery render confirmed | Flex button group |
 | **ButtonToolbar** | `lib/components/ButtonToolbar.svelte` | `<div class="btn-toolbar" role="toolbar">` | `templates/components/button_toolbar.html.jinja` | Ported, agent-verified; gallery render confirmed | Toolbar wrapper |
 | **CheckBox** | `lib/components/CheckBox.svelte` | `<input type="checkbox" class="form-check-input">` | `templates/components/checkbox.html.jinja` | Ported, verified by lead in orca browser | Standard checkbox |
-| **Col** | `lib/components/Col.svelte` | `<div class="col-...">` | `templates/components/col.html.jinja` | Ported, agent-verified; gallery render confirmed | Bootstrap grid column |
-| **Container** | `lib/components/Container.svelte` | `<div class="container...">` | `templates/components/container.html.jinja` | Ported, agent-verified; gallery render confirmed | Bootstrap container |
+| **Col** | `lib/components/Col.svelte` | `<div class="col-...">` | `templates/components/col.html.jinja` | Ported, agent-verified; gallery render confirmed | Tailwind flex column |
+| **Container** | `lib/components/Container.svelte` | `<div class="container...">` | `templates/components/container.html.jinja` | Ported, agent-verified; gallery render confirmed | Tailwind container |
 | **DropdownDivider** | `lib/components/DropdownDivider.svelte` | `<hr class="dropdown-divider">` | `templates/components/dropdown_divider.html.jinja` | Ported, agent-verified; gallery render confirmed | Divider line |
 | **DropdownItem** | `lib/components/DropdownItem.svelte` | `<button/a class="dropdown-item">` | `templates/components/dropdown_item.html.jinja` | Ported, agent-verified; gallery render confirmed | Dropdown menu item |
 | **EnumSelector** | `lib/components/EnumSelector.svelte` | `<select class="form-select">` | `templates/components/enum_selector.html.jinja` | Ported, verified by lead in orca browser | Single select control |
@@ -68,7 +68,7 @@ Reviewer runtime (`ts/reviewer/*`), MathJax setup, `sveltelib` and `tslib` are *
 | **LabelButton** | `lib/components/LabelButton.svelte` | `<button class="btn label-button">` | `templates/components/label_button.html.jinja` | Ported, agent-verified; gallery render confirmed | Styled label trigger |
 | **RenderChildren** | `lib/components/RenderChildren.svelte` | Fragment / slot | `templates/components/render_children.html.jinja` | Ported, agent-verified | Slot pass-through |
 | **RevertButton** | `lib/components/RevertButton.svelte` | `<button class="btn btn-sm btn-outline-secondary revert-btn">` | `templates/components/revert_button.html.jinja` | Ported, agent-verified; gallery render confirmed | Reset-to-default button |
-| **Row** | `lib/components/Row.svelte` | `<div class="row ...">` | `templates/components/row.html.jinja` | Ported, agent-verified; gallery render confirmed | Bootstrap flex row |
+| **Row** | `lib/components/Row.svelte` | `<div class="row ...">` | `templates/components/row.html.jinja` | Ported, agent-verified; gallery render confirmed | Tailwind flex row |
 | **SelectOption** | `lib/components/SelectOption.svelte` | `<option value="...">` | `templates/components/select_option.html.jinja` | Ported, agent-verified; gallery render confirmed | Option element |
 | **SettingTitle** | `lib/components/SettingTitle.svelte` | `<h6 class="setting-title">` | `templates/components/setting_title.html.jinja` | Ported, agent-verified; gallery render confirmed | Section title heading |
 | **Spacer** | `lib/components/Spacer.svelte` | `<div class="flex-grow-1">` | `templates/components/spacer.html.jinja` | Ported, agent-verified; gallery render confirmed | Flexbox space filler |
@@ -91,7 +91,7 @@ Reviewer runtime (`ts/reviewer/*`), MathJax setup, `sveltelib` and `tslib` are *
 | **Collapsible** | `lib/components/Collapsible.svelte` | `<details class="collapsible">` | `templates/components/collapsible.html.jinja` | Ported, verified by lead in orca browser | Collapsible disclosure |
 | **ConfigInput** | `lib/components/ConfigInput.svelte` | `<input class="form-control">` | `templates/components/config_input.html.jinja` | Ported, agent-verified; gallery render confirmed | Auto-syncing text input |
 | **HelpModal** | `lib/components/HelpModal.svelte` | `<div class="modal">` | `templates/components/help_modal.html.jinja` | Ported, agent-verified; gallery render confirmed | Modal fetching docs |
-| **Modal** | `lib/components/Modal.svelte` | `<div class="modal fade">` | `templates/components/modal.html.jinja` | Ported, verified by lead in orca browser | Bootstrap modal dialog |
+| **Modal** | `lib/components/Modal.svelte` | `<dialog class="modal">` | `templates/components/modal.html.jinja` | Ported, verified by lead in orca browser | native dialog + daisyUI modal |
 | **NotetypeChooser** | `lib/components/NotetypeChooser.svelte` | `<button class="btn">` + modal | `templates/components/notetype_chooser.html.jinja` | Ported, agent-verified; gallery render confirmed; quoting hardened | Note type selector |
 | **Popover** | `lib/components/Popover.svelte` | `<div class="popover">` | `templates/components/popover.html.jinja` | Ported, agent-verified; gallery render confirmed | Floating popup menu |
 | **Portal** | `lib/components/Portal.svelte` | Dynamic DOM teleport | `templates/components/portal.html.jinja` (Datastar `data-init` teleport) | Ported, agent-verified | Teleports to body |
@@ -99,7 +99,7 @@ Reviewer runtime (`ts/reviewer/*`), MathJax setup, `sveltelib` and `tslib` are *
 | **TitledContainer** | `lib/components/TitledContainer.svelte` | `<div class="card">` | `templates/components/titled_container.html.jinja` | Ported, agent-verified; gallery render confirmed | Card with header title |
 | **WithContext** | `lib/components/WithContext.svelte` | Context provider | `templates/components/with_context.html.jinja` | Ported, agent-verified | Dependency injection |
 | **WithOverlay** | `lib/components/WithOverlay.svelte` | `<div class="modal-backdrop">` | `templates/components/with_overlay.html.jinja` | Ported, agent-verified; gallery render confirmed | Backdrop overlay |
-| **WithTooltip** | `lib/components/WithTooltip.svelte` | `data-bs-toggle="tooltip"` | `templates/components/with_tooltip.html.jinja` (Bootstrap tooltip) | Ported, agent-verified | Tooltip trigger |
+| **WithTooltip** | `lib/components/WithTooltip.svelte` | daisyUI `tooltip` + `data-tip` | `templates/components/with_tooltip.html.jinja` (daisyUI tooltip) | Ported, agent-verified | Tooltip trigger |
 | **change-notetype** (Route)| `ts/routes/change-notetype/` | Field mapping form | `http_pages/change_notetype.py` + `templates/pages/change_notetype.html.jinja` | Served at /change-notetype; verified by lead (mapping + Save); independent QA round 3; malformed ids now handled like legacy (author-verified) | Remap note type fields |
 | **import-anki-package** (Route)| `ts/routes/import-anki-package/` | File upload & deck choice | `http_pages/import_package.py` + `templates/pages/import_anki_package.html.jinja` | Served at /import-anki-package; independent QA round 3; final sweep confirmed payload, results log counts vs backend and error views | Package import wizard |
 | **import-page** (Route)| `ts/routes/import-page/` | Import logs & conflicts | `http_pages/import_package.py` + `templates/pages/import_page.html.jinja` | Served at /import-page (legacy had no route); agent-verified; search links open /browse | Log results viewer |
@@ -131,7 +131,7 @@ Reviewer runtime (`ts/reviewer/*`), MathJax setup, `sveltelib` and `tslib` are *
 | **reviewer_extras** | `ts/reviewer/reviewer_extras.ts` | Action drawer & whiteboard | `reviewer_actions_bar.html.jinja` | Satisfied, no port: obsolete upstream shim; mutateNextCardStates and imageOcclusion API already in vendored reviewer.js | Gesture & whiteboard tools |
 | **tag-editor** | `ts/lib/tag-editor/` | Tag chips + autocomplete | `shell_src/bundles/tag-editor.ts`, `templates/pages/editor/_tags.html.jinja`, `http_pages/editor_tags.py` | Ported; independent QA (editor round 1 and 3): chips, autocomplete, save | Chips input with dropdown |
 | **domlib** | `ts/lib/domlib/` | Range & selection utils | `shell_src/bundles/editor/{selection,dom,surround,commands}.ts` | Ported inside the editor engine; independent QA (editor round 3) | Caret & node operations |
-| **sveltelib** | `ts/lib/sveltelib/` | Action stores & directives | Datastar signal expressions | Satisfied, no port: replaced by Datastar modifiers, Bootstrap Popper/modals, shortcut and modal macros | Client reactivity glue |
+| **sveltelib** | `ts/lib/sveltelib/` | Action stores & directives | Datastar signal expressions | Satisfied, no port: replaced by Datastar modifiers, native dialogs and daisyUI components, shortcut and modal macros | Client reactivity glue |
 
 ---
 
@@ -163,7 +163,7 @@ Reviewer runtime (`ts/reviewer/*`), MathJax setup, `sveltelib` and `tslib` are *
 
 | Component | Deviation | Reason |
 |---|---|---|
-| Switch | `rtl` is a macro argument, not read from `getComputedStyle`; extra `anki-switch` scoping class; no `nightMode` class on the input | server-rendered, theme via `data-bs-theme` |
+| Switch | `rtl` is a macro argument, not read from `getComputedStyle`; extra `anki-switch` scoping class; no `nightMode` class on the input | server-rendered, theme via daisyUI `data-theme` |
 | Label | `preventDefault` via `data-on:click__prevent="void 0"` | Datastar requires a non-empty expression |
 | ButtonGroupItem | position passed explicitly instead of Svelte context | no context in Jinja |
 | Icon | data generated by `tools/generate_icons.py` into `icons.html.jinja` (97 icons) | `icons.ts` is TypeScript |

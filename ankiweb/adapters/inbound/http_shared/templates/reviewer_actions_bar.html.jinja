@@ -1,15 +1,15 @@
-<div id="rev-actions" class="d-inline-block">
-  <div class="dropdown">
-    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+<div id="rev-actions" class="inline-block">
+  <div class="dropdown dropdown-end">
+    <button class="btn btn-sm btn-outline" type="button" tabindex="0">
       More Actions
     </button>
-    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="max-height: calc(100dvh - 4rem); overflow-y: auto;">
+    <ul tabindex="0" class="dropdown-content menu flex-nowrap bg-base-100 rounded-box shadow-lg z-50 w-52 p-1 border border-base-300" style="max-height: calc(100dvh - 4rem); overflow-y: auto;">
       {% for b in buttons %}
         <li>
           <button
             type="button"
-            class="dropdown-item rev-act small py-1 px-3"
-            onclick="{{ b.onclick | safe }}"
+            class="rev-act text-sm py-1.5 px-3"
+            onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur(); {{ b.onclick | safe }}"
           >
             {{ b.label }}
           </button>

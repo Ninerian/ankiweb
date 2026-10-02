@@ -1,31 +1,26 @@
 <div class="graphs-page" data-signals='{"search": "{{ search }}", "scope": "{{ scope }}", "days": {{ days }}, "separate_inactive": {{ "true" if separate_inactive else "false" }}, "show_backlog": {{ "true" if show_backlog else "false" }}, "future_due_range": 30, "reviews_range": 30, "reviews_show_time": false, "added_range": 30, "intervals_range": "95", "stability_range": "95", "hours_range": {{ days }}, "buttons_range": {{ days }}, "calendar_year": 2026, "retention_mode": "summary"}'>
   <!-- Sticky Range Box -->
-  <div class="range-box border-bottom">
+  <div class="range-box border-b border-base-300">
     <div class="range-row">
       <!-- Deck vs Collection scope -->
-      <div class="btn-group btn-group-sm" role="group">
-        <input type="radio" class="btn-check" name="scope-opt" id="scope-deck" value="deck" data-bind="scope" data-on:change="$search = 'deck:current'; @post('/graphs/update')" {% if scope == "deck" %}checked{% endif %}>
-        <label class="btn btn-outline-secondary" for="scope-deck">{{ tr.statistics_range_deck() }}</label>
-
-        <input type="radio" class="btn-check" name="scope-opt" id="scope-col" value="collection" data-bind="scope" data-on:change="$search = ''; @post('/graphs/update')" {% if scope == "collection" %}checked{% endif %}>
-        <label class="btn btn-outline-secondary" for="scope-col">{{ tr.statistics_range_collection() }}</label>
+      <div class="join" role="group">
+        <input type="radio" class="btn btn-sm btn-outline join-item" name="scope-opt" id="scope-deck" value="deck" aria-label="{{ tr.statistics_range_deck() }}" data-bind="scope" data-on:change="$search = 'deck:current'; @post('/graphs/update')" {% if scope == "deck" %}checked{% endif %}>
+        <input type="radio" class="btn btn-sm btn-outline join-item" name="scope-opt" id="scope-col" value="collection" aria-label="{{ tr.statistics_range_collection() }}" data-bind="scope" data-on:change="$search = ''; @post('/graphs/update')" {% if scope == "collection" %}checked{% endif %}>
       </div>
 
       <!-- Search Input -->
-      <div class="flex-grow-1" style="max-width: 320px;">
-        <input type="text" id="statisticsSearchText" class="form-control form-control-sm" placeholder="{{ tr.statistics_range_search() }}" data-bind="search" data-on:keydown__debounce.400ms="@post('/graphs/update')" value="{{ search }}">
+      <div class="flex-grow max-w-xs">
+        <input type="text" id="statisticsSearchText" class="input input-sm w-full" placeholder="{{ tr.statistics_range_search() }}" data-bind="search" data-on:keydown__debounce.400ms="@post('/graphs/update')" value="{{ search }}">
       </div>
 
       <!-- Days Range Selector -->
-      <div class="btn-group btn-group-sm ms-auto" role="group">
-        <input type="radio" class="btn-check" name="days-opt" id="days-365" value="365" data-bind="days" data-on:change="@post('/graphs/update')" {% if days == 365 %}checked{% endif %}>
-        <label class="btn btn-outline-secondary" for="days-365">{{ tr.statistics_range_1_year_history() }}</label>
-
-        <input type="radio" class="btn-check" name="days-opt" id="days-0" value="0" data-bind="days" data-on:change="@post('/graphs/update')" {% if days == 0 %}checked{% endif %}>
-        <label class="btn btn-outline-secondary" for="days-0">{{ tr.statistics_range_all_history() }}</label>
+      <div class="join ms-auto" role="group">
+        <input type="radio" class="btn btn-sm btn-outline join-item" name="days-opt" id="days-365" value="365" aria-label="{{ tr.statistics_range_1_year_history() }}" data-bind="days" data-on:change="@post('/graphs/update')" {% if days == 365 %}checked{% endif %}>
+        <input type="radio" class="btn btn-sm btn-outline join-item" name="days-opt" id="days-0" value="0" aria-label="{{ tr.statistics_range_all_history() }}" data-bind="days" data-on:change="@post('/graphs/update')" {% if days == 0 %}checked{% endif %}>
       </div>
     </div>
   </div>
+
 
   <!-- Main Graphs Container -->
   <div class="graphs-container">

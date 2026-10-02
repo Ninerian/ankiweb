@@ -1,9 +1,9 @@
 {% from "components/row.html.jinja" import row %}
 
-<div class="border p-2">
-    {% call row(class_="bg-light p-2 gap-2") %}
-        <div class="p-2 bg-primary text-white">Item 1</div>
-        <div class="p-2 bg-success text-white">Item 2</div>
-        <div class="p-2 bg-info text-white">Item 3</div>
+<div class="border border-base-300 p-2 rounded-box">
+    {% call row(class_="bg-base-200 p-2 gap-2 rounded") %}
+        <div class="p-2 bg-primary text-primary-content rounded">Item 1</div>
+        <div class="p-2 bg-success text-success-content rounded">Item 2</div>
+        <div class="p-2 bg-info text-info-content rounded">Item 3</div>
     {% endcall %}
 </div>

@@ -2,7 +2,7 @@
 {% from "components/label_button.html.jinja" import label_button %}
 
 <div
-  class="d-flex flex-wrap gap-3 align-items-center"
+  class="flex flex-wrap gap-3 items-center"
   data-testid="demo-label-button-container"
   data-signals="{ label_btn_clicked: 0, label_btn_active: false }"
 >
@@ -56,7 +56,7 @@
     {% endcall %}
   </div>
 
-  <div class="mt-2 text-muted small w-100">
+  <div class="mt-2 text-base-content/60 text-sm w-full">
     Clicks recorded: <span id="label-btn-click-count" data-text="$label_btn_clicked">0</span>
   </div>
 </div>

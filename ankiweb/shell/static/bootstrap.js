@@ -112,6 +112,24 @@
         return;
       }
       const { route, path } = await resp.json();
+      if (route === "import-anki-package" && window.__ankiwebContext === "deckbrowser") {
+        const modalResp = await fetch("/import-anki-package/modal/" + encodeURIComponent(path));
+        if (modalResp.ok) {
+          const modalHtml = await modalResp.text();
+          let container = document.getElementById("deckbrowserImportModalContainer");
+          if (!container) {
+            container = document.createElement("div");
+            container.id = "deckbrowserImportModalContainer";
+            document.body.appendChild(container);
+          }
+          container.innerHTML = modalHtml;
+          const modalEl = document.getElementById("importPackageModal");
+          if (modalEl && typeof modalEl.showModal === "function") {
+            modalEl.showModal();
+            return;
+          }
+        }
+      }
       window.location.href = "/" + route + "/" + encodeURIComponent(path);
     };
     input.click();
@@ -151,29 +169,51 @@
   addBrowserClasses();
   if (nightOn()) {
     document.documentElement.classList.add("night-mode");
-    document.documentElement.setAttribute("data-bs-theme", "dark");
+    document.documentElement.setAttribute("data-theme", "dark");
+  } else {
+    document.documentElement.setAttribute("data-theme", "light");
   }
   window.ankiwebToggleNight = () => {
     const on = localStorage.getItem("ankiweb-night") === "1";
     localStorage.setItem("ankiweb-night", on ? "0" : "1");
     location.reload();
   };
+  function canRenderDaisyTooltip(el) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === "select" || tag === "input" || tag === "option" || tag === "textarea") {
+      return false;
+    }
+    if (el.classList.contains("overflow-hidden")) {
+      return false;
+    }
+    return true;
+  }
   function tooltipTargets(node) {
     if (!(node instanceof Element)) return [];
-    const sel = '[data-bs-toggle="tooltip"], .editor-toolbar [title], .field-action-btn[title]';
+    const sel = ".editor-toolbar [title], .field-action-btn[title]";
     return [...node.matches(sel) ? [node] : [], ...node.querySelectorAll(sel)];
   }
-  function createTooltip(Tooltip, el) {
-    Tooltip.getOrCreateInstance(el, el.hasAttribute("data-bs-toggle") ? { container: "body" } : { container: "body", trigger: "hover" });
+  function applyDaisyTooltip(el) {
+    const tip = el.getAttribute("data-tip") || el.getAttribute("title");
+    if (!tip) return;
+    if (!el.getAttribute("aria-label")) {
+      el.setAttribute("aria-label", tip);
+    }
+    if (!canRenderDaisyTooltip(el)) {
+      return;
+    }
+    el.setAttribute("data-tip", tip);
+    el.removeAttribute("title");
+    el.classList.add("tooltip");
+    if (!el.classList.contains("tooltip-top") && !el.classList.contains("tooltip-bottom") && !el.classList.contains("tooltip-left") && !el.classList.contains("tooltip-right")) {
+      el.classList.add("tooltip-bottom");
+    }
   }
   document.addEventListener("DOMContentLoaded", () => {
-    const Tooltip = window.bootstrap?.Tooltip;
-    if (!Tooltip) return;
-    tooltipTargets(document.body).forEach((el) => createTooltip(Tooltip, el));
+    tooltipTargets(document.body).forEach(applyDaisyTooltip);
     new MutationObserver((records) => {
       for (const r of records) {
-        r.removedNodes.forEach((n) => tooltipTargets(n).forEach((el) => Tooltip.getInstance(el)?.dispose()));
-        r.addedNodes.forEach((n) => tooltipTargets(n).forEach((el) => createTooltip(Tooltip, el)));
+        r.addedNodes.forEach((n) => tooltipTargets(n).forEach(applyDaisyTooltip));
       }
     }).observe(document.body, { childList: true, subtree: true });
   });

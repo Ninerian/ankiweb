@@ -1,0 +1,61 @@
+{% macro daisy_progress(
+    progress_signal="progressRunning",
+    label_signal="progressLabel",
+    percent_signal="progressPercent",
+    done_signal="progressDone",
+    error_signal="progressError",
+    class_="",
+    label="Loading..."
+) %}
+{#
+  DaisyProgress: daisyUI native progress bar & radial progress alternative to BackendProgressIndicator.
+  Uses daisyUI `progress progress-primary` linear bar and `radial-progress` indicator.
+#}
+<div
+    class="daisy-progress-container flex flex-col items-center justify-center gap-3 p-4 w-full {{ class_ }}"
+    {% if progress_signal %}
+    data-show="${{ progress_signal }}"
+    {% endif %}
+    {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}
+>
+    <!-- daisyUI linear progress bar -->
+    <div class="w-full max-w-md flex flex-col gap-1">
+        <div class="flex justify-between items-center text-xs">
+            <span class="font-medium text-base-content/80"
+                  {% if label_signal %}data-text="${{ label_signal }}"{% endif %}>
+                {{ label }}
+            </span>
+            {% if percent_signal %}
+            <span class="font-mono text-base-content/60"
+                  data-show="${{ percent_signal }} > 0"
+                  data-text="'' + ${{ percent_signal }} + '%'">
+            </span>
+            {% endif %}
+        </div>
+        {% if percent_signal %}
+        <progress
+            class="progress progress-primary w-full"
+            value="0"
+            max="100"
+            data-attr:value="${{ percent_signal }} || 0"
+        ></progress>
+        {% else %}
+        <progress class="progress progress-primary w-full"></progress>
+        {% endif %}
+    </div>
+
+    <!-- daisyUI radial progress alternative -->
+    <div class="flex items-center gap-4 mt-2">
+        <div
+            class="radial-progress text-primary text-xs font-bold"
+            style="--size: 3.5rem; --thickness: 4px;"
+            data-style:--value="${{ percent_signal }} || 0"
+            data-text="'' + (${{ percent_signal }} || 0) + '%'"
+            role="progressbar"
+        >
+            0%
+        </div>
+        <span class="loading loading-spinner loading-md text-primary" data-show="!${{ percent_signal }} || ${{ percent_signal }} === 0"></span>
+    </div>
+</div>
+{% endmacro %}

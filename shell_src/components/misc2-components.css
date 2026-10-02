@@ -7,73 +7,13 @@
     width: 100%;
 }
 
-.anki-backend-progress-container .progress {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: transparent;
-    box-shadow: none;
-    height: auto;
-    overflow: visible;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.anki-backend-progress-container .spinner {
-    display: block;
-    position: relative;
-    width: 80px;
-    height: 80px;
-    margin: 0 auto;
-}
-
-.anki-backend-progress-container .spinner div {
-    box-sizing: border-box;
-    display: block;
-    position: absolute;
-    width: 64px;
-    height: 64px;
-    margin: 8px;
-    border: 8px solid #000;
-    border-radius: 50%;
-    animation: anki-spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-    border-color: #000 transparent transparent transparent;
-}
-
-.anki-backend-progress-container .spinner.nightMode div,
-[data-bs-theme="dark"] .anki-backend-progress-container .spinner div {
-    border-top-color: #fff;
-}
-
-.anki-backend-progress-container .spinner div:nth-child(1) {
-    animation-delay: -0.45s;
-}
-
-.anki-backend-progress-container .spinner div:nth-child(2) {
-    animation-delay: -0.3s;
-}
-
-.anki-backend-progress-container .spinner div:nth-child(3) {
-    animation-delay: -0.15s;
-}
-
-@keyframes anki-spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-}
 
 .anki-backend-progress-container #label,
 .anki-backend-progress-container .progress-label {
     text-align: center;
     margin-top: 8px;
     font-size: 0.95rem;
-    color: var(--bs-body-color, #212529);
+    color: var(--color-base-content);
 }
 
 /* Shortcut indicator styling */

@@ -1,6 +1,6 @@
 {% import "pages/card_info_components.html.jinja" as comp %}
 
-<div class="route-card-info container-md my-3" id="card-info-root">
+<div class="route-card-info mx-auto max-w-4xl px-3 my-3" id="card-info-root">
     {% if is_multi %}
     <center>
         {{ comp.card_info_block(current_card, title=current_title, show_revlog=show_revlog, show_curve=show_curve) }}

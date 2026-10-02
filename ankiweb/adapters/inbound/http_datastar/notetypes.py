@@ -51,7 +51,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
         if payload and isinstance(payload, dict):
             newname = str(payload.get("name", "")).strip()
         if not newname:
-            err_html = '<div id="err" style="color:#c00;margin-top:8px;">A name is required.</div>'
+            err_html = '<div id="err" class="text-error text-sm font-semibold mt-2">A name is required.</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
         def do_rename(col):
@@ -62,7 +62,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_rename, initiator="notetypes")
         except Exception as exc:
-            err_html = f'<div id="err" style="color:#c00;margin-top:8px;">{html.escape(str(exc))}</div>'
+            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(str(exc))}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
@@ -71,7 +71,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
     async def delete_notetype(ntid: int):
         service = get_service()
         if await service.run(lambda col: len(col.models.all_names_and_ids())) <= 1:
-            err_html = '<div id="err" style="color:#c00;margin-top:8px;">Cannot delete the only note type</div>'
+            err_html = '<div id="err" class="text-error text-sm font-semibold mt-2">Cannot delete the only note type</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
         def do_delete(col):
@@ -80,7 +80,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_delete, initiator="notetypes")
         except Exception as exc:
-            err_html = f'<div id="err" style="color:#c00;margin-top:8px;">{html.escape(str(exc))}</div>'
+            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(str(exc))}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
@@ -92,7 +92,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
         if payload and isinstance(payload, dict):
             newname = str(payload.get("name", "")).strip()
         if not newname:
-            err_html = '<div id="err" style="color:#c00;margin-top:8px;">A name is required.</div>'
+            err_html = '<div id="err" class="text-error text-sm font-semibold mt-2">A name is required.</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
         def do_add(col):
@@ -105,7 +105,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_add, initiator="notetypes")
         except Exception as exc:
-            err_html = f'<div id="err" style="color:#c00;margin-top:8px;">{html.escape(str(exc))}</div>'
+            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(str(exc))}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
         return DatastarResponse(SSE.execute_script("window.location.reload()"))

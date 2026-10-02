@@ -1,17 +1,22 @@
 {% macro config_input(grow=true, rtl=false, revert_slot=none, class_="") %}
 <div
-    class="config-input position-relative justify-content-end {{ 'flex-grow-1' if grow else '' }} {{ class_ }}"
+    class="config-input flex items-center gap-2 justify-end {{ 'grow' if grow else '' }} {{ class_ }}"
     {% for k, v in kwargs.items() %}
     {{ k }}="{{ v }}"
     {% endfor %}
 >
-    {% if revert_slot %}
-    <div class="revert {{ 'rtl' if rtl else '' }}">
+    {% if rtl and revert_slot %}
+    <div class="revert rtl shrink-0 flex items-center">
         {{ revert_slot }}
     </div>
     {% endif %}
     {% if caller %}
         {{ caller() }}
+    {% endif %}
+    {% if not rtl and revert_slot %}
+    <div class="revert shrink-0 flex items-center">
+        {{ revert_slot }}
+    </div>
     {% endif %}
 </div>
 {% endmacro %}

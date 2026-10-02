@@ -1,0 +1,107 @@
+{% from "components/label.html.jinja" import label %}
+{% from "components/revert_button.html.jinja" import revert_button %}
+
+<div class="flex flex-col gap-8 p-4 bg-base-100 rounded-box border border-base-300">
+    <div>
+        <h4 class="text-lg font-bold mb-1">1. Label Comparison: Anki-ported vs daisyUI 5</h4>
+        <p class="text-sm text-base-content/70 mb-4">
+            Comparison between the Anki-ported <code>label</code> component (inline/block with click-prevent logic) and daisyUI 5 <code>fieldset</code> + <code>label</code> semantic classes.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Anki-ported label -->
+            <div class="p-4 border border-base-300 rounded-box bg-base-200/50">
+                <div class="badge badge-neutral mb-2">Existing (Anki-ported Macro)</div>
+                <div class="flex flex-col gap-2">
+                    <div>
+                        {% call label(for_="anki-cmp-input-1") %}
+                            <span class="font-medium">Standard clickable label</span>
+                        {% endcall %}
+                        <input id="anki-cmp-input-1" class="input input-sm w-full mt-1" placeholder="Click label to focus" />
+                    </div>
+                    <div>
+                        {% call label(for_="anki-cmp-input-2", prevent_mouse_click=true) %}
+                            <span class="font-medium text-base-content/80">Prevent-mouse-click label</span>
+                        {% endcall %}
+                        <input id="anki-cmp-input-2" class="input input-sm w-full mt-1" placeholder="Clicking label won't focus" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- daisyUI 5 standard label -->
+            <div class="p-4 border border-base-300 rounded-box bg-base-200/50">
+                <div class="badge badge-primary mb-2">daisyUI 5 Native (fieldset + label)</div>
+                <div class="flex flex-col gap-2">
+                    <fieldset class="fieldset">
+                        <legend class="fieldset-legend">Standard clickable label</legend>
+                        <input id="daisy-cmp-input-1" class="input input-sm w-full" placeholder="Click legend to focus" />
+                        <p class="label">Helper text below input</p>
+                    </fieldset>
+                    <fieldset class="fieldset">
+                        <legend class="fieldset-legend text-base-content/80">Prevent-click alternative</legend>
+                        <input id="daisy-cmp-input-2" class="input input-sm w-full" placeholder="Uses standard daisyUI fieldset" />
+                        <p class="label text-xs">Pure CSS semantic structure</p>
+                    </fieldset>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="divider my-0"></div>
+
+    <div>
+        <h4 class="text-lg font-bold mb-1">2. Revert Button Comparison: Custom Popover vs daisyUI Dropdown</h4>
+        <p class="text-sm text-base-content/70 mb-4">
+            Comparison between the existing custom popover revert button and a native daisyUI <code>dropdown dropdown-end</code> with <code>menu</code>.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" data-signals="{ cmpVal: 'custom_value', cmpDef: 'default_value' }">
+            <!-- Existing custom popover -->
+            <div class="p-4 border border-base-300 rounded-box bg-base-200/50">
+                <div class="badge badge-neutral mb-2">Existing (Custom CSS Popover)</div>
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-sm">Value: <code data-text="$cmpVal">custom_value</code></span>
+                        <div class="flex items-center gap-2">
+                            <button class="btn btn-xs btn-outline" data-on:click="$cmpVal = 'val_' + Date.now()">Change</button>
+                            {{ revert_button(signal_value="$cmpVal", signal_default="$cmpDef", tooltip="Restore default value") }}
+                        </div>
+                    </div>
+                    <p class="text-xs text-base-content/60">Uses absolute .revert-popover-menu + custom JS toggle.</p>
+                </div>
+            </div>
+
+            <!-- daisyUI Dropdown counterpart -->
+            <div class="p-4 border border-base-300 rounded-box bg-base-200/50">
+                <div class="badge badge-primary mb-2">daisyUI 5 (Dropdown + Menu)</div>
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-sm">Value: <code data-text="$cmpVal">custom_value</code></span>
+                        <div class="flex items-center gap-2">
+                            <button class="btn btn-xs btn-outline" data-on:click="$cmpVal = 'val_' + Date.now()">Change</button>
+
+                            <!-- daisyUI dropdown revert -->
+                            <div class="dropdown dropdown-end"
+                                 data-class="{'hidden': String($cmpVal) === String($cmpDef)}">
+                                <button tabindex="0" role="button" class="btn btn-xs btn-circle btn-ghost" title="Restore default value" aria-label="Restore default value">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+                                        <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+                                    </svg>
+                                </button>
+                                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-50 w-52 p-2 shadow-lg border border-base-300">
+                                    <li>
+                                        <button type="button" class="text-xs" data-on:click="$cmpVal = 'default_value'; document.activeElement?.blur();">
+                                            Restore default value
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-base-content/60">Uses native daisyUI dropdown + menu component with blur on click.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

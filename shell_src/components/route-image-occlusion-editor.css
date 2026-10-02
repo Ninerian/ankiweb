@@ -6,7 +6,7 @@
   position: relative;
   user-select: none;
   -webkit-user-select: none;
-  background-color: var(--canvas-subtle, #f8f9fa);
+  background-color: var(--canvas-subtle, var(--color-base-200));
   overflow: hidden;
 }
 
@@ -15,8 +15,8 @@
   align-items: center;
   gap: 4px;
   padding: 6px 10px;
-  background: var(--canvas-elevated, #ffffff);
-  border-bottom: 1px solid var(--border, #dee2e6);
+  background: var(--canvas-elevated, var(--color-base-100));
+  border-bottom: 1px solid var(--color-base-300);
   z-index: 10;
   flex-wrap: wrap;
 }
@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  border-right: 1px solid var(--border, #dee2e6);
+  border-right: 1px solid var(--color-base-300);
   padding-right: 6px;
   margin-right: 4px;
 }
@@ -44,20 +44,20 @@
   font-size: 13px;
   font-weight: 500;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--radius-field, 4px);
   background: transparent;
-  color: var(--fg-default, #212529);
+  color: var(--fg-default, var(--color-base-content));
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .io-btn:hover {
-  background-color: var(--hover-bg, #e9ecef);
+  background-color: var(--color-base-200);
 }
 
 .io-btn.active {
-  background-color: var(--primary-bg, #0d6efd);
-  color: #ffffff;
+  background-color: var(--color-primary);
+  color: var(--color-primary-content);
 }
 
 .io-btn:disabled {
@@ -75,8 +75,8 @@
   width: 24px;
   height: 24px;
   padding: 0;
-  border: 1px solid var(--border, #ccc);
-  border-radius: 4px;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field, 4px);
   cursor: pointer;
   vertical-align: middle;
 }
@@ -128,8 +128,8 @@
 
 /* Control handles */
 .io-handle {
-  fill: #ffffff;
-  stroke: #0d6efd;
+  fill: var(--color-base-100);
+  stroke: var(--color-primary);
   stroke-width: 1.5;
   cursor: pointer;
 }
@@ -140,8 +140,8 @@
 .io-handle-w, .io-handle-e { cursor: ew-resize; }
 
 .io-selection-box {
-  fill: rgba(13, 110, 253, 0.1);
-  stroke: #0d6efd;
+  fill: color-mix(in oklab, var(--color-primary) 10%, transparent);
+  stroke: var(--color-primary);
   stroke-width: 1;
   stroke-dasharray: 4 2;
   pointer-events: none;
@@ -149,9 +149,10 @@
 
 .io-text-editor-input {
   position: absolute;
-  border: 1px dashed #0d6efd;
+  border: 1px dashed var(--color-primary);
   outline: none;
-  background: #ffffff;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
   padding: 2px 4px;
   font-family: Arial, sans-serif;
   font-size: 16px;

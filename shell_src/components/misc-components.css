@@ -2,20 +2,20 @@
    Ported from ts/lib/components/ErrorPage.svelte
 */
 
-.error-box {
-    background-color: var(--bs-body-bg, #ffffff);
-    border: 1px solid var(--bs-danger, #dc3545);
-    color: var(--bs-body-color, #212529);
+.error-box:not(.alert) {
+    background-color: var(--color-base-100);
+    border: 1px solid var(--color-error);
+    color: var(--color-base-content);
     padding: 1rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-box, 0.5rem);
     max-width: 400px;
     margin: 1rem auto;
     text-align: center;
     box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
 }
 
-.error-box .error-text {
-    color: var(--bs-danger, #dc3545);
+.error-box:not(.alert) .error-text {
+    color: var(--color-error);
     font-weight: 600;
     margin-bottom: 0.75rem;
 }
@@ -36,7 +36,7 @@
 .help-section-container .chapter-redirect,
 .help-section-collapsible-wrapper .chapter-redirect {
     width: 100%;
-    color: var(--bs-secondary-color, #6c757d);
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
     font-size: 0.875rem;
 }
 

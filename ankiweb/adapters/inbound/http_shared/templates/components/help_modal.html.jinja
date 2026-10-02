@@ -42,9 +42,8 @@
 <span class="help-modal-trigger{% if class_ %} {{ class_ }}{% endif %}">
     <button
         type="button"
-        class="badge"
-        data-bs-toggle="modal"
-        data-bs-target="#{{ mid }}"
+        class="badge cursor-pointer"
+        onclick="document.getElementById('{{ mid }}').showModal()"
         title="{{ button_label or ('Help: ' ~ title) }}"
     >
         <span class="icon-constrain" style="--width-multiplier: 1; --icon-size: 125%;">
@@ -53,40 +52,40 @@
     </button>
 </span>
 
-{% call modal(id=mid, dialog_class="modal-lg help-modal", class_="help-modal-dialog", keyboard=true) %}
-    <div class="modal-header help-modal-header">
-        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
-            <h1 class="modal-title fs-5" id="{{ mid }}Label">
+{% call modal(id=mid, dialog_class="max-w-4xl w-11/12 help-modal", class_="help-modal-dialog", keyboard=true) %}
+    <div class="modal-header help-modal-header mb-3">
+        <div class="flex w-full justify-between items-center">
+            <h1 class="modal-title text-lg font-bold" id="{{ mid }}Label">
                 {{ title }}
             </h1>
-            <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-            ></button>
+            <form method="dialog">
+                <button
+                    type="submit"
+                    class="btn btn-sm btn-circle btn-ghost"
+                    aria-label="Close"
+                >✕</button>
+            </form>
         </div>
         {% if url %}
             <div class="chapter-redirect mt-2">
-                For more information, see <a href="{{ url }}" title="Open {{ effective_link_label }} in the manual" target="_blank" rel="noopener">{{ effective_link_label }}</a> in the manual.
+                For more information, see <a href="{{ url }}" class="link link-primary" title="Open {{ effective_link_label }} in the manual" target="_blank" rel="noopener">{{ effective_link_label }}</a> in the manual.
             </div>
         {% endif %}
     </div>
     <div class="modal-body" style="--gutter-inline: 1rem;">
         {% call row() %}
-            {% call col(breakpoint="xs", class_="col-md-4") %}
+            {% call col(breakpoint="xs") %}
                 <nav>
                     <div id="nav" class="help-modal-nav">
                         <ul>
                             {% for item in sections %}
                                 {% set is_hidden = (item.sched == 0 if fsrs else item.sched == 1) if (item.sched is defined and item.sched is not none) else false %}
-                                <li{% if is_hidden %} class="d-none"{% endif %}>
+                                <li{% if is_hidden %} class="hidden"{% endif %}>
                                     <button
                                         type="button"
+                                        data-slide-index="{{ loop.index0 }}"
                                         class="{% if loop.index0 == start_index %}active{% endif %}"
-                                        data-bs-target="#{{ mid }}Carousel"
-                                        data-bs-slide-to="{{ loop.index0 }}"
-                                        onclick="const nav = this.closest('.help-modal-nav'); nav.querySelectorAll('button').forEach(b => b.classList.remove('active')); this.classList.add('active');"
+                                        onclick="const nav = this.closest('.help-modal-nav'); nav.querySelectorAll('button').forEach(b => b.classList.remove('active')); this.classList.add('active'); const carousel = document.getElementById('{{ mid }}Carousel'); if (carousel) { carousel.querySelectorAll('.carousel-item').forEach(c => c.classList.add('hidden')); const target = document.getElementById('{{ mid }}Slide_{{ loop.index0 }}'); if (target) target.classList.remove('hidden'); }"
                                     >
                                         {{ item.title }}
                                     </button>
@@ -96,31 +95,30 @@
                     </div>
                 </nav>
             {% endcall %}
-            {% call col(breakpoint="xs", class_="col-md-8") %}
+            {% call col(breakpoint="xs") %}
                 <div
                     id="{{ mid }}Carousel"
-                    class="carousel slide"
-                    data-bs-interval="false"
-                    data-bs-ride="false"
+                    class="carousel w-full"
                 >
-                    <div class="carousel-inner">
-                        {% for item in sections %}
-                            {% set is_hidden = (item.sched == 0 if fsrs else item.sched == 1) if (item.sched is defined and item.sched is not none) else false %}
-                            <div
-                                class="carousel-item{% if loop.index0 == start_index %} active{% endif %}{% if is_hidden %} d-none{% endif %}"
-                            >
-                                {{ help_section(item=item) }}
-                            </div>
-                        {% endfor %}
-                    </div>
+                    {% for item in sections %}
+                        {% set is_hidden = (item.sched == 0 if fsrs else item.sched == 1) if (item.sched is defined and item.sched is not none) else false %}
+                        <div
+                            id="{{ mid }}Slide_{{ loop.index0 }}"
+                            class="carousel-item w-full flex-col{% if loop.index0 != start_index or is_hidden %} hidden{% endif %}"
+                        >
+                            {{ help_section(item=item) }}
+                        </div>
+                    {% endfor %}
                 </div>
             {% endcall %}
         {% endcall %}
     </div>
-    <div class="modal-footer">
-        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-            OK
-        </button>
+    <div class="modal-action mt-4">
+        <form method="dialog">
+            <button type="submit" class="btn btn-primary">
+                OK
+            </button>
+        </form>
     </div>
 {% endcall %}
 {%- endmacro %}

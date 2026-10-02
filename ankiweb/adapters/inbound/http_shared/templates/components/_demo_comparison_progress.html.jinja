@@ -1,0 +1,106 @@
+{% from "components/backend_progress.html.jinja" import backend_progress %}
+{% from "components/daisy_radial_progress.html.jinja" import daisy_radial_progress %}
+
+<div class="card bg-base-100 border border-base-300 p-6" data-signals="{ progressRunning: false, progressDone: false, progressFraction: 0.0, progressPercent: 0, progressLabel: 'Idle', progressError: '' }">
+    <div class="flex items-center justify-between mb-2">
+        <h5 class="card-title text-base-content font-bold m-0">Progress Indicators: Anki Spinner vs daisyUI Radial Progress</h5>
+        <div class="badge badge-primary badge-sm">Live Comparison</div>
+    </div>
+    <p class="text-base-content/70 text-sm mb-4">
+        Direct side-by-side comparison between Anki's custom 4-segment CSS ring spinner and native daisyUI 5 <code>radial-progress</code> with dynamic <code>--value</code> and percentage text.
+    </p>
+
+    <!-- Controls -->
+    <div class="flex flex-wrap items-center gap-2 mb-6 p-3 bg-base-200/50 rounded-box border border-base-300">
+        <button
+            id="cmp-start-progress-btn"
+            class="btn btn-primary btn-sm"
+            type="button"
+            data-on:click__prevent="@post('/dev/progress/simulate')"
+            data-attr:disabled="$progressRunning"
+        >
+            Start Background Task
+        </button>
+        <button
+            id="cmp-reset-progress-btn"
+            class="btn btn-outline btn-sm"
+            type="button"
+            data-on:click__prevent="@post('/dev/progress/reset')"
+            data-attr:disabled="$progressRunning"
+        >
+            Reset
+        </button>
+        <div class="divider divider-horizontal my-0"></div>
+        <span class="text-xs text-base-content/70">
+            Status: <span class="badge badge-neutral badge-sm" data-text="$progressRunning ? 'Running' : ($progressDone ? 'Done' : 'Idle')">Idle</span>
+        </span>
+        <span class="text-xs text-base-content/70" data-show="$progressRunning || $progressDone">
+            Progress: <code class="font-mono text-primary font-bold" data-text="'' + $progressPercent + '%'">0%</code>
+        </span>
+    </div>
+
+    <!-- Live Side-by-Side Comparison Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 1. Anki Custom CSS Spinner -->
+        <div class="flex flex-col border border-base-300 rounded-box bg-base-200/30 overflow-hidden">
+            <div class="p-3 bg-base-200 border-b border-base-300 flex justify-between items-center">
+                <div>
+                    <span class="font-bold text-sm">1. Anki Custom Spinner</span>
+                    <span class="text-xs text-base-content/60 block">Fixed collision (.anki-progress-spinner)</span>
+                </div>
+                <div class="badge badge-neutral badge-sm">Custom CSS</div>
+            </div>
+            <div class="p-4 flex-1 flex flex-col justify-center items-center relative min-h-[220px]">
+                <div class="text-center text-base-content/50 text-sm py-8" data-show="!$progressRunning && !$progressDone">
+                    Click "Start Background Task" above to view active spinner
+                </div>
+
+                {{ backend_progress(
+                    progress_signal="progressRunning",
+                    label_signal="progressLabel",
+                    percent_signal="progressPercent",
+                    done_signal="progressDone",
+                    error_signal="progressError"
+                ) }}
+
+                <div class="alert alert-success text-center py-2 px-4 mt-2 text-xs" data-show="$progressDone && !$progressRunning">
+                    <span>Task finished!</span>
+                </div>
+            </div>
+            <div class="p-3 border-t border-base-300 bg-base-100 text-xs text-base-content/70">
+                <strong>Traits:</strong> 4-segment rotating CSS ring (80px), centered with absolute positioning.
+            </div>
+        </div>
+
+        <!-- 2. daisyUI 5 Radial Progress -->
+        <div class="flex flex-col border border-base-300 rounded-box bg-base-200/30 overflow-hidden">
+            <div class="p-3 bg-base-200 border-b border-base-300 flex justify-between items-center">
+                <div>
+                    <span class="font-bold text-sm">2. daisyUI 5 Radial Progress</span>
+                    <span class="text-xs text-base-content/60 block">Native circular radial-progress</span>
+                </div>
+                <div class="badge badge-primary badge-sm">daisyUI 5</div>
+            </div>
+            <div class="p-4 flex-1 flex flex-col justify-center items-center relative min-h-[220px]">
+                <div class="text-center text-base-content/50 text-sm py-8" data-show="!$progressRunning && !$progressDone">
+                    Click "Start Background Task" above to view radial progress
+                </div>
+
+                {{ daisy_radial_progress(
+                    progress_signal="progressRunning",
+                    label_signal="progressLabel",
+                    percent_signal="progressPercent",
+                    done_signal="progressDone",
+                    error_signal="progressError"
+                ) }}
+
+                <div class="alert alert-success text-center py-2 px-4 mt-2 text-xs" data-show="$progressDone && !$progressRunning">
+                    <span>Task finished!</span>
+                </div>
+            </div>
+            <div class="p-3 border-t border-base-300 bg-base-100 text-xs text-base-content/70">
+                <strong>Traits:</strong> Circular radial-progress with animated border, inner percentage, and status label.
+            </div>
+        </div>
+    </div>
+</div>

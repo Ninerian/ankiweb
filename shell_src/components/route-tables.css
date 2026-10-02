@@ -25,7 +25,7 @@
 }
 
 .table.vt-table th {
-    background: var(--border, #e9ecef);
+    background: var(--color-base-300);
     text-align: center;
 }
 
@@ -195,7 +195,7 @@
 }
 
 .scroll-area-thumb:focus-visible {
-    box-shadow: 0 0 0 2px var(--bs-primary, #0d6efd);
+    box-shadow: 0 0 0 2px var(--color-primary);
 }
 
 .scroll-area-scrollbar[data-state="hidden"] {

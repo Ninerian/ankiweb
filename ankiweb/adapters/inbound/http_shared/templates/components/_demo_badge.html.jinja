@@ -3,7 +3,7 @@
 {% from "components/icon.html.jinja" import icon %}
 
 <div
-  class="d-flex flex-wrap gap-4 align-items-center"
+  class="flex flex-wrap gap-4 items-center"
   data-testid="demo-badge-container"
   data-signals="{ badge_clicks: 0 }"
 >
@@ -29,12 +29,12 @@
 
   <div>
     <span>Badge with Custom Text/Slot:</span>
-    {% call badge(id="badge-custom-btn", class_="bg-secondary text-white px-2 py-1") %}
+    {% call badge(id="badge-custom-btn", class_="badge-neutral text-neutral-content px-2 py-1") %}
       Custom Badge
     {% endcall %}
   </div>
 
-  <div class="mt-2 text-muted small w-100">
+  <div class="mt-2 text-base-content/60 text-sm w-full">
     Badge clicks: <span id="badge-click-count" data-text="$badge_clicks">0</span>
   </div>
 </div>

@@ -6,16 +6,16 @@
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    background-color: var(--canvas, var(--bs-body-bg, #fff));
-    color: var(--fg, var(--bs-body-color, #212529));
+    background-color: var(--color-base-100);
+    color: var(--color-base-content);
 }
 
 .route-editor .editor-top-bar {
     position: sticky;
     top: 0;
     z-index: 1020;
-    background-color: var(--canvas, var(--bs-body-bg, #fff));
-    border-bottom: 1px solid var(--border, var(--bs-border-color, #dee2e6));
+    background-color: var(--color-base-100);
+    border-bottom: 1px solid var(--color-base-300);
     padding: 0.5rem 1rem;
 }
 
@@ -42,10 +42,10 @@
     display: none;
     margin-bottom: 1rem;
     padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    background-color: var(--bs-warning-bg-subtle, #fff3cd);
-    color: var(--bs-warning-text-emphasis, #664d03);
-    border: 1px solid var(--bs-warning-border-subtle, #ffe69c);
+    border-radius: var(--radius-box, 0.5rem);
+    background-color: color-mix(in oklab, var(--color-warning) 15%, var(--color-base-100));
+    color: var(--color-base-content);
+    border: 1px solid var(--color-warning);
 }
 
 .route-editor .duplicate-warning-banner.show {
@@ -61,25 +61,25 @@
 }
 
 .route-editor .editor-field {
-    border: 1px solid var(--border, var(--bs-border-color, #dee2e6));
-    border-radius: 6px;
-    background-color: var(--canvas, var(--bs-body-bg, #fff));
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.5rem);
+    background-color: var(--color-base-100);
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
 .route-editor .editor-field:focus-within {
-    border-color: var(--bs-primary, #0d6efd);
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0.2rem color-mix(in oklab, var(--color-primary) 20%, transparent);
 }
 
 .route-editor .editor-field-header {
-    border-radius: 5px 5px 0 0;
+    border-radius: calc(var(--radius-box, 0.5rem) - 1px) calc(var(--radius-box, 0.5rem) - 1px) 0 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0.4rem 0.75rem;
-    background-color: var(--bs-tertiary-bg, rgba(0, 0, 0, 0.03));
-    border-bottom: 1px solid var(--border, var(--bs-border-color, #dee2e6));
+    background-color: var(--color-base-200);
+    border-bottom: 1px solid var(--color-base-300);
     user-select: none;
 }
 
@@ -110,27 +110,26 @@
     padding: 0.15rem 0.35rem;
     font-size: 0.75rem;
     line-height: 1;
-    color: var(--bs-secondary-color, #5c584f);
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: var(--radius-field, 0.25rem);
     cursor: pointer;
 }
 
 .route-editor .field-action-btn:hover {
-    color: var(--bs-body-color, #212529);
-    background-color: var(--bs-secondary-bg, #e9ecef);
+    color: var(--color-base-content);
+    background-color: var(--color-base-300);
 }
 
 .route-editor .field-action-btn.active {
-    color: var(--bs-primary, #0d6efd);
-    background-color: var(--bs-primary-bg-subtle, #cfe2ff);
-    border-color: var(--bs-primary-border-subtle, #9ec5fe);
+    color: var(--color-primary);
+    background-color: color-mix(in oklab, var(--color-primary) 15%, transparent);
+    border-color: color-mix(in oklab, var(--color-primary) 40%, transparent);
 }
-
 .route-editor .field-save-hint {
     font-size: 0.75rem;
-    color: var(--bs-secondary-color, #5c584f);
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
     margin-right: 0.25rem;
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -164,14 +163,14 @@
 
 .route-editor .rich-text-input:empty:before {
     content: attr(placeholder);
-    color: var(--bs-secondary-color, #6c757d);
+    color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
     pointer-events: none;
 }
 
 .route-editor .plain-text-input {
     display: none;
     min-height: 3.5rem;
-    font-family: var(--bs-font-monospace, monospace);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     font-size: 0.875rem;
 }
 
@@ -204,7 +203,7 @@
 .route-editor .editor-bottom-bar {
     margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--border, var(--bs-border-color, #dee2e6));
+    border-top: 1px solid var(--color-base-300);
     display: flex;
     flex-direction: column;
     gap: 0.75rem;

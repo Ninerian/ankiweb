@@ -395,7 +395,7 @@ def make_router(get_service: Callable) -> APIRouter:
             path = "/" + path
 
         if not import_tmp.is_within(service.settings, path):
-            err_html = f'<div class="alert alert-danger m-4">Import path not allowed: {path}</div>'
+            err_html = f'<div class="alert alert-error m-4">Import path not allowed: {path}</div>'
             return HTMLResponse(render_page("importcsv", err_html))
 
         def render(col):
@@ -405,7 +405,7 @@ def make_router(get_service: Callable) -> APIRouter:
             body = await service.run(render)
         except Exception as e:
             logger.exception("Failed to render import-csv page")
-            err_html = f'<div class="alert alert-danger m-4">Failed to load CSV: {e}</div>'
+            err_html = f'<div class="alert alert-error m-4">Failed to load CSV: {e}</div>'
             return HTMLResponse(render_page("importcsv", err_html))
 
         return HTMLResponse(render_page("importcsv", body))
@@ -468,7 +468,7 @@ def make_router(get_service: Callable) -> APIRouter:
             csv_path = "/" + csv_path
 
         if not import_tmp.is_within(service.settings, csv_path):
-            err_html = '<div class="alert alert-danger m-3">Import path not allowed</div>'
+            err_html = '<div class="alert alert-error m-3">Import path not allowed</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#import-alert-area"))
 
         delimiter = int(payload.get("delimiter", 0))
@@ -526,7 +526,7 @@ def make_router(get_service: Callable) -> APIRouter:
             return DatastarResponse(SSE.patch_elements(html, selector="#import-csv-content"))
         except Exception as e:
             logger.exception("CSV import failed")
-            err_html = f'<div class="alert alert-danger m-3">Import failed: {e}</div>'
+            err_html = f'<div class="alert alert-error m-3">Import failed: {e}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#import-alert-area"))
 
     return router

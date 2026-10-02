@@ -5,10 +5,10 @@
 
 .context-menu {
     position: fixed;
-    background: var(--canvas, var(--bs-body-bg, #fff));
-    border: 1px solid var(--border, var(--bs-border-color, #ccc));
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background: var(--color-base-100);
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box, 4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     padding: 4px 0;
     min-width: 120px;
     z-index: 1050;
@@ -21,26 +21,12 @@
     cursor: pointer;
     user-select: none;
     white-space: nowrap;
-    color: var(--bs-body-color, inherit);
+    color: var(--color-base-content);
 }
 
 .context-menu-item:hover,
 .context-menu-item:focus,
 .context-menu-item:active {
-    background-color: var(--highlight-bg, var(--bs-tertiary-bg, rgba(0, 0, 0, 0.08)));
+    background-color: var(--color-base-200);
     outline: none;
-}
-
-[data-bs-theme="dark"] .context-menu,
-.night-mode .context-menu {
-    background: var(--canvas, #2d2d2d);
-    border-color: var(--border, #444);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-[data-bs-theme="dark"] .context-menu-item:hover,
-.night-mode .context-menu-item:hover,
-[data-bs-theme="dark"] .context-menu-item:focus,
-.night-mode .context-menu-item:focus {
-    background-color: var(--highlight-bg, rgba(255, 255, 255, 0.1));
 }

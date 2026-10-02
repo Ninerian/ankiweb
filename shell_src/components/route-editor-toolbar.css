@@ -1,11 +1,11 @@
 /* Scoped styling for Ankiweb Editor Toolbar */
 .editor-toolbar {
-  background-color: var(--bs-tertiary-bg, #f8f9fa);
-  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+  background-color: var(--color-base-200);
+  border-bottom: 1px solid var(--color-base-300);
   user-select: none;
 }
 
-.editor-toolbar .editor-btn-group {
+.editor-toolbar .editor-btn-group:not(.hidden) {
   display: inline-flex;
   vertical-align: middle;
 }
@@ -17,20 +17,20 @@
   padding: 0.25rem 0.45rem;
   font-size: 0.875rem;
   line-height: 1;
-  color: var(--bs-body-color, #212529);
+  color: var(--color-base-content);
   background: transparent;
-  border-color: var(--bs-border-color, #dee2e6);
+  border-color: var(--color-base-300);
 }
 
 .editor-toolbar .btn.icon-button:hover {
-  background-color: var(--bs-secondary-bg, #e9ecef);
-  color: var(--bs-body-color, #212529);
+  background-color: var(--color-base-300);
+  color: var(--color-base-content);
 }
 
 .editor-toolbar .btn.icon-button.active {
-  background-color: var(--bs-primary, #0d6efd);
-  color: #fff;
-  border-color: var(--bs-primary, #0d6efd);
+  background-color: var(--color-primary);
+  color: var(--color-primary-content);
+  border-color: var(--color-primary);
 }
 
 .editor-toolbar .btn.icon-button:disabled {

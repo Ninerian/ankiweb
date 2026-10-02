@@ -10,9 +10,9 @@
     {"id": 7, "name": "Grape \\ Wine"}
 ] %}
 
-<div class="border p-3 mb-4 rounded" data-signals="{{ ({'item_chooser_result': 2}|tojson).__str__() }}">
-    <h5>1. Standard ItemChooser with Search & Keyboard Navigation</h5>
-    <p class="text-muted small">
+<div class="border border-base-300 p-4 mb-4 rounded-box bg-base-100" data-signals="{{ ({'item_chooser_result': 2}|tojson).__str__() }}">
+    <h5 class="font-bold text-lg mb-1">1. Standard ItemChooser with Search & Keyboard Navigation</h5>
+    <p class="text-base-content/60 text-sm mb-3">
         Click to open modal, filter by typing in the search box, use Arrow keys + Enter to select, or Escape to close.
     </p>
 
@@ -29,7 +29,7 @@
         ) }}
     </div>
 
-    <div class="mt-3 small">
+    <div class="mt-3 text-sm">
         Selected Result (Signal): <strong id="demo_item_chooser_result_output" data-text="$item_chooser_result">2</strong>
         | Button text: <strong id="demo_item_chooser_button_text">{{ sample_items[1].name }}</strong>
     </div>

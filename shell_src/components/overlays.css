@@ -7,26 +7,15 @@
    CSS Variables & Fallbacks
    ========================================================================== */
 :root {
-  --canvas: var(--bs-body-bg, #faf7f2);
-  --canvas-elevated: var(--bs-body-bg, #ffffff);
-  --canvas-inset: var(--bs-tertiary-bg, #f3eee5);
-  --fg: var(--bs-body-color, #26241f);
-  --fg-subtle: var(--bs-secondary-color, #5c584f);
-  --border-radius: var(--bs-border-radius, 5px);
-  --border-radius-medium: 10px;
-  --border-subtle: var(--bs-border-color, #ddd6c8);
-  --border-focus: var(--bs-primary, #185f66);
-}
-
-[data-bs-theme="dark"],
-.night-mode {
-  --canvas: var(--bs-body-bg, #1e1d1a);
-  --canvas-elevated: var(--bs-body-bg, #282622);
-  --canvas-inset: var(--bs-tertiary-bg, #24221e);
-  --fg: var(--bs-body-color, #e8e5de);
-  --fg-subtle: var(--bs-secondary-color, #8c887f);
-  --border-subtle: var(--bs-border-color, #44413b);
-  --border-focus: var(--bs-primary, #52b7a8);
+  --canvas: var(--color-base-100);
+  --canvas-elevated: var(--color-base-100);
+  --canvas-inset: var(--color-base-200);
+  --fg: var(--color-base-content);
+  --fg-subtle: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+  --border-radius: var(--radius-field, 5px);
+  --border-radius-medium: var(--radius-box, 10px);
+  --border-subtle: var(--color-base-300);
+  --border-focus: var(--color-primary);
 }
 
 /* ==========================================================================
@@ -34,16 +23,14 @@
    ========================================================================== */
 .modal {
   z-index: 1066;
-  background-color: rgba(0, 0, 0, 0.5);
 }
 
 .modal-content {
-  background-color: var(--canvas, var(--bs-body-bg, #faf7f2));
-  color: var(--fg, var(--bs-body-color, #26241f));
-  border-radius: var(--border-radius-medium, 10px);
-  border: 1px solid var(--border-subtle, var(--bs-border-color, #ddd6c8));
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  border-radius: var(--radius-box, 10px);
+  border: 1px solid var(--color-base-300);
 }
-
 /* ==========================================================================
    WithOverlay (ts/lib/components/WithOverlay.svelte)
    ========================================================================== */
@@ -106,11 +93,10 @@ span.overlay-reference {
               0px 6px 30px 5px rgba(20, 20, 20, 0.12);
 
   align-self: flex-start;
-  border-radius: var(--border-radius, 5px);
-  background-color: var(--canvas-elevated, var(--bs-card-bg, #ffffff));
-  color: var(--fg, var(--bs-body-color, #26241f));
-  border: 1px solid var(--border-subtle, var(--bs-border-color, #ddd6c8));
-
+  border-radius: var(--radius-box, 5px);
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  border: 1px solid var(--color-base-300);
   min-width: var(--popover-width, 1rem);
   max-width: 95vw;
 

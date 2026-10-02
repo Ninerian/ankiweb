@@ -4,23 +4,15 @@
  */
 
 :root {
-    --canvas-inset: var(--bs-tertiary-bg, #f3eee5);
-    --border: var(--bs-border-color, #ddd6c8);
-    --border-radius: var(--bs-border-radius, 4px);
-    --fg: var(--bs-body-color, #26241f);
-}
-
-[data-bs-theme="dark"],
-.night-mode {
-    --canvas-inset: var(--bs-tertiary-bg, #24221e);
-    --border: var(--bs-border-color, #44413b);
-    --fg: var(--bs-body-color, #e8e5de);
+    --canvas-inset: var(--color-base-200);
+    --border-radius: var(--radius-field, 4px);
+    --fg: var(--color-base-content);
 }
 
 .spin-box {
     width: 100%;
-    background: var(--canvas-inset, var(--bs-tertiary-bg, #f3eee5));
-    border: 1px solid var(--border, var(--bs-border-color, #ddd6c8));
+    background: var(--canvas-inset, var(--color-base-200));
+    border: 1px solid var(--color-base-300);
     border-radius: var(--border-radius, 4px);
     overflow: hidden;
     position: relative;
@@ -81,15 +73,39 @@
     appearance: textfield;
 }
 
+.spin-box .spinner-column {
+    display: flex;
+    flex-direction: column;
+    width: 20px;
+    height: 100%;
+    flex-shrink: 0;
+}
+
 .spin-box .spinner {
     opacity: 0;
-    height: 100%;
+    flex: 1 1 50%;
+    height: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 4px;
+    padding: 0;
     user-select: none;
     transition: opacity 0.15s ease-in-out;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.spin-box .spinner .icon-constrain {
+    min-width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spin-box .spinner svg {
+    width: 14px;
+    height: 14px;
 }
 
 .spin-box:hover .spinner,
@@ -115,6 +131,7 @@
 .spin-box:focus-within .spinner.active:hover {
     opacity: 1;
 }
+
 
 /* DynamicallySlottable display contents wrapper */
 .dynamically-slottable {

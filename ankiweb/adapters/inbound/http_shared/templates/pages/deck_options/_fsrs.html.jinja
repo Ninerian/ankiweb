@@ -6,18 +6,17 @@
 {% from "components/revert_button.html.jinja" import revert_button %}
 
 <div class="route-deck-options-fsrs">
-    <div class="row align-items-center mb-3">
-        <div class="col-8 col-sm-9">
-            <label class="form-label fw-bold mb-0" for="fsrs-desired-retention">
+    <div class="flex items-center justify-between mb-3">
+        <div class="min-w-0 flex-1 me-3">
+            <label class="font-bold whitespace-normal cursor-pointer" for="fsrs-desired-retention">
                 {{ tr.deck_config_desired_retention() }}
             </label>
         </div>
-        <div class="col-4 col-sm-3 d-flex justify-content-end align-items-center gap-2">
+        <div class="flex justify-end items-center gap-2">
             <input
                 id="fsrs-desired-retention"
                 type="number"
-                class="form-control form-control-sm text-end"
-                style="max-width: 100px;"
+                class="input input-sm text-right w-24"
                 min="0.70"
                 max="0.99"
                 step="0.01"
@@ -29,20 +28,20 @@
 
     <!-- Workload Factor Alert / Info -->
     <div
-        class="alert alert-info py-2 px-3 small mb-3"
+        class="alert alert-info py-2 px-3 text-sm mb-3"
         data-show="$fsrsWorkloadMsg && $fsrsWorkloadMsg !== ''"
         data-text="$fsrsWorkloadMsg"
     ></div>
 
     <!-- FSRS Parameters / Weights -->
     <div class="mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-            <label class="form-label fw-bold mb-0">
+        <div class="flex justify-between items-center mb-1">
+            <span class="font-bold">
                 {{ tr.deck_config_weights() }}
-            </label>
+            </span>
             <button
                 type="button"
-                class="btn btn-sm btn-outline-secondary"
+                class="btn btn-sm btn-outline"
                 data-on:click="$cfg.fsrs_params_6 = {{ default_weights | tojson }}; $dirty = true"
                 title="Restore default parameters"
             >
@@ -50,7 +49,7 @@
             </button>
         </div>
         <div
-            class="form-control font-monospace small fsrs-weights-box"
+            class="font-mono text-sm fsrs-weights-box"
             style="min-height: 4.5rem; max-height: 8rem; overflow-y: auto;"
             data-text="Array.isArray($cfg.fsrs_params_6) ? $cfg.fsrs_params_6.join(', ') : ($cfg.fsrs_params_6 || '')"
         ></div>
@@ -58,33 +57,31 @@
 
     <!-- Param Search Input -->
     <div class="mb-3">
-        <label class="form-label small text-muted mb-1">
+        <label class="block py-1 text-xs text-base-content/60 mb-1">
             Search filter for optimization / evaluation:
         </label>
         <input
             type="text"
-            class="form-control form-control-sm"
+            class="input input-sm w-full"
             data-bind="cfg.param_search"
             placeholder='preset:"..." -is:suspended'
         />
     </div>
 
     <!-- Health Check Switch -->
-    <div class="row align-items-center mb-3">
-        <div class="col-8 col-sm-9">
-            <label class="form-check-label small" for="fsrs-health-check-toggle">
+    <div class="flex items-center justify-between mb-3">
+        <div class="min-w-0 flex-1 me-3">
+            <label class="text-sm font-semibold cursor-pointer whitespace-normal block" for="fsrs-health-check-toggle">
                 {{ tr.deck_config_health_check() }}
             </label>
         </div>
-        <div class="col-4 col-sm-3 d-flex justify-content-end">
-            <div class="form-check form-switch">
-                <input
-                    id="fsrs-health-check-toggle"
-                    type="checkbox"
-                    class="form-check-input"
-                    data-bind="fsrs_health_check"
-                />
-            </div>
+        <div class="flex justify-end">
+            <input
+                id="fsrs-health-check-toggle"
+                type="checkbox"
+                class="toggle toggle-sm"
+                data-bind="fsrs_health_check"
+            />
         </div>
     </div>
 
@@ -115,7 +112,7 @@
         <button
             type="button"
             class="btn btn-sm"
-            data-class="{'btn-warning': $fsrsEvaluating, 'btn-outline-primary': !$fsrsEvaluating}"
+            data-class="{'btn-warning': $fsrsEvaluating, 'btn-outline btn-primary': !$fsrsEvaluating}"
             data-attr:disabled="(!$fsrsEvaluating && ($fsrsComputing || $fsrsComputingRetention)) ? true : false"
             data-on:click="$fsrsEvaluating ? @post('/deck-options/fsrs/abort') : @post('/deck-options/fsrs/evaluate')"
         >
@@ -126,7 +123,7 @@
         <!-- Calculate Optimal Retention Button -->
         <button
             type="button"
-            class="btn btn-sm btn-outline-secondary"
+            class="btn btn-sm btn-outline"
             data-attr:disabled="($fsrsComputing || $fsrsEvaluating || $fsrsComputingRetention) ? true : false"
             data-on:click="@post('/deck-options/fsrs/calculate-retention')"
         >
@@ -134,16 +131,15 @@
             <span data-show="!$fsrsComputingRetention">Calculate Optimal Retention</span>
         </button>
     </div>
-
     <!-- Display optimal retention result if calculated -->
     <div
-        class="alert alert-success py-2 px-3 small mb-2"
+        class="alert alert-success py-2 px-3 text-sm mb-2"
         data-show="$fsrsOptimalRetention && $fsrsOptimalRetention > 0"
     >
         Optimal retention suggestion: <strong data-text="($fsrsOptimalRetention * 100).toFixed(1) + '%'"></strong>
         <button
             type="button"
-            class="btn btn-xs btn-outline-success ms-2 py-0 px-2"
+            class="btn btn-xs btn-outline btn-success ms-2 py-0 px-2"
             data-on:click="$cfg.desired_retention = $fsrsOptimalRetention; $dirty = true; @post('/deck-options/fsrs/workload')"
         >
             Apply

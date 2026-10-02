@@ -17,14 +17,14 @@
         {% call container(breakpoint="sm", class_="py-3") %}
             {# Overview section #}
             {% call titled_container(title=tr.importing_overview()) %}
-                <p class="mt-2 text-muted">
+                <p class="mt-2 text-base-content/60">
                     {{ tr.importing_notes_found_in_file2(notes=found_notes) }}
                 </p>
                 <ul class="ps-0 mt-2">
                     {% for item in summaries %}
                         {% if item.count > 0 %}
                             <li class="summary-item">
-                                <span class="d-inline-flex align-items-center">
+                                <span class="inline-flex items-center">
                                     {{ icon(name=item.icon) }}
                                 </span>
                                 <span>
@@ -33,7 +33,7 @@
                                 {% if item.can_browse and item.browse_query %}
                                     <a
                                         href="/browse?q={{ item.browse_query | urlencode }}"
-                                        class="btn btn-link btn-sm p-0 desktop-only text-decoration-none"
+                                        class="btn btn-link btn-sm p-0 desktop-only"
                                         title="{{ tr.importing_show() }}"
                                     >
                                         {{ tr.importing_show() }}
@@ -67,7 +67,7 @@
                                         <td class="status-cell text-center" title="{{ r.reason }}">
                                             {{ r.action }}
                                         </td>
-                                        <td class="contents-cell text-truncate" title="{{ r.fields_joined }}">
+                                        <td class="contents-cell truncate" title="{{ r.fields_joined }}">
                                             {{ r.fields_joined }}
                                         </td>
                                         <td class="search-cell text-center">
@@ -94,7 +94,7 @@
                                 {% endfor %}
                             {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-3">
+                                    <td colspan="4" class="text-center text-base-content/60 py-3">
                                         No notes to display
                                     </td>
                                 </tr>

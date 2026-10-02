@@ -4,15 +4,13 @@
 {% from "components/switch.html.jinja" import switch %}
 {% from "components/enum_selector.html.jinja" import enum_selector %}
 {% from "components/spin_box.html.jinja" import spin_box %}
-{% from "components/modal.html.jinja" import modal %}
-
-<div class="route-deck-options container-fluid" data-signals="{{ signals | tojson | forceescape }}">
+<div class="route-deck-options max-w-7xl mx-auto px-4" data-signals="{{ signals | tojson | forceescape }}">
     <!-- Sticky Header -->
-    <div class="deck-options-header d-flex justify-content-between align-items-center mb-3">
-        <div class="preset-selector-row d-flex align-items-center gap-2">
-            <span class="fw-bold">{{ tr.card_stats_preset() }}:</span>
+    <div class="deck-options-header flex justify-between items-center mb-3">
+        <div class="preset-selector-row flex items-center gap-2">
+            <span class="font-bold">{{ tr.card_stats_preset() }}:</span>
             <div id="presetSelectorWrap">
-                <select id="presetSelector" class="form-select form-select-sm w-auto" data-bind="presetId" data-on:change="@post('/deck-options/change-preset')">
+                <select id="presetSelector" class="select select-sm w-auto" data-bind="presetId" data-on:change="@post('/deck-options/change-preset')">
                     {% for p in all_configs %}
                         <option value="{{ p.id }}" {% if p.id == preset_id %}selected{% endif %}>
                             {{ p.name }}{% if p.use_count %} ({{ p.use_count }}){% endif %}
@@ -22,32 +20,32 @@
             </div>
 
             <!-- Preset Action Dropdown -->
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <details class="dropdown">
+                <summary class="btn btn-sm btn-outline">
                     ⚙️
-                </button>
-                <ul class="dropdown-menu">
-                    <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#addPresetModal">{{ tr.deck_config_add_group() }}</button></li>
-                    <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#clonePresetModal">{{ tr.deck_config_clone_group() }}</button></li>
-                    <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#renamePresetModal">{{ tr.deck_config_rename_group() }}</button></li>
-                    <li><button class="dropdown-item text-danger" type="button" data-attr:disabled="$presetId == 1" data-bs-toggle="modal" data-bs-target="#deletePresetModal">{{ tr.deck_config_remove_group() }}</button></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><button class="dropdown-item" type="button" data-on:click="$applyToSubdecks = true; @post('/deck-options/save'); $applyToSubdecks = false;">{{ tr.deck_config_save_to_all_subdecks() }}</button></li>
+                </summary>
+                <ul class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow border border-base-300">
+                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('addPresetModal').showModal()">{{ tr.deck_config_add_group() }}</button></li>
+                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('clonePresetModal').showModal()">{{ tr.deck_config_clone_group() }}</button></li>
+                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('renamePresetModal').showModal()">{{ tr.deck_config_rename_group() }}</button></li>
+                    <li><button class="btn btn-ghost btn-sm justify-start font-normal text-error" type="button" data-attr:disabled="$presetId == 1" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('deletePresetModal').showModal()">{{ tr.deck_config_remove_group() }}</button></li>
+                    <li><hr class="border-base-300 my-1"></li>
+                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open')" data-on:click="$applyToSubdecks = true; @post('/deck-options/save'); $applyToSubdecks = false;">{{ tr.deck_config_save_to_all_subdecks() }}</button></li>
                 </ul>
-            </div>
+            </details>
 
-            <span class="badge bg-warning text-dark ms-2" data-show="$dirty">Unsaved changes</span>
+            <span class="badge badge-warning ms-2" data-show="$dirty">Unsaved changes</span>
         </div>
 
         <!-- Action Buttons -->
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-show="$dirty" data-on:click="@post('/deck-options/revert')">
+        <div class="flex items-center gap-2">
+            <button class="btn btn-sm btn-outline" type="button" data-show="$dirty" data-on:click="@post('/deck-options/revert')">
                 Revert
             </button>
             <button class="btn btn-sm btn-primary" type="button" data-on:click="$applyToSubdecks = false; @post('/deck-options/save')">
                 {{ tr.deck_config_save_button() }}
             </button>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-on:click="if (!$dirty || confirm('You have unsaved changes. Are you sure you want to close?')) { window.location.href = '/deckbrowser'; }">
+            <button class="btn btn-sm btn-outline" type="button" data-on:click="if (!$dirty || confirm('You have unsaved changes. Are you sure you want to close?')) { window.location.href = '/deckbrowser'; }">
                 Close
             </button>
         </div>
@@ -66,64 +64,44 @@
     </div>
 
     <!-- Navigation Tabs -->
-    <ul class="nav nav-tabs deck-options-nav mb-4">
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'daily-limits'}" data-on:click="$activeTab = 'daily-limits'">
-                {{ tr.deck_config_daily_limits() }}
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'new-cards'}" data-on:click="$activeTab = 'new-cards'">
-                New Cards
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'lapses'}" data-on:click="$activeTab = 'lapses'">
-                Lapses
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'display-order'}" data-on:click="$activeTab = 'display-order'">
-                {{ tr.deck_config_ordering_title() }}
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'burying'}" data-on:click="$activeTab = 'burying'">
-                {{ tr.deck_config_bury_title() }}
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'audio'}" data-on:click="$activeTab = 'audio'">
-                {{ tr.deck_config_audio_title() }}
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'timer'}" data-on:click="$activeTab = 'timer'">
-                {{ tr.deck_config_timer_title() }}
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'auto-advance'}" data-on:click="$activeTab = 'auto-advance'">
-                Auto Advance
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'fsrs'}" data-on:click="$activeTab = 'fsrs'">
-                FSRS
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" type="button" data-class="{'active': $activeTab == 'advanced'}" data-on:click="$activeTab = 'advanced'">
-                {{ tr.deck_config_advanced_title() }}
-            </button>
-        </li>
-    </ul>
+    <div class="tabs tabs-border deck-options-nav mb-4 overflow-x-auto flex-nowrap" role="tablist">
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'daily-limits'}" data-on:click="$activeTab = 'daily-limits'">
+            {{ tr.deck_config_daily_limits() }}
+        </button>
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'new-cards'}" data-on:click="$activeTab = 'new-cards'">
+            New Cards
+        </button>
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'lapses'}" data-on:click="$activeTab = 'lapses'">
+            Lapses
+        </button>
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'display-order'}" data-on:click="$activeTab = 'display-order'">
+            {{ tr.deck_config_ordering_title() }}
+        </button>
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'burying'}" data-on:click="$activeTab = 'burying'">
+            {{ tr.deck_config_bury_title() }}
+        </button>
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'audio'}" data-on:click="$activeTab = 'audio'">
+            {{ tr.deck_config_audio_title() }}
+        </button>
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'timer'}" data-on:click="$activeTab = 'timer'">
+            {{ tr.deck_config_timer_title() }}
+        </button>
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'auto-advance'}" data-on:click="$activeTab = 'auto-advance'">
+            Auto Advance
+        </button>
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'fsrs'}" data-on:click="$activeTab = 'fsrs'">
+            FSRS
+        </button>
+        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'advanced'}" data-on:click="$activeTab = 'advanced'">
+            {{ tr.deck_config_advanced_title() }}
+        </button>
+    </div>
 
     <!-- 1. Daily Limits Tab -->
     <div class="tab-pane" data-show="$activeTab == 'daily-limits'">
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">{{ tr.deck_config_daily_limits() }}</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">{{ tr.deck_config_daily_limits() }}</h5>
                 <span class="help-badge">
                     {% set m_limits = help_modals.get('Daily Limits', {}) %}
                     {{ help_modal(
@@ -135,145 +113,134 @@
             </div>
 
             <!-- Subtabs: Preset / This Deck / Today Only -->
-            <ul class="nav nav-pills mb-3">
-                <li class="nav-item">
-                    <button class="nav-link btn-sm py-1 px-3" type="button" data-class="{'active': $activeLimitSubTab == 'preset'}" data-on:click="$activeLimitSubTab = 'preset'; $limitMode = 'preset'; $dirty = true;">
-                        {{ tr.deck_config_shared_preset() }}
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link btn-sm py-1 px-3" type="button" data-class="{'active': $activeLimitSubTab == 'deck'}" data-on:click="$activeLimitSubTab = 'deck'; $limitMode = 'deck'; $dirty = true;">
-                        {{ tr.deck_config_deck_only() }}
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link btn-sm py-1 px-3" type="button" data-class="{'active': $activeLimitSubTab == 'today'}" data-on:click="$activeLimitSubTab = 'today'">
-                        {{ tr.deck_config_today_only() }}
-                    </button>
-                </li>
-            </ul>
-
+            <div class="flex gap-2 mb-3">
+                <button class="btn btn-sm" type="button" data-class="{'btn-primary': $activeLimitSubTab == 'preset', 'btn-outline': $activeLimitSubTab != 'preset'}" data-on:click="$activeLimitSubTab = 'preset'; $limitMode = 'preset'; $dirty = true;">
+                    {{ tr.deck_config_shared_preset() }}
+                </button>
+                <button class="btn btn-sm" type="button" data-class="{'btn-primary': $activeLimitSubTab == 'deck', 'btn-outline': $activeLimitSubTab != 'deck'}" data-on:click="$activeLimitSubTab = 'deck'; $limitMode = 'deck'; $dirty = true;">
+                    {{ tr.deck_config_deck_only() }}
+                </button>
+                <button class="btn btn-sm" type="button" data-class="{'btn-primary': $activeLimitSubTab == 'today', 'btn-outline': $activeLimitSubTab != 'today'}" data-on:click="$activeLimitSubTab = 'today'">
+                    {{ tr.deck_config_today_only() }}
+                </button>
+            </div>
             <!-- Preset Limits SubTab -->
             <div data-show="$activeLimitSubTab == 'preset'">
                 <div class="setting-row">
                     <div class="setting-label-col">
-                        <label class="form-label mb-0 fw-semibold">New cards/day</label>
+                        <div class="font-semibold">New cards/day</div>
                         {{ help_modal(
                             title=m_limits.title or "Daily Limits",
                             url=m_limits.url or "https://docs.ankiweb.net/deck-options.html#daily-limits",
                             start_index=0,
                             help_sections=m_limits.sections or []
                         ) }}
-                        <div class="text-muted small">Maximum number of new cards to introduce each day.</div>
+                        <div class="text-base-content/60 text-xs">Maximum number of new cards to introduce each day.</div>
                     </div>
                     <div class="setting-input-col">
-                        <input type="number" min="0" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.new_per_day" data-on:input="$dirty = true">
+                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="cfg.new_per_day" data-on:input="$dirty = true">
                     </div>
                 </div>
                 <div class="setting-row">
                     <div class="setting-label-col">
-                        <label class="form-label mb-0 fw-semibold">Maximum reviews/day</label>
+                        <div class="font-semibold">Maximum reviews/day</div>
                         {{ help_modal(
                             title=m_limits.title or "Daily Limits",
                             url=m_limits.url or "https://docs.ankiweb.net/deck-options.html#daily-limits",
                             start_index=1,
                             help_sections=m_limits.sections or []
                         ) }}
-                        <div class="text-muted small">Maximum number of review cards to show each day.</div>
+                        <div class="text-base-content/60 text-xs">Maximum number of review cards to show each day.</div>
                     </div>
                     <div class="setting-input-col">
-                        <input type="number" min="0" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.reviews_per_day" data-on:input="$dirty = true">
+                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="cfg.reviews_per_day" data-on:input="$dirty = true">
                     </div>
                 </div>
             </div>
 
             <!-- Per-Deck Limits SubTab -->
             <div data-show="$activeLimitSubTab == 'deck'">
-                <div class="alert alert-light border small py-2 px-3 mb-3">
+                <div class="alert alert-info border border-base-300 text-xs py-2 px-3 mb-3">
                     Limits set here apply only to this specific deck (<strong>{{ deck_name }}</strong>), overriding preset limits.
                 </div>
                 <div class="setting-row">
                     <div class="setting-label-col">
-                        <label class="form-label mb-0 fw-semibold">Deck new cards/day</label>
+                        <div class="font-semibold">Deck new cards/day</div>
                     </div>
                     <div class="setting-input-col">
-                        <input type="number" min="0" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="deckLimitNew" data-on:input="$dirty = true">
+                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="deckLimitNew" data-on:input="$dirty = true">
                     </div>
                 </div>
                 <div class="setting-row">
                     <div class="setting-label-col">
-                        <label class="form-label mb-0 fw-semibold">Deck maximum reviews/day</label>
+                        <div class="font-semibold">Deck maximum reviews/day</div>
                     </div>
                     <div class="setting-input-col">
-                        <input type="number" min="0" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="deckLimitRev" data-on:input="$dirty = true">
+                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="deckLimitRev" data-on:input="$dirty = true">
                     </div>
                 </div>
             </div>
 
             <!-- Today-Only Limits SubTab -->
             <div data-show="$activeLimitSubTab == 'today'">
-                <div class="alert alert-light border small py-2 px-3 mb-3">
+                <div class="alert alert-info border border-base-300 text-xs py-2 px-3 mb-3">
                     Temporary limits for today only. They will automatically reset at the start of tomorrow.
                 </div>
                 <div class="setting-row">
                     <div class="setting-label-col">
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" id="todayNewSwitch" data-bind="todayLimitNewActive" data-on:change="$dirty = true">
-                            <label class="form-check-label fw-semibold" for="todayNewSwitch">Enable today's new card limit</label>
-                        </div>
+                        <label class="cursor-pointer flex items-center justify-between gap-2 whitespace-normal" for="todayNewSwitch">
+                            <span class="font-semibold">Enable today's new card limit</span>
+                            <input class="toggle toggle-sm" type="checkbox" id="todayNewSwitch" data-bind="todayLimitNewActive" data-on:change="$dirty = true">
+                        </label>
                     </div>
                     <div class="setting-input-col" data-show="$todayLimitNewActive">
-                        <input type="number" min="0" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="todayLimitNew" data-on:input="$dirty = true">
+                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="todayLimitNew" data-on:input="$dirty = true">
                     </div>
                 </div>
                 <div class="setting-row">
                     <div class="setting-label-col">
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" id="todayRevSwitch" data-bind="todayLimitRevActive" data-on:change="$dirty = true">
-                            <label class="form-check-label fw-semibold" for="todayRevSwitch">Enable today's review card limit</label>
-                        </div>
+                        <label class="cursor-pointer flex items-center justify-between gap-2 whitespace-normal" for="todayRevSwitch">
+                            <span class="font-semibold">Enable today's review card limit</span>
+                            <input class="toggle toggle-sm" type="checkbox" id="todayRevSwitch" data-bind="todayLimitRevActive" data-on:change="$dirty = true">
+                        </label>
                     </div>
                     <div class="setting-input-col" data-show="$todayLimitRevActive">
-                        <input type="number" min="0" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="todayLimitRev" data-on:input="$dirty = true">
+                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="todayLimitRev" data-on:input="$dirty = true">
                     </div>
                 </div>
             </div>
 
-            <hr>
+            <hr class="border-base-300 my-4">
 
             <!-- Global Limit Options -->
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_new_cards_ignore_review_limit() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_new_cards_ignore_review_limit() }}</div>
                     {{ help_modal(
                         title=m_limits.title or "Daily Limits",
                         url=m_limits.url or "https://docs.ankiweb.net/deck-options.html#daily-limits",
                         start_index=2,
                         help_sections=m_limits.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_new_cards_ignore_review_limit_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_cards_ignore_review_limit_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="newCardsIgnoreReviewLimit" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="newCardsIgnoreReviewLimit" data-on:change="$dirty = true">
                 </div>
             </div>
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_apply_all_parent_limits() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_apply_all_parent_limits() }}</div>
                     {{ help_modal(
                         title=m_limits.title or "Daily Limits",
                         url=m_limits.url or "https://docs.ankiweb.net/deck-options.html#daily-limits",
                         start_index=3,
                         help_sections=m_limits.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_apply_all_parent_limits_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_apply_all_parent_limits_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="applyAllParentLimits" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="applyAllParentLimits" data-on:change="$dirty = true">
                 </div>
             </div>
         </div>
@@ -282,8 +249,8 @@
     <!-- 2. New Cards Tab -->
     <div class="tab-pane" data-show="$activeTab == 'new-cards'">
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">New Cards</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">New Cards</h5>
                 <span class="help-badge">
                     {% set m_new = help_modals.get('New Cards', {}) %}
                     {{ help_modal(
@@ -296,65 +263,65 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_learning_steps() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_learning_steps() }}</div>
                     {{ help_modal(
                         title=m_new.title or "New Cards",
                         url=m_new.url or "https://docs.ankiweb.net/deck-options.html#new-cards",
                         start_index=0,
                         help_sections=m_new.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_learning_steps_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_learning_steps_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="text" class="form-control form-control-sm text-end" style="width: 140px;" data-bind="learnStepsStr" data-on:input="$dirty = true" placeholder="1 10">
+                    <input type="text" class="input input-sm text-right w-36" data-bind="learnStepsStr" data-on:input="$dirty = true" placeholder="1 10">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Graduating interval (days)</label>
+                    <div class="font-semibold">Graduating interval (days)</div>
                     {{ help_modal(
                         title=m_new.title or "New Cards",
                         url=m_new.url or "https://docs.ankiweb.net/deck-options.html#new-cards",
                         start_index=1,
                         help_sections=m_new.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_graduating_interval_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_graduating_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="1" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.graduating_interval_good" data-on:input="$dirty = true">
+                    <input type="number" min="1" max="99999" class="input input-sm text-right w-24" data-bind="cfg.graduating_interval_good" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Easy interval (days)</label>
+                    <div class="font-semibold">Easy interval (days)</div>
                     {{ help_modal(
                         title=m_new.title or "New Cards",
                         url=m_new.url or "https://docs.ankiweb.net/deck-options.html#new-cards",
                         start_index=2,
                         help_sections=m_new.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_easy_interval_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_easy_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="1" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.graduating_interval_easy" data-on:input="$dirty = true">
+                    <input type="number" min="1" max="99999" class="input input-sm text-right w-24" data-bind="cfg.graduating_interval_easy" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_new_insertion_order() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_new_insertion_order() }}</div>
                     {{ help_modal(
                         title=m_new.title or "New Cards",
                         url=m_new.url or "https://docs.ankiweb.net/deck-options.html#new-cards",
                         start_index=3,
                         help_sections=m_new.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_new_insertion_order_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_insertion_order_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="form-select form-select-sm" data-bind="cfg.new_card_insert_order" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto" data-bind="cfg.new_card_insert_order" data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_new_insertion_order_sequential() }}</option>
                         <option value="1">{{ tr.deck_config_new_insertion_order_random() }}</option>
                     </select>
@@ -366,8 +333,8 @@
     <!-- 3. Lapses Tab -->
     <div class="tab-pane" data-show="$activeTab == 'lapses'">
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Lapses</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">Lapses</h5>
                 <span class="help-badge">
                     {% set m_lapses = help_modals.get('Lapses', {}) %}
                     {{ help_modal(
@@ -380,65 +347,65 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_relearning_steps() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_relearning_steps() }}</div>
                     {{ help_modal(
                         title=m_lapses.title or "Lapses",
                         url=m_lapses.url or "https://docs.ankiweb.net/deck-options.html#lapses",
                         start_index=0,
                         help_sections=m_lapses.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_relearning_steps_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_relearning_steps_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="text" class="form-control form-control-sm text-end" style="width: 140px;" data-bind="relearnStepsStr" data-on:input="$dirty = true" placeholder="10">
+                    <input type="text" class="input input-sm text-right w-36" data-bind="relearnStepsStr" data-on:input="$dirty = true" placeholder="10">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Minimum interval (days)</label>
+                    <div class="font-semibold">Minimum interval (days)</div>
                     {{ help_modal(
                         title=m_lapses.title or "Lapses",
                         url=m_lapses.url or "https://docs.ankiweb.net/deck-options.html#lapses",
                         start_index=1,
                         help_sections=m_lapses.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_minimum_interval_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_minimum_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="1" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.minimum_lapse_interval" data-on:input="$dirty = true">
+                    <input type="number" min="1" max="99999" class="input input-sm text-right w-24" data-bind="cfg.minimum_lapse_interval" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Leech threshold (lapses)</label>
+                    <div class="font-semibold">Leech threshold (lapses)</div>
                     {{ help_modal(
                         title=m_lapses.title or "Lapses",
                         url=m_lapses.url or "https://docs.ankiweb.net/deck-options.html#lapses",
                         start_index=2,
                         help_sections=m_lapses.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_leech_threshold_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_leech_threshold_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="0" max="999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.leech_threshold" data-on:input="$dirty = true">
+                    <input type="number" min="0" max="999" class="input input-sm text-right w-24" data-bind="cfg.leech_threshold" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Leech action</label>
+                    <div class="font-semibold">Leech action</div>
                     {{ help_modal(
                         title=m_lapses.title or "Lapses",
                         url=m_lapses.url or "https://docs.ankiweb.net/deck-options.html#lapses",
                         start_index=3,
                         help_sections=m_lapses.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_leech_action_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_leech_action_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="form-select form-select-sm" data-bind="cfg.leech_action" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto" data-bind="cfg.leech_action" data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_suspend_leeches() }}</option>
                         <option value="1">Tag Only</option>
                     </select>
@@ -450,8 +417,8 @@
     <!-- 4. Display Order Tab -->
     <div class="tab-pane" data-show="$activeTab == 'display-order'">
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">{{ tr.deck_config_ordering_title() }}</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">{{ tr.deck_config_ordering_title() }}</h5>
                 <span class="help-badge">
                     {% set m_order = help_modals.get('Display Order', {}) %}
                     {{ help_modal(
@@ -464,17 +431,17 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_new_gather_priority() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_new_gather_priority() }}</div>
                     {{ help_modal(
                         title=m_order.title or "Display Order",
                         url=m_order.url or "https://docs.ankiweb.net/deck-options.html#display-order",
                         start_index=0,
                         help_sections=m_order.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_new_gather_priority_tooltip_2() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_gather_priority_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="form-select form-select-sm" data-bind="cfg.new_card_gather_priority" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto" data-bind="cfg.new_card_gather_priority" data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_new_gather_priority_deck() }}</option>
                         <option value="5">{{ tr.deck_config_new_gather_priority_deck_then_random_notes() }}</option>
                         <option value="1">{{ tr.deck_config_new_gather_priority_position_lowest_first() }}</option>
@@ -487,17 +454,17 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_new_card_sort_order() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_new_card_sort_order() }}</div>
                     {{ help_modal(
                         title=m_order.title or "Display Order",
                         url=m_order.url or "https://docs.ankiweb.net/deck-options.html#display-order",
                         start_index=1,
                         help_sections=m_order.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_new_card_sort_order_tooltip_2() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_card_sort_order_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="form-select form-select-sm" data-bind="cfg.new_card_sort_order" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto" data-bind="cfg.new_card_sort_order" data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_sort_order_template_then_gather() }}</option>
                         <option value="1">{{ tr.deck_config_sort_order_gather() }}</option>
                         <option value="2">{{ tr.deck_config_sort_order_card_template_then_random() }}</option>
@@ -509,17 +476,17 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_new_review_priority() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_new_review_priority() }}</div>
                     {{ help_modal(
                         title=m_order.title or "Display Order",
                         url=m_order.url or "https://docs.ankiweb.net/deck-options.html#display-order",
                         start_index=2,
                         help_sections=m_order.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_new_review_priority_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_review_priority_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="form-select form-select-sm" data-bind="cfg.new_mix" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto" data-bind="cfg.new_mix" data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_review_mix_mix_with_reviews() }}</option>
                         <option value="1">{{ tr.deck_config_review_mix_show_after_reviews() }}</option>
                         <option value="2">{{ tr.deck_config_review_mix_show_before_reviews() }}</option>
@@ -529,17 +496,17 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_interday_step_priority() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_interday_step_priority() }}</div>
                     {{ help_modal(
                         title=m_order.title or "Display Order",
                         url=m_order.url or "https://docs.ankiweb.net/deck-options.html#display-order",
                         start_index=3,
                         help_sections=m_order.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_interday_step_priority_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_interday_step_priority_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="form-select form-select-sm" data-bind="cfg.interday_learning_mix" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto" data-bind="cfg.interday_learning_mix" data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_review_mix_mix_with_reviews() }}</option>
                         <option value="1">{{ tr.deck_config_review_mix_show_after_reviews() }}</option>
                         <option value="2">{{ tr.deck_config_review_mix_show_before_reviews() }}</option>
@@ -549,17 +516,17 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_review_sort_order() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_review_sort_order() }}</div>
                     {{ help_modal(
                         title=m_order.title or "Display Order",
                         url=m_order.url or "https://docs.ankiweb.net/deck-options.html#display-order",
                         start_index=4,
                         help_sections=m_order.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_review_sort_order_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_review_sort_order_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="form-select form-select-sm" data-bind="cfg.review_order" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto" data-bind="cfg.review_order" data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_sort_order_due_date_then_random() }}</option>
                         <option value="1">{{ tr.deck_config_sort_order_due_date_then_deck() }}</option>
                         <option value="2">{{ tr.deck_config_sort_order_deck_then_due_date() }}</option>
@@ -580,8 +547,8 @@
     <!-- 5. Burying Tab -->
     <div class="tab-pane" data-show="$activeTab == 'burying'">
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">{{ tr.deck_config_bury_title() }}</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">{{ tr.deck_config_bury_title() }}</h5>
                 <span class="help-badge">
                     {% set m_bury = help_modals.get('Burying', {}) %}
                     {{ help_modal(
@@ -594,55 +561,49 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_bury_new_siblings() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_bury_new_siblings() }}</div>
                     {{ help_modal(
                         title=m_bury.title or "Burying",
                         url=m_bury.url or "https://docs.ankiweb.net/studying.html#siblings-and-burying",
                         start_index=0,
                         help_sections=m_bury.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_bury_new_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_bury_new_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="cfg.bury_new" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.bury_new" data-on:change="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_bury_review_siblings() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_bury_review_siblings() }}</div>
                     {{ help_modal(
                         title=m_bury.title or "Burying",
                         url=m_bury.url or "https://docs.ankiweb.net/studying.html#siblings-and-burying",
                         start_index=1,
                         help_sections=m_bury.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_bury_review_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_bury_review_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="cfg.bury_reviews" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.bury_reviews" data-on:change="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_bury_interday_learning_siblings() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_bury_interday_learning_siblings() }}</div>
                     {{ help_modal(
                         title=m_bury.title or "Burying",
                         url=m_bury.url or "https://docs.ankiweb.net/studying.html#siblings-and-burying",
                         start_index=2,
                         help_sections=m_bury.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_bury_interday_learning_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_bury_interday_learning_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="cfg.bury_interday_learning" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.bury_interday_learning" data-on:change="$dirty = true">
                 </div>
             </div>
         </div>
@@ -651,8 +612,8 @@
     <!-- 6. Audio Tab -->
     <div class="tab-pane" data-show="$activeTab == 'audio'">
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">{{ tr.deck_config_audio_title() }}</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">{{ tr.deck_config_audio_title() }}</h5>
                 <span class="help-badge">
                     {% set m_audio = help_modals.get('Audio', {}) %}
                     {{ help_modal(
@@ -665,37 +626,33 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_disable_autoplay() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_disable_autoplay() }}</div>
                     {{ help_modal(
                         title=m_audio.title or "Audio",
                         url=m_audio.url or "https://docs.ankiweb.net/deck-options.html#audio",
                         start_index=0,
                         help_sections=m_audio.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_disable_autoplay_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_disable_autoplay_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="cfg.disable_autoplay" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.disable_autoplay" data-on:change="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_wait_for_audio() }}</label>
-                    <div class="text-muted small">{{ tr.deck_config_wait_for_audio_tooltip() }}</div>
+                    <div class="font-semibold">{{ tr.deck_config_wait_for_audio() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_wait_for_audio_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="cfg.wait_for_audio" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.wait_for_audio" data-on:change="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_skip_question_when_replaying() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_skip_question_when_replaying() }}</div>
                     {{ help_modal(
                         title=m_audio.title or "Audio",
                         url=m_audio.url or "https://docs.ankiweb.net/deck-options.html#audio",
@@ -704,9 +661,7 @@
                     ) }}
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="cfg.skip_question_when_replaying_answer" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.skip_question_when_replaying_answer" data-on:change="$dirty = true">
                 </div>
             </div>
         </div>
@@ -715,8 +670,8 @@
     <!-- 7. Timer Tab -->
     <div class="tab-pane" data-show="$activeTab == 'timer'">
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">{{ tr.deck_config_timer_title() }}</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">{{ tr.deck_config_timer_title() }}</h5>
                 <span class="help-badge">
                     {% set m_timer = help_modals.get('Timers', {}) %}
                     {{ help_modal(
@@ -729,53 +684,49 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_maximum_answer_secs() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_maximum_answer_secs() }}</div>
                     {{ help_modal(
                         title=m_timer.title or "Timers",
                         url=m_timer.url or "https://docs.ankiweb.net/deck-options.html#timers",
                         start_index=0,
                         help_sections=m_timer.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_maximum_answer_secs_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_maximum_answer_secs_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="30" max="3600" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.cap_answer_time_to_secs" data-on:input="$dirty = true">
+                    <input type="number" min="30" max="3600" class="input input-sm text-right w-24" data-bind="cfg.cap_answer_time_to_secs" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Show answer timer</label>
+                    <div class="font-semibold">Show answer timer</div>
                     {{ help_modal(
                         title=m_timer.title or "Timers",
                         url=m_timer.url or "https://docs.ankiweb.net/deck-options.html#timers",
                         start_index=1,
                         help_sections=m_timer.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_show_answer_timer_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_show_answer_timer_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="cfg.show_timer" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.show_timer" data-on:change="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_stop_timer_on_answer() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_stop_timer_on_answer() }}</div>
                     {{ help_modal(
                         title=m_timer.title or "Timers",
                         url=m_timer.url or "https://docs.ankiweb.net/deck-options.html#timers",
                         start_index=2,
                         help_sections=m_timer.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_stop_timer_on_answer_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_stop_timer_on_answer_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="cfg.stop_timer_on_answer" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.stop_timer_on_answer" data-on:change="$dirty = true">
                 </div>
             </div>
         </div>
@@ -784,8 +735,8 @@
     <!-- 8. Auto Advance Tab -->
     <div class="tab-pane" data-show="$activeTab == 'auto-advance'">
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Auto Advance</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">Auto Advance</h5>
                 <span class="help-badge">
                     {% set m_auto = help_modals.get('Auto Advance', {}) %}
                     {{ help_modal(
@@ -798,33 +749,33 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_seconds_to_show_question() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_seconds_to_show_question() }}</div>
                     {{ help_modal(
                         title=m_auto.title or "Auto Advance",
                         url=m_auto.url or "https://docs.ankiweb.net/deck-options.html#auto-advance",
                         start_index=0,
                         help_sections=m_auto.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_seconds_to_show_question_tooltip_2() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_seconds_to_show_question_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.5" min="0" max="3600" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.seconds_to_show_question" data-on:input="$dirty = true">
+                    <input type="number" step="0.5" min="0" max="3600" class="input input-sm text-right w-24" data-bind="cfg.seconds_to_show_question" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_question_action() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_question_action() }}</div>
                     {{ help_modal(
                         title=m_auto.title or "Auto Advance",
                         url=m_auto.url or "https://docs.ankiweb.net/deck-options.html#auto-advance",
                         start_index=3,
                         help_sections=m_auto.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_question_action_tool_tip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_question_action_tool_tip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="form-select form-select-sm" data-bind="cfg.question_action" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto" data-bind="cfg.question_action" data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_question_action_show_answer() }}</option>
                         <option value="1">{{ tr.deck_config_question_action_show_reminder() }}</option>
                     </select>
@@ -833,33 +784,33 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_seconds_to_show_answer() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_seconds_to_show_answer() }}</div>
                     {{ help_modal(
                         title=m_auto.title or "Auto Advance",
                         url=m_auto.url or "https://docs.ankiweb.net/deck-options.html#auto-advance",
                         start_index=1,
                         help_sections=m_auto.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_seconds_to_show_answer_tooltip_2() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_seconds_to_show_answer_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.5" min="0" max="3600" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.seconds_to_show_answer" data-on:input="$dirty = true">
+                    <input type="number" step="0.5" min="0" max="3600" class="input input-sm text-right w-24" data-bind="cfg.seconds_to_show_answer" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_answer_action() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_answer_action() }}</div>
                     {{ help_modal(
                         title=m_auto.title or "Auto Advance",
                         url=m_auto.url or "https://docs.ankiweb.net/deck-options.html#auto-advance",
                         start_index=4,
                         help_sections=m_auto.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_answer_action_tooltip_2() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_answer_action_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="form-select form-select-sm" data-bind="cfg.answer_action" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto" data-bind="cfg.answer_action" data-on:change="$dirty = true">
                         <option value="0">Bury Card</option>
                         <option value="1">{{ tr.deck_config_answer_again() }}</option>
                         <option value="2">{{ tr.deck_config_answer_good() }}</option>
@@ -874,8 +825,8 @@
     <!-- 9. FSRS Tab (includes peer template + Simulator) -->
     <div class="tab-pane" data-show="$activeTab == 'fsrs'">
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">FSRS</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">FSRS</h5>
                 <span class="help-badge">
                     {% set m_fsrs = help_modals.get('FSRS', {}) %}
                     {{ help_modal(
@@ -888,35 +839,33 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Enable FSRS</label>
+                    <div class="font-semibold">Enable FSRS</div>
                     {{ help_modal(
                         title=m_fsrs.title or "FSRS",
                         url=m_fsrs.url or "https://docs.ankiweb.net/deck-options.html#fsrs",
                         start_index=0,
                         help_sections=m_fsrs.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_fsrs_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_fsrs_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" data-bind="fsrs" data-on:change="$dirty = true">
-                    </div>
+                    <input class="toggle toggle-sm" type="checkbox" data-bind="fsrs" data-on:change="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_desired_retention() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_desired_retention() }}</div>
                     {{ help_modal(
                         title=m_fsrs.title or "FSRS",
                         url=m_fsrs.url or "https://docs.ankiweb.net/deck-options.html#fsrs",
                         start_index=1,
                         help_sections=m_fsrs.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_desired_retention_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_desired_retention_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.01" min="0.70" max="0.99" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.desired_retention" data-on:input="$dirty = true">
+                    <input type="number" step="0.01" min="0.70" max="0.99" class="input input-sm text-right w-24" data-bind="cfg.desired_retention" data-on:input="$dirty = true">
                 </div>
             </div>
 
@@ -932,50 +881,50 @@
     <div class="tab-pane" data-show="$activeTab == 'advanced'">
         <!-- Easy Days -->
         <div class="section-card mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">{{ tr.deck_config_easy_days_title() }}</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">{{ tr.deck_config_easy_days_title() }}</h5>
             </div>
 
-            <div class="text-muted small mb-3">
+            <div class="text-base-content/60 text-xs mb-3">
                 Adjust review workload for each day of the week (1.0 = normal, 0.5 = 50% reviews, 0.0 = minimum).
             </div>
 
             <div class="easy-days-grid">
                 <div class="easy-day-cell">
-                    <div class="fw-bold small">{{ tr.deck_config_easy_days_monday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="form-control form-control-sm text-center mt-1" data-bind="cfg.easy_days_percentages[0]" data-on:input="$dirty = true">
+                    <div class="font-bold text-xs">{{ tr.deck_config_easy_days_monday() }}</div>
+                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[0]" data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
-                    <div class="fw-bold small">{{ tr.deck_config_easy_days_tuesday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="form-control form-control-sm text-center mt-1" data-bind="cfg.easy_days_percentages[1]" data-on:input="$dirty = true">
+                    <div class="font-bold text-xs">{{ tr.deck_config_easy_days_tuesday() }}</div>
+                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[1]" data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
-                    <div class="fw-bold small">{{ tr.deck_config_easy_days_wednesday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="form-control form-control-sm text-center mt-1" data-bind="cfg.easy_days_percentages[2]" data-on:input="$dirty = true">
+                    <div class="font-bold text-xs">{{ tr.deck_config_easy_days_wednesday() }}</div>
+                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[2]" data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
-                    <div class="fw-bold small">{{ tr.deck_config_easy_days_thursday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="form-control form-control-sm text-center mt-1" data-bind="cfg.easy_days_percentages[3]" data-on:input="$dirty = true">
+                    <div class="font-bold text-xs">{{ tr.deck_config_easy_days_thursday() }}</div>
+                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[3]" data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
-                    <div class="fw-bold small">{{ tr.deck_config_easy_days_friday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="form-control form-control-sm text-center mt-1" data-bind="cfg.easy_days_percentages[4]" data-on:input="$dirty = true">
+                    <div class="font-bold text-xs">{{ tr.deck_config_easy_days_friday() }}</div>
+                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[4]" data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
-                    <div class="fw-bold small">{{ tr.deck_config_easy_days_saturday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="form-control form-control-sm text-center mt-1" data-bind="cfg.easy_days_percentages[5]" data-on:input="$dirty = true">
+                    <div class="font-bold text-xs">{{ tr.deck_config_easy_days_saturday() }}</div>
+                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[5]" data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
-                    <div class="fw-bold small">{{ tr.deck_config_easy_days_sunday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="form-control form-control-sm text-center mt-1" data-bind="cfg.easy_days_percentages[6]" data-on:input="$dirty = true">
+                    <div class="font-bold text-xs">{{ tr.deck_config_easy_days_sunday() }}</div>
+                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[6]" data-on:input="$dirty = true">
                 </div>
             </div>
         </div>
 
         <!-- Advanced Limits & SM-2 -->
         <div class="section-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">{{ tr.deck_config_advanced_title() }}</h5>
+            <div class="flex justify-between items-center mb-3">
+                <h5 class="mb-0 font-bold text-lg">{{ tr.deck_config_advanced_title() }}</h5>
                 <span class="help-badge">
                     {% set m_adv = help_modals.get('Advanced', {}) %}
                     {{ help_modal(
@@ -988,210 +937,230 @@
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Maximum interval (days)</label>
+                    <div class="font-semibold">Maximum interval (days)</div>
                     {{ help_modal(
                         title=m_adv.title or "Advanced",
                         url=m_adv.url or "https://docs.ankiweb.net/deck-options.html#advanced",
                         start_index=0,
                         help_sections=m_adv.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_maximum_interval_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_maximum_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="1" max="99999" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.maximum_review_interval" data-on:input="$dirty = true">
+                    <input type="number" min="1" max="99999" class="input input-sm text-right w-24" data-bind="cfg.maximum_review_interval" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">{{ tr.deck_config_historical_retention() }}</label>
+                    <div class="font-semibold">{{ tr.deck_config_historical_retention() }}</div>
                     {{ help_modal(
                         title=m_adv.title or "Advanced",
                         url=m_adv.url or "https://docs.ankiweb.net/deck-options.html#advanced",
                         start_index=1,
                         help_sections=m_adv.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_historical_retention_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_historical_retention_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.01" min="0.70" max="0.99" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.historical_retention" data-on:input="$dirty = true">
+                    <input type="number" step="0.01" min="0.70" max="0.99" class="input input-sm text-right w-24" data-bind="cfg.historical_retention" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <!-- Legacy SM-2 section -->
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Starting ease</label>
+                    <div class="font-semibold">Starting ease</div>
                     {{ help_modal(
                         title=m_adv.title or "Advanced",
                         url=m_adv.url or "https://docs.ankiweb.net/deck-options.html#advanced",
                         start_index=3,
                         help_sections=m_adv.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_starting_ease_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_starting_ease_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="1.3" max="5.0" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.initial_ease" data-on:input="$dirty = true">
+                    <input type="number" step="0.05" min="1.3" max="5.0" class="input input-sm text-right w-24" data-bind="cfg.initial_ease" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Easy bonus</label>
+                    <div class="font-semibold">Easy bonus</div>
                     {{ help_modal(
                         title=m_adv.title or "Advanced",
                         url=m_adv.url or "https://docs.ankiweb.net/deck-options.html#advanced",
                         start_index=4,
                         help_sections=m_adv.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_easy_bonus_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_easy_bonus_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="1.0" max="5.0" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.easy_multiplier" data-on:input="$dirty = true">
+                    <input type="number" step="0.05" min="1.0" max="5.0" class="input input-sm text-right w-24" data-bind="cfg.easy_multiplier" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Interval modifier</label>
+                    <div class="font-semibold">Interval modifier</div>
                     {{ help_modal(
                         title=m_adv.title or "Advanced",
                         url=m_adv.url or "https://docs.ankiweb.net/deck-options.html#advanced",
                         start_index=5,
                         help_sections=m_adv.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_interval_modifier_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_interval_modifier_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="0.5" max="5.0" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.interval_multiplier" data-on:input="$dirty = true">
+                    <input type="number" step="0.05" min="0.5" max="5.0" class="input input-sm text-right w-24" data-bind="cfg.interval_multiplier" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">Hard interval multiplier</label>
+                    <div class="font-semibold">Hard interval multiplier</div>
                     {{ help_modal(
                         title=m_adv.title or "Advanced",
                         url=m_adv.url or "https://docs.ankiweb.net/deck-options.html#advanced",
                         start_index=6,
                         help_sections=m_adv.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_hard_interval_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_hard_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="0.5" max="5.0" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.hard_multiplier" data-on:input="$dirty = true">
+                    <input type="number" step="0.05" min="0.5" max="5.0" class="input input-sm text-right w-24" data-bind="cfg.hard_multiplier" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <div class="setting-row">
                 <div class="setting-label-col">
-                    <label class="form-label mb-0 fw-semibold">New interval multiplier</label>
+                    <div class="font-semibold">New interval multiplier</div>
                     {{ help_modal(
                         title=m_adv.title or "Advanced",
                         url=m_adv.url or "https://docs.ankiweb.net/deck-options.html#advanced",
                         start_index=7,
                         help_sections=m_adv.sections or []
                     ) }}
-                    <div class="text-muted small">{{ tr.deck_config_new_interval_tooltip() }}</div>
+                    <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="0.0" max="1.0" class="form-control form-control-sm text-end" style="width: 100px;" data-bind="cfg.lapse_multiplier" data-on:input="$dirty = true">
+                    <input type="number" step="0.05" min="0.0" max="1.0" class="input input-sm text-right w-24" data-bind="cfg.lapse_multiplier" data-on:input="$dirty = true">
                 </div>
             </div>
 
             <!-- Custom Card State Customizer -->
             <div class="mt-4">
-                <label class="form-label fw-semibold">{{ tr.deck_config_custom_scheduling() }}</label>
+                <div class="font-semibold">{{ tr.deck_config_custom_scheduling() }}</div>
                 {{ help_modal(
                     title=m_adv.title or "Advanced",
                     url=m_adv.url or "https://docs.ankiweb.net/deck-options.html#advanced",
                     start_index=8,
                     help_sections=m_adv.sections or []
                 ) }}
-                <div class="text-muted small mb-2">{{ tr.deck_config_custom_scheduling_tooltip() }}</div>
-                <textarea class="form-control font-monospace small" rows="5" data-bind="cardStateCustomizer" data-on:input="$dirty = true"></textarea>
+                <div class="text-base-content/60 text-xs mb-2">{{ tr.deck_config_custom_scheduling_tooltip() }}</div>
+                <textarea class="textarea font-mono text-sm w-full" rows="5" data-bind="cardStateCustomizer" data-on:input="$dirty = true"></textarea>
             </div>
         </div>
     </div>
 
     <!-- Modals -->
     <!-- Add Preset Modal -->
-    <div class="modal fade" id="addPresetModal" tabindex="-1" aria-labelledby="addPresetModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addPresetModalLabel">{{ tr.deck_config_add_group() }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <label class="form-label">{{ tr.deck_config_name_prompt() }}</label>
-                    <input type="text" class="form-control" data-bind="newPresetName" placeholder="New Preset">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" data-on:click="@post('/deck-options/add-preset')">Add</button>
-                </div>
+    <dialog class="modal" id="addPresetModal">
+        <div class="modal-box">
+            <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
+                <h5 class="font-bold text-lg" id="addPresetModalLabel">{{ tr.deck_config_add_group() }}</h5>
+                <form method="dialog">
+                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                </form>
+            </div>
+            <div>
+                <label class="block py-1 text-sm font-semibold">{{ tr.deck_config_name_prompt() }}</label>
+                <input type="text" class="input input-sm w-full" data-bind="newPresetName" placeholder="New Preset">
+            </div>
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn btn-sm btn-ghost">Cancel</button>
+                </form>
+                <button type="button" class="btn btn-sm btn-primary" data-on:click="@post('/deck-options/add-preset')">Add</button>
             </div>
         </div>
-    </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 
     <!-- Clone Preset Modal -->
-    <div class="modal fade" id="clonePresetModal" tabindex="-1" aria-labelledby="clonePresetModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="clonePresetModalLabel">{{ tr.deck_config_clone_group() }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <label class="form-label">{{ tr.deck_config_name_prompt() }}</label>
-                    <input type="text" class="form-control" data-bind="clonePresetName" placeholder="Cloned Preset">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" data-on:click="@post('/deck-options/clone-preset')">Clone</button>
-                </div>
+    <dialog class="modal" id="clonePresetModal">
+        <div class="modal-box">
+            <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
+                <h5 class="font-bold text-lg" id="clonePresetModalLabel">{{ tr.deck_config_clone_group() }}</h5>
+                <form method="dialog">
+                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                </form>
+            </div>
+            <div>
+                <label class="block py-1 text-sm font-semibold">{{ tr.deck_config_name_prompt() }}</label>
+                <input type="text" class="input input-sm w-full" data-bind="clonePresetName" placeholder="Cloned Preset">
+            </div>
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn btn-sm btn-ghost">Cancel</button>
+                </form>
+                <button type="button" class="btn btn-sm btn-primary" data-on:click="@post('/deck-options/clone-preset')">Clone</button>
             </div>
         </div>
-    </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 
     <!-- Rename Preset Modal -->
-    <div class="modal fade" id="renamePresetModal" tabindex="-1" aria-labelledby="renamePresetModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="renamePresetModalLabel">{{ tr.deck_config_rename_group() }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <label class="form-label">{{ tr.deck_config_name_prompt() }}</label>
-                    <input type="text" class="form-control" data-bind="renamePresetName" placeholder="Rename Preset">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" data-on:click="@post('/deck-options/rename-preset')">Rename</button>
-                </div>
+    <dialog class="modal" id="renamePresetModal">
+        <div class="modal-box">
+            <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
+                <h5 class="font-bold text-lg" id="renamePresetModalLabel">{{ tr.deck_config_rename_group() }}</h5>
+                <form method="dialog">
+                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                </form>
+            </div>
+            <div>
+                <label class="block py-1 text-sm font-semibold">{{ tr.deck_config_name_prompt() }}</label>
+                <input type="text" class="input input-sm w-full" data-bind="renamePresetName" placeholder="Rename Preset">
+            </div>
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn btn-sm btn-ghost">Cancel</button>
+                </form>
+                <button type="button" class="btn btn-sm btn-primary" data-on:click="@post('/deck-options/rename-preset')">Rename</button>
             </div>
         </div>
-    </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 
     <!-- Delete Preset Modal -->
-    <div class="modal fade" id="deletePresetModal" tabindex="-1" aria-labelledby="deletePresetModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deletePresetModalLabel">{{ tr.deck_config_remove_group() }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-danger mb-0">{{ tr.deck_config_will_require_full_sync() }}</p>
-                    <p class="mt-2">Are you sure you want to delete this preset?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" data-on:click="@post('/deck-options/delete-preset')">Delete</button>
-                </div>
+    <dialog class="modal" id="deletePresetModal">
+        <div class="modal-box">
+            <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
+                <h5 class="font-bold text-lg" id="deletePresetModalLabel">{{ tr.deck_config_remove_group() }}</h5>
+                <form method="dialog">
+                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                </form>
+            </div>
+            <div>
+                <p class="text-error mb-0">{{ tr.deck_config_will_require_full_sync() }}</p>
+                <p class="mt-2 text-sm">Are you sure you want to delete this preset?</p>
+            </div>
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn btn-sm btn-ghost">Cancel</button>
+                </form>
+                <button type="button" class="btn btn-sm btn-error" data-on:click="@post('/deck-options/delete-preset')">Delete</button>
             </div>
         </div>
-    </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 </div>

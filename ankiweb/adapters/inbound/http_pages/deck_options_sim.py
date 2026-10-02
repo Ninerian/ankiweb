@@ -330,10 +330,10 @@ def make_router(get_service: Callable) -> APIRouter:
             svg_content = render_simulation_svg(sim_history, subgraph=subgraph, smooth=smooth)
 
             table_rows_html = "".join([
-                f"<tr><td class='fw-bold'>#{s['label']}</td><td>{s['days']}</td><td>{s['total_reviews']}</td><td>{int(round(s['total_time']/60))} min</td><td>{int(round(s['final_memorized']))}</td></tr>"
+                f"<tr><td class='font-bold'>#{s['label']}</td><td>{s['days']}</td><td>{s['total_reviews']}</td><td>{int(round(s['total_time']/60))} min</td><td>{int(round(s['final_memorized']))}</td></tr>"
                 for s in sim_history
             ])
-            table_html = f"""<div id="simTableContainer" class="mt-3"><div class="table-responsive"><table class="table table-sm table-bordered table-striped small mb-0"><thead><tr><th>#</th><th>Days to simulate</th><th>Total Reviews</th><th>Total Time</th><th>Final Memorized</th></tr></thead><tbody>{table_rows_html}</tbody></table></div></div>"""
+            table_html = f"""<div id="simTableContainer" class="mt-3"><div class="overflow-x-auto"><table class="table table-xs table-zebra border border-base-300 mb-0"><thead><tr><th>#</th><th>Days to simulate</th><th>Total Reviews</th><th>Total Time</th><th>Final Memorized</th></tr></thead><tbody>{table_rows_html}</tbody></table></div></div>"""
 
             return DatastarResponse([
                 SSE.patch_signals({
@@ -487,10 +487,10 @@ def make_router(get_service: Callable) -> APIRouter:
         svg_content = render_simulation_svg(sim_history, subgraph=subgraph, smooth=smooth)
 
         table_rows_html = "".join([
-            f"<tr><td class='fw-bold'>#{s['label']}</td><td>{s['days']}</td><td>{s['total_reviews']}</td><td>{int(round(s['total_time']/60))} min</td><td>{int(round(s['final_memorized']))}</td></tr>"
+            f"<tr><td class='font-bold'>#{s['label']}</td><td>{s['days']}</td><td>{s['total_reviews']}</td><td>{int(round(s['total_time']/60))} min</td><td>{int(round(s['final_memorized']))}</td></tr>"
             for s in sim_history
         ])
-        table_html = f"""<div id="simTableContainer" class="mt-3"><div class="table-responsive"><table class="table table-sm table-bordered table-striped small mb-0"><thead><tr><th>#</th><th>Days to simulate</th><th>Total Reviews</th><th>Total Time</th><th>Final Memorized</th></tr></thead><tbody>{table_rows_html}</tbody></table></div></div>""" if sim_history else '<div id="simTableContainer" class="mt-3"></div>'
+        table_html = f"""<div id="simTableContainer" class="mt-3"><div class="overflow-x-auto"><table class="table table-xs table-zebra border border-base-300 mb-0"><thead><tr><th>#</th><th>Days to simulate</th><th>Total Reviews</th><th>Total Time</th><th>Final Memorized</th></tr></thead><tbody>{table_rows_html}</tbody></table></div></div>""" if sim_history else '<div id="simTableContainer" class="mt-3"></div>'
 
         return DatastarResponse([
             SSE.patch_signals({

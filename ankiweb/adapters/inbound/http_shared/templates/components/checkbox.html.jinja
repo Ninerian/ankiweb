@@ -1,7 +1,8 @@
 {% macro checkbox(value=false, disabled=false, class_="", signal=none) %}
-<label class="form-checkbox-label {{ class_ }}">
+<label class="form-checkbox-label inline-flex items-center gap-2 cursor-pointer {{ class_ }}">
     <input
         type="checkbox"
+        class="checkbox"
         {% if disabled %}disabled{% endif %}
         {% if signal %}
         data-bind="{{ signal | replace('$', '', 1) }}"

@@ -44,6 +44,15 @@ These notices, where embedded in the vendored files, are preserved as served.
 
 ---
 
+## Tailwind CSS and daisyUI (shell styling, build-time)
+
+- Tailwind CSS 4 — <https://github.com/tailwindlabs/tailwindcss> — MIT (Copyright Tailwind Labs, Inc.)
+- daisyUI 5 — <https://github.com/saadeghi/daisyui> — MIT (Copyright Pouya Saadeghi)
+
+Both are npm dev-dependencies; `npm run build` compiles them into `ankiweb/shell/static/app.css`.
+
+---
+
 ## AnkiConnect — re-implemented HTTP API (`ankiweb/ankiconnect/`)
 
 - Upstream: <https://github.com/FooSoft/anki-connect>

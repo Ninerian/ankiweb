@@ -1,9 +1,9 @@
 {# TitledContainer component: Ported from ts/lib/components/TitledContainer.svelte.
    Upstream structure:
    <div id class="container {className}" class:light class:dark class:rtl style="--gutter-block: 2px; --container-margin: 0">
-       <div class="position-relative">
+       <div class="relative">
            <h1>{title}</h1>
-           <div class="help-badge position-absolute" class:rtl>
+           <div class="help-badge absolute" class:rtl>
                <slot name="tooltip" />
            </div>
        </div>
@@ -20,16 +20,16 @@
 #}
 {% macro titled_container(title="", id=none, class_="", is_dark=false, rtl=false, tooltip=none) -%}
 <div{% if id %} id="{{ id }}"{% endif %}
-    class="container titled-container{% if is_dark %} dark{% else %} light{% endif %}{% if rtl %} rtl{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
+    class="card bg-base-100 border border-base-300 shadow-sm p-4{% if is_dark %} dark{% else %} light{% endif %}{% if rtl %} rtl{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
     style="--gutter-block: 2px; --container-margin: 0;"
     {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
-    <div class="position-relative">
-        <h1>{{ title }}</h1>
-        <div class="help-badge position-absolute{% if rtl %} rtl{% endif %}">
-            {%- if tooltip is not none -%}
+    <div class="relative">
+        <h1 class="text-xl font-bold border-b border-base-300 pb-1 mb-2">{{ title }}</h1>
+        {%- if tooltip is not none -%}
+        <div class="absolute{% if rtl %} rtl:left {% else %} right{% endif %}">
                 {{ tooltip | safe }}
-            {%- endif -%}
         </div>
+        {%- endif -%}
     </div>
     {{ caller() if caller else '' }}
 </div>

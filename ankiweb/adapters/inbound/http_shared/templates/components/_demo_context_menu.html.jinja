@@ -6,16 +6,16 @@
   demoCm: { visible: false, x: 0, y: 0 },
   cmAction: 'None'
 }">
-  <h6 class="mb-2">Context Menu Demo</h6>
-  <p class="text-muted small">
+  <h6 class="mb-2 font-bold">Context Menu Demo</h6>
+  <p class="text-base-content/60 text-sm">
     Right-click (contextmenu) on the target zones below to trigger the custom context menu at cursor coordinates. Clamped to viewport boundaries. Supports keyboard nav, Escape to close, click outside, and item selection.
   </p>
 
-  <div class="row g-3 mb-3">
-    <div class="col-md-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+    <div>
       <div
         id="cm-trigger-zone-1"
-        class="p-4 border border-dashed rounded text-center bg-body-tertiary"
+        class="p-4 border border-dashed border-base-300 rounded-box text-center bg-base-200"
         style="user-select: none; cursor: context-menu;"
         data-on:contextmenu__prevent="
           const menuW = 160;
@@ -30,14 +30,14 @@
         "
       >
         <strong>Right-click here (Main Area)</strong>
-        <div class="small text-muted mt-1">Normal positioning inside window</div>
+        <div class="text-sm text-base-content/60 mt-1">Normal positioning inside window</div>
       </div>
     </div>
 
-    <div class="col-md-6">
+    <div>
       <div
         id="cm-trigger-zone-edge"
-        class="p-4 border border-dashed rounded text-center bg-body-tertiary"
+        class="p-4 border border-dashed border-base-300 rounded-box text-center bg-base-200 select-none cursor-context-menu"
         style="user-select: none; cursor: context-menu;"
         data-on:contextmenu__prevent="
           const menuW = 160;
@@ -52,14 +52,14 @@
         "
       >
         <strong>Right-click here (Edge Zone)</strong>
-        <div class="small text-muted mt-1">Tests viewport boundary clamp</div>
+        <div class="text-sm text-base-content/60 mt-1">Tests viewport boundary clamp</div>
       </div>
     </div>
   </div>
 
   <div class="mb-3">
     <span>Last action selected: </span>
-    <span id="cm-last-action" class="badge bg-secondary" data-text="$cmAction">None</span>
+    <span id="cm-last-action" class="badge badge-neutral" data-text="$cmAction">None</span>
   </div>
 
   {# ContextMenu component instance #}
@@ -86,7 +86,7 @@
       Custom Item
     </div>
 
-    {% call dropdown_item(id="cm-item-delete", class_="text-danger", tabbable=true, **{"data-on:click": "$cmAction = 'Delete'; $demoCm.visible = false"}) %}
+    {% call dropdown_item(id="cm-item-delete", class_="text-error", tabbable=true, **{"data-on:click": "$cmAction = 'Delete'; $demoCm.visible = false"}) %}
       Delete
     {% endcall %}
   {% endcall %}

@@ -2,9 +2,9 @@
 
 /* Plain text CodeMirror host */
 .plain-text-input {
-    border: 1px solid var(--bs-border-color, #ced4da);
-    border-radius: 0.375rem;
-    background-color: var(--bs-body-bg, #fff);
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-field, 0.25rem);
+    background-color: var(--color-base-100);
     min-height: 120px;
 }
 
@@ -22,18 +22,17 @@ anki-mathjax {
     vertical-align: middle;
     margin: 0 2px;
     padding: 1px 4px;
-    border-radius: 3px;
-    background-color: rgba(13, 110, 253, 0.05);
-    border: 1px dashed rgba(13, 110, 253, 0.4);
+    border-radius: var(--radius-selector, 0.25rem);
+    background-color: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    border: 1px dashed color-mix(in oklab, var(--color-primary) 40%, transparent);
     cursor: pointer;
     transition: background-color 0.15s, border-color 0.15s;
 }
 
 anki-mathjax:hover {
-    background-color: rgba(13, 110, 253, 0.15);
-    border-color: #0d6efd;
+    background-color: color-mix(in oklab, var(--color-primary) 20%, transparent);
+    border-color: var(--color-primary);
 }
-
 anki-mathjax.anki-mathjax-block {
     display: block !important;
     margin: 6px 0;

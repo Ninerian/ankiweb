@@ -183,7 +183,7 @@ def test_next_change_notetype_post_malformed_payloads(client):
     )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
-    assert any("alert-danger" in data for _, data in events)
+    assert any("alert-error" in data for _, data in events)
 
     # Malformed IDs to remap-field
     r = client.post(

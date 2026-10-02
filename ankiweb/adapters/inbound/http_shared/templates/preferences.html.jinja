@@ -1,71 +1,70 @@
 {% macro checkbox_field(field_id, label, checked, hint="") %}
-  <div class="form-check mb-3">
-    <input class="form-check-input" type="checkbox" id="{{ field_id }}" {% if checked %}checked{% endif %}>
-    <label class="form-check-label" for="{{ field_id }}">{{ label }}</label>
-    {% if hint %}<div class="form-text mt-0">{{ hint }}</div>{% endif %}
+  <div class="mb-3">
+    <label class="cursor-pointer inline-flex items-center gap-2 py-1">
+      <input class="checkbox checkbox-primary" type="checkbox" id="{{ field_id }}" {% if checked %}checked{% endif %}>
+      <span>{{ label }}</span>
+    </label>
+    {% if hint %}<div class="text-xs text-base-content/60 mt-0 ms-8">{{ hint }}</div>{% endif %}
   </div>
 {% endmacro %}
 {% macro number_field(field_id, label, value, minv=0, maxv=None, suffix="", hint="") %}
   <div class="mb-3">
-    <label for="{{ field_id }}" class="form-label mb-1">{{ label }}</label>
-    <div class="d-flex align-items-center gap-2">
-      <input type="number" class="form-control form-control-sm w-auto" style="min-width: 7rem; min-height: 38px;" id="{{ field_id }}" value="{{ value }}" min="{{ minv }}" {% if maxv is not none %}max="{{ maxv }}"{% endif %}>
-      {% if suffix %}<span class="text-body-secondary small">{{ suffix }}</span>{% endif %}
+    <label for="{{ field_id }}" class="block text-sm font-medium mb-1 py-0">{{ label }}</label>
+    <div class="flex items-center gap-2">
+      <input type="number" class="input input-sm w-auto" style="min-width: 7rem; min-height: 38px;" id="{{ field_id }}" value="{{ value }}" min="{{ minv }}" {% if maxv is not none %}max="{{ maxv }}"{% endif %}>
+      {% if suffix %}<span class="text-base-content/60 text-sm">{{ suffix }}</span>{% endif %}
     </div>
-    {% if hint %}<div class="form-text">{{ hint }}</div>{% endif %}
+    {% if hint %}<div class="text-xs text-base-content/60 mt-1">{{ hint }}</div>{% endif %}
   </div>
 {% endmacro %}
-<div class="preferences container-xl py-3 pb-5 mb-5">
-  <div class="row align-items-center mb-3">
-    <div class="col">
-      <h3 class="h4 mb-0">{{ tr.preferences_preferences() }}</h3>
+<div class="preferences max-w-7xl mx-auto px-4 py-3 pb-24 mb-5">
+  <div class="flex items-center mb-3">
+    <div>
+      <h3 class="text-xl font-bold mb-0">{{ tr.preferences_preferences() }}</h3>
     </div>
   </div>
 
   <form id="pf" onsubmit="return false">
-    <div class="row g-4">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <!-- Section navigation index for >= lg -->
-      <nav class="col-lg-3 d-none d-lg-block" aria-label="Preferences navigation">
-        <div class="sticky-top" style="top: 4.5rem; z-index: 10;">
-            <div id="prefs-index" class="list-group shadow-sm">
-              <a class="list-group-item list-group-item-action active" href="#pref-scheduling">{{ tr.preferences_scheduling() }}</a>
-              <a class="list-group-item list-group-item-action" href="#pref-review">{{ tr.preferences_review() }}</a>
-              <a class="list-group-item list-group-item-action" href="#pref-editing">{{ tr.preferences_editing() }}</a>
-              <a class="list-group-item list-group-item-action" href="#pref-backups">{{ tr.preferences_backups() }}</a>
-              <a class="list-group-item list-group-item-action" href="#pref-experiments">{{ tr.preferences_experimental_features_tab() }}</a>
-            </div>
+      <nav class="hidden lg:block lg:col-span-3" aria-label="Preferences navigation">
+        <div class="sticky top-18 z-10">
+          <ul id="prefs-index" class="menu bg-base-100 rounded-box border border-base-300 shadow-sm p-2 w-full gap-1">
+            <li><a class="menu-active" href="#pref-scheduling">{{ tr.preferences_scheduling() }}</a></li>
+            <li><a href="#pref-review">{{ tr.preferences_review() }}</a></li>
+            <li><a href="#pref-editing">{{ tr.preferences_editing() }}</a></li>
+            <li><a href="#pref-backups">{{ tr.preferences_backups() }}</a></li>
+            <li><a href="#pref-experiments">{{ tr.preferences_experimental_features_tab() }}</a></li>
+          </ul>
+        </div>
       </nav>
-
-      <!-- Sections column (Cards on >= lg, Accordion on < lg) -->
-      <div class="col-12 col-lg-9">
+      <div class="col-span-1 lg:col-span-9">
         <div class="pref-sections-container">
           <!-- Scheduling Section -->
-          <section id="pref-scheduling" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
-            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+          <section id="pref-scheduling" class="pref-section bg-base-100 border border-base-300 rounded-box shadow-sm mb-4 scroll-mt-20">
+            <div class="bg-base-200 border-b border-base-300 font-bold py-2 px-4 pref-card-header rounded-t-box">
               <button
-                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold"
+                class="pref-accordion-toggle lg:hidden btn btn-ghost btn-block justify-between p-0 font-bold min-h-[38px] h-auto text-left"
                 type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapse-scheduling"
+                onclick="togglePrefCollapse('collapse-scheduling')"
                 aria-expanded="true"
                 aria-controls="collapse-scheduling"
-                style="min-height: 38px;"
               >
                 <span>{{ tr.preferences_scheduling() }}</span>
                 <span class="pref-chevron">▾</span>
               </button>
-              <span class="d-none d-lg-inline">{{ tr.preferences_scheduling() }}</span>
+              <span class="hidden lg:inline">{{ tr.preferences_scheduling() }}</span>
             </div>
-            <div id="collapse-scheduling" class="collapse show d-lg-block">
-              <div class="card-body">
+            <div id="collapse-scheduling" class="pref-collapse-content block">
+              <div class="p-4">
                 {{ number_field("rollover", tr.preferences_next_day_starts_at(), s.rollover, 0, 23) }}
                 {{ number_field("learn_ahead_mins", tr.preferences_learn_ahead_limit(), s.learn_ahead_secs // 60, suffix=tr.preferences_mins()) }}
                 <div class="mb-3">
-                  <label for="new_review_mix" class="form-label mb-1">
+                  <label for="new_review_mix" class="block text-sm font-medium mb-1 py-0">
                     {{ tr.deck_config_new_review_priority() }}
                   </label>
                   <div>
-                    <select id="new_review_mix" class="form-select form-select-sm w-auto" style="min-width: 14rem; min-height: 38px;">
+                    <select id="new_review_mix" class="select select-sm w-auto" style="min-width: 14rem; min-height: 38px;">
                       {% for v, lbl in mix_opts %}
                         <option value="{{ v }}" {% if s.new_review_mix == v %}selected{% endif %}>
                           {{ lbl }}
@@ -81,24 +80,22 @@
           </section>
 
           <!-- Review Section -->
-          <section id="pref-review" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
-            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+          <section id="pref-review" class="pref-section bg-base-100 border border-base-300 rounded-box shadow-sm mb-4 scroll-mt-20">
+            <div class="bg-base-200 border-b border-base-300 font-bold py-2 px-4 pref-card-header rounded-t-box">
               <button
-                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold collapsed"
+                class="pref-accordion-toggle lg:hidden btn btn-ghost btn-block justify-between p-0 font-bold min-h-[38px] h-auto text-left collapsed"
                 type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapse-review"
+                onclick="togglePrefCollapse('collapse-review')"
                 aria-expanded="false"
                 aria-controls="collapse-review"
-                style="min-height: 38px;"
               >
                 <span>{{ tr.preferences_review() }}</span>
                 <span class="pref-chevron">▾</span>
               </button>
-              <span class="d-none d-lg-inline">{{ tr.preferences_review() }}</span>
+              <span class="hidden lg:inline">{{ tr.preferences_review() }}</span>
             </div>
-            <div id="collapse-review" class="collapse d-lg-block">
-              <div class="card-body">
+            <div id="collapse-review" class="pref-collapse-content hidden lg:block">
+              <div class="p-4">
                 {{ checkbox_field("show_play_buttons", tr.preferences_show_play_buttons_on_cards_with(), not r.hide_audio_play_buttons) }}
                 {{ checkbox_field("interrupt_audio_when_answering", tr.preferences_interrupt_current_audio_when_answering(), r.interrupt_audio_when_answering) }}
                 {{ checkbox_field("show_remaining_due_counts", tr.preferences_show_remaining_card_count(), r.show_remaining_due_counts) }}
@@ -111,39 +108,38 @@
           </section>
 
           <!-- Editing Section -->
-          <section id="pref-editing" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
-            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+          <section id="pref-editing" class="pref-section bg-base-100 border border-base-300 rounded-box shadow-sm mb-4 scroll-mt-20">
+            <div class="bg-base-200 border-b border-base-300 font-bold py-2 px-4 pref-card-header rounded-t-box">
               <button
-                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold collapsed"
+                class="pref-accordion-toggle lg:hidden btn btn-ghost btn-block justify-between p-0 font-bold min-h-[38px] h-auto text-left collapsed"
                 type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapse-editing"
+                onclick="togglePrefCollapse('collapse-editing')"
                 aria-expanded="false"
                 aria-controls="collapse-editing"
-                style="min-height: 38px;"
               >
                 <span>{{ tr.preferences_editing() }}</span>
                 <span class="pref-chevron">▾</span>
               </button>
-              <span class="d-none d-lg-inline">{{ tr.preferences_editing() }}</span>
+              <span class="hidden lg:inline">{{ tr.preferences_editing() }}</span>
             </div>
-            <div id="collapse-editing" class="collapse d-lg-block">
-              <div class="card-body">
+            <div id="collapse-editing" class="pref-collapse-content hidden lg:block">
+              <div class="p-4">
                 {{ checkbox_field("adding_defaults_to_current_deck", tr.preferences_when_adding_default_to_current_deck(), e.adding_defaults_to_current_deck) }}
                 {{ checkbox_field("paste_images_as_png", tr.preferences_paste_clipboard_images_as_png(), e.paste_images_as_png) }}
                 {{ checkbox_field("paste_strips_formatting", tr.preferences_paste_without_shift_key_strips_formatting(), e.paste_strips_formatting) }}
                 <div class="mb-3">
-                  <label for="default_search_text" class="form-label mb-1">
+                  <label for="default_search_text" class="block text-sm font-medium mb-1 py-0">
                     {{ tr.preferences_default_search_text() }}
                   </label>
                   <input
                     type="text"
-                    class="form-control form-control-sm"
+                    class="input input-sm w-full max-w-sm"
                     id="default_search_text"
                     placeholder='{{ tr.preferences_default_search_text_example() }}'
-                    style="min-height: 38px; max-width: 24rem;"
+                    style="min-height: 38px;"
                     value="{{ e.default_search_text }}"
                   >
+                </div>
                 {{ checkbox_field("ignore_accents_in_search", tr.preferences_ignore_accents_in_search(), e.ignore_accents_in_search) }}
                 {{ checkbox_field("render_latex", tr.preferences_generate_latex_images_automatically(), e.render_latex) }}
               </div>
@@ -151,27 +147,27 @@
           </section>
 
           <!-- Backups Section -->
-          <section id="pref-backups" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
-            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+          <section id="pref-backups" class="pref-section bg-base-100 border border-base-300 rounded-box shadow-sm mb-4 scroll-mt-20">
+            <div class="bg-base-200 border-b border-base-300 font-bold py-2 px-4 pref-card-header rounded-t-box">
               <button
-                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold collapsed"
+                class="pref-accordion-toggle lg:hidden btn btn-ghost btn-block justify-between p-0 font-bold min-h-[38px] h-auto text-left collapsed"
                 type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapse-backups"
+                onclick="togglePrefCollapse('collapse-backups')"
                 aria-expanded="false"
                 aria-controls="collapse-backups"
-                style="min-height: 38px;"
               >
                 <span>{{ tr.preferences_backups() }}</span>
                 <span class="pref-chevron">▾</span>
               </button>
-              <span class="d-none d-lg-inline">{{ tr.preferences_backups() }}</span>
+              <span class="hidden lg:inline">{{ tr.preferences_backups() }}</span>
             </div>
-            <div id="collapse-backups" class="collapse d-lg-block">
-              <div class="card-body">
-                <div class="alert alert-secondary small mb-3">
-                  {{ tr.preferences_backup_explanation() }}
-                  <div class="mt-1 text-muted">{{ tr.preferences_media_is_not_backed_up() }}</div>
+            <div id="collapse-backups" class="pref-collapse-content hidden lg:block">
+              <div class="p-4">
+                <div class="alert alert-info text-sm mb-3">
+                  <div>
+                    <div>{{ tr.preferences_backup_explanation() }}</div>
+                    <div class="mt-1 text-base-content/60">{{ tr.preferences_media_is_not_backed_up() }}</div>
+                  </div>
                 </div>
                 {{ number_field("daily", tr.preferences_daily_backups(), b.daily) }}
                 {{ number_field("weekly", tr.preferences_weekly_backups(), b.weekly) }}
@@ -182,36 +178,36 @@
           </section>
 
           <!-- Experiments Section (from upstream Svelte route preferences / LabItem) -->
-          <section id="pref-experiments" class="pref-section card shadow-sm mb-4" style="scroll-margin-top: 5rem;">
-            <div class="card-header bg-body-tertiary fw-bold py-2 pref-card-header">
+          <section id="pref-experiments" class="pref-section bg-base-100 border border-base-300 rounded-box shadow-sm mb-4 scroll-mt-20">
+            <div class="bg-base-200 border-b border-base-300 font-bold py-2 px-4 pref-card-header rounded-t-box">
               <button
-                class="pref-accordion-toggle d-lg-none btn btn-link text-decoration-none text-body w-100 text-start p-0 d-flex justify-content-between align-items-center fw-bold collapsed"
+                class="pref-accordion-toggle lg:hidden btn btn-ghost btn-block justify-between p-0 font-bold min-h-[38px] h-auto text-left collapsed"
                 type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#collapse-experiments"
+                onclick="togglePrefCollapse('collapse-experiments')"
                 aria-expanded="false"
                 aria-controls="collapse-experiments"
-                style="min-height: 38px;"
               >
                 <span>{{ tr.preferences_experimental_features_tab() }}</span>
                 <span class="pref-chevron">▾</span>
               </button>
-              <span class="d-none d-lg-inline">{{ tr.preferences_experimental_features_tab() }}</span>
+              <span class="hidden lg:inline">{{ tr.preferences_experimental_features_tab() }}</span>
             </div>
-            <div id="collapse-experiments" class="collapse d-lg-block">
-              <div class="card-body">
-                <div class="alert alert-warning small mb-3">
-                  <b>⚠️ Experimental Features</b><br>
-                  These features may change, break, or be removed without notice, use at your own risk.
+            <div id="collapse-experiments" class="pref-collapse-content hidden lg:block">
+              <div class="p-4">
+                <div class="alert alert-warning text-sm mb-3">
+                  <div>
+                    <span class="font-bold">⚠️ Experimental Features</span><br>
+                    These features may change, break, or be removed without notice, use at your own risk.
+                  </div>
                 </div>
-                <div class="p-3 border rounded">
-                  <div class="d-flex justify-content-between align-items-start mb-1">
-                    <label class="form-check-label fw-bold" for="svelte_editor">Svelte note editor</label>
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" id="svelte_editor" role="switch" {% if svelte_editor %}checked{% endif %}>
+                <div class="p-3 border border-base-300 rounded-box">
+                  <div class="flex justify-between items-start mb-1">
+                    <label class="font-bold cursor-pointer" for="svelte_editor">Svelte note editor</label>
+                    <div>
+                      <input class="toggle toggle-primary" type="checkbox" id="svelte_editor" {% if svelte_editor %}checked{% endif %}>
                     </div>
                   </div>
-                  <div class="text-muted small">
+                  <div class="text-base-content/60 text-sm">
                     Replaces the legacy editor with a new Svelte-based implementation. May affect addon compatibility. You can also hold shift while opening the editor to temporarily toggle this option on or off.
                   </div>
                 </div>
@@ -223,30 +219,28 @@
     </div>
 
     <!-- Sticky bottom action bar -->
-    <div class="fixed-bottom bg-body border-top py-2 px-3 shadow pref-bottom-bar">
-      <div class="container-xl d-flex align-items-center justify-content-between gap-3">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
+    <div class="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 py-2 px-4 shadow-lg z-20 pref-bottom-bar">
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-wrap">
           <button
-            class="btn btn-outline-secondary px-4 fw-semibold"
+            class="btn btn-outline px-4 font-semibold min-h-[44px]"
             type="button"
             id="save"
-            style="min-height: 44px;"
             data-on:click__prevent="const payload = buildPrefsPayload(); @post('/preferences/savePrefs', {payload: payload})"
           >
             {{ tr.actions_save() }}
           </button>
           <button
-            class="btn btn-secondary px-3"
+            class="btn btn-neutral px-3 min-h-[44px]"
             type="button"
             id="cancel"
-            style="min-height: 44px;"
             data-on:click__prevent="@post('/preferences/cancel')"
           >
             {{ tr.actions_cancel() }}
           </button>
         </div>
-        <div id="status-area" class="d-flex align-items-center ms-auto">
-          <div id="err" class="text-danger small fw-semibold"></div>
+        <div id="status-area" class="flex items-center ms-auto">
+          <div id="err" class="text-error text-sm font-semibold"></div>
         </div>
       </div>
     </div>
@@ -260,8 +254,8 @@
   .pref-accordion-toggle.collapsed .pref-chevron {
     transform: rotate(-90deg);
   }
-  @media (min-width: 992px) {
-    .pref-section .collapse:not(.show) {
+  @media (min-width: 1024px) {
+    .pref-section .pref-collapse-content {
       display: block !important;
     }
   }
@@ -273,6 +267,29 @@
 </style>
 
 <script>
+  function togglePrefCollapse(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var sec = el.closest('.pref-section');
+    var btn = sec ? sec.querySelector('.pref-accordion-toggle') : null;
+    var isHidden = el.classList.contains('hidden');
+    if (isHidden) {
+      el.classList.remove('hidden');
+      el.classList.add('block');
+      if (btn) {
+        btn.classList.remove('collapsed');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    } else {
+      el.classList.remove('block');
+      el.classList.add('hidden');
+      if (btn) {
+        btn.classList.add('collapsed');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    }
+  }
+
   function chk(id) {
       var el = document.getElementById(id);
       return el ? el.checked : false;
@@ -357,11 +374,11 @@
               }
           }
           if (isDirty) {
-              saveBtn.classList.remove('btn-outline-secondary');
+              saveBtn.classList.remove('btn-outline');
               saveBtn.classList.add('btn-primary');
           } else {
               saveBtn.classList.remove('btn-primary');
-              saveBtn.classList.add('btn-outline-secondary');
+              saveBtn.classList.add('btn-outline');
           }
       }
 
@@ -380,9 +397,9 @@
                       var id = entry.target.id;
                       indexLinks.forEach(function(link) {
                           if (link.getAttribute('href') === '#' + id) {
-                              link.classList.add('active');
+                              link.classList.add('menu-active');
                           } else {
-                              link.classList.remove('active');
+                              link.classList.remove('menu-active');
                           }
                       });
                   }

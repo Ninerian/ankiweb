@@ -1,33 +1,33 @@
 {# Demo for Icon component #}
 {% from "components/icon.html.jinja" import icon %}
 
-<div class="d-flex flex-wrap gap-3 align-items-center" data-testid="demo-icon-container">
-  <div class="d-flex flex-column align-items-center">
+<div class="flex flex-wrap gap-3 items-center" data-testid="demo-icon-container">
+  <div class="flex flex-col items-center">
     <span>Default (chevronDown)</span>
     {{ icon(name="chevronDown") }}
   </div>
 
-  <div class="d-flex flex-column align-items-center">
+  <div class="flex flex-col items-center">
     <span>Sized 24px (magnifyIcon)</span>
     {{ icon(name="magnifyIcon", size=24) }}
   </div>
 
-  <div class="d-flex flex-column align-items-center">
+  <div class="flex flex-col items-center">
     <span>Revert Icon (revertIcon)</span>
     {{ icon(name="revertIcon") }}
   </div>
 
-  <div class="d-flex flex-column align-items-center">
+  <div class="flex flex-col items-center">
     <span>Custom Class & Attr</span>
     {{ icon(name="infoCircle", class_="text-primary", id="info-icon-test") }}
   </div>
 
-  <div class="d-flex flex-column align-items-center">
+  <div class="flex flex-col items-center">
     <span>ts/icons (incrementClozeIcon)</span>
     {{ icon(name="incrementClozeIcon") }}
   </div>
 
-  <div class="d-flex flex-column align-items-center">
+  <div class="flex flex-col items-center">
     <span>ts/icons (stickyIconHollow)</span>
     {{ icon(name="stickyIconHollow") }}
   </div>

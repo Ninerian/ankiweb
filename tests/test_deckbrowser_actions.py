@@ -20,7 +20,7 @@ def test_deckbrowser_row_has_options_dropdown(client):
     did = _make_deck(client)
     r = client.get("/deckbrowser")
     assert r.status_code == 200
-    assert 'data-bs-toggle="dropdown"' in r.text
+    assert 'data-testid="deck-options-dropdown"' in r.text
     assert f"/deckbrowser/rename/{did}" in r.text
     assert f"/deckbrowser/delete/{did}" in r.text
 
@@ -88,3 +88,26 @@ def test_deckbrowser_delete_deck(client):
         lambda col: {d.id for d in col.decks.all_names_and_ids()},
     )
     assert did not in remaining_ids
+
+
+def test_deckbrowser_collapse_toggles_and_patches_list_without_reload(client):
+    pid = client.portal.call(
+        client.app.state.service.run,
+        lambda col: (col.decks.id("Parent"), col.decks.id("Parent::Child"))[0],
+    )
+
+    def collapsed(col):
+        return bool(col.decks.get(pid).get("collapsed", False))
+
+    before = client.portal.call(client.app.state.service.run, collapsed)
+    r = client.post(
+        f"/deckbrowser/collapse/{pid}", headers={"Datastar-Request": "true"}
+    )
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    assert not any("window.location.reload()" in data for _, data in events)
+    patch = [data for t, data in events if t == "datastar-patch-elements"]
+    assert patch and "selector main.deck-list" in patch[0]
+    assert f'id="{pid}"' in patch[0]
+    after = client.portal.call(client.app.state.service.run, collapsed)
+    assert after is not before

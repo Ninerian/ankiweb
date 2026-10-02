@@ -1,6 +1,6 @@
-<pre class="bg-body-secondary p-3 rounded mt-2">{{ report }}</pre>{% if cids %}<button
+<pre class="bg-base-200 text-base-content p-3 rounded-box mt-2 overflow-x-auto text-xs">{{ report }}</pre>{% if cids %}<button
     type="button"
-    class="btn btn-outline-danger btn-sm mt-2"
+    class="btn btn-outline btn-error btn-sm mt-2"
     data-on:click__prevent="@post('/tools/emptycards_delete')"
   >
     {{ delete_label | tr_clean }} ({{ cids|length }})

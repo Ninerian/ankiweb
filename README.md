@@ -12,7 +12,8 @@ A **browser port of Anki desktop + AnkiConnect**, built on the official `anki` P
 package (pylib) + FastAPI. It serves Anki's real study UI in a browser and re-implements
 the full AnkiConnect HTTP API — for a single user, on your own machine.
 
-**Frontend architecture: Jinja + Datastar components.** Anki desktop's frontend was migrated
+**Frontend architecture: Jinja + Datastar components, styled with Tailwind CSS 4 + daisyUI 5**
+(theming comes only from daisyUI's built-in `light`/`dark` themes; see `shell_src/app.css`). Anki desktop's frontend was migrated
 from the vendored compiled SvelteKit SPA pages to a lightweight, reactive Jinja + Datastar
 architecture. Reusable components live under `ankiweb/adapters/inbound/http_shared/templates/components/`
 (with an interactive gallery at `/dev/components` when `ANKIWEB_DEV=1`), while page templates
@@ -76,19 +77,17 @@ uv run python tools/fetch_web_assets.py
 #    ankiweb/shell/static/ — tracked in git, but re-run this to update the pinned version).
 uv run python tools/fetch_datastar.py
 
-# 3. Vendor the Bootstrap 5 framework (downloads bootstrap.min.css + bootstrap.bundle.min.js
-#    into ankiweb/shell/static/vendor/ — tracked in git, but re-run to update the pinned version).
-uv run python tools/fetch_bootstrap.py
-
-# 4. Build the shell bridge bundle (shell_src/bootstrap.ts -> ankiweb/shell/static/bootstrap.js)
+# 3. Build the shell: the bridge bundle (shell_src/bootstrap.ts -> ankiweb/shell/static/bootstrap.js)
+#    and the Tailwind CSS 4 + daisyUI 5 stylesheet (shell_src/app.css -> ankiweb/shell/static/app.css).
+#    Re-run after changing any template, route module or shell source (Tailwind scans them for classes).
 npm install && npm run build
 
-# 5. (optional) for the Playwright integration tests
+# 4. (optional) for the Playwright integration tests
 uv run python -m playwright install chromium
 ```
 
-Steps 1-4 are also available as one command after `npm install`: `npm run setup`
-(runs fetch_web_assets.py, fetch_datastar.py, fetch_bootstrap.py, then the shell build in order).
+Steps 1-3 are also available as one command after `npm install`: `npm run setup`
+(runs fetch_web_assets.py, fetch_datastar.py, then the shell build in order).
 
 ## Run
 
@@ -272,8 +271,8 @@ reverts to its last acknowledged counts sends nothing. Deleted/renamed decks dro
 
 ### Night mode
 
-Toggle with the 🌙 button in the top toolbar (persisted in `localStorage`); it themes the
-server-rendered pages and threads `#night` into links to the SvelteKit pages so those
+Toggle with the 🌙 button in the top toolbar (persisted in `localStorage`); it switches the
+daisyUI theme (`data-theme="light"` / `"dark"`) and themes the server-rendered pages and threads `#night` into links to the SvelteKit pages so those
 render dark too.
 
 ### Navigation

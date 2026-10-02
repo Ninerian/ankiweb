@@ -40,7 +40,7 @@ def run_crawl(base_url: str) -> dict[str, int]:
             has_toolbar = page.locator("#ankiweb-toolbar, #ankiweb-spa-toolbar").count() > 0
             has_close = (
                 page.locator(
-                    "button.btn-close, [data-bs-dismiss='modal'], a.btn-close, .close-button, .back-btn, button:has-text('Close'), a:has-text('Decks'), button:has-text('Decks')"
+                    "button.btn-circle, form[method=dialog] button, .close-button, .back-btn, button:has-text('Close'), a:has-text('Decks'), button:has-text('Decks')"
                 ).count()
                 > 0
             )

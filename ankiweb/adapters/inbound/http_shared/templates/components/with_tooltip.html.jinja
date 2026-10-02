@@ -1,14 +1,16 @@
 {# WithTooltip component ported from ts/lib/components/WithTooltip.svelte #}
 {#
-  WithTooltip wraps an element or slot with Bootstrap 5 tooltip initialization.
+  WithTooltip wraps an element or slot with daisyUI 5 tooltip classes.
+  Note: DaisyUI tooltips display plain text via CSS `attr(data-tip)`. If `html` is true
+  or HTML content is passed, tags are safely stripped with striptags so raw markup is not rendered.
   Props:
-    tooltip: Tooltip content string (or HTML if html=true)
-    trigger: "hover focus" | "click" | "hover" | "focus" (default: "hover focus")
+    tooltip: Tooltip content string
+    trigger: kept for signature compatibility
     placement: "auto" | "top" | "bottom" | "left" | "right" (default: "top")
-    html: boolean (default: true)
-    offset: string/list (e.g. "[0,0]" or "0,0")
-    show_delay: ms
-    hide_delay: ms
+    html: kept for signature compatibility (tags stripped safely if true)
+    offset: kept for signature compatibility
+    show_delay: kept for signature compatibility
+    hide_delay: kept for signature compatibility
     as_element: wrapper tag ("span", "div", or empty string to attach to caller if caller is element)
     class_: extra class
 #}
@@ -23,16 +25,12 @@
     as_element="span",
     class_=""
 ) -%}
+{% set placement_class = "tooltip-top" if placement in ["top", "auto", ""] else ("tooltip-bottom" if placement == "bottom" else ("tooltip-left" if placement == "left" else "tooltip-right")) %}
+{% set tip_text = (tooltip|striptags) if html else tooltip %}
 {% if as_element %}
 <{{ as_element }}
-    class="with-tooltip{% if class_ %} {{ class_ }}{% endif %}"
-    data-bs-toggle="tooltip"
-    data-bs-placement="{{ placement }}"
-    data-bs-trigger="{{ trigger }}"
-    {% if html %}data-bs-html="true"{% endif %}
-    {% if offset %}data-bs-offset="{{ offset }}"{% endif %}
-    {% if show_delay or hide_delay %}data-bs-delay='{"show":{{ show_delay }},"hide":{{ hide_delay }}}'{% endif %}
-    title="{{ tooltip }}"
+    class="tooltip {{ placement_class }}{% if class_ %} {{ class_ }}{% endif %}"
+    data-tip="{{ tip_text }}"
     {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
 >
     {{ caller() if caller else '' }}

@@ -22,6 +22,17 @@ def render_deckbrowser_html(col) -> str:
     )
 
 
+def render_deck_list(col) -> str:
+    tree = col.sched.deck_due_tree()
+    current_id = col.decks.get_current_id()
+    children = tree.children if tree is not None else []
+    return templating.render(
+        "deckbrowser_list.html.jinja",
+        children=children,
+        current_id=current_id,
+    )
+
+
 def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/deckbrowser")
 
@@ -54,7 +65,10 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             )
 
         await service.run_op(toggle, initiator="deckbrowser")
-        return DatastarResponse(SSE.execute_script("window.location.reload()"))
+        list_html = await service.run(render_deck_list)
+        return DatastarResponse(
+            SSE.patch_elements(list_html, selector="main.deck-list")
+        )
 
     @router.post("/create")
     async def create_deck(payload: ReadSignals):
@@ -92,7 +106,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_rename, initiator="deckbrowser")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-danger mt-2">{html.escape(str(exc))}</div>'
+            err_html = f'<div id="err" class="text-error mt-2">{html.escape(str(exc))}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
@@ -106,7 +120,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_delete, initiator="deckbrowser")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-danger mt-2">{html.escape(str(exc))}</div>'
+            err_html = f'<div id="err" class="text-error mt-2">{html.escape(str(exc))}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 

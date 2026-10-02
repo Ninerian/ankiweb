@@ -1,16 +1,16 @@
 {# Modal component ported from ts/lib/components/Modal.svelte #}
 {#
-  Modal wraps Bootstrap 5 Modal dialog.
+  Modal wraps daisyUI 5 <dialog class="modal">.
   Slots:
-    header: rendered inside .modal-content
-    body: rendered inside .modal-content
-    footer: rendered inside .modal-content
-    default: rendered directly inside .modal-content if no named slot callers
+    header: rendered inside .modal-box
+    body: rendered inside .modal-box
+    footer: rendered inside .modal-box
+    default: rendered directly inside .modal-box if no named slot callers
 
   Props:
     modal_key / id: Unique DOM identifier for modal (default random/generated)
-    dialog_class: Extra class for .modal-dialog (e.g. "modal-lg", "modal-dialog-centered")
-    class_: Extra class on root .modal
+    dialog_class: Extra class for modal container / box (e.g. "max-w-3xl", "modal-bottom sm:modal-middle")
+    class_: Extra class on root <dialog class="modal">
     backdrop: Backdrop option (true, false, "static") - default true
     keyboard: Allow escape key closing - default false upstream
 #}
@@ -23,20 +23,22 @@
     id=""
 ) -%}
 {% set mid = id or modal_key or ("modal_" ~ range(1000, 999999)|random) %}
-<div
-    class="modal fade{% if class_ %} {{ class_ }}{% endif %}"
+<dialog
+    class="modal{% if class_ %} {{ class_ }}{% endif %}"
     id="{{ mid }}"
-    tabindex="-1"
     aria-labelledby="{{ mid }}Label"
-    aria-hidden="true"
-    {% if not keyboard %}data-bs-keyboard="false"{% endif %}
-    {% if backdrop == 'static' %}data-bs-backdrop="static"{% elif not backdrop %}data-bs-backdrop="false"{% endif %}
+    {% if not keyboard %}
+    oncancel="event.preventDefault()"
+    {% endif %}
     {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
 >
-    <div class="modal-dialog{% if dialog_class %} {{ dialog_class }}{% endif %}">
-        <div class="modal-content">
-            {{ caller() if caller else '' }}
-        </div>
+    <div class="modal-box modal-content{% if dialog_class %} {{ dialog_class }}{% endif %}">
+        {{ caller() if caller else '' }}
     </div>
-</div>
+    {% if backdrop and backdrop != 'static' %}
+    <form method="dialog" class="modal-backdrop">
+        <button type="submit" aria-label="Close">close</button>
+    </form>
+    {% endif %}
+</dialog>
 {%- endmacro %}

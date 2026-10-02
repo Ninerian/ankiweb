@@ -179,6 +179,7 @@ def _build_log_summary_and_rows(log: ie.ImportLog) -> tuple[list[dict[str, Any]]
 def render_import_anki_package_html(
     package_path: str,
     options: ie.ImportAnkiPackageOptions,
+    as_modal: bool = False,
 ) -> str:
     filename = os.path.basename(package_path.rstrip("/\\"))
     ctx = {
@@ -197,9 +198,12 @@ def render_import_anki_package_html(
         "help_url": HELP_URL_ROOT,
         "help_sections": _help_sections(),
     }
-    return templating.render("pages/import_anki_package.html.jinja", **ctx)
+    tmpl = "pages/import_anki_package_modal.html.jinja" if as_modal else "pages/import_anki_package.html.jinja"
+    return templating.render(tmpl, **ctx)
 
 
+def render_import_package_modal(package_path: str, options: ie.ImportAnkiPackageOptions) -> str:
+    return render_import_anki_package_html(package_path, options, as_modal=True)
 def render_import_page_html(
     log: ie.ImportLog | None = None,
     error: str | None = None,
@@ -225,6 +229,20 @@ def render_import_page_html(
 def make_router(get_service: Callable) -> APIRouter:
     router = APIRouter()
 
+    @router.get("/import-anki-package/modal/{path:path}")
+    async def import_anki_package_modal_content(path: str):
+        service = get_service()
+        package_path = urllib.parse.unquote(path)
+
+        def get_options(col):
+            try:
+                return col._backend.get_import_anki_package_presets()
+            except Exception:
+                return ie.ImportAnkiPackageOptions()
+
+        options = await service.run(get_options)
+        modal_html = render_import_package_modal(package_path, options)
+        return HTMLResponse(modal_html)
     @router.get("/import-anki-package/{path:path}")
     async def import_anki_package_page(path: str):
         service = get_service()
@@ -239,6 +257,7 @@ def make_router(get_service: Callable) -> APIRouter:
         options = await service.run(get_options)
         body = render_import_anki_package_html(package_path, options)
         return HTMLResponse(render_page("import_package", body))
+
 
     @router.post("/import-anki-package/do-import")
     async def do_import(payload: ReadSignals):

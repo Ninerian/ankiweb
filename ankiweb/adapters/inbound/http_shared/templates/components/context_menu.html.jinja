@@ -29,7 +29,7 @@
     data-on:click="${{ signal_name }}.visible = false"
     data-on:click__outside="${{ signal_name }}.visible = false"
     data-on:keydown__window="evt.key === 'Escape' && (${{ signal_name }}.visible = false)"
-    data-on:keydown="evt.key === 'Escape' ? (${{ signal_name }}.visible = false) : (evt.key === 'ArrowDown' ? (el.querySelector('.dropdown-item, .context-menu-item')?.focus()) : void 0)"
+    data-on:keydown="evt.key === 'Escape' ? (${{ signal_name }}.visible = false) : (evt.key === 'ArrowDown' ? (el.querySelector('.dropdown-item, .context-menu-item, button')?.focus()) : void 0)"
     {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
   >
     {% if caller is defined %}

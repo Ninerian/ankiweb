@@ -17,14 +17,14 @@
 .route-import-package .table td {
   text-overflow: ellipsis;
   overflow: hidden;
-  border: 1px solid var(--border-subtle, #dee2e6);
+  border: 1px solid var(--border-subtle, var(--color-base-300));
   padding: 0.25rem 0.5rem;
   max-width: 15em;
   vertical-align: middle;
 }
 
 .route-import-package .table th {
-  background: var(--border, #e9ecef);
+  background: var(--color-base-200);
   text-align: center;
 }
 
@@ -88,38 +88,21 @@
   margin: 0 auto;
 }
 
-.route-import-package .import {
-  margin: 0.2rem 0.75rem;
-}
-
-.route-import-package .filename {
-  word-break: break-word;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-}
-
-.route-import-package .sticky-top-bar {
-  background: var(--canvas, var(--bs-body-bg, #fff));
-  z-index: 100;
-  padding: 0.5rem 0.25rem;
-  border-bottom: 1px solid var(--border, #dee2e6);
-}
 
 .route-import-package .error-box {
-  background-color: var(--window-bg, var(--bs-body-bg, #fff));
-  border: 1px solid var(--error-fg, #dc3545);
-  color: var(--fg, #212529);
+  background-color: var(--window-bg, var(--color-base-100));
+  border: 1px solid var(--color-error);
+  color: var(--color-base-content);
   padding: 1rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-box, 0.5rem);
   max-width: 400px;
   margin: 1rem auto;
   text-align: center;
-  box-shadow: 0 0 6px #00000026;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
 }
 
 .route-import-package .error-text {
-  color: var(--error-fg, #dc3545);
+  color: var(--color-error);
   font-weight: 600;
   margin-bottom: 0.75rem;
 }

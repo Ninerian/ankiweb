@@ -12,10 +12,17 @@ console.log("built ankiweb/shell/static/bootstrap.js");
 
 // Plain (non-bundled) shell assets: tracked in shell_src/, served from the gitignored
 // static dir like bootstrap.js so the Docker frontend stage ships them too.
+// theme.css stays unlayered on purpose: it re-maps Anki's design tokens onto daisyUI colors and
+// must out-rank the unlayered :root palettes of the vendored Anki stylesheets.
 for (const f of ["theme.css", "dialogs.js"]) {
   copyFileSync(`shell_src/${f}`, `ankiweb/shell/static/${f}`);
   console.log(`copied ${f} -> ankiweb/shell/static/${f}`);
 }
+
+// Component CSS is emitted inside the Tailwind `components` cascade layer (declared by app.css)
+// so Tailwind utilities on the markup (px-4, flex-1, hidden, ...) can override it, the way
+// Bootstrap's !important utilities used to. Unlayered CSS would always beat them.
+const inComponentsLayer = (css) => `@layer components {\n${css}\n}\n`;
 
 // Bundle any scoped component CSS files from shell_src/components/
 
@@ -25,7 +32,7 @@ if (existsSync("shell_src/components")) {
   for (const f of files) {
     combined += readFileSync(`shell_src/components/${f}`, "utf8") + "\n";
   }
-  writeFileSync("ankiweb/shell/static/components.css", combined);
+  writeFileSync("ankiweb/shell/static/components.css", inComponentsLayer(combined));
   console.log(`built ankiweb/shell/static/components.css from ${files.length} css files`);
 }
 

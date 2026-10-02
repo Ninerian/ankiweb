@@ -1,0 +1,211 @@
+{# Import Package modal template for embedding in deckbrowser #}
+{% from "components/switch.html.jinja" import switch %}
+{% from "components/enum_selector.html.jinja" import enum_selector %}
+{% from "components/config_input.html.jinja" import config_input %}
+{% from "components/revert_button.html.jinja" import revert_button %}
+{% from "components/help_modal.html.jinja" import help_modal %}
+
+{% set help_btn %}
+    {{ help_modal(
+        title=help_title,
+        url=help_url,
+        help_sections=help_sections,
+        id="importAnkiPackageHelpModal"
+    ) }}
+{% endset %}
+
+<dialog
+    id="importPackageModal"
+    class="modal modal-bottom sm:modal-middle"
+    aria-labelledby="importPackageModalTitle"
+>
+    <div
+        class="modal-box p-0 max-w-2xl bg-base-100 border border-base-300 shadow-xl overflow-hidden"
+        id="import-package-container"
+        data-signals="{{ {
+            'package_path': package_path,
+            'with_scheduling': options.with_scheduling,
+            'with_deck_configs': options.with_deck_configs,
+            'merge_notetypes': options.merge_notetypes,
+            'update_notes': options.update_notes,
+            'update_notetypes': options.update_notetypes
+        } | tojson | forceescape }}"
+    >
+        {# Modal Header #}
+        <div class="flex items-center justify-between px-6 py-4 border-b border-base-300 bg-base-100">
+            <div class="flex items-center gap-2">
+                <h2 class="text-lg font-bold text-base-content m-0" id="importPackageModalTitle">
+                    {{ title }}
+                </h2>
+                <span class="badge badge-neutral text-xs font-mono truncate max-w-[200px] sm:max-w-xs" title="{{ filename }}">
+                    {{ filename }}
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                {{ help_btn }}
+                <button
+                    type="button"
+                    class="btn btn-sm btn-circle btn-ghost"
+                    onclick="document.getElementById('importPackageModal')?.close()"
+                    aria-label="{{ tr.actions_cancel() }}"
+                >✕</button>
+            </div>
+        </div>
+
+        {# Modal Body #}
+        <div class="p-6 flex flex-col gap-5 text-base-content max-h-[70vh] overflow-y-auto">
+            {# 1. withScheduling switch row #}
+            <div class="flex items-center justify-between gap-4">
+                <label for="withScheduling" class="cursor-pointer flex-1 font-medium text-sm text-base-content">
+                    <span
+                        onclick="const m = document.getElementById('importAnkiPackageHelpModal'); if (m) { m.showModal(); const btns = m.querySelectorAll('.help-modal-nav button'); if (btns[0]) btns[0].click(); }"
+                        class="hover:underline hover:text-primary transition-colors cursor-pointer"
+                    >
+                        {{ tr.importing_also_import_progress() }}
+                    </span>
+                </label>
+                <div class="flex items-center gap-2 shrink-0">
+                    {% set rev %}
+                        {{ revert_button(signal_value="with_scheduling", signal_default="false", default_value=false) }}
+                    {% endset %}
+                    {% call config_input(grow=false, revert_slot=rev) %}
+                        {{ switch(id="withScheduling", value=options.with_scheduling, signal="with_scheduling") }}
+                    {% endcall %}
+                </div>
+            </div>
+
+            {# 2. withDeckConfigs switch row #}
+            <div class="flex items-center justify-between gap-4">
+                <label for="withDeckConfigs" class="cursor-pointer flex-1 font-medium text-sm text-base-content">
+                    <span
+                        onclick="const m = document.getElementById('importAnkiPackageHelpModal'); if (m) { m.showModal(); const btns = m.querySelectorAll('.help-modal-nav button'); if (btns[1]) btns[1].click(); }"
+                        class="hover:underline hover:text-primary transition-colors cursor-pointer"
+                    >
+                        {{ tr.importing_with_deck_configs() }}
+                    </span>
+                </label>
+                <div class="flex items-center gap-2 shrink-0">
+                    {% set rev %}
+                        {{ revert_button(signal_value="with_deck_configs", signal_default="false", default_value=false) }}
+                    {% endset %}
+                    {% call config_input(grow=false, revert_slot=rev) %}
+                        {{ switch(id="withDeckConfigs", value=options.with_deck_configs, signal="with_deck_configs") }}
+                    {% endcall %}
+                </div>
+            </div>
+
+            <div class="divider my-0"></div>
+
+            {# Collapsible details for Updates #}
+            <details class="group bg-base-200/50 rounded-box border border-base-300 p-3 transition-colors open:bg-base-100" open>
+                <summary class="cursor-pointer font-semibold text-sm text-base-content flex items-center justify-between list-none select-none">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                        {{ tr.importing_updates() }}
+                    </span>
+                    <span class="text-xs text-base-content/60 font-normal">Details</span>
+                </summary>
+                
+                <div class="flex flex-col gap-4 pt-4 mt-2 border-t border-base-300">
+                    {# 3. mergeNotetypes switch row #}
+                    <div class="flex items-center justify-between gap-4">
+                        <label for="mergeNotetypes" class="cursor-pointer flex-1 font-medium text-sm text-base-content">
+                            <span
+                                onclick="const m = document.getElementById('importAnkiPackageHelpModal'); if (m) { m.showModal(); const btns = m.querySelectorAll('.help-modal-nav button'); if (btns[2]) btns[2].click(); }"
+                                class="hover:underline hover:text-primary transition-colors cursor-pointer"
+                            >
+                                {{ tr.importing_merge_notetypes() }}
+                            </span>
+                        </label>
+                        <div class="flex items-center gap-2 shrink-0">
+                            {% set rev %}
+                                {{ revert_button(signal_value="merge_notetypes", signal_default="false", default_value=false) }}
+                            {% endset %}
+                            {% call config_input(grow=false, revert_slot=rev) %}
+                                {{ switch(id="mergeNotetypes", value=options.merge_notetypes, signal="merge_notetypes") }}
+                            {% endcall %}
+                        </div>
+                    </div>
+
+                    {# 4. updateNotes enum selector row #}
+                    <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-3">
+                        <div class="sm:col-span-7">
+                            <label for="updateNotes" class="cursor-pointer font-medium text-sm text-base-content">
+                                <span
+                                    onclick="const m = document.getElementById('importAnkiPackageHelpModal'); if (m) { m.showModal(); const btns = m.querySelectorAll('.help-modal-nav button'); if (btns[3]) btns[3].click(); }"
+                                    class="hover:underline hover:text-primary transition-colors cursor-pointer"
+                                >
+                                    {{ tr.importing_update_notes() }}
+                                </span>
+                            </label>
+                        </div>
+                        <div class="sm:col-span-5 flex justify-end">
+                            {% set rev %}
+                                {{ revert_button(signal_value="update_notes", signal_default="0", default_value=0) }}
+                            {% endset %}
+                            {% call config_input(grow=true, revert_slot=rev) %}
+                                {{ enum_selector(
+                                    id="updateNotes",
+                                    value=options.update_notes,
+                                    choices=update_choices,
+                                    signal="update_notes"
+                                ) }}
+                            {% endcall %}
+                        </div>
+                    </div>
+
+                    {# 5. updateNotetypes enum selector row #}
+                    <div class="grid grid-cols-1 sm:grid-cols-12 items-center gap-3">
+                        <div class="sm:col-span-7">
+                            <label for="updateNotetypes" class="cursor-pointer font-medium text-sm text-base-content">
+                                <span
+                                    onclick="const m = document.getElementById('importAnkiPackageHelpModal'); if (m) { m.showModal(); const btns = m.querySelectorAll('.help-modal-nav button'); if (btns[4]) btns[4].click(); }"
+                                    class="hover:underline hover:text-primary transition-colors cursor-pointer"
+                                >
+                                    {{ tr.importing_update_notetypes() }}
+                                </span>
+                            </label>
+                        </div>
+                        <div class="sm:col-span-5 flex justify-end">
+                            {% set rev %}
+                                {{ revert_button(signal_value="update_notetypes", signal_default="0", default_value=0) }}
+                            {% endset %}
+                            {% call config_input(grow=true, revert_slot=rev) %}
+                                {{ enum_selector(
+                                    id="updateNotetypes",
+                                    value=options.update_notetypes,
+                                    choices=update_choices,
+                                    signal="update_notetypes"
+                                ) }}
+                            {% endcall %}
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        {# Modal Actions / Footer #}
+        <div class="modal-action flex justify-end items-center gap-3 px-6 py-4 border-t border-base-300 bg-base-100 m-0">
+            <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                onclick="document.getElementById('importPackageModal')?.close()"
+            >
+                {{ tr.actions_cancel() }}
+            </button>
+            <button
+                type="button"
+                class="btn btn-primary btn-sm import"
+                title="Control+Enter"
+                data-on:click="@post('/import-anki-package/do-import')"
+            >
+                {{ tr.actions_import() }}
+            </button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>

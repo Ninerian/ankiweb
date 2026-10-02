@@ -125,7 +125,7 @@ def make_custom_study_routes(get_service: Callable) -> APIRouter:
                 if isinstance(e, CustomStudyError)
                 else "Could not create a custom study session."
             )
-            err_html = f'<div id="err" style="color:#c00;margin-top:8px;">{html.escape(msg)}</div>'
+            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(msg)}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
 
         return DatastarResponse(SSE.redirect("/overview"))

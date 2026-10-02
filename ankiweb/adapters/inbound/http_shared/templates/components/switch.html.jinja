@@ -1,9 +1,9 @@
 {% macro switch(id="", value=false, disabled=false, rtl=false, class_="", signal=none) %}
-<div class="form-check form-switch anki-switch {{ 'rtl' if rtl else '' }} {{ class_ }}">
+<div class="anki-switch inline-flex items-center {{ 'rtl' if rtl else '' }} {{ class_ }}">
     <input
         {% if id %}id="{{ id }}"{% endif %}
         type="checkbox"
-        class="form-check-input"
+        class="toggle"
         {% if disabled %}disabled{% endif %}
         {% if signal %}
         data-bind="{{ signal | replace('$', '', 1) }}"

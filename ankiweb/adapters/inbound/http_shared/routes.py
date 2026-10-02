@@ -349,7 +349,7 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=N
             return HTMLResponse(
                 render_page(
                     "export",
-                    f"<div style='color:#c00'>Export failed: {exc}</div>" + body,
+                    f"<div id='err' class='text-error text-sm font-semibold mt-2'>Export failed: {exc}</div>" + body,
                 )
             )
         return FileResponse(

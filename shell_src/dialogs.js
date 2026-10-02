@@ -4,7 +4,6 @@
   let isShowing = false;
 
   let modalEl = null;
-  let bsModal = null;
   let modalTitle = null;
   let modalBody = null;
   let modalInput = null;
@@ -14,33 +13,27 @@
 
   function ensureModal() {
     if (modalEl) return;
-    modalEl = document.createElement('div');
+    modalEl = document.createElement('dialog');
     modalEl.id = 'ankiwebDialogModal';
-    modalEl.className = 'modal fade';
-    modalEl.tabIndex = -1;
-    modalEl.setAttribute('role', 'dialog');
+    modalEl.className = 'modal';
     modalEl.setAttribute('aria-labelledby', 'ankiwebDialogTitle');
-    modalEl.setAttribute('aria-hidden', 'true');
 
     modalEl.innerHTML = `
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="ankiwebDialogTitle"></h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-box">
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Close">\u2715</button>
+        </form>
+        <h3 class="text-lg font-bold" id="ankiwebDialogTitle"></h3>
+        <form id="ankiwebDialogForm" class="flex flex-col gap-3 py-4">
+          <div id="ankiwebDialogMessage" class="break-words"></div>
+          <input type="text" id="ankiwebDialogInput" class="input w-full" autocomplete="off">
+          <div class="modal-action">
+            <button type="button" id="ankiwebDialogCancelBtn" class="btn"></button>
+            <button type="submit" id="ankiwebDialogOkBtn" class="btn btn-primary"></button>
           </div>
-          <form id="ankiwebDialogForm">
-            <div class="modal-body" style="--gutter-inline: 1rem;">
-              <div id="ankiwebDialogMessage" class="mb-2 text-break"></div>
-              <input type="text" id="ankiwebDialogInput" class="form-control" autocomplete="off">
-            </div>
-            <div class="modal-footer">
-              <button type="button" id="ankiwebDialogCancelBtn" class="btn btn-secondary" data-bs-dismiss="modal"></button>
-              <button type="submit" id="ankiwebDialogOkBtn" class="btn btn-primary"></button>
-            </div>
-          </form>
-        </div>
+        </form>
       </div>
+      <form method="dialog" class="modal-backdrop"><button aria-label="Close">close</button></form>
     `;
 
     document.body.appendChild(modalEl);
@@ -51,12 +44,6 @@
     modalCancelBtn = modalEl.querySelector('#ankiwebDialogCancelBtn');
     modalOkBtn = modalEl.querySelector('#ankiwebDialogOkBtn');
     modalForm = modalEl.querySelector('#ankiwebDialogForm');
-
-    bsModal = new bootstrap.Modal(modalEl, {
-      backdrop: true,
-      keyboard: true,
-      focus: true
-    });
   }
 
   function getLabels() {
@@ -89,7 +76,7 @@
     // Reset button styling
     modalOkBtn.className = 'btn btn-primary';
     if (options && options.danger) {
-      modalOkBtn.className = 'btn btn-danger';
+      modalOkBtn.className = 'btn btn-error';
     }
 
     const okLabel = (options && options.okLabel) || labels.ok;
@@ -110,8 +97,8 @@
     }
 
     function cleanup() {
-      modalEl.removeEventListener('shown.bs.modal', onShown);
-      modalEl.removeEventListener('hidden.bs.modal', onHidden);
+      modalEl.removeEventListener('close', onHidden);
+      modalCancelBtn.removeEventListener('click', onCancelClick);
       if (modalForm) modalForm.removeEventListener('submit', onSubmit);
       if (modalOkBtn) modalOkBtn.removeEventListener('click', onOkClick);
     }
@@ -123,6 +110,10 @@
       } else {
         modalOkBtn.focus();
       }
+    }
+
+    function onCancelClick() {
+      modalEl.close();
     }
 
     function onHidden() {
@@ -148,7 +139,7 @@
       else if (type === 'confirm') resultValue = true;
       else if (type === 'prompt') resultValue = modalInput.value;
 
-      bsModal.hide();
+      modalEl.close();
     }
 
     function onSubmit(e) {
@@ -162,12 +153,13 @@
       finishSubmit();
     }
 
-    modalEl.addEventListener('shown.bs.modal', onShown, { once: true });
-    modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
+    modalEl.addEventListener('close', onHidden, { once: true });
+    modalCancelBtn.addEventListener('click', onCancelClick);
     if (modalForm) modalForm.addEventListener('submit', onSubmit);
     if (modalOkBtn) modalOkBtn.addEventListener('click', onOkClick);
 
-    bsModal.show();
+    modalEl.showModal();
+    onShown();
   }
 
   window.ankiwebPrompt = function(message, defaultValue = '') {

@@ -1,27 +1,27 @@
 {% from "components/with_tooltip.html.jinja" import with_tooltip %}
 
-<div class="border p-3 mb-4 rounded">
-    <h5>1. Hover / Focus Tooltip (Placement: Top)</h5>
+<div class="border border-base-300 rounded-box p-4 mb-4 bg-base-100">
+    <h5 class="font-bold text-lg mb-2">1. Hover / Focus Tooltip (Placement: Top)</h5>
     {% call with_tooltip(tooltip="Helpful tooltip text on top", placement="top", id="demoTooltipTop") %}
-        <button type="button" class="btn btn-outline-secondary" id="demoTooltipTopBtn">
+        <button type="button" class="btn btn-outline" id="demoTooltipTopBtn">
             Hover or Focus me (Top)
         </button>
     {% endcall %}
 </div>
 
-<div class="border p-3 mb-4 rounded">
-    <h5>2. Click Triggered Tooltip with HTML content (Placement: Right)</h5>
+<div class="border border-base-300 rounded-box p-4 mb-4 bg-base-100">
+    <h5 class="font-bold text-lg mb-2">2. Click Triggered Tooltip with HTML content (Placement: Right)</h5>
     {% call with_tooltip(tooltip="<em>Rich HTML</em> <strong>Tooltip</strong> content", trigger="click", placement="right", id="demoTooltipClick") %}
-        <button type="button" class="btn btn-outline-info" id="demoTooltipClickBtn">
+        <button type="button" class="btn btn-outline btn-info" id="demoTooltipClickBtn">
             Click me for Tooltip (Right)
         </button>
     {% endcall %}
 </div>
 
-<div class="border p-3 rounded">
-    <h5>3. Tooltip with Delays (Placement: Bottom)</h5>
+<div class="border border-base-300 rounded-box p-4 bg-base-100">
+    <h5 class="font-bold text-lg mb-2">3. Tooltip with Delays (Placement: Bottom)</h5>
     {% call with_tooltip(tooltip="Delayed tooltip after 100ms", placement="bottom", show_delay=100, hide_delay=100, id="demoTooltipBottom") %}
-        <button type="button" class="btn btn-outline-dark" id="demoTooltipBottomBtn">
+        <button type="button" class="btn btn-outline btn-neutral" id="demoTooltipBottomBtn">
             Delayed Tooltip (Bottom)
         </button>
     {% endcall %}

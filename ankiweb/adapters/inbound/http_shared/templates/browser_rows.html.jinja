@@ -1,12 +1,12 @@
 {% for r in rows %}<tr class="browser-row{% if r.is_suspended %} suspended-card{% endif %}" data-cid="{{ r.cid }}">
-    <td class="d-md-none cell-mobile py-2 px-3">
-      <div class="row-line1 fw-semibold text-truncate d-flex align-items-center gap-1">
-        <span class="text-truncate">{{ r.sort_text }}</span>
+    <td class="md:hidden cell-mobile py-2 px-3">
+      <div class="row-line1 font-semibold truncate flex items-center gap-1">
+        <span class="truncate">{{ r.sort_text }}</span>
         {% if r.is_suspended %}
-        <span class="badge text-bg-secondary ms-auto flex-shrink-0">{{ tr.browsing_suspended() }}</span>
+        <span class="badge badge-neutral ms-auto shrink-0">{{ tr.browsing_suspended() }}</span>
         {% endif %}
       </div>
-      <div class="row-line2 text-body-secondary small text-truncate mt-1">
+      <div class="row-line2 text-base-content/60 text-xs truncate mt-1">
         <span>{{ r.template_name }}</span>
         <span class="mx-1">·</span>
         <span>{{ r.deck }}</span>
@@ -16,14 +16,14 @@
         {% endif %}
       </div>
     </td>
-    <td class="d-none d-md-table-cell text-truncate cell-sortfield" title="{{ r.sort_text }}">
+    <td class="hidden md:table-cell truncate cell-sortfield" title="{{ r.sort_text }}">
       {{ r.sort_text }}
       {% if r.is_suspended %}
-      <span class="badge text-bg-secondary ms-1">{{ tr.browsing_suspended() }}</span>
+      <span class="badge badge-neutral ms-1">{{ tr.browsing_suspended() }}</span>
       {% endif %}
     </td>
-    <td class="d-none d-md-table-cell text-truncate cell-card" title="{{ r.template_name }}">{{ r.template_name }}</td>
-    <td class="d-none d-md-table-cell text-truncate cell-deck" title="{{ r.deck }}">{{ r.deck }}</td>
-    <td class="d-none d-md-table-cell text-nowrap cell-due">{{ r.due }}</td>
-    <td class="d-none d-xl-table-cell text-truncate cell-tags text-body-secondary" title="{{ r.tags }}">{{ r.tags }}</td>
+    <td class="hidden md:table-cell truncate cell-card" title="{{ r.template_name }}">{{ r.template_name }}</td>
+    <td class="hidden md:table-cell truncate cell-deck" title="{{ r.deck }}">{{ r.deck }}</td>
+    <td class="hidden md:table-cell whitespace-nowrap cell-due">{{ r.due }}</td>
+    <td class="hidden xl:table-cell truncate cell-tags text-base-content/60" title="{{ r.tags }}">{{ r.tags }}</td>
   </tr>{% endfor %}

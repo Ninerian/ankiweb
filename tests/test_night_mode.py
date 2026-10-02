@@ -15,7 +15,7 @@ def client(tmp_path: Path):
 def test_render_page_injects_night_css():
     html = render_page("deckbrowser", "<div>x</div>")
     assert "night-mode" in html
-    assert "vendor/bootstrap.min.css" in html
+    assert "/shell/static/app.css" in html
 
 
 def test_deckbrowser_has_night_toggle(client):

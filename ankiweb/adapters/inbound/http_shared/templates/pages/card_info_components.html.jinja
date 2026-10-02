@@ -1,13 +1,13 @@
 {% macro card_info_block(card_data, title="", show_revlog=true, show_curve=true) %}
 <div class="card-info-single">
     {% if title %}
-    <h3>{{ title }}</h3>
+    <h3 class="text-xl font-medium">{{ title }}</h3>
     {% endif %}
 
     {% if not card_data or not card_data.rows %}
     <div class="card-info-placeholder">{{ tr.card_stats_no_card() }}</div>
     {% else %}
-    <div class="row">
+    <div class="flex flex-col">
         <table class="stats-table align-start">
             <tbody>
                 {% for row in card_data.rows %}
@@ -21,7 +21,7 @@
     </div>
 
     {% if show_revlog and card_data.revlogs %}
-    <div class="row">
+    <div class="flex flex-col">
         <div class="revlog-table">
             <div class="column">
                 <div class="column-head">{{ tr.card_stats_review_log_date() }}</div>
@@ -76,7 +76,7 @@
     {% endif %}
 
     {% if show_curve and card_data.fsrs_enabled and card_data.curve_svg %}
-    <div class="row">
+    <div class="flex flex-col">
         {{ forgetting_curve_block(card_data) }}
     </div>
     {% endif %}
@@ -86,27 +86,27 @@
 
 {% macro forgetting_curve_block(card_data) %}
 <div class="forgetting-curve" id="curve-{{ card_data.card_id }}">
-    <div class="position-relative">
-        <h1 class="svelte-zuiu8u">{{ tr.card_stats_fsrs_forgetting_curve_title() }}</h1>
-        <div class="help-badge position-absolute svelte-zuiu8u"></div>
+    <div class="relative">
+        <h1 class="text-2xl font-medium svelte-zuiu8u">{{ tr.card_stats_fsrs_forgetting_curve_title() }}</h1>
+        <div class="help-badge absolute svelte-zuiu8u"></div>
     </div>
     {% if card_data.show_time_selector %}
     <div class="time-range-selector">
         <label>
-            <input type="radio" name="time-range-{{ card_data.card_id }}" value="0"
+            <input type="radio" class="radio radio-sm" name="time-range-{{ card_data.card_id }}" value="0"
                    {% if card_data.selected_range == 0 %}checked{% endif %}
                    data-on:change="@post('/card-info/curve/{{ card_data.card_id }}?range=0')" />
             {{ tr.card_stats_fsrs_forgetting_curve_first_week() }}
         </label>
         <label>
-            <input type="radio" name="time-range-{{ card_data.card_id }}" value="1"
+            <input type="radio" class="radio radio-sm" name="time-range-{{ card_data.card_id }}" value="1"
                    {% if card_data.selected_range == 1 %}checked{% endif %}
                    data-on:change="@post('/card-info/curve/{{ card_data.card_id }}?range=1')" />
             {{ tr.card_stats_fsrs_forgetting_curve_first_month() }}
         </label>
         {% if card_data.max_span > 30 %}
         <label>
-            <input type="radio" name="time-range-{{ card_data.card_id }}" value="2"
+            <input type="radio" class="radio radio-sm" name="time-range-{{ card_data.card_id }}" value="2"
                    {% if card_data.selected_range == 2 %}checked{% endif %}
                    data-on:change="@post('/card-info/curve/{{ card_data.card_id }}?range=2')" />
             {{ tr.card_stats_fsrs_forgetting_curve_first_year() }}
@@ -114,7 +114,7 @@
         {% endif %}
         {% if card_data.max_span > 365 %}
         <label>
-            <input type="radio" name="time-range-{{ card_data.card_id }}" value="3"
+            <input type="radio" class="radio radio-sm" name="time-range-{{ card_data.card_id }}" value="3"
                    {% if card_data.selected_range == 3 %}checked{% endif %}
                    data-on:change="@post('/card-info/curve/{{ card_data.card_id }}?range=3')" />
             {{ tr.card_stats_fsrs_forgetting_curve_all_time() }}

@@ -6,48 +6,11 @@
 /* ==========================================================================
    CSS Variables & Base Fallbacks for Buttons & Icons
    ========================================================================== */
+/* Variables specific to buttons/icons/dropdowns not defined in theme.css */
 :root {
   --buttons-size: 26px;
-  --button-bg: var(--bs-tertiary-bg, #f3eee5);
-  --button-primary-bg: var(--bs-primary, #185f66);
-  --button-gradient-start: #ffffff;
-  --button-gradient-end: var(--bs-tertiary-bg, #ebe4d8);
-  --button-primary-gradient-start: var(--bs-primary, #185f66);
-  --button-primary-gradient-end: var(--bs-primary-text-emphasis, #104449);
-  --border-subtle: var(--bs-border-color, #ddd6c8);
-  --border-focus: var(--bs-focus-ring-color, #185f66);
-  --border-radius: var(--bs-border-radius, 4px);
-  --border-left-radius: var(--bs-border-radius, 4px);
-  --border-right-radius: var(--bs-border-radius, 4px);
-  --shadow: rgba(0, 0, 0, 0.15);
-  --shadow-focus: rgba(24, 95, 102, 0.25);
-  --fg: var(--bs-body-color, #26241f);
-  --fg-disabled: var(--bs-secondary-color, #8c887f);
-  --highlight-bg: var(--bs-primary, #185f66);
-  --highlight-fg: #ffffff;
-  --canvas-elevated: var(--bs-body-bg, #ffffff);
   --dropdown-font-size: 0.875rem;
 }
-
-[data-bs-theme="dark"],
-.night-mode {
-  --button-bg: var(--bs-tertiary-bg, #282622);
-  --button-primary-bg: var(--bs-primary, #52b7a8);
-  --button-gradient-start: #32302a;
-  --button-gradient-end: #24221e;
-  --button-primary-gradient-start: var(--bs-primary, #52b7a8);
-  --button-primary-gradient-end: #3a8277;
-  --border-subtle: var(--bs-border-color, #44413b);
-  --border-focus: var(--bs-focus-ring-color, #52b7a8);
-  --shadow: rgba(0, 0, 0, 0.4);
-  --shadow-focus: rgba(82, 183, 168, 0.35);
-  --fg: var(--bs-body-color, #e8e5de);
-  --fg-disabled: var(--bs-secondary-color, #827e74);
-  --highlight-bg: var(--bs-primary, #52b7a8);
-  --highlight-fg: #1e1d1a;
-  --canvas-elevated: var(--bs-body-bg, #1e1d1a);
-}
-
 /* ==========================================================================
    Icon & SVG
    ========================================================================== */
@@ -207,14 +170,24 @@ button.label-button:active:not([disabled]) {
 button.label-button.active {
   box-shadow: inset 0 calc(var(--buttons-size, 10px) / 15) calc(var(--buttons-size, 10px) / 5) rgba(0, 0, 0, 0.35);
   background: var(--button-primary-bg);
-  color: #ffffff;
-  border-color: var(--border-focus);
+  color: var(--color-primary-content, #ffffff);
+  border: 1px solid var(--border-focus);
+}
+
+button.label-button.active:hover:not([disabled]) {
+  background: linear-gradient(
+    180deg,
+    var(--button-primary-gradient-start) 0%,
+    var(--button-primary-gradient-end) 100%
+  );
+  color: var(--color-primary-content, #ffffff);
+  border: 1px solid var(--border-focus);
 }
 
 button.label-button.primary {
-  border: none;
+  border: 1px solid transparent;
   background: var(--button-primary-bg);
-  color: #ffffff;
+  color: var(--color-primary-content, #ffffff);
 }
 
 button.label-button.primary:hover:not([disabled]) {
@@ -223,6 +196,8 @@ button.label-button.primary:hover:not([disabled]) {
     var(--button-primary-gradient-start) 0%,
     var(--button-primary-gradient-end) 100%
   );
+  color: var(--color-primary-content, #ffffff);
+  border: 1px solid transparent;
 }
 
 button.label-button[disabled],
@@ -300,7 +275,7 @@ button.dropdown-item.active.rtl {
 /* ==========================================================================
    Badge
    ========================================================================== */
-button.badge {
+button.badge:not([class*="badge-"]) {
   color: var(--badge-color, inherit);
   border: none;
   background: transparent;
@@ -312,28 +287,25 @@ button.badge {
   justify-content: center;
 }
 
-button.badge:hover,
-button.badge:active {
+button.badge:not([class*="badge-"]):hover,
+button.badge:not([class*="badge-"]):active {
   border: none;
   background: transparent;
   box-shadow: none;
 }
 
-button.badge.dropdown-toggle::after {
-  display: none;
-}
 
 /* ==========================================================================
    FloatingArrow
    ========================================================================== */
 div.arrow {
-  background-color: var(--canvas-elevated);
+  background-color: var(--canvas-elevated, var(--color-base-100));
   width: 10px;
   height: 10px;
   z-index: 60;
 
-  /* outer border */
-  border: 1px solid var(--border-subtle);
+  /* outer border using daisyUI theme token */
+  border: 1.5px solid var(--color-primary);
 
   /* Rotate the box to indicate the different directions */
   border-right: none;

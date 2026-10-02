@@ -53,27 +53,29 @@
         <span class="invisible">{{ val_disp }}</span>%
     </span>
     {%- endif -%}
-    <div
-        class="spinner decrement"
-        tabindex="-1"
-        title="Decrement value"
-        role="button"
-        aria-label="Decrement value"
-    >
-        {% call icon_constrain(icon_size=100) %}
-            {{ icon(name="chevronDown") }}
-        {% endcall %}
-    </div>
-    <div
-        class="spinner increment"
-        tabindex="-1"
-        title="Increment value"
-        role="button"
-        aria-label="Increment value"
-    >
-        {% call icon_constrain(icon_size=100) %}
-            {{ icon(name="chevronUp") }}
-        {% endcall %}
+    <div class="spinner-column">
+        <div
+            class="spinner increment"
+            tabindex="-1"
+            title="Increment value"
+            role="button"
+            aria-label="Increment value"
+        >
+            {% call icon_constrain(icon_size=100) %}
+                {{ icon(name="chevronUp") }}
+            {% endcall %}
+        </div>
+        <div
+            class="spinner decrement"
+            tabindex="-1"
+            title="Decrement value"
+            role="button"
+            aria-label="Decrement value"
+        >
+            {% call icon_constrain(icon_size=100) %}
+                {{ icon(name="chevronDown") }}
+            {% endcall %}
+        </div>
     </div>
     <script>
     (() => {

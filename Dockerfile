@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------------------------------------------------------------------------
-# frontend: build the JS bootstrap bundle (ankiweb/shell/static/bootstrap.js)
+# frontend: build the shell JS bundle and the Tailwind/daisyUI stylesheet (ankiweb/shell/static/)
 # ---------------------------------------------------------------------------
 FROM node:20-bookworm-slim AS frontend
 WORKDIR /src
@@ -9,6 +9,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tools/build_shell.mjs tools/build_shell.mjs
 COPY shell_src/ shell_src/
+# Tailwind scans the templates and route modules for class names
+COPY ankiweb/ ankiweb/
 RUN npm run build
 
 # ---------------------------------------------------------------------------

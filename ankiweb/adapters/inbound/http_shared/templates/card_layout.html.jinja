@@ -1,56 +1,58 @@
 {% macro tmpl_block(tmpl) %}
   <div
-    class="tmpl-block card p-3 mb-3"
+    class="tmpl-block bg-base-100 border border-base-300 rounded-box p-4 mb-4 shadow-sm"
     data-orig="{{ tmpl.ord }}"
   >
-    <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
-      <label class="d-flex align-items-center gap-1 mb-0">
-        <span class="small fw-semibold">{{ tr.actions_name() }}</span>
-        <input type="text" class="tmpl-name form-control form-control-sm d-inline-block w-auto" value="{{ tmpl.name }}" size="24">
+    <div class="flex items-center flex-wrap gap-2 mb-3">
+      <label class="flex items-center gap-2 mb-0">
+        <span class="text-sm font-semibold">{{ tr.actions_name() }}</span>
+        <input type="text" class="tmpl-name input input-sm inline-block w-auto" value="{{ tmpl.name }}" size="24">
       </label>
-      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="moveUp(this)">↑</button>
-      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="moveDown(this)">↓</button>
-      <button class="btn btn-sm btn-outline-danger" type="button" onclick="deleteBlock(this)">
+      <div class="join">
+        <button class="btn btn-sm btn-outline join-item" type="button" onclick="moveUp(this)">↑</button>
+        <button class="btn btn-sm btn-outline join-item" type="button" onclick="moveDown(this)">↓</button>
+      </div>
+      <button class="btn btn-sm btn-outline btn-error ms-auto sm:ms-0" type="button" onclick="deleteBlock(this)">
         {{ tr.actions_delete() }}
       </button>
     </div>
-    <div class="tmpl-label small fw-semibold mt-2 mb-1">
+    <div class="tmpl-label text-sm font-semibold mt-2 mb-1">
       {{ tr.card_templates_front_template() }}
     </div>
-    <textarea class="tmpl-qfmt form-control font-monospace" rows="6"
+    <textarea class="tmpl-qfmt textarea font-mono w-full" rows="6"
     >{{ tmpl.qfmt }}</textarea>
-    <div class="tmpl-label small fw-semibold mt-2 mb-1">
+    <div class="tmpl-label text-sm font-semibold mt-2 mb-1">
       {{ tr.card_templates_back_template() }}
     </div>
-    <textarea class="tmpl-afmt form-control font-monospace" rows="6"
+    <textarea class="tmpl-afmt textarea font-mono w-full" rows="6"
     >{{ tmpl.afmt }}</textarea>
   </div>
 {% endmacro %}
-<div class="card-layout container-fluid">
-  <h3>Card Types</h3>
+<div class="card-layout max-w-4xl mx-auto px-4 py-3">
+  <h3 class="text-xl font-bold mb-3">Card Types</h3>
   <input type="hidden" id="ntid" value="{{ ntid }}">
   <form id="clf" onsubmit="return false">
     <div id="tmplblocks">
       {% for t in templates %}{{ tmpl_block(t) }}{% endfor %}
     </div>
     <div class="mt-2">
-      <button class="btn btn-outline-secondary" type="button" id="addtmpl" onclick="addBlock()">
+      <button class="btn btn-outline" type="button" id="addtmpl" onclick="addBlock()">
         {{ tr.card_templates_add_card_type() }}
       </button>
     </div>
-    <div class="mt-3">
-      <div class="tmpl-label small fw-semibold mb-1">{{ tr.card_templates_template_styling() }}</div>
-      <textarea id="css" class="form-control font-monospace" rows="8">{{ css }}</textarea>
+    <div class="mt-4">
+      <div class="tmpl-label text-sm font-semibold mb-1">{{ tr.card_templates_template_styling() }}</div>
+      <textarea id="css" class="textarea font-mono w-full" rows="8">{{ css }}</textarea>
     </div>
-    <div class="mt-3">
-      <button class="btn btn-primary me-2" type="button" id="save" data-on:click__prevent="const payload = buildLayoutPayload(); @post('/card-layout/savelayout', {payload: payload})">
+    <div class="mt-4 flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="const payload = buildLayoutPayload(); @post('/card-layout/savelayout', {payload: payload})">
         {{ tr.actions_save() }}
       </button>
-      <button class="btn btn-secondary me-2" type="button" data-on:click__prevent="@post('/card-layout/cancel')">
+      <button class="btn btn-neutral" type="button" data-on:click__prevent="@post('/card-layout/cancel')">
         {{ tr.actions_cancel() }}
       </button>
       <button
-        class="btn btn-outline-secondary"
+        class="btn btn-outline"
         type="button"
         id="preview"
         data-on:click__prevent="@post('/card-layout/previewlayout/' + document.getElementById('ntid').value)"
@@ -58,7 +60,7 @@
         {{ tr.actions_preview() }}
       </button>
     </div>
-    <div id="err" class="text-danger mt-2"></div>
+    <div id="err" class="text-error text-sm font-semibold mt-2"></div>
   </form>
 </div>
 <template id="blankblock">{{

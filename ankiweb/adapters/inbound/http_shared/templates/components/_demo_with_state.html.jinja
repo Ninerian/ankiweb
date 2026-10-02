@@ -1,20 +1,20 @@
 {% from "components/with_state.html.jinja" import with_state %}
 
-<div class="border p-3 mb-3">
-    <h6 class="text-muted">Interactive state with Datastar signal:</h6>
+<div class="border border-base-300 rounded-box p-4 mb-3 bg-base-100">
+    <h6 class="text-base-content/60 text-sm font-semibold mb-2">Interactive state with Datastar signal:</h6>
     {% call(state, sig) with_state(key="demo-toggle", initial=false, signal_name="demoWithStateActive") %}
-        <div class="d-flex align-items-center gap-3">
-            <button type="button" class="btn btn-outline-primary btn-sm" data-on:click="$demoWithStateActive = !$demoWithStateActive">
+        <div class="flex items-center gap-3">
+            <button type="button" class="btn btn-outline btn-primary btn-sm" data-on:click="$demoWithStateActive = !$demoWithStateActive">
                 Toggle State
             </button>
             <span>Current state: <strong data-text="$demoWithStateActive ? 'ON' : 'OFF'">OFF</strong></span>
-            <span class="badge bg-success" data-show="$demoWithStateActive">Active Badge</span>
+            <span class="badge badge-success" data-show="$demoWithStateActive">Active Badge</span>
         </div>
     {% endcall %}
 </div>
 
-<div class="border p-3">
-    <h6 class="text-muted">Template-scoped state passed to caller:</h6>
+<div class="border border-base-300 rounded-box p-4 bg-base-100">
+    <h6 class="text-base-content/60 text-sm font-semibold mb-2">Template-scoped state passed to caller:</h6>
     {% call(state, sig) with_state(key="static-state", initial=true) %}
         <p class="mb-0">Initial state received from macro: <code>{{ state }}</code></p>
     {% endcall %}

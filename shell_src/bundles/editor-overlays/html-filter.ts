@@ -108,7 +108,7 @@ const filterStylesInternal = createStyleFilter(allowAll, {
 });
 
 function isNightMode(): boolean {
-    return document.body.classList.contains("nightMode") || document.documentElement.getAttribute("data-bs-theme") === "dark";
+    return document.body.classList.contains("nightMode") || document.documentElement.getAttribute("data-theme") === "dark";
 }
 
 function filterAttributes(predicate: (attrName: string) => boolean, el: HTMLElement) {

@@ -19,12 +19,12 @@
 #}
 {% set row_id = id if id else ('sw-row-' ~ range(1000, 9999)|random) %}
 <div
-    class="row align-items-center g-2 {{ class_ }}"
+    class="row flex items-center justify-between gap-2 {{ class_ }}"
     {% for k, v in kwargs.items() %}
     {{ k }}="{{ v }}"
     {% endfor %}
 >
-    <div class="col-8 col-sm-9 d-flex align-items-center">
+    <div class="flex-1 flex items-center">
         {% call label(for_=row_id, prevent_mouse_click=true) %}
             {% if caller %}
                 {{ caller() }}
@@ -33,7 +33,7 @@
             {% endif %}
         {% endcall %}
     </div>
-    <div class="col-4 col-sm-3 d-flex justify-content-end">
+    <div class="flex-none flex justify-end">
         {% set rev %}
             {% if signal %}
                 {{ revert_button(signal_value=signal, signal_default=signal_default, default_value=default_value) }}

@@ -1,10 +1,10 @@
-<div class="add-container container-fluid d-flex flex-column gap-2 py-3" style="max-width:800px;">
-  <div class="d-flex gap-3 align-items-center flex-wrap">
-    <label class="d-flex align-items-center gap-1 small fw-semibold">
+<div class="add-container w-full max-w-[800px] mx-auto flex flex-col gap-2 py-3 px-3">
+  <div class="flex gap-3 items-center flex-wrap">
+    <label class="flex items-center gap-1 text-sm font-semibold">
       Type:
       <select
         id="add-notetype"
-        class="form-select form-select-sm"
+        class="select select-sm"
         onchange="window.ankiwebSetNotetype(this.value)"
       >
         {% for m in notetypes %}
@@ -14,11 +14,11 @@
         {% endfor %}
       </select>
     </label>
-    <label class="d-flex align-items-center gap-1 small fw-semibold">
+    <label class="flex items-center gap-1 text-sm font-semibold">
       Deck:
       <select
         id="add-deck"
-        class="form-select form-select-sm"
+        class="select select-sm"
         onchange="window.ankiwebSetDeck(this.value)"
       >
         {% for d in decks %}
@@ -38,7 +38,7 @@
     </button>
     <span
       id="add-toast"
-      class="text-success fw-bold small"
+      class="text-success font-bold text-sm"
     ></span>
   </div>
 </div>

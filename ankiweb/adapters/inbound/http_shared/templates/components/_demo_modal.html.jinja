@@ -1,43 +1,51 @@
 {% from "components/modal.html.jinja" import modal %}
 
-<div class="border p-3 mb-4 rounded">
-    <h5>1. Standard Modal Dialog (Trigger via Bootstrap data attributes)</h5>
-    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#demoModalBasic" id="openDemoModalBasicBtn">
+<div class="border border-base-300 p-4 mb-4 rounded-box bg-base-100">
+    <h5 class="font-bold text-lg mb-2">1. Standard Modal Dialog (Native dialog element with daisyUI modal)</h5>
+    <button type="button" class="btn btn-outline btn-primary" onclick="document.getElementById('demoModalBasic').showModal()" id="openDemoModalBasicBtn">
         Open Standard Modal
     </button>
 
-    {% call modal(id="demoModalBasic", dialog_class="modal-dialog-centered", keyboard=true) %}
-        <div class="modal-header">
-            <h5 class="modal-title" id="demoModalBasicLabel">Modal Title</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="closeDemoModalBasicBtn"></button>
+    {% call modal(id="demoModalBasic", keyboard=true) %}
+        <div class="flex justify-between items-center mb-3">
+            <h5 class="modal-title font-bold text-lg" id="demoModalBasicLabel">Modal Title</h5>
+            <form method="dialog">
+                <button type="submit" class="btn btn-sm btn-circle btn-ghost" aria-label="Close" id="closeDemoModalBasicBtn">✕</button>
+            </form>
         </div>
-        <div class="modal-body">
+        <div class="py-2">
             <p id="demoModalBasicBody">This is the modal body content styled according to upstream theme canvas and text colors.</p>
-            <input type="text" class="form-control" placeholder="Focus target inside modal" id="modalFocusInput">
+            <input type="text" class="input w-full mt-3" placeholder="Focus target inside modal" id="modalFocusInput">
         </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelDemoModalBasicBtn">Cancel</button>
-            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="okDemoModalBasicBtn">Save changes</button>
+        <div class="modal-action">
+            <form method="dialog" class="flex gap-2">
+                <button type="submit" class="btn btn-ghost" id="cancelDemoModalBasicBtn">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="okDemoModalBasicBtn">Save changes</button>
+            </form>
         </div>
     {% endcall %}
 </div>
 
-<div class="border p-3 rounded">
-    <h5>2. Large Modal with custom class and static backdrop</h5>
-    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#demoModalStatic" id="openDemoModalStaticBtn">
+<div class="border border-base-300 p-4 rounded-box bg-base-100">
+    <h5 class="font-bold text-lg mb-2">2. Large Modal with custom class and static backdrop</h5>
+    <button type="button" class="btn btn-outline" onclick="document.getElementById('demoModalStatic').showModal()" id="openDemoModalStaticBtn">
         Open Large Static Modal
     </button>
 
-    {% call modal(id="demoModalStatic", dialog_class="modal-lg", backdrop="static", keyboard=true) %}
-        <div class="modal-header">
-            <h5 class="modal-title">Static Backdrop Modal</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    {% call modal(id="demoModalStatic", dialog_class="max-w-3xl", backdrop="static", keyboard=true) %}
+        <div class="flex justify-between items-center mb-3">
+            <h5 class="modal-title font-bold text-lg">Static Backdrop Modal</h5>
+            <form method="dialog">
+                <button type="submit" class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
+            </form>
         </div>
-        <div class="modal-body">
+        <div class="py-2">
             <p>Clicking outside does not dismiss a static backdrop modal.</p>
         </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Understood</button>
+        <div class="modal-action">
+            <form method="dialog">
+                <button type="submit" class="btn btn-primary">Understood</button>
+            </form>
         </div>
     {% endcall %}
 </div>

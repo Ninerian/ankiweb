@@ -10,7 +10,7 @@
     on_change: Datastar expression or JS callback to run on selection change (e.g. "$selected_deck = evt.detail.id")
     id: Unique ID prefix for modal and signals (default: random)
     class_: Extra class on trigger button
-    modal_dialog_class: Extra class on modal-dialog (default: "modal-lg")
+    modal_dialog_class: Extra class on modal-dialog (default: "max-w-3xl w-11/12")
 #}
 {% from "components/label_button.html.jinja" import label_button %}
 {% from "components/shortcut.html.jinja" import shortcut %}
@@ -28,7 +28,7 @@
     on_change="",
     id="",
     class_="",
-    modal_dialog_class="modal-lg"
+    modal_dialog_class="max-w-3xl w-11/12"
 ) -%}
 {% set cid = id or ("chooser_" ~ range(1000, 999999)|random) %}
 {% set ns = namespace(item=none) %}
@@ -44,7 +44,7 @@
 {% endif %}
 {% set initial_name = ns.item.name if ns.item else "…" %}
 
-<div class="item-chooser-container d-inline-block w-100"
+<div class="item-chooser-container inline-block w-full"
      id="{{ cid }}_container"
      data-signals="{{ ({
          cid ~ "_selected_id": initial_id,
@@ -57,8 +57,7 @@
         {% if tooltip %}title="{{ tooltip }}"{% endif %}
         tabindex="0"
         id="{{ cid }}_btn"
-        data-bs-toggle="modal"
-        data-bs-target="#{{ cid }}_modal"
+        onclick="document.getElementById('{{ cid }}_modal')?.showModal()"
     >
         <span class="chooser-label-text">{{ initial_name }}</span>
     </button>
@@ -67,7 +66,7 @@
     {% if key_combination %}
         {{ shortcut(
             combination=key_combination,
-            action="const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('" ~ cid ~ "_modal')); m.toggle();"
+            action="const m = document.getElementById('" ~ cid ~ "_modal'); if (m) { m.open ? m.close() : m.showModal(); }"
         ) }}
     {% endif %}
 
@@ -78,17 +77,20 @@
         class_="item-chooser-modal",
         keyboard=true
     ) %}
-        <div class="modal-header">
-            {% call icon_constrain(icon_size=90) %}
-                {{ render_icon(name=icon) }}
-            {% endcall %}
-            <h5 class="modal-title" id="{{ cid }}_modalLabel">{{ title }}</h5>
-            <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-            ></button>
+        <div class="modal-header flex items-center justify-between gap-3 border-b border-base-300 pb-2 mb-2">
+            <div class="flex items-center gap-2">
+                {% call icon_constrain(icon_size=90) %}
+                    {{ render_icon(name=icon) }}
+                {% endcall %}
+                <h5 class="modal-title font-bold text-lg" id="{{ cid }}_modalLabel">{{ title }}</h5>
+            </div>
+            <form method="dialog">
+                <button
+                    type="submit"
+                    class="btn btn-sm btn-circle btn-ghost"
+                    aria-label="Close"
+                >✕</button>
+            </form>
         </div>
 
         <div class="modal-body"
@@ -183,7 +185,7 @@
                 {% set item_norm = item.name|lower %}
                 {% set show_code = ("$" ~ cid ~ "_search.trim() === '' || " ~ (item_norm|tojson).__str__() ~ ".includes($" ~ cid ~ "_search.toLowerCase())") %}
                 {% set class_code = ("{selected: $" ~ cid ~ "_selected_id == " ~ (item.id|tojson).__str__() ~ "}") %}
-                {% set click_prefix = ("$" ~ cid ~ "_selected_id = " ~ (item.id|tojson).__str__() ~ "; $" ~ cid ~ "_selected_name = " ~ (item.name|tojson).__str__() ~ "; const m = bootstrap.Modal.getInstance(document.getElementById(\x27" ~ cid ~ "_modal\x27)); if (m) m.hide();") %}
+                {% set click_prefix = ("$" ~ cid ~ "_selected_id = " ~ (item.id|tojson).__str__() ~ "; $" ~ cid ~ "_selected_name = " ~ (item.name|tojson).__str__() ~ "; const m = document.getElementById(\x27" ~ cid ~ "_modal\x27); if (m) m.close();") %}
                 {% if on_change %}
                     {% set click_code = click_prefix ~ " if (evt) evt.detail = { id: " ~ (item.id|tojson).__str__() ~ ", name: " ~ (item.name|tojson).__str__() ~ " }; " ~ on_change ~ ";" %}
                 {% else %}
@@ -197,7 +199,7 @@
                     data-item-name="{{ item.name|e }}"
                     data-show="{{ show_code }}"
                     data-class="{{ class_code }}"
-                    onclick="const container = document.getElementById('{{ cid }}_container'); const btn = document.getElementById('{{ cid }}_btn'); if (btn) { const span = btn.querySelector('.chooser-label-text'); if (span) span.textContent = this.getAttribute('data-item-name'); } container.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected')); this.classList.add('selected'); const m = bootstrap.Modal.getInstance(document.getElementById('{{ cid }}_modal')); if (m) m.hide();"
+                    onclick="const container = document.getElementById('{{ cid }}_container'); const btn = document.getElementById('{{ cid }}_btn'); if (btn) { const span = btn.querySelector('.chooser-label-text'); if (span) span.textContent = this.getAttribute('data-item-name'); } container.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected')); this.classList.add('selected'); const m = document.getElementById('{{ cid }}_modal'); if (m) m.close();"
                     data-on:click="{{ click_code }}"
                     aria-label="Select {{ item.name|e }}"
                 >
@@ -212,7 +214,7 @@
     (() => {
         const modalEl = document.getElementById('{{ cid }}_modal');
         if (!modalEl) return;
-        modalEl.addEventListener('show.bs.modal', () => {
+        function onOpen() {
             const input = document.getElementById('{{ cid }}_search_input');
             if (input) {
                 input.value = '';
@@ -222,11 +224,6 @@
                 }
                 const clear = document.getElementById('{{ cid }}_clear_btn');
                 if (clear) clear.style.display = 'none';
-            }
-        });
-        modalEl.addEventListener('shown.bs.modal', () => {
-            const input = document.getElementById('{{ cid }}_search_input');
-            if (input) {
                 input.focus();
                 input.select();
             }
@@ -234,8 +231,8 @@
             if (selected) {
                 selected.scrollIntoView({ block: 'start' });
             }
-        });
-        modalEl.addEventListener('hidden.bs.modal', () => {
+        }
+        function onClose() {
             const input = document.getElementById('{{ cid }}_search_input');
             if (input) {
                 input.value = '';
@@ -246,7 +243,20 @@
                 const clear = document.getElementById('{{ cid }}_clear_btn');
                 if (clear) clear.style.display = 'none';
             }
+        }
+        modalEl.addEventListener('close', onClose);
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.attributeName === 'open') {
+                    if (modalEl.open) {
+                        onOpen();
+                    } else {
+                        onClose();
+                    }
+                }
+            }
         });
+        observer.observe(modalEl, { attributes: true, attributeFilter: ['open'] });
     })();
     </script>
 </div>

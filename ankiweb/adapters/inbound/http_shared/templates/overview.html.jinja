@@ -1,121 +1,121 @@
 <style>
-  /* Override vendored overview.css rules that fight the Karteikasten theme */
+  /* Override vendored overview.css rules that fight the theme */
   #study {
-    background: var(--bs-primary) !important;
-    border-color: var(--bs-primary) !important;
-    color: #fff !important;
+    background: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary-content, #fff) !important;
   }
   #study:hover, #study:focus {
-    background: var(--bs-primary-text-emphasis, var(--bs-primary)) !important;
-    border-color: var(--bs-primary-text-emphasis, var(--bs-primary)) !important;
-    color: #fff !important;
+    background: color-mix(in oklab, var(--color-primary) 85%, #000) !important;
+    border-color: color-mix(in oklab, var(--color-primary) 85%, #000) !important;
+    color: var(--color-primary-content, #fff) !important;
   }
   /* Fix description padding from vendored .descfont { padding: 1em; } */
   .card-body .descfont.description {
     padding: 0.75rem 1rem !important;
-    border-radius: var(--bs-border-radius);
-    background-color: var(--bs-tertiary-bg, rgba(0, 0, 0, 0.03));
+    border-radius: var(--radius-box, 0.5rem);
+    background-color: var(--color-base-200);
   }
   /* Make Study Now sticky above the bottom nav bar below md */
   @media (max-width: 767.98px) {
     .study-action-sticky {
       position: sticky;
       bottom: calc(var(--ankiweb-bottomnav-h) + 0.5rem);
-      z-index: 1020;
-      background: var(--bs-card-bg, #fff);
+      z-index: 40;
+      background: var(--color-base-100);
       padding: 0.5rem 0;
-      border-radius: var(--bs-border-radius);
+      border-radius: var(--radius-box, 0.5rem);
     }
   }
 </style>
 
-<div class="container py-3">
-  <div class="card shadow-sm mx-auto mt-2 mt-md-4" style="max-width: 32rem;">
-    <div class="card-body text-center p-3 p-md-4">
-      <h3 class="card-title mb-3">{{ name }}</h3>
+<div class="mx-auto px-4 py-3">
+  <div class="card bg-base-100 border border-base-300 shadow-sm mx-auto mt-2 md:mt-4 max-w-lg">
+    <div class="card-body text-center p-3 md:p-6">
+      <h3 class="card-title justify-center text-xl font-bold mb-3">{{ name }}</h3>
       {% if desc %}
-        <div class="descfont description text-start mb-4">
+        <div class="descfont description text-left mb-4">
           {{ desc | safe }}
         </div>
       {% endif %}
-      <div class="row text-center g-2 mb-4">
-        <div class="col-4">
-          <div class="fs-2 fw-semibold new-count">{{ new }}</div>
-          <div class="small text-body-secondary">{{ tr.statistics_counts_new_cards() | tr_clean }}</div>
+      <div class="grid grid-cols-3 text-center gap-2 mb-4">
+        <div>
+          <div class="text-2xl font-semibold new-count">{{ new }}</div>
+          <div class="text-sm text-base-content/60">{{ tr.statistics_counts_new_cards() | tr_clean }}</div>
         </div>
-        <div class="col-4">
-          <div class="fs-2 fw-semibold learn-count">{{ learn }}</div>
-          <div class="small text-body-secondary">{{ tr.statistics_counts_learning_cards() | tr_clean }}</div>
+        <div>
+          <div class="text-2xl font-semibold learn-count">{{ learn }}</div>
+          <div class="text-sm text-base-content/60">{{ tr.statistics_counts_learning_cards() | tr_clean }}</div>
         </div>
-        <div class="col-4">
-          <div class="fs-2 fw-semibold review-count">{{ review }}</div>
-          <div class="small text-body-secondary">{{ tr.studying_to_review() | tr_clean }}</div>
+        <div>
+          <div class="text-2xl font-semibold review-count">{{ review }}</div>
+          <div class="text-sm text-base-content/60">{{ tr.studying_to_review() | tr_clean }}</div>
         </div>
       </div>
-      <div class="study-action-sticky d-grid mb-3">
+      <div class="study-action-sticky flex flex-col mb-3">
         <button
           type="button"
           id="study"
-          class="btn btn-primary btn-lg"
+          class="btn btn-primary btn-lg w-full"
           autofocus
           data-on:click__prevent="@post('/overview/study')"
         >
           {{ tr.studying_study_now() | tr_clean }}
         </button>
       </div>
-      <div class="d-flex flex-wrap justify-content-center gap-2">
-        <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/opts')">
+      <div class="flex flex-wrap justify-center gap-2">
+        <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/opts')">
           {{ tr.actions_options() | tr_clean }}
         </button>
         {% if is_dyn %}
-          <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/refresh')">
+          <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/refresh')">
             {{ tr.actions_rebuild() | tr_clean }}
           </button>
-          <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/empty')">
+          <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/empty')">
             {{ tr.studying_empty() | tr_clean }}
           </button>
         {% else %}
-          <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/studymore')">
+          <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/studymore')">
             {{ tr.actions_custom_study() | tr_clean }}
           </button>
         {% endif %}
         {% if have_buried %}
-          <button class="btn btn-outline-secondary btn-sm" type="button" data-on:click__prevent="@post('/overview/unbury')">
+          <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/unbury')">
             {{ tr.studying_unbury() | tr_clean }}
           </button>
         {% endif %}
         <button
-          class="btn btn-outline-secondary btn-sm"
+          class="btn btn-outline btn-sm"
           type="button"
           onclick="document.getElementById('descedit').style.display = ''"
         >
           {% if tr.studying_edit() == 'Bearbeiten' %}{{ tr.fields_description() | tr_clean }} {{ tr.studying_edit() | tr_clean | lower }}{% else %}{{ tr.studying_edit() | tr_clean }} {{ tr.fields_description() | tr_clean }}{% endif %}
         </button>
       </div>
-      <div id="descedit" class="mt-3 text-start" style="display:none;">
-        <textarea id="descbox" class="form-control" rows="4" cols="50"
+      <div id="descedit" class="mt-3 text-left" style="display:none;">
+        <textarea id="descbox" class="textarea w-full" rows="4" cols="50"
         >{{ raw_desc }}</textarea>
-        <div class="form-check my-2">
+        <div class="flex items-center gap-2 my-2 cursor-pointer">
           <input
-            class="form-check-input"
+            class="checkbox checkbox-sm"
             type="checkbox"
             id="descmd"
             {% if md_checked %}
               checked
             {% endif %}
           >
-          <label class="form-check-label" for="descmd">{{ tr.deck_config_description_new_handling2() | tr_clean }}</label>
+          <label class="cursor-pointer text-sm" for="descmd">{{ tr.deck_config_description_new_handling2() | tr_clean }}</label>
         </div>
-        <div class="text-center">
+        <div class="text-center flex justify-center gap-2">
           <button
-            class="btn btn-primary btn-sm me-2"
+            class="btn btn-primary btn-sm"
             type="button"
             data-on:click__prevent="const d = document.getElementById('descbox').value; const m = document.getElementById('descmd').checked; @post('/overview/setdesc', {payload: {desc: d, md: m}})"
           >
             {{ tr.actions_save() | tr_clean }}
           </button>
           <button
-            class="btn btn-secondary btn-sm"
+            class="btn btn-neutral btn-sm"
             type="button"
             onclick="document.getElementById('descedit').style.display = 'none'"
           >

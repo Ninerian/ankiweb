@@ -3,7 +3,7 @@
 {% from "components/icon.html.jinja" import icon %}
 
 <div
-  class="d-flex flex-wrap gap-3 align-items-center"
+  class="flex flex-wrap gap-3 items-center"
   data-testid="demo-icon-button-container"
   data-signals="{ icon_btn_clicked: 0, icon_btn_active: false }"
 >
@@ -63,7 +63,7 @@
     {% endcall %}
   </div>
 
-  <div class="mt-2 text-muted small w-100">
+  <div class="mt-2 text-base-content/60 text-sm w-full">
     Clicks recorded: <span id="icon-btn-click-count" data-text="$icon_btn_clicked">0</span>
   </div>
 </div>

@@ -23,14 +23,14 @@ export function setupImageOverlay(root: HTMLElement) {
 
     // Box highlighting current image with 4 corner resize handles and alt-text / size badge
     container.innerHTML = `
-        <div class="ankiweb-image-frame" style="position: absolute; border: 2px solid #0d6efd; box-sizing: border-box; pointer-events: auto;">
-            <div class="ankiweb-image-badge bg-dark text-white px-1 py-0 rounded" style="position: absolute; bottom: -24px; left: 0; font-size: 11px; white-space: nowrap; opacity: 0.9;">
+        <div class="ankiweb-image-frame" style="position: absolute; border: 2px solid var(--color-primary); box-sizing: border-box; pointer-events: auto;">
+            <div class="ankiweb-image-badge bg-neutral text-neutral-content px-1 py-0 rounded" style="position: absolute; bottom: -24px; left: 0; font-size: 11px; white-space: nowrap; opacity: 0.9;">
                 <span class="ankiweb-image-dims"></span> | <span class="ankiweb-image-alt-btn text-info" style="cursor: pointer; text-decoration: underline;">Alt</span>
             </div>
-            <div class="ankiweb-image-handle handle-se" data-dir="se" style="position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px; background: #0d6efd; cursor: nwse-resize;"></div>
-            <div class="ankiweb-image-handle handle-sw" data-dir="sw" style="position: absolute; left: -5px; bottom: -5px; width: 10px; height: 10px; background: #0d6efd; cursor: nesw-resize;"></div>
-            <div class="ankiweb-image-handle handle-ne" data-dir="ne" style="position: absolute; right: -5px; top: -5px; width: 10px; height: 10px; background: #0d6efd; cursor: nesw-resize;"></div>
-            <div class="ankiweb-image-handle handle-nw" data-dir="nw" style="position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; background: #0d6efd; cursor: nwse-resize;"></div>
+            <div class="ankiweb-image-handle handle-se" data-dir="se" style="position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px; background: var(--color-primary); cursor: nwse-resize;"></div>
+            <div class="ankiweb-image-handle handle-sw" data-dir="sw" style="position: absolute; left: -5px; bottom: -5px; width: 10px; height: 10px; background: var(--color-primary); cursor: nesw-resize;"></div>
+            <div class="ankiweb-image-handle handle-ne" data-dir="ne" style="position: absolute; right: -5px; top: -5px; width: 10px; height: 10px; background: var(--color-primary); cursor: nesw-resize;"></div>
+            <div class="ankiweb-image-handle handle-nw" data-dir="nw" style="position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; background: var(--color-primary); cursor: nwse-resize;"></div>
         </div>
     `;
 

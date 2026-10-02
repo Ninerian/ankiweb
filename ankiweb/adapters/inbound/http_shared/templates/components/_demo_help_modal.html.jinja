@@ -1,8 +1,8 @@
 {% from "components/help_modal.html.jinja" import help_modal %}
 
-<div class="border p-3 mb-4 rounded">
-    <h5>1. Standard HelpModal with Navigation & Carousel</h5>
-    <p class="text-muted">Click the info badge to trigger the modal.</p>
+<div class="border border-base-300 p-4 mb-4 rounded-box bg-base-100">
+    <h5 class="font-bold text-lg mb-1">1. Standard HelpModal with Navigation & Carousel</h5>
+    <p class="text-base-content/60 text-sm mb-3">Click the info badge to trigger the modal.</p>
 
     {{ help_modal(
         title="Deck Options Help",
@@ -36,9 +36,9 @@
     ) }}
 </div>
 
-<div class="border p-3 rounded">
-    <h5>2. HelpModal with FSRS Mode Enabled</h5>
-    <p class="text-muted">In FSRS mode, FSRS-specific help items are displayed while SM2-only items are filtered out.</p>
+<div class="border border-base-300 p-4 rounded-box bg-base-100">
+    <h5 class="font-bold text-lg mb-1">2. HelpModal with FSRS Mode Enabled</h5>
+    <p class="text-base-content/60 text-sm mb-3">In FSRS mode, FSRS-specific help items are displayed while SM2-only items are filtered out.</p>
 
     {{ help_modal(
         title="FSRS Scheduling Guide",
