@@ -72,12 +72,6 @@ html[data-theme="dark"] {
   }
 }
 
-#ankiweb-bottom-nav {
-  height: var(--ankiweb-bottomnav-h);
-  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-  z-index: 1030;
-}
-
 /* Mobile tap targets (44px min-height) with flex alignment to protect inline elements */
 @media (max-width: 767.98px) {
   .btn-sm {
@@ -203,35 +197,15 @@ html[data-theme="dark"] {
   justify-content: center;
 }
 
-a.collapse {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
-  text-decoration: none;
-  border-radius: var(--radius-field, 0.375rem);
-  position: relative;
-  z-index: 2;
-}
-
-a.collapse:hover {
-  color: var(--color-base-content);
-  background-color: color-mix(in oklab, var(--color-base-content) 8%, transparent);
-}
-
 .collapse-chevron {
   transition: transform 0.2s ease;
 }
 
-a.collapse.is-collapsed .collapse-chevron {
+.deck-collapse.is-collapsed .collapse-chevron {
   transform: rotate(-90deg);
 }
 
-[dir="rtl"] a.collapse.is-collapsed .collapse-chevron {
+[dir="rtl"] .deck-collapse.is-collapsed .collapse-chevron {
   transform: rotate(90deg);
 }
 

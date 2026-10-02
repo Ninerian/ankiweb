@@ -5,95 +5,7 @@
   {% if c.deck_id == current_id %}{% set ns.has_current = true %}{% endif %}
 {% endfor %}
 
-{% macro render_node(node, current_id) %}
-  {% set ns.row_idx = ns.row_idx + 1 %}
-  <div
-    class="deck{{ ' current' if node.deck_id == current_id else '' }}"
-    id="{{ node.deck_id }}"
-    {% if ns.row_idx <= 12 %}style="--i: {{ ns.row_idx - 1 }};"{% endif %}
-  >
-    <div
-      class="decktd{{ ' is-child' if node.level > 1 else '' }}"
-      style="padding-inline-start: calc({{ node.level - 1 }} * 1.25rem);"
-      data-on:click__prevent="@post('/deckbrowser/open/{{ node.deck_id }}')"
-    >
-      <div class="collapse-btn-wrap" onclick="event.stopPropagation()">
-        {% if node.children %}
-          <a
-            class="collapse{{ ' is-collapsed' if node.collapsed else '' }}"
-            href="#"
-            role="button"
-            aria-label="{{ tr.browsing_sidebar_expand() if node.collapsed else tr.browsing_sidebar_collapse() }}"
-            aria-expanded="{{ 'false' if node.collapsed else 'true' }}"
-            data-on:click__prevent="@post('/deckbrowser/collapse/{{ node.deck_id }}')"
-          >
-            <svg class="collapse-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </a>
-        {% endif %}
-      </div>
-      <div class="deck-content">
-        <div class="deck-title-line">
-          <a
-            class="deck{{ ' filtered' if node.filtered else '' }}"
-            href="#"
-            data-on:click__prevent="@post('/deckbrowser/open/{{ node.deck_id }}')"
-          >{{ node.name }}</a>
-        </div>
-        <div class="deck-counts-row">
-          <span class="count count-pill" data-label="{{ tr.actions_new() }}">
-            <span class="count-pill-label">{{ tr.actions_new() }}</span>
-            <span class="count-pill-value {{ 'new-count' if node.new_count else 'zero-count' }}">{{ node.new_count or 0 }}</span>
-          </span>
-          <span class="count count-pill" data-label="{{ tr.decks_learn_header() }}">
-            <span class="count-pill-label">{{ tr.decks_learn_header() }}</span>
-            <span class="count-pill-value {{ 'learn-count' if node.learn_count else 'zero-count' }}">{{ node.learn_count or 0 }}</span>
-          </span>
-          <span class="count count-pill" data-label="{{ tr.decks_review_header() }}">
-            <span class="count-pill-label">{{ tr.decks_review_header() }}</span>
-            <span class="count-pill-value {{ 'review-count' if node.review_count else 'zero-count' }}">{{ node.review_count or 0 }}</span>
-          </span>
-        </div>
-      </div>
-    </div>
-    <div class="opts">
-      <div class="dropdown dropdown-end">
-        <button
-          class="opts"
-          type="button"
-          tabindex="0"
-          data-testid="deck-options-dropdown"
-          aria-label="{{ tr.actions_options() }}"
-        >
-          <span class="kebab-dots" aria-hidden="true">&#8942;</span>
-        </button>
-        <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-lg z-50 w-44 p-1 border border-base-300">
-          <li>
-            <a href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent="@post('/deckbrowser/opts/{{ node.deck_id }}')">
-              {{ tr.actions_options() }}
-            </a>
-          </li>
-          <li>
-            <a href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebPrompt("{{ tr.decks_new_deck_name() }}", {{ node.name | tojson }}).then(function(name) { if (name) @post(&#39;/deckbrowser/rename/{{ node.deck_id }}&#39;, {payload: {name: name}}); })'>
-              {{ tr.actions_rename() }}
-            </a>
-          </li>
-          <li>
-            <a class="text-error" href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebConfirm("{{ tr.decks_delete_deck() }}: " + {{ node.name | tojson }} + "?", {danger: true}).then(function(ok) { if (ok) @post(&#39;/deckbrowser/delete/{{ node.deck_id }}&#39;); })'>
-              {{ tr.actions_delete() }}
-            </a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  {% if not node.collapsed %}
-    {% for child in node.children %}
-      {{ render_node(child, current_id) }}
-    {% endfor %}
-  {% endif %}
-{% endmacro %}
+{% from "deckbrowser_list.html.jinja" import render_node %}
 
 <div class="deckbrowser-page mx-auto max-w-2xl px-3 py-2 md:py-4">
   <!-- Header: Serif Due numeral & Continue button -->
@@ -119,11 +31,7 @@
   </header>
 
   <!-- Deck rows list -->
-  <main class="deck-list" role="region" aria-label="{{ tr.actions_decks() }}">
-    {% for c in children %}
-      {{ render_node(c, current_id) }}
-    {% endfor %}
-  </main>
+  {% include "deckbrowser_list.html.jinja" %}
 
   <div id="studiedToday" class="text-base-content/60 text-center mt-3"><span>{{ studied_today }}</span></div>
   <div id="err" class="text-error mt-2 text-center"></div>
