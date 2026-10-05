@@ -33,7 +33,9 @@ def _make_filtered(client, search="deck:Default", limit=10):
         g.name = "Filt"
         del g.config.search_terms[:]
         g.config.search_terms.append(
-            dp.Deck.Filtered.SearchTerm(search=search, limit=limit, order=5)
+            dp.Deck.Filtered.SearchTerm(
+                search=search, limit=limit, order=dp.Deck.Filtered.SearchTerm.Order.ADDED
+            )
         )
         return col.sched.add_or_update_filtered_deck(g).id
 
@@ -166,9 +168,7 @@ def test_deckbrowser_gear_dyn_opens_filtered(client):
     r = client.post(f"/deckbrowser/opts/{did}")
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
-    assert any(
-        f"window.location = '/filtered-deck/{did}'" in data for _, data in events
-    )
+    assert any(f"window.location = '/filtered-deck/{did}'" in data for _, data in events)
 
 
 def test_deckbrowser_gear_normal_opens_deck_options(client):
@@ -201,6 +201,4 @@ def test_overview_opts_dyn_opens_filtered(client):
     r = client.post("/overview/opts")
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
-    assert any(
-        f"window.location = '/filtered-deck/{did}'" in data for _, data in events
-    )
+    assert any(f"window.location = '/filtered-deck/{did}'" in data for _, data in events)

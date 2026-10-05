@@ -23,7 +23,6 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
     @router.post("/decks")
     async def decks():
         return DatastarResponse(SSE.redirect("/deckbrowser"))
-
     @router.post("/unbury")
     async def unbury():
         service = get_service()
@@ -36,7 +35,9 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             )
 
         await service.run_op(do_unbury, initiator="overview")
-        return await refresh_screen(service, render_overview_html)
+        return await refresh_screen(
+            service, render_overview_html, selector="#overview-page"
+        )
 
     @router.post("/refresh")
     async def refresh():
@@ -47,7 +48,9 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             await service.run_op(
                 lambda col: col.sched.rebuild_filtered_deck(did), initiator="overview"
             )
-            return await refresh_screen(service, render_overview_html)
+            return await refresh_screen(
+                service, render_overview_html, selector="#overview-page"
+            )
         return DatastarResponse()
 
     @router.post("/empty")
@@ -59,7 +62,9 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             await service.run_op(
                 lambda col: col.sched.empty_filtered_deck(did), initiator="overview"
             )
-            return await refresh_screen(service, render_overview_html)
+            return await refresh_screen(
+                service, render_overview_html, selector="#overview-page"
+            )
         return DatastarResponse()
 
     @router.post("/studymore")
@@ -101,7 +106,7 @@ def render_overview_html(col) -> str:
     if new + learn + review == 0:
         # Nothing queued (counts already reflect limits/buried) → finished. Public-API
         # alternative to the private col.sched._is_finished().
-        return render_congrats_html(col)
+        return f'<div id="overview-page">{render_congrats_html(col)}</div>'
 
     raw = deck.get("desc", "")
     raw_rendered = col.render_markdown(raw) if (raw and deck.get("md")) else raw

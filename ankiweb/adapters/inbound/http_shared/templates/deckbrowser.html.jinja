@@ -7,7 +7,7 @@
 
 {% from "deckbrowser_list.html.jinja" import render_node %}
 
-<div class="deckbrowser-page mx-auto max-w-2xl px-3 py-2 md:py-4">
+<div id="deckbrowser-page" class="deckbrowser-page mx-auto max-w-2xl px-3 py-2 md:py-4" data-signals="{error: ''}">
   <!-- Header: Serif Due numeral & Continue button -->
   <header class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-base-300">
     <div class="flex items-baseline gap-2">
@@ -34,7 +34,7 @@
   {% include "deckbrowser_list.html.jinja" %}
 
   <div id="studiedToday" class="text-base-content/60 text-center mt-3"><span>{{ studied_today }}</span></div>
-  <div id="err" class="text-error mt-2 text-center"></div>
+  <div id="err" class="text-error mt-2 text-center" data-text="$error"></div>
 
   <!-- Floating Action Button with speed dial (daisyUI fab) -->
   <div class="fab deckbrowser-fab">

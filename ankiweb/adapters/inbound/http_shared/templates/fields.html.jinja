@@ -78,7 +78,7 @@
 {% endmacro %}
 <div class="fields max-w-5xl mx-auto px-4 py-3">
   <h3 class="text-xl font-bold mb-3">Fields</h3>
-  <form id="ff" onsubmit="return false" data-signals='{{ {"notetypeId": ntid} | tojson }}'>
+  <form id="ff" onsubmit="return false" data-signals='{{ {"notetypeId": ntid, "error": ""} | tojson }}'>
     <div class="overflow-x-auto border border-base-300 rounded-box shadow-sm mb-3">
       <table id="fieldtbl" class="table table-sm">
         <tbody id="fieldrows">
@@ -92,14 +92,14 @@
       </button>
     </div>
     <div class="mt-4 flex flex-wrap gap-2">
-      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="const payload = buildFieldsPayload(); payload.notetypeId = $notetypeId; @post('/fields/savefields', {payload: payload})">
+      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="$error = ''; const payload = buildFieldsPayload(); payload.notetypeId = $notetypeId; @post('/fields/savefields', {payload: payload})">
         {{ save_label }}
       </button>
       <button class="btn btn-neutral" type="button" data-on:click__prevent="@post('/fields/cancel')">
         {{ cancel_label }}
       </button>
     </div>
-    <div id="err" class="text-error text-sm font-semibold mt-2"></div>
+    <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
   </form>
 </div>
 <template id="blankrow">{{
@@ -131,7 +131,6 @@
   }
 
   function buildFieldsPayload() {
-      document.getElementById('err').textContent = '';
       var rows = Array.prototype.slice.call(
           document.querySelectorAll('#fieldrows .field-row'));
       var sortf = 0;

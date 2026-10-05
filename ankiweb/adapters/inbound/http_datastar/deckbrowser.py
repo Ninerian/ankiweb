@@ -1,5 +1,4 @@
 from __future__ import annotations
-import html
 from typing import Callable
 from fastapi import APIRouter
 from datastar_py.fastapi import (
@@ -44,14 +43,15 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             lambda col: col.decks.set_current(did), initiator="deckbrowser"
         )
         return DatastarResponse(SSE.redirect("/overview"))
-
     @router.post("/select/{did}")
     async def select_deck(did: int):
         service = get_service()
         await service.run_op(
             lambda col: col.decks.set_current(did), initiator="deckbrowser"
         )
-        return await refresh_screen(service, render_deckbrowser_html)
+        return await refresh_screen(
+            service, render_deckbrowser_html, selector="#deckbrowser-page"
+        )
 
     @router.post("/collapse/{did}")
     async def collapse_deck(did: int):
@@ -82,7 +82,9 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
                 lambda col: col.decks.add_normal_deck_with_name(name),
                 initiator="deckbrowser",
             )
-            return await refresh_screen(service, render_deckbrowser_html)
+            return await refresh_screen(
+                service, render_deckbrowser_html, selector="#deckbrowser-page"
+            )
         return DatastarResponse()
 
     @router.post("/opts/{did}")
@@ -107,8 +109,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_rename, initiator="deckbrowser")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-error mt-2">{html.escape(str(exc))}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            return DatastarResponse(SSE.patch_signals({"error": str(exc)}))
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
     @router.post("/delete/{did}")
@@ -121,8 +122,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_delete, initiator="deckbrowser")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-error mt-2">{html.escape(str(exc))}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            return DatastarResponse(SSE.patch_signals({"error": str(exc)}))
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
     @router.post("/createfiltered")

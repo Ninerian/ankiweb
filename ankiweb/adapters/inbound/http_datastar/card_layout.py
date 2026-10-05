@@ -32,12 +32,11 @@ def render_card_layout_html(col, ntid: int) -> str:
 
 def make_card_layout_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/card-layout")
-    state = {"ntid": None}
+    state: dict[str, int | None] = {"ntid": None}
 
     @router.post("/cancel")
     async def cancel():
         return DatastarResponse(SSE.redirect("/deckbrowser"))
-
     @router.post("/previewlayout")
     @router.post("/previewlayout/{ntid}")
     async def preview_layout(ntid: int | None = None):

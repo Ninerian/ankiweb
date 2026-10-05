@@ -27,7 +27,7 @@
                 <button
                   class="py-2"
                   type="button"
-                  data-on:click__prevent="document.getElementById('err').textContent = ''; el.closest('details')?.removeAttribute('open'); const cur = el.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })"
+                  data-on:click__prevent="$error = ''; el.closest('details')?.removeAttribute('open'); const cur = el.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })"
                 >
                   {{ L_rename | tr_clean }}
                 </button>
@@ -36,7 +36,7 @@
                 <button
                   class="py-2 text-error"
                   type="button"
-                  data-on:click__prevent="document.getElementById('err').textContent = ''; el.closest('details')?.removeAttribute('open'); ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })"
+                  data-on:click__prevent="$error = ''; el.closest('details')?.removeAttribute('open'); ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })"
                 >
                   {{ L_delete | tr_clean }}
                 </button>
@@ -59,12 +59,12 @@
             <td><a class="link link-primary" href="/fields/{{ r.id }}">{{ L_fields | tr_clean }}</a></td>
             <td><a class="link link-primary" href="/card-layout/{{ r.id }}">{{ L_cards | tr_clean }}</a></td>
             <td>
-              <button class="btn btn-sm btn-outline" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; const cur = el.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })">
+              <button class="btn btn-sm btn-outline" type="button" data-on:click__prevent="$error = ''; const cur = el.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })">
                 {{ L_rename | tr_clean }}
               </button>
             </td>
             <td>
-              <button class="btn btn-sm btn-outline btn-error" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })">
+              <button class="btn btn-sm btn-outline btn-error" type="button" data-on:click__prevent="$error = ''; ankiwebConfirm('{{ tr.notetypes_delete_this_note_type_and_all() | tr_clean }}', {danger: true}).then(function(ok) { if (ok) @post('/notetypes/delete/{{ r.id }}'); })">
                 {{ L_delete | tr_clean }}
               </button>
             </td>
@@ -77,7 +77,7 @@
   <div
     id="ntadd"
     class="flex flex-wrap items-center gap-2 mt-4"
-    data-signals="{newname: '', base: '{{ rows[0].id if rows else '' }}'}"
+    data-signals="{newname: '', base: '{{ rows[0].id if rows else '' }}', error: ''}"
   >
     <h4 class="w-full text-base font-semibold mb-1">{{ L_add | tr_clean }}</h4>
     <div class="w-full sm:w-auto">
@@ -92,8 +92,8 @@
       </select>
     </div>
     <div class="w-full sm:w-auto">
-      <button class="btn btn-primary" type="button" data-on:click__prevent="document.getElementById('err').textContent = ''; if ($newname && $base) @post('/notetypes/add/' + $base, {payload: {name: $newname}})">{{ L_add | tr_clean }}</button>
+      <button class="btn btn-primary" type="button" data-on:click__prevent="$error = ''; if ($newname && $base) @post('/notetypes/add/' + $base, {payload: {name: $newname}})">{{ L_add | tr_clean }}</button>
     </div>
   </div>
-  <div id="err" class="text-error text-sm font-semibold mt-2"></div>
+  <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
 </div>

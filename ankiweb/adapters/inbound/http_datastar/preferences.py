@@ -20,6 +20,7 @@ def render_preferences_html(col) -> str:
     svelte_editor = bool(exp.get("1", False))
 
     initial_signals = {
+        "error": "",
         "rollover": s.rollover,
         "learn_ahead_mins": s.learn_ahead_secs // 60,
         "new_review_mix": s.new_review_mix,
@@ -68,7 +69,6 @@ def make_preferences_routes(get_service: Callable) -> APIRouter:
     @router.post("/cancel")
     async def cancel():
         return DatastarResponse(SSE.redirect("/deckbrowser"))
-
     @router.post("/savePrefs")
     async def save_prefs(payload: ReadSignals):
         service = get_service()

@@ -280,6 +280,9 @@ render dark too.
 Every server-rendered screen has an always-present top toolbar — **Decks · Add · Browse ·
 Stats** (Anki's main-window toolbar, minus Sync) plus the night-mode toggle.
 
+Navigation follows the Tao of Datastar:
+- User interactions that switch pages use standard native links (`<a href="...">`), letting the browser handle URL history and document lifecycles naturally.
+- Server actions and form submissions that navigate return standard backend redirects (`SSE.redirect(target)`), while in-page mutations update targeted fragments in place without soft-patching or client router shims.
 ## Architecture
 
 ankiweb follows a **Ports & Adapters (hexagonal)** layout — see

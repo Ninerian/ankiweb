@@ -231,7 +231,7 @@
             class="btn btn-outline px-4 font-semibold min-h-[44px]"
             type="button"
             id="save"
-            data-on:click__prevent="@post('/preferences/savePrefs', {payload: {rollover: $rollover, learn_ahead_mins: $learn_ahead_mins, new_review_mix: $new_review_mix, new_timezone: $new_timezone, day_learn_first: $day_learn_first, hide_audio_play_buttons: $hide_audio_play_buttons, interrupt_audio_when_answering: $interrupt_audio_when_answering, show_remaining_due_counts: $show_remaining_due_counts, show_intervals_on_buttons: $show_intervals_on_buttons, time_limit_mins: $time_limit_mins, load_balancer_enabled: $load_balancer_enabled, fsrs_short_term_with_steps_enabled: $fsrs_short_term_with_steps_enabled, adding_defaults_to_current_deck: $adding_defaults_to_current_deck, paste_images_as_png: $paste_images_as_png, paste_strips_formatting: $paste_strips_formatting, default_search_text: $default_search_text, ignore_accents_in_search: $ignore_accents_in_search, render_latex: $render_latex, daily: $daily, weekly: $weekly, monthly: $monthly, minimum_interval_mins: $minimum_interval_mins, svelte_editor: $svelte_editor}})"
+            data-on:click__prevent="$error = ''; @post('/preferences/savePrefs', {payload: {rollover: $rollover, learn_ahead_mins: $learn_ahead_mins, new_review_mix: $new_review_mix, new_timezone: $new_timezone, day_learn_first: $day_learn_first, hide_audio_play_buttons: $hide_audio_play_buttons, interrupt_audio_when_answering: $interrupt_audio_when_answering, show_remaining_due_counts: $show_remaining_due_counts, show_intervals_on_buttons: $show_intervals_on_buttons, time_limit_mins: $time_limit_mins, load_balancer_enabled: $load_balancer_enabled, fsrs_short_term_with_steps_enabled: $fsrs_short_term_with_steps_enabled, adding_defaults_to_current_deck: $adding_defaults_to_current_deck, paste_images_as_png: $paste_images_as_png, paste_strips_formatting: $paste_strips_formatting, default_search_text: $default_search_text, ignore_accents_in_search: $ignore_accents_in_search, render_latex: $render_latex, daily: $daily, weekly: $weekly, monthly: $monthly, minimum_interval_mins: $minimum_interval_mins, svelte_editor: $svelte_editor}})"
           >
             {{ tr.actions_save() }}
           </button>
@@ -245,7 +245,7 @@
           </button>
         </div>
         <div id="status-area" class="flex items-center ms-auto">
-          <div id="err" class="text-error text-sm font-semibold"></div>
+          <div id="err" class="text-error text-sm font-semibold" data-text="$error"></div>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from ankiweb.adapters.inbound.http_datastar.common import error_response
 import json
-from typing import Callable
+from typing import Callable, cast
 from fastapi import APIRouter
 from datastar_py.fastapi import (
     DatastarResponse,
@@ -83,7 +83,6 @@ def make_custom_study_routes(get_service: Callable) -> APIRouter:
     @router.post("/cancel")
     async def cancel():
         return DatastarResponse(SSE.redirect("/overview"))
-
     @router.post("/submit")
     async def submit(payload: ReadSignals):
         service = get_service()
@@ -109,7 +108,7 @@ def make_custom_study_routes(get_service: Callable) -> APIRouter:
             elif radio == 5:
                 req.preview_days = value
             elif radio == 6:
-                req.cram.kind = int(p.get("cram_kind", 1))
+                req.cram.kind = cast(sp.CustomStudyRequest.Cram.CramKind.ValueType, int(p.get("cram_kind", 1)))
                 req.cram.card_limit = value
                 req.cram.tags_to_include.extend(p.get("include", []))
                 req.cram.tags_to_exclude.extend(p.get("exclude", []))

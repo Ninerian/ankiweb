@@ -31,8 +31,6 @@
   </head>
   <body class="context-{{ context }}">
     {% if toolbar %}{% include "_toolbar.html.jinja" %}{% endif %}
-    <main id="screen">
-      {{ body | safe }}
-    </main>
+    {{ body | safe }}
   </body>
 </html>
