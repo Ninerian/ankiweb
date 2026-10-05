@@ -1,11 +1,12 @@
-import pytest
 import time
 from pathlib import Path
+
+import anki.collection
+import pytest
 from fastapi.testclient import TestClient
 
-from ankiweb.core.config import Settings
 from ankiweb.app import create_app
-import anki.collection
+from ankiweb.core.config import Settings
 
 
 def _populate_test_reviews(col_path: Path):

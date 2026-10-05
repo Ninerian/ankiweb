@@ -1,14 +1,21 @@
 from __future__ import annotations
-from typing import Callable
-from fastapi import APIRouter
+
+import logging
+from collections.abc import Callable
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
+
 from ankiweb.adapters.inbound.http_datastar.common import refresh_screen
 from ankiweb.adapters.inbound.http_shared import templating
 
+logger = logging.getLogger(__name__)
 
 def render_deckbrowser_html(col) -> str:
     tree = col.sched.deck_due_tree()
@@ -109,6 +116,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_rename, initiator="deckbrowser")
         except Exception as exc:
+            logger.exception("Failed to rename deck %s", did)
             return DatastarResponse(SSE.patch_signals({"error": str(exc)}))
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
@@ -122,6 +130,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_delete, initiator="deckbrowser")
         except Exception as exc:
+            logger.exception("Failed to delete deck %s", did)
             return DatastarResponse(SSE.patch_signals({"error": str(exc)}))
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 

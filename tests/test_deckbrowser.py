@@ -1,8 +1,10 @@
-import tempfile
 import os
+import tempfile
+
 import pytest
 from anki.collection import Collection
 from anki.decks import DeckCollapseScope
+
 from ankiweb.adapters.inbound.http_datastar.deckbrowser import render_deckbrowser_html
 
 

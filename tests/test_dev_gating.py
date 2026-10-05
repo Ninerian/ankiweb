@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 def test_dev_routes_404_by_default(tmp_path):

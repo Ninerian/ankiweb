@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import os
 from dataclasses import dataclass, field
@@ -14,7 +15,7 @@ class AnkiConnectConfig:
     ignore_origin_list: list = field(default_factory=list)
 
     @classmethod
-    def load(cls, path: Path) -> "AnkiConnectConfig":
+    def load(cls, path: Path) -> AnkiConnectConfig:
         data = {}
         if Path(path).exists():
             data = json.loads(Path(path).read_text() or "{}")

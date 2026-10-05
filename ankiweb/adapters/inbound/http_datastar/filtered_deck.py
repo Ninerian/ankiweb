@@ -1,15 +1,23 @@
 from __future__ import annotations
-from ankiweb.adapters.inbound.http_datastar.common import error_response
-from typing import Callable, cast
-from fastapi import APIRouter
+
+import logging
+from collections.abc import Callable
+from typing import cast
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import error_response
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 def render_filtered_deck_html(col, deck_id: int) -> str:
     g = col.sched.get_or_create_filtered_deck(deck_id)
@@ -126,6 +134,7 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(build_and_run, initiator="filtereddeck")
         except Exception as e:
+            logger.exception("Failed to build filtered deck")
             from anki.errors import FilteredDeckError
 
             msg = (

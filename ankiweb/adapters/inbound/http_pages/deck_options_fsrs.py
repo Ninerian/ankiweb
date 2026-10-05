@@ -1,17 +1,21 @@
 from __future__ import annotations
+
 import json
 import logging
-from typing import Callable, cast
+from collections.abc import Callable
+from typing import cast
 
-from fastapi import APIRouter
+import anki.deck_config_pb2 as deck_cfg_pb
+import anki.scheduler_pb2 as sched_pb
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
 
-import anki.scheduler_pb2 as sched_pb
-import anki.deck_config_pb2 as deck_cfg_pb
 from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
@@ -31,7 +35,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(cfg, str):
             try:
                 cfg = json.loads(cfg)
-            except Exception:
+            except (json.JSONDecodeError, TypeError, ValueError):
                 cfg = {}
 
         # Search parameter or default preset search
@@ -53,7 +57,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(current_params, str):
             try:
                 current_params = [float(x.strip()) for x in current_params.split(",") if x.strip()]
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 current_params = []
 
         # Relearn steps
@@ -151,7 +155,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(cfg, str):
             try:
                 cfg = json.loads(cfg)
-            except Exception:
+            except (json.JSONDecodeError, TypeError, ValueError):
                 cfg = {}
 
         search = cfg.get("param_search") or payload.get("param_search") or ""
@@ -171,7 +175,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(params, str):
             try:
                 params = [float(x.strip()) for x in params.split(",") if x.strip()]
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 params = []
 
         req = sched_pb.EvaluateParamsLegacyRequest(
@@ -224,7 +228,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(cfg, str):
             try:
                 cfg = json.loads(cfg)
-            except Exception:
+            except (json.JSONDecodeError, TypeError, ValueError):
                 cfg = {}
 
         params = (
@@ -236,7 +240,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(params, str):
             try:
                 params = [float(x.strip()) for x in params.split(",") if x.strip()]
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 params = []
 
         search = cfg.get("param_search") or payload.get("param_search") or ""
@@ -306,7 +310,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(cfg, str):
             try:
                 cfg = json.loads(cfg)
-            except Exception:
+            except (json.JSONDecodeError, TypeError, ValueError):
                 cfg = {}
 
         params = (
@@ -318,7 +322,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(params, str):
             try:
                 params = [float(x.strip()) for x in params.split(",") if x.strip()]
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 params = []
 
         search = cfg.get("param_search") or payload.get("param_search") or ""
@@ -340,8 +344,8 @@ def make_router(get_service: Callable) -> APIRouter:
             resp = deck_cfg_pb.GetRetentionWorkloadResponse.FromString(raw_bytes)
             costs = resp.costs
 
-            cur_key = int(round(cur_dr * 100))
-            prev_key = int(round(prev_dr * 100))
+            cur_key = round(cur_dr * 100)
+            prev_key = round(prev_dr * 100)
 
             cur_cost = costs.get(cur_key, 1.0)
             prev_cost = costs.get(prev_key, 1.0)

@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
 from pathlib import Path
+
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
+
 from ankiweb.adapters.inbound.http_shared.page import render_page
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 def _client(tmp_path, source_url=""):

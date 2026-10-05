@@ -1,15 +1,19 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from anki.cards import CardId
 from anki.collection import Collection
-from anki.scheduler.v3 import CardAnswer, Scheduler as V3Scheduler
+from anki.scheduler.v3 import CardAnswer
+from anki.scheduler.v3 import Scheduler as V3Scheduler
 from fastapi.testclient import TestClient
 
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
 from ankiweb.adapters.inbound.http_pages.graph_svg import (
-    LinearScale, BandScale, render_pie_slice
+    BandScale,
+    LinearScale,
+    render_pie_slice,
 )
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture

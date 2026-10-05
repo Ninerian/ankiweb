@@ -1,13 +1,14 @@
-from typing import Any, cast
-import pytest
 from pathlib import Path
-from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
-from ankiweb.adapters.inbound.http_shared.page import render_page
-from ankiweb.adapters.inbound.http_datastar.tools import render_tools_html
-from conftest import parse_datastar_events
+from typing import Any, cast
 
+import pytest
+from conftest import parse_datastar_events
+from fastapi.testclient import TestClient
+
+from ankiweb.adapters.inbound.http_datastar.tools import render_tools_html
+from ankiweb.adapters.inbound.http_shared.page import render_page
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 # ---- render tests -------------------------------------------------------
 

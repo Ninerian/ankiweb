@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncGenerator
-from datastar_py.sse import DatastarEvent
-from fastapi import APIRouter
+from collections.abc import AsyncGenerator
+
 from datastar_py.fastapi import (
     DatastarResponse,
+)
+from datastar_py.fastapi import (
     ServerSentEventGenerator as SSE,
 )
+from datastar_py.sse import DatastarEvent
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/dev")
 

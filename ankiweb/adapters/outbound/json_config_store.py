@@ -3,8 +3,10 @@ Module-level `load`/`save` functions structurally satisfy ConfigStorePort (a mod
 Protocol instance) — no wrapper class needed."""
 
 from __future__ import annotations
+
 import json
 from pathlib import Path
+
 from ankiweb.core.notify.engine import NotifyConfig
 
 

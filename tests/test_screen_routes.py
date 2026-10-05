@@ -1,9 +1,11 @@
-from typing import Any, cast
-import pytest
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -174,7 +176,7 @@ def test_reviewer_edit_navigates_to_editor(client):
         client.app.state.service.run, lambda col: col.decks.set_current(did)
     )
     nid = client.portal.call(
-        client.app.state.service.run, lambda col: list(col.find_notes(""))[0]
+        client.app.state.service.run, lambda col: next(iter(col.find_notes("")))
     )
     with client.websocket_connect("/ws?context=reviewer") as ws:
         ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})

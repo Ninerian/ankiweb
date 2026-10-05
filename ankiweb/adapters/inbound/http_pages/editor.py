@@ -1,22 +1,26 @@
 from __future__ import annotations
+
 import json
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
-from fastapi import APIRouter, Request, Query
-from fastapi.responses import HTMLResponse
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter, Query, Request
+from fastapi.responses import HTMLResponse
 
-from ankiweb.core.i18n import tr
+from ankiweb.adapters.inbound.http_screens.editor import _munge
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.core.ankiconnect_actions.actions._helpers import check_addable
+from ankiweb.core.i18n import tr
 from ankiweb.core.op_changes import op_changes_to_flags
-from ankiweb.adapters.inbound.http_screens.editor import _munge
 
 logger = logging.getLogger(__name__)
 
@@ -169,13 +173,12 @@ def make_router(get_service: Callable) -> APIRouter:
         if body_bytes:
             try:
                 payload = json.loads(body_bytes.decode("utf-8"))
-            except Exception:
-                pass
+            except ValueError:
+                payload = {}
         if not payload and payload_signals:
             payload = payload_signals
-        if payload_signals:
-            if not payload.get("nid") and payload_signals.get("nid"):
-                payload["nid"] = payload_signals.get("nid")
+        if payload_signals and not payload.get("nid") and payload_signals.get("nid"):
+            payload["nid"] = payload_signals.get("nid")
 
         idx = int(payload.get("index", 0))
         html_val = str(payload.get("html", payload.get(f"field_val_{idx}", "")))
@@ -207,14 +210,13 @@ def make_router(get_service: Callable) -> APIRouter:
         if body_bytes:
             try:
                 payload = json.loads(body_bytes.decode("utf-8"))
-            except Exception:
-                pass
+            except ValueError:
+                payload = {}
         logger.warning(f"BLUR_FIELD payload={payload}, payload_signals={payload_signals}")
         if not payload and payload_signals:
             payload = payload_signals
-        if payload_signals:
-            if not payload.get("nid") and payload_signals.get("nid"):
-                payload["nid"] = payload_signals.get("nid")
+        if payload_signals and not payload.get("nid") and payload_signals.get("nid"):
+            payload["nid"] = payload_signals.get("nid")
         idx = int(payload.get("index", 0))
         html_val = str(payload.get("html", payload.get(f"field_val_{idx}", "")))
         nid = payload.get("nid")
@@ -357,7 +359,7 @@ def make_router(get_service: Callable) -> APIRouter:
             except UndoEmpty:
                 return False, "Nothing to undo"
 
-        success, msg = await service.run(do_undo)
+        _, msg = await service.run(do_undo)
         return DatastarResponse(
             SSE.patch_signals({"toast_msg": msg})
         )
@@ -390,7 +392,7 @@ def make_router(get_service: Callable) -> APIRouter:
             op = col.add_note(note, did)
             return (note.id, None), op
 
-        (note_id, err), op = await service.run(do_add)
+        (_, err), op = await service.run(do_add)
 
         if op:
             flags = op_changes_to_flags(getattr(op, "changes", op))

@@ -1,20 +1,25 @@
 from __future__ import annotations
+
 import json
 import logging
-from typing import Any, Callable, cast
+from collections.abc import Callable
+from typing import Any, cast
 
-from fastapi import APIRouter, Query
-from fastapi.responses import HTMLResponse
+import anki.errors
+import anki.notetypes_pb2 as nt
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter, Query
+from fastapi.responses import HTMLResponse
 
-from ankiweb.core.i18n import tr
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
-import anki.notetypes_pb2 as nt
+from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +35,11 @@ def _is_unchanged(
     fields: list[int | None],
     templates: list[int | None] | None,
 ) -> bool:
-    if old_id != new_id:
-        return False
-    if fields != list(range(len(fields))):
-        return False
-    if templates is not None and templates != list(range(len(templates))):
-        return False
-    return True
+    return (
+        old_id == new_id
+        and fields == list(range(len(fields)))
+        and (templates is None or templates == list(range(len(templates))))
+    )
 
 
 def _prepare_template_context(
@@ -207,7 +210,7 @@ def make_router(get_service: Callable) -> APIRouter:
                     old_notetype_id=old_id,
                     new_notetype_id=new_id,
                 )
-            except Exception as exc:
+            except anki.errors.BackendError as exc:
                 return render_fatal_error_html(str(exc))
 
             # Fetch note ids of old_id
@@ -249,7 +252,7 @@ def make_router(get_service: Callable) -> APIRouter:
                     new_ntid=new_id,
                     note_ids=note_ids,
                 )
-            except Exception as exc:
+            except anki.errors.BackendError as exc:
                 return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
 
         html = await service.run(render)
@@ -287,7 +290,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             num_fields, num_templates = await service.run(get_counts)
-        except Exception as exc:
+        except anki.errors.BackendError as exc:
             err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
@@ -317,7 +320,7 @@ def make_router(get_service: Callable) -> APIRouter:
                     current_fields_map=fields_map,
                     current_templates_map=templates_map,
                 )
-            except Exception as exc:
+            except anki.errors.BackendError as exc:
                 return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
 
         html = await service.run(render)
@@ -355,7 +358,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             num_fields, num_templates = await service.run(get_counts)
-        except Exception as exc:
+        except anki.errors.BackendError as exc:
             err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
@@ -399,7 +402,7 @@ def make_router(get_service: Callable) -> APIRouter:
                     current_fields_map=fields_map,
                     current_templates_map=templates_map,
                 )
-            except Exception as exc:
+            except anki.errors.BackendError as exc:
                 return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
 
         html = await service.run(render)
@@ -438,7 +441,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             info = await service.run(get_info)
-        except Exception as exc:
+        except anki.errors.BackendError as exc:
             err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 

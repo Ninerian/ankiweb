@@ -2,11 +2,13 @@ import threading
 import time
 from pathlib import Path
 from urllib.parse import quote
+
 import pytest
 import uvicorn
 from anki.collection import Collection
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import sync_playwright

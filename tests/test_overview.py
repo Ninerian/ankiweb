@@ -1,7 +1,9 @@
-import tempfile
 import os
+import tempfile
+
 import pytest
 from anki.collection import Collection
+
 from ankiweb.adapters.inbound.http_datastar.overview import render_overview_html
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 

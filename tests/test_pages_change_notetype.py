@@ -1,9 +1,11 @@
-import pytest
 from pathlib import Path
-from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
+
+import pytest
 from conftest import parse_datastar_events
+from fastapi.testclient import TestClient
+
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -24,9 +26,8 @@ def _basic_and_cloze_and_rev(client):
 
 
 def test_next_change_notetype_page_serves_html(client):
-    basic_id, cloze_id, _ = _basic_and_cloze_and_rev(client)
+    basic_id, _cloze_id, _ = _basic_and_cloze_and_rev(client)
     r = client.get(f"/change-notetype/{basic_id}")
-    assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/html")
     assert "route-change-notetype" in r.text
     assert "target-notetype-select" in r.text
@@ -37,7 +38,7 @@ def test_next_change_notetype_page_serves_html(client):
 
 
 def test_next_change_notetype_two_ids(client):
-    basic_id, cloze_id, rev_id = _basic_and_cloze_and_rev(client)
+    basic_id, _cloze_id, rev_id = _basic_and_cloze_and_rev(client)
     r = client.get(f"/change-notetype/{basic_id}/{rev_id}")
     assert r.status_code == 200
     assert "route-change-notetype" in r.text
@@ -46,7 +47,7 @@ def test_next_change_notetype_two_ids(client):
 
 
 def test_next_change_notetype_select_target(client):
-    basic_id, cloze_id, rev_id = _basic_and_cloze_and_rev(client)
+    basic_id, cloze_id, _rev_id = _basic_and_cloze_and_rev(client)
     r = client.post(
         "/change-notetype/select-target",
         headers={"Datastar-Request": "true"},

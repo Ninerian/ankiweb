@@ -1,13 +1,15 @@
-from typing import Any, cast
-import pytest
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
-from ankiweb.core.ankiconnect_actions.runtime import Runtime
-from ankiweb.ankiconnect.config import AnkiConnectConfig
-from ankiweb.core.ankiconnect_actions.registry import ACTIONS
+
 import ankiweb.core.ankiconnect_actions.actions  # noqa: F401 — registers all actions
+from ankiweb.ankiconnect.config import AnkiConnectConfig
+from ankiweb.app import create_app
+from ankiweb.core.ankiconnect_actions.registry import ACTIONS
+from ankiweb.core.ankiconnect_actions.runtime import Runtime
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -65,9 +67,8 @@ def test_review_active_false_when_idle(client):
 
 
 def test_gui_current_card_raises_when_idle(client):
-    with pytest.raises(Exception):
+    with pytest.raises(RuntimeError):
         _gui(client, "guiCurrentCard")
-
 
 def test_reviewer_flow(client):
     _select_default(client)
@@ -142,7 +143,7 @@ def test_gui_browse_no_query_returns_empty(client):
 
 
 def test_gui_browse_reorder_validation(client):
-    with pytest.raises(Exception):
+    with pytest.raises((TypeError, ValueError)):
         _gui(client, "guiBrowse", query="", reorderCards={"order": "sideways"})
     assert isinstance(
         _gui(
@@ -196,7 +197,7 @@ def test_gui_add_cards_returns_int_and_validates(client):
     )
     assert isinstance(res, int)
     assert isinstance(_gui(client, "guiAddCards"), int)  # blank dialog form
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         _gui(
             client,
             "guiAddCards",
@@ -206,7 +207,7 @@ def test_gui_add_cards_returns_int_and_validates(client):
                 "fields": {"Front": "x"},
             },
         )
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         _gui(
             client,
             "guiAddCards",
@@ -215,9 +216,8 @@ def test_gui_add_cards_returns_int_and_validates(client):
 
 
 def test_gui_import_file_refuses(client):
-    with pytest.raises(Exception):
+    with pytest.raises(RuntimeError):
         _gui(client, "guiImportFile", path="/tmp/x.apkg")
-
 
 def test_gui_exit_anki_noop(client):
     assert _gui(client, "guiExitAnki") is None

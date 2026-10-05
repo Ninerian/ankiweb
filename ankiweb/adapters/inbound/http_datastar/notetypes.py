@@ -1,23 +1,30 @@
 from __future__ import annotations
+
 import copy
-from ankiweb.adapters.inbound.http_datastar.common import error_response
-from typing import Callable
-from fastapi import APIRouter
+import logging
+from collections.abc import Callable
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import error_response
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 def _heading() -> str:
     """Prefer the desktop "Manage Note Types" string; fall back to a keyless heading.
     (qt_misc_manage_note_types exists; notetypes_notetypes does not.)"""
     try:
         return tr.qt_misc_manage_note_types()
-    except Exception:
+    except AttributeError:
         return "Note Types"
 
 
@@ -61,6 +68,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_rename, initiator="notetypes")
         except Exception as exc:
+            logger.exception("Failed to rename note type %s", ntid)
             return error_response(exc)
 
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
@@ -77,6 +85,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_delete, initiator="notetypes")
         except Exception as exc:
+            logger.exception("Failed to delete note type %s", ntid)
             return error_response(exc)
 
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
@@ -100,6 +109,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_add, initiator="notetypes")
         except Exception as exc:
+            logger.exception("Failed to add note type based on %s", base_ntid)
             return error_response(exc)
 
         return DatastarResponse(SSE.execute_script("window.location.reload()"))

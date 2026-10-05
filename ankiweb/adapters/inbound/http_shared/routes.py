@@ -1,70 +1,81 @@
 from __future__ import annotations
+
+import logging
 import os
 import tempfile
+
+from anki.errors import AnkiException
 from fastapi import APIRouter, Form, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from starlette.background import BackgroundTask
 
-from ankiweb.adapters.inbound.http_shared.page import render_page
+from ankiweb.adapters.inbound.http_datastar.browser import (
+    make_browser_routes,
+    render_browser_html,
+)
+from ankiweb.adapters.inbound.http_datastar.card_layout import (
+    make_card_layout_routes,
+    render_card_layout_html,
+)
+from ankiweb.adapters.inbound.http_datastar.custom_study import (
+    make_custom_study_routes,
+    render_custom_study_html,
+)
 from ankiweb.adapters.inbound.http_datastar.deckbrowser import (
-    render_deckbrowser_html,
     make_deckbrowser_routes,
+    render_deckbrowser_html,
+)
+from ankiweb.adapters.inbound.http_datastar.dev_progress import (
+    router as dev_progress_router,
+)
+from ankiweb.adapters.inbound.http_datastar.fields import (
+    make_fields_routes,
+    render_fields_html,
+)
+from ankiweb.adapters.inbound.http_datastar.filtered_deck import (
+    make_filtered_deck_routes,
+    render_filtered_deck_html,
+)
+from ankiweb.adapters.inbound.http_datastar.notetypes import (
+    make_notetypes_routes,
+    render_notetypes_html,
 )
 from ankiweb.adapters.inbound.http_datastar.overview import (
-    render_overview_html,
     make_overview_routes,
+    render_overview_html,
 )
-from ankiweb.adapters.inbound.http_screens.reviewer import (
-    reviewer_page_body,
-    make_reviewer_handler,
+from ankiweb.adapters.inbound.http_datastar.preferences import (
+    make_preferences_routes,
+    render_preferences_html,
 )
-from ankiweb.adapters.inbound.http_datastar.browser import (
-    render_browser_html,
-    make_browser_routes,
+from ankiweb.adapters.inbound.http_datastar.tools import (
+    make_tools_routes,
+    render_tools_html,
 )
+from ankiweb.adapters.inbound.http_pages import make_pages_router
+from ankiweb.adapters.inbound.http_screens.add import make_add_handler
 from ankiweb.adapters.inbound.http_screens.editor import (
     make_editor_handler,
 )
-from ankiweb.adapters.inbound.http_screens.add import make_add_handler
-from ankiweb.adapters.inbound.http_datastar.custom_study import (
-    render_custom_study_html,
-    make_custom_study_routes,
+from ankiweb.adapters.inbound.http_screens.reviewer import (
+    make_reviewer_handler,
+    reviewer_page_body,
 )
 from ankiweb.adapters.inbound.http_shared.about import render_about_html
-from ankiweb.adapters.inbound.http_shared.component_gallery import render_component_gallery_html
-from ankiweb.adapters.inbound.http_datastar.dev_progress import router as dev_progress_router
-from ankiweb.adapters.inbound.http_pages import make_pages_router
-from ankiweb.adapters.inbound.http_datastar.filtered_deck import (
-    render_filtered_deck_html,
-    make_filtered_deck_routes,
+from ankiweb.adapters.inbound.http_shared.component_gallery import (
+    render_component_gallery_html,
 )
 from ankiweb.adapters.inbound.http_shared.export import render_export_html
-from ankiweb.adapters.inbound.http_datastar.preferences import (
-    render_preferences_html,
-    make_preferences_routes,
-)
-from ankiweb.adapters.inbound.http_shared.preview import render_preview_html
-from ankiweb.adapters.inbound.http_datastar.fields import (
-    render_fields_html,
-    make_fields_routes,
-)
-from ankiweb.adapters.inbound.http_datastar.card_layout import (
-    render_card_layout_html,
-    make_card_layout_routes,
-)
-from ankiweb.adapters.inbound.http_datastar.tools import (
-    render_tools_html,
-    make_tools_routes,
-)
-from ankiweb.adapters.inbound.http_datastar.notetypes import (
-    render_notetypes_html,
-    make_notetypes_routes,
-)
 from ankiweb.adapters.inbound.http_shared.notify import (
-    render_notify_html,
     config_from_form,
+    render_notify_html,
 )
+from ankiweb.adapters.inbound.http_shared.page import render_page
+from ankiweb.adapters.inbound.http_shared.preview import render_preview_html
 from ankiweb.core.notify.engine import header_safe
+
+logger = logging.getLogger(__name__)
+
 _MIME_EXT = {
     "image/png": ".png",
     "image/jpeg": ".jpg",
@@ -340,7 +351,8 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=N
             else:
                 os.remove(out)
                 return HTMLResponse("unknown export format", status_code=400)
-        except Exception as exc:
+        except (AnkiException, OSError, RuntimeError, TypeError, ValueError) as exc:
+            logger.exception("Export failed (format=%s)", fmt)
             try:
                 os.remove(out)
             except OSError:
@@ -362,6 +374,7 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=N
     @router.post("/image-occlusion/upload")
     async def image_occlusion_upload(file: UploadFile):
         from fastapi.responses import JSONResponse
+
         from ankiweb import import_tmp
 
         service = get_service()
@@ -391,6 +404,7 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=N
     @router.post("/import/upload")
     async def import_upload(file: UploadFile):
         from fastapi.responses import JSONResponse
+
         from ankiweb import import_tmp
 
         service = get_service()

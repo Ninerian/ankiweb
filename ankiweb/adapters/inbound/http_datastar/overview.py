@@ -1,15 +1,21 @@
 from __future__ import annotations
-from typing import Callable
-from fastapi import APIRouter
+
+from collections.abc import Callable
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
+
 from ankiweb.adapters.inbound.http_datastar.common import refresh_screen
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 from ankiweb.core.html_sanitize import sanitize_html
+
 
 def make_overview_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/overview")

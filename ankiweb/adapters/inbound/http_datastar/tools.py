@@ -1,9 +1,13 @@
 from __future__ import annotations
-from typing import Callable
+
+from collections.abc import Callable
+
+from datastar_py.fastapi import DatastarResponse
+from datastar_py.fastapi import ServerSentEventGenerator as SSE
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE
-from ankiweb.core.i18n import tr
+
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
 
 
 def render_tools_html(col) -> str:
@@ -63,7 +67,7 @@ def make_tools_routes(get_service: Callable) -> APIRouter:
     @router.post("/checkdb")
     async def check_db():
         service = get_service()
-        report, ok = await service.run(lambda col: col.fix_integrity())
+        report, _ = await service.run(lambda col: col.fix_integrity())
         res_html = f'<div id="res-db">{_db_result_html(report)}</div>'
         return DatastarResponse(SSE.patch_elements(res_html, selector="#res-db"))
 

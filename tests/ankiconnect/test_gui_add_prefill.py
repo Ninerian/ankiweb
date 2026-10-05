@@ -1,12 +1,15 @@
-import pytest
+#!/usr/bin/env python3
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
-from ankiweb.core.ankiconnect_actions.runtime import Runtime
-from ankiweb.ankiconnect.config import AnkiConnectConfig
-from ankiweb.core.ankiconnect_actions.registry import ACTIONS
+
 import ankiweb.core.ankiconnect_actions.actions  # noqa: F401
+from ankiweb.ankiconnect.config import AnkiConnectConfig
+from ankiweb.app import create_app
+from ankiweb.core.ankiconnect_actions.registry import ACTIONS
+from ankiweb.core.ankiconnect_actions.runtime import Runtime
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture

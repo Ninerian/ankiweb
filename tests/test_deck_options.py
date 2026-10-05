@@ -1,8 +1,10 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -29,8 +31,8 @@ def test_get_deck_configs_for_update_passthrough(client):
 
 
 def test_passthrough_and_custom_registered():
-    from ankiweb.core.rpc.passthrough import PASSTHROUGH, CONCURRENT
     from ankiweb.core.rpc.custom_handlers import CUSTOM
+    from ankiweb.core.rpc.passthrough import CONCURRENT, PASSTHROUGH
 
     assert "get_ignored_before_count" in PASSTHROUGH
     # the long FSRS compute/simulate calls + set_wants_abort run on the concurrent path

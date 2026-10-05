@@ -1,9 +1,11 @@
-from typing import Any, cast
-import pytest
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture

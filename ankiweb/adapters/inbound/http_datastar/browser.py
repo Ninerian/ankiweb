@@ -1,16 +1,25 @@
 from __future__ import annotations
-import html
+
 import datetime
+import html
+import logging
 import re
-from typing import Callable
-from fastapi import APIRouter
+from collections.abc import Callable
+
+from anki.errors import InvalidInput, NotFoundError, SearchError, TemplateError
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
+
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 _TAG_STRIP = re.compile(r"<[^>]+>")
 _LIMIT = 500
@@ -25,18 +34,21 @@ def _format_due(card, col) -> str:
         return f"{tr.actions_new()} #{card.due}"
     elif card.queue == 1:
         try:
-            dt = datetime.datetime.fromtimestamp(card.due)
-            if dt.date() == datetime.date.today():
+            dt = datetime.datetime.fromtimestamp(card.due, tz=datetime.UTC).astimezone()
+            if dt.date() == datetime.datetime.now(datetime.UTC).astimezone().date():
                 return dt.strftime("%H:%M")
             return dt.strftime("%Y-%m-%d %H:%M")
-        except Exception:
+        except (OSError, OverflowError, TypeError, ValueError):
             return str(card.due)
     elif card.queue in (2, 3):
         try:
             days_diff = card.due - col.sched.today
-            due_date = datetime.date.today() + datetime.timedelta(days=days_diff)
+            due_date = (
+                datetime.datetime.now(datetime.UTC).astimezone().date()
+                + datetime.timedelta(days=days_diff)
+            )
             return due_date.isoformat()
-        except Exception:
+        except (OverflowError, TypeError, ValueError):
             return str(card.due)
     return ""
 
@@ -60,7 +72,7 @@ def render_browser_html(col, query: str = "") -> str:
     tags = list(col.tags.all())
     try:
         cids = list(col.find_cards(query or ""))
-    except Exception:
+    except (SearchError, InvalidInput):
         cids = []
     initial_rows = _rows_html(_row_data(col, cids[:_LIMIT]))
     return templating.render(
@@ -79,7 +91,7 @@ def _row_data(col, cids):
     for cid in cids:
         try:
             card = col.get_card(cid)
-        except Exception:
+        except NotFoundError:
             continue
         note = card.note()
         model = note.note_type()
@@ -91,7 +103,7 @@ def _row_data(col, cids):
         )
         try:
             template_name = card.template().get("name", "")
-        except Exception:
+        except (IndexError, TemplateError):
             template_name = ""
         note_type_name = model.get("name", "")
         deck_name = col.decks.name(card.did)
@@ -146,7 +158,7 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         def run(col):
             try:
                 cids = list(col.find_cards(query or ""))
-            except Exception:
+            except (SearchError, InvalidInput):
                 return None, ""
             return cids, _rows_html(_row_data(col, cids[:_LIMIT]))
 
@@ -188,7 +200,7 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         for c in cids:
             try:
                 nid = col.get_card(c).nid
-            except Exception:
+            except NotFoundError:
                 continue
             if nid not in out:
                 out.append(nid)
@@ -375,7 +387,7 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
                 old = await service.run(
                     lambda col: col.models.get_single_notetype_of_notes(nids)
                 )
-            except Exception:
+            except (InvalidInput, NotFoundError):
                 return DatastarResponse()
             return DatastarResponse(SSE.redirect(f"/change-notetype/{old}"))
         return DatastarResponse()

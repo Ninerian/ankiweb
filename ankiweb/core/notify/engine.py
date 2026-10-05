@@ -7,11 +7,16 @@ docs/superpowers/specs/2026-06-04-deck-push-notifier-design.md.
 """
 
 from __future__ import annotations
+
 import asyncio
+import logging
 import time
+from collections.abc import Awaitable, Callable, Coroutine
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Coroutine, Optional
+from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------- config + status
@@ -33,8 +38,8 @@ class NotifyConfig:
 
 @dataclass
 class NotifyStatus:
-    last_attempt_ts: Optional[float] = None
-    last_success_ts: Optional[float] = None
+    last_attempt_ts: float | None = None
+    last_success_ts: float | None = None
     last_error: str = ""
     watching: int = 0  # decks currently tracked
     learnable: int = 0  # of those, how many are learnable now
@@ -48,7 +53,7 @@ class NotifierState:
     def __init__(
         self,
         config_path: Path,
-        config: Optional[NotifyConfig] = None,
+        config: NotifyConfig | None = None,
         store: Any | None = None,
     ):
         self.config_path = Path(config_path)
@@ -223,7 +228,8 @@ class DeckNotifier:
                     self.state.resync_pending = False
                 try:
                     delay = await self._tick(cfg)
-                except Exception as exc:  # a fetch/backend error must NOT kill the task
+                except (OSError, RuntimeError, TypeError, ValueError) as exc:  # a fetch/backend error must NOT kill the task
+                    logger.warning("DeckNotifier tick failed: %s", exc)
                     self.state.status.last_error = str(exc)
                     delay = cfg.retry_sec
                 await self._wait(delay)
@@ -289,12 +295,13 @@ class DeckNotifier:
     async def _safe_post(self, cfg: NotifyConfig, payload: dict) -> tuple:
         try:
             return await self._post(cfg, payload)
-        except Exception as exc:  # connection error, timeout, etc. -> retry
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:  # connection error, timeout, etc. -> retry
+            logger.warning("DeckNotifier POST failed: %s", exc)
             return False, str(exc)
 
-    async def _wait(self, timeout: Optional[float]) -> None:
+    async def _wait(self, timeout: float | None) -> None:
         try:
             await asyncio.wait_for(self.state.changed.wait(), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
         self.state.changed.clear()

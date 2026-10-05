@@ -1,24 +1,28 @@
 from __future__ import annotations
-import math
+
 import json
 import logging
-from typing import Any, Callable, cast
-
-from fastapi import APIRouter
-from datastar_py.fastapi import (
-    DatastarResponse,
-    ServerSentEventGenerator as SSE,
-    ReadSignals,
-)
+import math
+from collections.abc import Callable
+from typing import Any, cast
 
 import anki.deck_config_pb2 as deck_cfg_pb
 import anki.scheduler_pb2 as sched_pb
+from datastar_py.fastapi import (
+    DatastarResponse,
+    ReadSignals,
+)
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
+
 from ankiweb.adapters.inbound.http_pages.graph_svg import (
     LinearScale,
-    render_x_axis,
-    render_y_axis,
     render_line,
     render_no_data_overlay,
+    render_x_axis,
+    render_y_axis,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,7 +47,7 @@ def moving_average(values: list[float], window_size: int) -> list[float]:
 
 
 def format_time_span(seconds: float) -> str:
-    s = int(round(seconds))
+    s = round(seconds)
     if s < 60:
         return f"{s}s"
     m = s // 60
@@ -95,8 +99,7 @@ def render_simulation_svg(
 
         y_vals = moving_average(raw_y, window_size) if smooth else raw_y
         for y in y_vals:
-            if y > global_max_y:
-                global_max_y = y
+            global_max_y = max(global_max_y, y)
 
         series_data.append((label, [(float(i), float(y)) for i, y in enumerate(y_vals)], color))
 
@@ -122,7 +125,7 @@ def render_simulation_svg(
     y_axis_svg = render_y_axis(
         scale_y,
         x=margin_left,
-        tick_format=(lambda v: format_time_span(v)) if subgraph == "time" else (lambda v: f"{int(round(v))}"),
+        tick_format=(lambda v: format_time_span(v)) if subgraph == "time" else (lambda v: f"{round(v)}"),
     )
 
     paths_svg = []
@@ -183,8 +186,7 @@ def render_workload_svg(
             else:  # memorized
                 y = memorized
 
-            if y > global_max_y:
-                global_max_y = y
+            global_max_y = max(global_max_y, y)
             pts.append((float(dr), float(y)))
 
         series_data.append((label, pts, color))
@@ -205,7 +207,7 @@ def render_workload_svg(
     y_axis_svg = render_y_axis(
         scale_y,
         x=margin_left,
-        tick_format=(lambda v: format_time_span(v)) if (subgraph == "time" or subgraph == "ratio") else (lambda v: f"{int(round(v))}"),
+        tick_format=(lambda v: format_time_span(v)) if (subgraph == "time" or subgraph == "ratio") else (lambda v: f"{round(v)}"),
     )
 
     paths_svg = []
@@ -236,7 +238,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(cfg, str):
             try:
                 cfg = json.loads(cfg)
-            except Exception:
+            except (json.JSONDecodeError, TypeError, ValueError):
                 cfg = {}
 
         params = (
@@ -248,7 +250,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(params, str):
             try:
                 params = [float(x.strip()) for x in params.split(",") if x.strip()]
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 params = []
 
         days = int(payload.get("simDaysToSimulate", 365))
@@ -275,6 +277,7 @@ def make_router(get_service: Callable) -> APIRouter:
             try:
                 preset_name = await service.run(_get_preset_name)
             except Exception:
+                logger.exception("Failed to get preset name for simulator")
                 preset_name = "Default"
             search = f'preset:"{preset_name}" -is:suspended'
 
@@ -328,7 +331,7 @@ def make_router(get_service: Callable) -> APIRouter:
             svg_content = render_simulation_svg(sim_history, subgraph=subgraph, smooth=smooth)
 
             table_rows_html = "".join([
-                f"<tr><td class='font-bold'>#{s['label']}</td><td>{s['days']}</td><td>{s['total_reviews']}</td><td>{int(round(s['total_time']/60))} min</td><td>{int(round(s['final_memorized']))}</td></tr>"
+                f"<tr><td class='font-bold'>#{s['label']}</td><td>{s['days']}</td><td>{s['total_reviews']}</td><td>{round(s['total_time']/60)} min</td><td>{round(s['final_memorized'])}</td></tr>"
                 for s in sim_history
             ])
             table_html = f"""<div id="simTableContainer" class="mt-3"><div class="overflow-x-auto"><table class="table table-xs table-zebra border border-base-300 mb-0"><thead><tr><th>#</th><th>Days to simulate</th><th>Total Reviews</th><th>Total Time</th><th>Final Memorized</th></tr></thead><tbody>{table_rows_html}</tbody></table></div></div>"""
@@ -354,7 +357,7 @@ def make_router(get_service: Callable) -> APIRouter:
             return DatastarResponse([
                 SSE.patch_signals({
                     "simProcessing": False,
-                    "simError": f"Simulation failed: {str(exc)}",
+                    "simError": f"Simulation failed: {exc!s}",
                 })
             ])
 
@@ -369,7 +372,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(cfg, str):
             try:
                 cfg = json.loads(cfg)
-            except Exception:
+            except (json.JSONDecodeError, TypeError, ValueError):
                 cfg = {}
 
         params = (
@@ -381,7 +384,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(params, str):
             try:
                 params = [float(x.strip()) for x in params.split(",") if x.strip()]
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 params = []
 
         days = int(payload.get("workloadDaysToSimulate", 365))
@@ -406,6 +409,7 @@ def make_router(get_service: Callable) -> APIRouter:
             try:
                 preset_name = await service.run(_get_preset_name)
             except Exception:
+                logger.exception("Failed to get preset name for workload")
                 preset_name = "Default"
             search = f'preset:"{preset_name}" -is:suspended'
 
@@ -468,7 +472,7 @@ def make_router(get_service: Callable) -> APIRouter:
             return DatastarResponse([
                 SSE.patch_signals({
                     "workloadProcessing": False,
-                    "workloadError": f"Workload simulation failed: {str(exc)}",
+                    "workloadError": f"Workload simulation failed: {exc!s}",
                 })
             ])
 
@@ -485,7 +489,7 @@ def make_router(get_service: Callable) -> APIRouter:
         svg_content = render_simulation_svg(sim_history, subgraph=subgraph, smooth=smooth)
 
         table_rows_html = "".join([
-            f"<tr><td class='font-bold'>#{s['label']}</td><td>{s['days']}</td><td>{s['total_reviews']}</td><td>{int(round(s['total_time']/60))} min</td><td>{int(round(s['final_memorized']))}</td></tr>"
+            f"<tr><td class='font-bold'>#{s['label']}</td><td>{s['days']}</td><td>{s['total_reviews']}</td><td>{round(s['total_time']/60)} min</td><td>{round(s['final_memorized'])}</td></tr>"
             for s in sim_history
         ])
         table_html = f"""<div id="simTableContainer" class="mt-3"><div class="overflow-x-auto"><table class="table table-xs table-zebra border border-base-300 mb-0"><thead><tr><th>#</th><th>Days to simulate</th><th>Total Reviews</th><th>Total Time</th><th>Final Memorized</th></tr></thead><tbody>{table_rows_html}</tbody></table></div></div>""" if sim_history else '<div id="simTableContainer" class="mt-3"></div>'
@@ -558,7 +562,7 @@ def make_router(get_service: Callable) -> APIRouter:
         if isinstance(cfg, str):
             try:
                 cfg = json.loads(cfg)
-            except Exception:
+            except (json.JSONDecodeError, TypeError, ValueError):
                 cfg = {}
 
         mode = payload.get("simMode", "review")

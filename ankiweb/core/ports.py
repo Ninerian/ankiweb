@@ -6,7 +6,9 @@ docs/superpowers/specs/2026-09-12-ankiweb-hexagonal-architecture-design.md.
 No FastAPI/Starlette/httpx/anki imports here — that is the entire point of this module."""
 
 from __future__ import annotations
-from typing import Any, Callable, Protocol, TypeVar
+
+from collections.abc import Callable
+from typing import Any, Protocol, TypeVar
 
 T = TypeVar("T")
 

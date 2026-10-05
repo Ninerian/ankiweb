@@ -1,11 +1,13 @@
 """Note de-duplication extra actions."""
 
 from __future__ import annotations
+
 from anki.collection import SearchNode
 from anki.utils import ids2str, split_fields, strip_html_media
-from ankiweb.core.ankiconnect_actions.registry import extra_action
-from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
+
 from ankiweb.ankiconnect.schemas.extra import RemoveDuplicateNotesParams
+from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
+from ankiweb.core.ankiconnect_actions.registry import extra_action
 
 
 @extra_action(
@@ -36,7 +38,7 @@ async def remove_duplicate_notes(rt, deck=None, deckId=None, dryRun=False):
             if d is not None:
                 did, name = d["id"], d["name"]
         if name is None:
-            raise Exception("deck was not found: " + str(deck if deck else deckId))
+            raise ValueError("deck was not found: " + str(deck if deck else deckId))
 
         nids = col.find_notes(col.build_search_string(SearchNode(deck=name)))
         # order by id: makes the group list order (and each group's members) deterministic

@@ -1,15 +1,22 @@
 from __future__ import annotations
-from ankiweb.adapters.inbound.http_datastar.common import error_response
-from typing import Callable
-from fastapi import APIRouter
+
+import logging
+from collections.abc import Callable
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import error_response
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 def render_preferences_html(col) -> str:
     """Server-rendered Preferences form over col.get_preferences()/set_preferences()
@@ -19,8 +26,7 @@ def render_preferences_html(col) -> str:
     exp = col.get_config("experimentalFeatures") or {}
     svelte_editor = bool(exp.get("1", False))
 
-    initial_signals = {
-        "error": "",
+    initial_values = {
         "rollover": s.rollover,
         "learn_ahead_mins": s.learn_ahead_secs // 60,
         "new_review_mix": s.new_review_mix,
@@ -45,6 +51,13 @@ def render_preferences_html(col) -> str:
         "minimum_interval_mins": b.minimum_interval_mins,
         "svelte_editor": svelte_editor,
     }
+
+    initial_signals = {
+        "error": "",
+        "dirty": False,
+        "initial": initial_values,
+        **initial_values,
+    }
     mix_opts = [
         (0, tr.scheduling_mix_new_cards_and_reviews()),
         (1, tr.scheduling_show_new_cards_after_reviews()),
@@ -60,6 +73,7 @@ def render_preferences_html(col) -> str:
         svelte_editor=svelte_editor,
         mix_opts=mix_opts,
         initial_signals=initial_signals,
+        initial_values=initial_values,
     )
 
 
@@ -120,6 +134,7 @@ def make_preferences_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(apply, initiator="preferences")
         except Exception as exc:
+            logger.exception("Failed to save preferences")
             return error_response(exc)
 
         return DatastarResponse(SSE.redirect("/deckbrowser"))

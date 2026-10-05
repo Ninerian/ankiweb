@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
 from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings, host_allowed
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings, host_allowed
 
 
 def test_host_allowed_unit():
@@ -42,24 +45,27 @@ def test_lan_host_allowed_when_configured(tmp_path: Path):
 
 
 def test_ws_lan_host_allowed_when_configured(tmp_path: Path):
-    with _client(tmp_path, ("192.168.1.50:8000",)) as c:
+    with (
+        _client(tmp_path, ("192.168.1.50:8000",)) as c,
         # WS upgrade carries the same Host header; configured → accepted
-        with c.websocket_connect(
+        c.websocket_connect(
             "/ws?context=deckbrowser", headers={"host": "192.168.1.50:8000"}
-        ) as ws:
-            ws.send_json({"type": "cmd", "id": 1, "ctx": "deckbrowser", "arg": "noop:"})
+        ) as ws,
+    ):
+        ws.send_json({"type": "cmd", "id": 1, "ctx": "deckbrowser", "arg": "noop:"})
+        m = ws.receive_json()
+        while m.get("type") != "result":
             m = ws.receive_json()
-            while m.get("type") != "result":
-                m = ws.receive_json()
-            assert m["id"] == 1
-
+        assert m["id"] == 1
 
 def test_ws_lan_host_rejected_by_default(tmp_path: Path):
-    import websockets  # noqa
+    from starlette.websockets import WebSocketDisconnect
 
-    with _client(tmp_path, ()) as c:
-        with pytest.raises(Exception):
-            with c.websocket_connect(
-                "/ws?context=deckbrowser", headers={"host": "192.168.1.50:8000"}
-            ) as ws:
-                ws.receive_json()
+    with (
+        _client(tmp_path, ()) as c,
+        pytest.raises(WebSocketDisconnect),
+        c.websocket_connect(
+            "/ws?context=deckbrowser", headers={"host": "192.168.1.50:8000"}
+        ) as ws,
+    ):
+        ws.receive_json()

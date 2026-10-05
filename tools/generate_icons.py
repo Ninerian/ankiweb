@@ -9,6 +9,7 @@ normalizes them, and outputs:
 
 import json
 import re
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -54,9 +55,8 @@ def fetch_icons():
                 s = re.sub(r"<!DOCTYPE[^>]*>", "", s)
                 s = re.sub(r"<!--.*?-->", "", s, flags=re.DOTALL)
                 icons[exp] = s.strip()
-        except Exception as e:
+        except (urllib.error.URLError, TimeoutError, OSError, UnicodeDecodeError) as e:
             print(f"Warning: could not fetch {exp} from {fetch_url}: {e}")
-
     return icons
 
 

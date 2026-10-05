@@ -1,11 +1,13 @@
 import threading
 import time
+from pathlib import Path
+
 import pytest
 import uvicorn
-from pathlib import Path
 from anki.collection import Collection
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import sync_playwright
@@ -63,7 +65,7 @@ def test_editor_mounts_and_loads(live_server_edit):
 
 
 def test_browse_single_select_embeds_editor(live_server_edit):
-    url, nid = live_server_edit
+    url, _nid = live_server_edit
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
@@ -84,7 +86,7 @@ def test_browse_single_select_embeds_editor(live_server_edit):
 
 
 def test_reviewer_e_opens_editor(live_server_edit):
-    url, nid = live_server_edit
+    url, _nid = live_server_edit
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()

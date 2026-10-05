@@ -1,15 +1,21 @@
 from __future__ import annotations
+
 import json
 from typing import Any
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
+
 from ankiweb.adapters.inbound.http_screens.editor import (
     _munge,
-    paste_handler_js,
     editor_links_js,
+    paste_handler_js,
 )
-from ankiweb.core.ankiconnect_actions.actions._helpers import check_addable, empty_add_payload
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.ankiconnect_actions.actions._helpers import (
+    check_addable,
+    empty_add_payload,
+)
+from ankiweb.core.i18n import tr
 from ankiweb.core.op_changes import op_changes_to_flags
+
 
 def add_page_body(decks, notetypes, paste_handler_js: str, editor_links_js: str) -> str:
     return templating.render(
@@ -81,7 +87,7 @@ def make_add_handler(service, hub):
                 op = col.add_note(note, did)
                 return (note.id, None), op
 
-            (nid, err), op = await service.run(add)
+            (_, err), op = await service.run(add)
             if op is not None:
                 flags = op_changes_to_flags(getattr(op, "changes", op))
                 if any(flags.values()):

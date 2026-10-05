@@ -1,11 +1,13 @@
 import io
 import os
 import time
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 PNG = bytes.fromhex(
     "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
@@ -72,6 +74,7 @@ def test_io_temp_survives_import_gc(client):
 
 def test_image_persists_after_temp_deleted(client):
     import anki.image_occlusion_pb2 as iopb
+
     from ankiweb import import_tmp
 
     svc = client.app.state.service
@@ -96,8 +99,9 @@ def test_image_persists_after_temp_deleted(client):
 
 def test_browser_routes_io_note_to_io_editor(client):
     import anki.image_occlusion_pb2 as iopb
-    from ankiweb import import_tmp
     from conftest import parse_datastar_events
+
+    from ankiweb import import_tmp
 
     svc = client.app.state.service
     p = import_tmp.io_allocate(svc.settings, ".png")

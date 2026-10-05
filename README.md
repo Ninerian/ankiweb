@@ -283,6 +283,29 @@ Stats** (Anki's main-window toolbar, minus Sync) plus the night-mode toggle.
 Navigation follows the Tao of Datastar:
 - User interactions that switch pages use standard native links (`<a href="...">`), letting the browser handle URL history and document lifecycles naturally.
 - Server actions and form submissions that navigate return standard backend redirects (`SSE.redirect(target)`), while in-page mutations update targeted fragments in place without soft-patching or client router shims.
+
+### Form state (Datastar 1.0.4)
+
+Preferences, Custom Study, Fields, and Card Layout bind editable values to Datastar
+signals and submit them directly with `@post(...)`; saving does not scrape the DOM
+or construct a separate JavaScript payload. Custom Study's tag selectors use native
+multi-select array bindings. Preferences derives its unsaved-change indicator from
+the current signal values, so restoring the original values clears the indicator.
+
+Fields and Card Layout keep a local, uncommitted draft: `fieldDraft` or `layoutDraft`
+contains a stable-keyed `rows` map, an `order` array, and a monotonic `nextId` counter.
+Fields tracks the sort field by `sortKey`; Card Layout stores styling in
+`layoutDraft.css`. The HTTP save handlers resolve the ordered records from these
+signals. Moving a row does not change its identity or binding; deleting the selected
+sort field selects the first remaining field.
+
+Small local helpers still clone, remove, and move row/block markup because Datastar
+has no built-in list renderer. These helpers never read input values or serialize
+form data, and row operations require no server requests. Only **Save** applies the
+draft to the collection; **Cancel** discards it. Card Layout's **Preview** continues
+to use the saved collection state, not the uncommitted draft. Anki's editor/reviewer
+WebSocket and `pycmd` bridges are unchanged.
+
 ## Architecture
 
 ankiweb follows a **Ports & Adapters (hexagonal)** layout — see
@@ -333,11 +356,17 @@ for the migration that built it.
 ## Test
 
 ```bash
+uv sync --extra dev      # project dependencies and test tools in .venv
+uvx ruff check .         # lint all Python sources and tests
+uvx pyright              # type-check using the project's .venv
 uv run pytest            # full suite (Playwright tests skip if chromium absent)
 ```
 
 Integration tests use Playwright + real Chromium against a live uvicorn server; install the
 browser once with `python -m playwright install chromium`.
+
+Pyright's Python 3.12 environment is configured in `pyproject.toml`; run these commands
+from the repository root so imports resolve against the installed project dependencies.
 
 ## Project layout
 

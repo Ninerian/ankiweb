@@ -1,8 +1,10 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.ankiconnect.app import create_ankiconnect_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -65,10 +67,9 @@ def test_clone_and_remove_deck_config(client):
 
 def test_get_deck_stats(client):
     stats = _call(client, "getDeckStats", decks=["Default"])
-    entry = list(stats.values())[0]
+    entry = next(iter(stats.values()))
     assert entry["name"] == "Default"
     assert "new_count" in entry and "total_in_deck" in entry
-
 
 def test_remove_unknown_or_default_config_returns_false(client):
     assert _call(client, "removeDeckConfigId", configId=999999) is False

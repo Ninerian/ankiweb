@@ -1,9 +1,11 @@
-from typing import Any, cast
-import pytest
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -81,7 +83,7 @@ def test_browse_open_pushes_detail_and_selection(client):
 
     assert client.portal is not None
     cid = client.portal.call(
-        client.app.state.service.run, lambda col: list(col.find_cards("dog"))[0]
+        client.app.state.service.run, lambda col: next(iter(col.find_cards("dog")))
     )
     hub = client.app.state.hub
     r = client.post(f"/browse/open/{cid}")
@@ -106,6 +108,26 @@ def test_browse_invalid_search_does_not_crash(client):
     assert any("0 cards" in data for _, data in events)
 
 
+@pytest.mark.parametrize("query", ["re:[", "Front:re:[", "tag:re:["])
+def test_browse_invalid_compiled_regex_returns_invalid_search(client, query):
+    from conftest import parse_datastar_events
+
+    response = client.post(
+        "/browse/search",
+        json={"query": query},
+        headers={"Datastar-Request": "true"},
+    )
+    assert response.status_code == 200
+    events = parse_datastar_events(response.text)
+    assert any("invalid search" in data for _, data in events)
+    assert any("0 cards" in data for _, data in events)
+
+def test_browse_page_with_invalid_compiled_regex_renders_empty_results(client):
+    response = client.get("/browse", params={"q": "re:["})
+    assert response.status_code == 200
+    assert 'value="re:["' in response.text
+    assert "0 cards" in response.text
+
 def test_search_and_refresh_reset_client_selection(client):
     # rows-repatch responses (search/refresh/mutation reload) must instruct the
     # client to clear its stale _sel/_anchor state, since the freshly-rendered
@@ -114,7 +136,7 @@ def test_search_and_refresh_reset_client_selection(client):
     for path, kwargs in [
         (
             "/browse/search",
-            dict(json={"query": "dog"}, headers={"Datastar-Request": "true"}),
+            {"json": {"query": "dog"}, "headers": {"Datastar-Request": "true"}},
         ),
         ("/browse/refresh", {}),
     ]:
@@ -163,19 +185,19 @@ def test_mutation_routes_are_silent_noop_with_empty_selection(client):
         ("/browse/delete", {}),
         (
             "/browse/setdue",
-            dict(json={"value": "0"}, headers={"Datastar-Request": "true"}),
+            {"json": {"value": "0"}, "headers": {"Datastar-Request": "true"}},
         ),
         (
             "/browse/changedeck",
-            dict(json={"deck": "Spanish"}, headers={"Datastar-Request": "true"}),
+            {"json": {"deck": "Spanish"}, "headers": {"Datastar-Request": "true"}},
         ),
         (
             "/browse/addtag",
-            dict(json={"tag": "marked"}, headers={"Datastar-Request": "true"}),
+            {"json": {"tag": "marked"}, "headers": {"Datastar-Request": "true"}},
         ),
         (
             "/browse/removetag",
-            dict(json={"tag": "marked"}, headers={"Datastar-Request": "true"}),
+            {"json": {"tag": "marked"}, "headers": {"Datastar-Request": "true"}},
         ),
     ]:
         r = client.post(path, **kwargs)
@@ -186,7 +208,7 @@ def test_mutation_routes_are_silent_noop_with_empty_selection(client):
 def test_select_one_pushes_editor(client):
     from conftest import parse_datastar_events
 
-    cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
+    cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
     nid = _run(client, lambda col: col.get_card(cid).nid)
     r = client.post(
         "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
@@ -199,7 +221,7 @@ def test_select_one_pushes_editor(client):
 def test_delete_removes_notes(client):
     from conftest import parse_datastar_events
 
-    cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
+    cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
     before = _run(client, lambda col: len(col.find_notes("")))
     client.post(
         "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
@@ -214,7 +236,7 @@ def test_delete_removes_notes(client):
 def test_changedeck_moves_card(client):
     from conftest import parse_datastar_events
 
-    cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
+    cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
     client.post(
         "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
     )
@@ -231,7 +253,7 @@ def test_changedeck_moves_card(client):
 
 
 def test_add_and_remove_tag(client):
-    cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
+    cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
     nid = _run(client, lambda col: col.get_card(cid).nid)
     client.post(
         "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
@@ -257,7 +279,7 @@ def test_add_and_remove_tag(client):
 def test_setdue_runs(client):
     from conftest import parse_datastar_events
 
-    cid = _run(client, lambda col: list(col.find_cards("dog"))[0])
+    cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
     client.post(
         "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
     )
@@ -287,9 +309,9 @@ def test_browser_select_emits_reusable_editor_script(client):
     # not rebuild a fresh iframe unconditionally on every selection.
     from conftest import parse_datastar_events
 
-    cid1 = _run(client, lambda col: list(col.find_cards("dog"))[0])
+    cid1 = _run(client, lambda col: next(iter(col.find_cards("dog"))))
     nid1 = _run(client, lambda col: col.get_card(cid1).nid)
-    cid2 = _run(client, lambda col: list(col.find_cards("cat"))[0])
+    cid2 = _run(client, lambda col: next(iter(col.find_cards("cat"))))
     nid2 = _run(client, lambda col: col.get_card(cid2).nid)
 
     for cid, nid in ((cid1, nid1), (cid2, nid2)):
@@ -304,7 +326,7 @@ def test_browser_select_emits_reusable_editor_script(client):
 
 
 def test_editor_listens_for_in_place_note_switch(client):
-    nid = _run(client, lambda col: list(col.find_notes("dog"))[0])
+    nid = _run(client, lambda col: next(iter(col.find_notes("dog"))))
     html = client.get(f"/edit?nid={nid}").text
     # editor reloads a note in-place on a parent postMessage (no full editor.js reload)
     assert "addEventListener('message'" in html
@@ -314,6 +336,8 @@ def test_editor_listens_for_in_place_note_switch(client):
 def test_row_data_rich_fields_and_formatted_due(client):
     import datetime
     import time
+    from datetime import UTC
+
     from ankiweb.adapters.inbound.http_datastar.browser import _row_data
 
     def seed_various_cards(col):
@@ -394,9 +418,9 @@ def test_row_data_rich_fields_and_formatted_due(client):
     assert r2["sort_text"] == "alpha"
     assert r2["template_name"] == "Card 2"
     assert r2["note_type_name"] == "Basic (and reversed card)"
-    assert r2["due"] == (datetime.date.today() + datetime.timedelta(days=4)).isoformat()
+    today = datetime.datetime.now(tz=UTC).astimezone().date()
+    assert r2["due"] == (today + datetime.timedelta(days=4)).isoformat()
     assert r2["is_suspended"] is False
-
     r3 = next(r for r in rows if r["cid"] == c3_id)
     assert r3["sort_text"] == "gamma"
     assert r3["is_suspended"] is True
@@ -408,7 +432,7 @@ def test_row_data_rich_fields_and_formatted_due(client):
 
     r5 = next(r for r in rows if r["cid"] == c5_id)
     assert r5["sort_text"] == "past_due_card"
-    assert r5["due"] == (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
+    assert r5["due"] == (today - datetime.timedelta(days=3)).isoformat()
     # verify rendering of these rows includes template names and tags
     html = client.get("/browse?q=alpha").text
     assert "Card 1" in html

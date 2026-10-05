@@ -1,50 +1,74 @@
 {% macro tmpl_block(tmpl) %}
   <div
     class="tmpl-block bg-base-100 border border-base-300 rounded-box p-4 mb-4 shadow-sm"
-    data-orig="{{ tmpl.ord }}"
+    data-layout-key="{{ tmpl.key }}"
   >
     <div class="flex items-center flex-wrap gap-2 mb-3">
       <label class="flex items-center gap-2 mb-0">
         <span class="text-sm font-semibold">{{ tr.actions_name() }}</span>
-        <input type="text" class="tmpl-name input input-sm inline-block w-auto" value="{{ tmpl.name }}" size="24">
+        <input
+          type="text"
+          class="tmpl-name input input-sm inline-block w-auto"
+          data-bind="layoutDraft.rows.{{ tmpl.key }}.name"
+          value="{{ tmpl.name }}"
+          size="24"
+        >
       </label>
       <div class="join">
-        <button class="btn btn-sm btn-outline join-item" type="button" onclick="moveUp(this)">↑</button>
-        <button class="btn btn-sm btn-outline join-item" type="button" onclick="moveDown(this)">↓</button>
+        <button
+          class="btn btn-sm btn-outline join-item"
+          type="button"
+          data-on:click__prevent="moveLayoutBlock(el, $layoutDraft, '{{ tmpl.key }}', -1)"
+        >↑</button>
+        <button
+          class="btn btn-sm btn-outline join-item"
+          type="button"
+          data-on:click__prevent="moveLayoutBlock(el, $layoutDraft, '{{ tmpl.key }}', 1)"
+        >↓</button>
       </div>
-      <button class="btn btn-sm btn-outline btn-error ms-auto sm:ms-0" type="button" onclick="deleteBlock(this)">
+      <button
+        class="btn btn-sm btn-outline btn-error ms-auto sm:ms-0"
+        type="button"
+        data-on:click__prevent="deleteLayoutBlock(el, $layoutDraft, '{{ tmpl.key }}')"
+      >
         {{ tr.actions_delete() }}
       </button>
     </div>
     <div class="tmpl-label text-sm font-semibold mt-2 mb-1">
       {{ tr.card_templates_front_template() }}
     </div>
-    <textarea class="tmpl-qfmt textarea font-mono w-full" rows="6"
+    <textarea
+      class="tmpl-qfmt textarea font-mono w-full"
+      rows="6"
+      data-bind="layoutDraft.rows.{{ tmpl.key }}.qfmt"
     >{{ tmpl.qfmt }}</textarea>
     <div class="tmpl-label text-sm font-semibold mt-2 mb-1">
       {{ tr.card_templates_back_template() }}
     </div>
-    <textarea class="tmpl-afmt textarea font-mono w-full" rows="6"
+    <textarea
+      class="tmpl-afmt textarea font-mono w-full"
+      rows="6"
+      data-bind="layoutDraft.rows.{{ tmpl.key }}.afmt"
     >{{ tmpl.afmt }}</textarea>
   </div>
 {% endmacro %}
 <div class="card-layout max-w-4xl mx-auto px-4 py-3">
   <h3 class="text-xl font-bold mb-3">Card Types</h3>
-  <form id="clf" onsubmit="return false" data-signals='{{ {"notetypeId": ntid, "error": ""} | tojson }}'>
+  <form id="clf" onsubmit="return false" data-signals='{{ {"notetypeId": ntid, "error": "", "layoutDraft": layout_draft} | tojson }}'>
     <div id="tmplblocks">
       {% for t in templates %}{{ tmpl_block(t) }}{% endfor %}
     </div>
     <div class="mt-2">
-      <button class="btn btn-outline" type="button" id="addtmpl" onclick="addBlock()">
+      <button class="btn btn-outline" type="button" id="addtmpl" data-on:click__prevent="addLayoutBlock($layoutDraft)">
         {{ tr.card_templates_add_card_type() }}
       </button>
     </div>
     <div class="mt-4">
       <div class="tmpl-label text-sm font-semibold mb-1">{{ tr.card_templates_template_styling() }}</div>
-      <textarea id="css" class="textarea font-mono w-full" rows="8" data-bind="css">{{ css }}</textarea>
+      <textarea id="css" class="textarea font-mono w-full" rows="8" data-bind="layoutDraft.css">{{ css }}</textarea>
     </div>
     <div class="mt-4 flex flex-wrap gap-2">
-      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="$error = ''; const payload = buildLayoutPayload(); payload.notetypeId = $notetypeId; payload.css = $css; @post('/card-layout/savelayout', {payload: payload})">
+      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="$error = ''; @post('/card-layout/savelayout')">
         {{ tr.actions_save() }}
       </button>
       <button class="btn btn-neutral" type="button" data-on:click__prevent="@post('/card-layout/cancel')">
@@ -62,48 +86,55 @@
     <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
   </form>
 </div>
-<template id="blankblock">{{
-  tmpl_block({"ord": "new", "name": "", "qfmt": "", "afmt": ""})
-}}</template>
-<!-- Das Template-Array wird bewusst per Vanilla-JS/DOM gelesen, da Datastar v1.0.3 kein Listen-Rendering für dynamisch geklonte Templates bietet. -->
+<template id="blankblock">{{ tmpl_block({'key': '__LAYOUT_KEY__', 'name': '', 'qfmt': '', 'afmt': ''}) }}</template>
 <script>
-  function addBlock() {
-      var tpl = document.getElementById('blankblock');
-      var block = tpl.content.firstElementChild.cloneNode(true);
-      document.getElementById('tmplblocks').appendChild(block);
+  function replaceLayoutKey(block, key) {
+    for (const element of [block, ...block.querySelectorAll('*')]) {
+      for (const attribute of Array.from(element.attributes)) {
+        if (attribute.value.includes('__LAYOUT_KEY__')) {
+          element.setAttribute(attribute.name, attribute.value.split('__LAYOUT_KEY__').join(key));
+        }
+      }
+    }
   }
 
-  function deleteBlock(btn) {
-      var b = btn.closest('.tmpl-block');
-      b.parentNode.removeChild(b);
+  function addLayoutBlock(layoutDraft) {
+    const key = `t${layoutDraft.nextId}`;
+    layoutDraft.nextId += 1;
+    layoutDraft.rows[key] = {name: '', qfmt: '', afmt: ''};
+    layoutDraft.order = [...layoutDraft.order, key];
+
+    const template = document.getElementById('blankblock');
+    const block = template.content.firstElementChild.cloneNode(true);
+    replaceLayoutKey(block, key);
+    document.getElementById('tmplblocks').appendChild(block);
   }
 
-  function moveUp(btn) {
-      var b = btn.closest('.tmpl-block');
-      var prev = b.previousElementSibling;
-      if (prev) b.parentNode.insertBefore(prev, b);
+  function deleteLayoutBlock(button, layoutDraft, key) {
+    layoutDraft.order = layoutDraft.order.filter(function(k) { return k !== key; });
+    delete layoutDraft.rows[key];
+    const block = button.closest('.tmpl-block');
+    if (block) block.remove();
   }
 
-  function moveDown(btn) {
-      var b = btn.closest('.tmpl-block');
-      var next = b.nextElementSibling;
-      if (next) b.parentNode.insertBefore(next, b);
-  }
+  function moveLayoutBlock(button, layoutDraft, key, direction) {
+    const order = [...layoutDraft.order];
+    const index = order.indexOf(key);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= order.length) return;
 
-  function buildLayoutPayload() {
-      var blocks = Array.prototype.slice.call(
-          document.querySelectorAll('#tmplblocks .tmpl-block'));
-      var templates = blocks.map(function(b) {
-          var orig = b.getAttribute('data-orig');
-          return {
-              orig: (orig === 'new') ? null : parseInt(orig),
-              name: b.querySelector('.tmpl-name').value,
-              qfmt: b.querySelector('.tmpl-qfmt').value,
-              afmt: b.querySelector('.tmpl-afmt').value
-          };
-      });
-      return {
-          templates: templates
-      };
+    const [moved] = order.splice(index, 1);
+    order.splice(targetIndex, 0, moved);
+    layoutDraft.order = order;
+
+    const block = button.closest('.tmpl-block');
+    const container = block.parentElement;
+    const children = Array.from(container.children);
+    const target = children[targetIndex];
+    if (direction < 0) {
+      container.insertBefore(block, target);
+    } else {
+      container.insertBefore(block, target.nextSibling);
+    }
   }
 </script>

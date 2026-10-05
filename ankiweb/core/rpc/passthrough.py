@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import re
 
 # Backend methods the web frontend calls via /_anki/<camel>, served by

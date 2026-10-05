@@ -1,16 +1,18 @@
 from __future__ import annotations
+
 import base64
 import fnmatch
 import hashlib
 import os
-from ankiweb.core.ankiconnect_actions.registry import action
+
 from ankiweb.ankiconnect.schemas.media import (
-    StoreMediaFileParams,
-    RetrieveMediaFileParams,
-    GetMediaFilesNamesParams,
-    GetMediaDirPathParams,
     DeleteMediaFileParams,
+    GetMediaDirPathParams,
+    GetMediaFilesNamesParams,
+    RetrieveMediaFileParams,
+    StoreMediaFileParams,
 )
+from ankiweb.core.ankiconnect_actions.registry import action
 
 
 def _fetch_bytes(data=None, path=None, url=None):
@@ -23,7 +25,7 @@ def _fetch_bytes(data=None, path=None, url=None):
         import httpx
 
         return httpx.get(url, follow_redirects=True, timeout=30).content
-    raise Exception("storeMediaFile requires one of data/path/url")
+    raise ValueError("storeMediaFile requires one of data/path/url")
 
 
 def _store(
@@ -97,7 +99,6 @@ async def get_media_dir_path(rt):
 @action("deleteMediaFile", params=DeleteMediaFileParams, summary="Delete a media file")
 async def delete_media_file(rt, filename=None):
     await rt.service.run(lambda col: col.media.trash_files([filename]))
-    return None
 
 
 # --- media-field attachment for addNote/addNotes (called from notes.py) ---

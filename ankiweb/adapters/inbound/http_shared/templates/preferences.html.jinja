@@ -28,7 +28,8 @@
     id="pf"
     onsubmit="return false"
     data-signals='{{ initial_signals | tojson }}'
-    data-computed="{new_timezone: () => !$legacy_timezone, hide_audio_play_buttons: () => !$show_play_buttons}"
+    data-computed="{new_timezone: () => !$legacy_timezone, hide_audio_play_buttons: () => !$show_play_buttons, current_prefs: () => ({rollover: $rollover, learn_ahead_mins: $learn_ahead_mins, new_review_mix: $new_review_mix, legacy_timezone: $legacy_timezone, day_learn_first: $day_learn_first, show_play_buttons: $show_play_buttons, interrupt_audio_when_answering: $interrupt_audio_when_answering, show_remaining_due_counts: $show_remaining_due_counts, show_intervals_on_buttons: $show_intervals_on_buttons, time_limit_mins: $time_limit_mins, load_balancer_enabled: $load_balancer_enabled, fsrs_short_term_with_steps_enabled: $fsrs_short_term_with_steps_enabled, adding_defaults_to_current_deck: $adding_defaults_to_current_deck, paste_images_as_png: $paste_images_as_png, paste_strips_formatting: $paste_strips_formatting, default_search_text: $default_search_text, ignore_accents_in_search: $ignore_accents_in_search, render_latex: $render_latex, daily: $daily, weekly: $weekly, monthly: $monthly, minimum_interval_mins: $minimum_interval_mins, svelte_editor: $svelte_editor})}"
+    data-effect="(() => { const cur = $current_prefs, init = $initial; let d = false; if (cur && init) { for (const k in init) { if (cur[k] != init[k]) { d = true; break; } } } $dirty = d; })()"
   >
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <!-- Section navigation index for >= lg -->
@@ -228,10 +229,11 @@
       <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
         <div class="flex items-center gap-2 flex-wrap">
           <button
-            class="btn btn-outline px-4 font-semibold min-h-[44px]"
+            class="btn px-4 font-semibold min-h-[44px]"
             type="button"
             id="save"
-            data-on:click__prevent="$error = ''; @post('/preferences/savePrefs', {payload: {rollover: $rollover, learn_ahead_mins: $learn_ahead_mins, new_review_mix: $new_review_mix, new_timezone: $new_timezone, day_learn_first: $day_learn_first, hide_audio_play_buttons: $hide_audio_play_buttons, interrupt_audio_when_answering: $interrupt_audio_when_answering, show_remaining_due_counts: $show_remaining_due_counts, show_intervals_on_buttons: $show_intervals_on_buttons, time_limit_mins: $time_limit_mins, load_balancer_enabled: $load_balancer_enabled, fsrs_short_term_with_steps_enabled: $fsrs_short_term_with_steps_enabled, adding_defaults_to_current_deck: $adding_defaults_to_current_deck, paste_images_as_png: $paste_images_as_png, paste_strips_formatting: $paste_strips_formatting, default_search_text: $default_search_text, ignore_accents_in_search: $ignore_accents_in_search, render_latex: $render_latex, daily: $daily, weekly: $weekly, monthly: $monthly, minimum_interval_mins: $minimum_interval_mins, svelte_editor: $svelte_editor}})"
+            data-class="{'btn-primary': $dirty, 'btn-outline': !$dirty}"
+            data-on:click__prevent="$error = ''; @post('/preferences/savePrefs')"
           >
             {{ tr.actions_save() }}
           </button>
@@ -298,58 +300,6 @@
 
 
   (function() {
-      // Unsaved changes tracking
-      var saveBtn = document.getElementById('save');
-      var form = document.getElementById('pf');
-      var initialValues = {};
-
-      function snapshotForm() {
-          initialValues = {};
-          if (!form) return;
-          var inputs = form.querySelectorAll('input, select');
-          inputs.forEach(function(input) {
-              if (input.type === 'checkbox') {
-                  initialValues[input.id] = input.checked;
-              } else {
-                  initialValues[input.id] = input.value;
-              }
-          });
-      }
-
-      function checkDirty() {
-          if (!form || !saveBtn) return;
-          var isDirty = false;
-          var inputs = form.querySelectorAll('input, select');
-          for (var i = 0; i < inputs.length; i++) {
-              var input = inputs[i];
-              var initVal = initialValues[input.id];
-              if (input.type === 'checkbox') {
-                  if (input.checked !== initVal) {
-                      isDirty = true;
-                      break;
-                  }
-              } else {
-                  if (input.value !== initVal) {
-                      isDirty = true;
-                      break;
-                  }
-              }
-          }
-          if (isDirty) {
-              saveBtn.classList.remove('btn-outline');
-              saveBtn.classList.add('btn-primary');
-          } else {
-              saveBtn.classList.remove('btn-primary');
-              saveBtn.classList.add('btn-outline');
-          }
-      }
-
-      snapshotForm();
-      if (form) {
-          form.addEventListener('input', checkDirty);
-          form.addEventListener('change', checkDirty);
-      }
-
       // ScrollSpy / active index item tracking for >= lg
       var indexLinks = document.querySelectorAll('#prefs-index a');
       if (indexLinks.length && 'IntersectionObserver' in window) {

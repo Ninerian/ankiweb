@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import json
+
 from ankiweb.adapters.inbound.http_shared import templating
 
 
@@ -87,6 +89,5 @@ def make_editor_handler(service, hub):
                     return col.update_note(n, skip_undo_entry=True)
 
                 await service.run_op(fn, initiator="editor")
-        return None
 
     return handler

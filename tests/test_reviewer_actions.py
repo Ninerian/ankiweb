@@ -1,10 +1,12 @@
 from pathlib import Path
-from anki.cards import CardId
+
 import anki.consts
-from ankiweb.core.config import Settings
+from anki.cards import CardId
+
+from ankiweb.adapters.inbound.http_screens.reviewer import make_reviewer_handler
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.core.bridge.ui_state import UiState
-from ankiweb.adapters.inbound.http_screens.reviewer import make_reviewer_handler
+from ankiweb.core.config import Settings
 
 
 class _Hub:

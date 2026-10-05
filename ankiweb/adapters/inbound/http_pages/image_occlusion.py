@@ -7,24 +7,28 @@ Serves:
 """
 
 from __future__ import annotations
+
 import logging
 import os
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
+import anki.errors
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 
+from ankiweb import import_tmp
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.core.i18n import tr
-from ankiweb import import_tmp
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +245,7 @@ def make_router(get_service: Callable) -> APIRouter:
                         if "Comments" in n and n["Comments"] != comments:
                             n["Comments"] = comments
                             col.update_note(n)
-                    except Exception as e:
+                    except (anki.errors.AnkiException, KeyError) as e:
                         logger.warning("Could not update Comments field: %s", e)
                 return op
             else:
@@ -269,7 +273,7 @@ def make_router(get_service: Callable) -> APIRouter:
                         if "Comments" in n:
                             n["Comments"] = comments
                             col.update_note(n)
-                    except Exception as e:
+                    except (anki.errors.AnkiException, KeyError) as e:
                         logger.warning("Could not set Comments field: %s", e)
 
                 return op
@@ -286,11 +290,11 @@ def make_router(get_service: Callable) -> APIRouter:
                 SSE.redirect("/deckbrowser"),
             ])
         except Exception as e:
-            logger.exception("Failed to save image occlusion note: %s", e)
+            logger.exception("Failed to save image occlusion note")
             return DatastarResponse(
                 SSE.patch_signals({
                     "is_saving": False,
-                    "status_msg": f"Failed to save: {str(e)}",
+                    "status_msg": f"Failed to save: {e!s}",
                     "status_type": "danger",
                 })
             )

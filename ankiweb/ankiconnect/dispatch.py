@@ -1,6 +1,13 @@
 from __future__ import annotations
+
+import logging
 from typing import Any
+
+from anki.errors import AnkiException
+
 from ankiweb.core.ankiconnect_actions.registry import ACTIONS
+
+logger = logging.getLogger(__name__)
 
 
 def _envelope(version: int, result: Any) -> Any:
@@ -21,9 +28,12 @@ async def dispatch_one(rt, req: dict, actions: dict = ACTIONS) -> Any:
         action_name = req.get("action") or ""
         params = req.get("params") or {}
         # apiKey gate (requestPermission is always exempt)
-        if rt.config.api_key is not None and action_name != "requestPermission":
-            if req.get("key") != rt.config.api_key:
-                raise Exception("valid api key must be provided")
+        if (
+            rt.config.api_key is not None
+            and action_name != "requestPermission"
+            and req.get("key") != rt.config.api_key
+        ):
+            raise PermissionError("valid api key must be provided")
         if action_name == "multi":
             result = [
                 await dispatch_one(rt, sub, actions)
@@ -32,7 +42,8 @@ async def dispatch_one(rt, req: dict, actions: dict = ACTIONS) -> Any:
         elif action_name in actions:
             result = await actions[action_name](rt, **params)
         else:
-            raise Exception(f"unsupported action: {action_name}")
+            raise ValueError(f"unsupported action: {action_name}")
         return _envelope(version, result)
-    except Exception as exc:  # errors are ALWAYS enveloped, regardless of version
+    except (AnkiException, AttributeError, LookupError, OSError, RuntimeError, TypeError, ValueError) as exc:  # errors are ALWAYS enveloped, regardless of version
+        logger.warning("AnkiConnect action %s failed: %s", req.get("action"), exc)
         return {"result": None, "error": str(exc)}

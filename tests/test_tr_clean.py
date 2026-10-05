@@ -1,6 +1,7 @@
+import anki.lang
+
 from ankiweb.adapters.inbound.http_shared.templating import tr_clean
 from ankiweb.core.i18n import tr
-import anki.lang
 
 
 def test_tr_clean_accelerators():

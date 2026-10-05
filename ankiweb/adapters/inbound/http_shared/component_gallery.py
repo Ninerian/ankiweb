@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from pathlib import Path
 
 from ankiweb.adapters.inbound.http_shared import templating

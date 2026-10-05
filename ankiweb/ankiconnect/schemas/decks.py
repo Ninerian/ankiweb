@@ -1,8 +1,9 @@
 """Request models for the deck actions (ankiweb/ankiconnect/actions/decks.py)."""
 
 from __future__ import annotations
-from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
+
 from ankiweb.ankiconnect.schemas._base import ACBaseModel
 
 
@@ -23,7 +24,7 @@ class GetDecksParams(ACBaseModel):
 class CreateDeckParams(ACBaseModel):
     """Create a deck by name (get-or-create); returns the deck id."""
 
-    deck: Optional[str] = Field(
+    deck: str | None = Field(
         default=None, description="Deck name, '::' separated for subdecks."
     )
 
@@ -32,7 +33,7 @@ class ChangeDeckParams(ACBaseModel):
     """Move the given cards into a deck, creating it if needed."""
 
     cards: list[int] = Field(default_factory=list, description="Card ids to move.")
-    deck: Optional[str] = Field(default=None, description="Target deck name.")
+    deck: str | None = Field(default=None, description="Target deck name.")
 
 
 class DeleteDecksParams(ACBaseModel):
@@ -48,7 +49,7 @@ class DeleteDecksParams(ACBaseModel):
 class GetDeckConfigParams(ACBaseModel):
     """Get the options-group config for a deck (False if the deck is unknown)."""
 
-    deck: Optional[str] = Field(default=None, description="Deck name.")
+    deck: str | None = Field(default=None, description="Deck name.")
 
 
 class SaveDeckConfigConfig(BaseModel):
@@ -58,7 +59,7 @@ class SaveDeckConfigConfig(BaseModel):
     """
 
     model_config = ConfigDict(extra="allow")
-    id: Optional[int] = Field(
+    id: int | None = Field(
         default=None, description="Id of the config group to update."
     )
 
@@ -66,7 +67,7 @@ class SaveDeckConfigConfig(BaseModel):
 class SaveDeckConfigParams(ACBaseModel):
     """Save an options-group config object; True on success, False if its id is unknown."""
 
-    config: Optional[SaveDeckConfigConfig] = Field(
+    config: SaveDeckConfigConfig | None = Field(
         default=None,
         description="Config group object to save (must contain a valid `id`).",
     )
@@ -76,7 +77,7 @@ class SetDeckConfigIdParams(ACBaseModel):
     """Assign an existing config group to the given decks; False if any is unknown."""
 
     decks: list[str] = Field(default_factory=list, description="Deck names to update.")
-    configId: Optional[int] = Field(
+    configId: int | None = Field(
         default=None, description="Existing config-group id."
     )
 
@@ -84,7 +85,7 @@ class SetDeckConfigIdParams(ACBaseModel):
 class CloneDeckConfigIdParams(ACBaseModel):
     """Clone a config group under a new name; returns the new id or False."""
 
-    name: Optional[str] = Field(
+    name: str | None = Field(
         default=None, description="Name for the new config group."
     )
     cloneFrom: str = Field(
@@ -95,7 +96,7 @@ class CloneDeckConfigIdParams(ACBaseModel):
 class RemoveDeckConfigIdParams(ACBaseModel):
     """Remove a config group by id; False for id 1 (Default) or an unknown id."""
 
-    configId: Optional[int] = Field(
+    configId: int | None = Field(
         default=None, description="Config-group id to remove."
     )
 
@@ -109,4 +110,4 @@ class GetDeckStatsParams(ACBaseModel):
 class DeckNameFromIdParams(ACBaseModel):
     """Resolve a deck id to its full deck name."""
 
-    deckId: Optional[int] = Field(default=None, description="Deck id.")
+    deckId: int | None = Field(default=None, description="Deck id.")

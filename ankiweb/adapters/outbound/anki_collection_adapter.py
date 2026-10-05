@@ -1,9 +1,13 @@
 from __future__ import annotations
+
 import asyncio
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, TypeVar
+from typing import TypeVar
+
 import anki.lang
 from anki.collection import Collection
+
 from ankiweb.core.config import Settings
 from ankiweb.core.op_changes import op_changes_to_flags
 

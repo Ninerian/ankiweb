@@ -4,17 +4,25 @@ Serves /card-info/{ids:path}.
 """
 
 from __future__ import annotations
-import math
+
 import datetime
 import json
-from typing import Any, Callable, cast
+import logging
+import math
+from collections.abc import Callable
+from typing import Any, cast
+
+from anki.errors import AnkiException, NotFoundError
+from datastar_py.fastapi import DatastarResponse
+from datastar_py.fastapi import ServerSentEventGenerator as SSE
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE
 from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 # Constants matching upstream
 SECONDS = 0
@@ -99,13 +107,13 @@ def format_timespan(
     return lookup[r](amount=cast(int, n))
 
 
-def format_date(timestamp: int | float) -> str:
-    dt = datetime.datetime.fromtimestamp(timestamp)
+def format_date(timestamp: float) -> str:
+    dt = datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC).astimezone()
     return dt.strftime("%Y-%m-%d")
 
 
-def format_time(timestamp: int | float) -> str:
-    dt = datetime.datetime.fromtimestamp(timestamp)
+def format_time(timestamp: float) -> str:
+    dt = datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC).astimezone()
     return dt.strftime("%H:%M")
 
 
@@ -248,7 +256,7 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
         try:
             parsed = json.loads(stats_proto.custom_data)
             custom_str = " ".join(f"{k}={v}" for k, v in parsed.items())
-        except Exception:
+        except (json.JSONDecodeError, TypeError, ValueError):
             custom_str = stats_proto.custom_data
         rows.append({"label": tr.card_stats_custom_data(), "value": custom_str})
 
@@ -468,7 +476,7 @@ def render_forgetting_curve_svg(
     if not e:
         return "", 0.0, 0
 
-    now_ts = datetime.datetime.now().timestamp()
+    now_ts = datetime.datetime.now(tz=datetime.UTC).astimezone().timestamp()
     t_days = (now_ts - e[-1].time) / 86400.0
     h_days = (now_ts - e[0].time) / 86400.0
     s_days = e[0].interval / 86400.0
@@ -630,8 +638,8 @@ def render_forgetting_curve_svg(
         )
 
     # Ticks for X matching D3 time scale
-    dt_start = datetime.datetime.fromtimestamp(min_time)
-    dt_stop = datetime.datetime.fromtimestamp(max_time)
+    dt_start = datetime.datetime.fromtimestamp(min_time, tz=datetime.UTC).astimezone()
+    dt_stop = datetime.datetime.fromtimestamp(max_time, tz=datetime.UTC).astimezone()
     x_tick_dts = d3_time_ticks(dt_start, dt_stop, 5)
     x_ticks_svg = []
     for dt_tick in x_tick_dts:
@@ -713,7 +721,7 @@ def make_router(get_service: Callable) -> APIRouter:
             cid = cids[0]
             try:
                 stats_proto = await service.run(lambda col: col.card_stats_data(cid))
-            except Exception:
+            except (NotFoundError, AnkiException):
                 inconsistent_msg = (
                     "Your database appears to be in an inconsistent state. "
                     f"Please use the Check Database action. No such card: '{cid}'"
@@ -741,12 +749,12 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             c_proto, p_proto = await service.run(fetch_both)
-        except Exception:
+        except (NotFoundError, AnkiException):
             # Determine which card failed
             def check_which(col):
                 try:
                     col.card_stats_data(curr_id)
-                except Exception:
+                except (NotFoundError, AnkiException):
                     return curr_id
                 return prev_id
 

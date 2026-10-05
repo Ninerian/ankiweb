@@ -1,9 +1,11 @@
-from typing import Any, cast
-import pytest
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -26,9 +28,8 @@ def _seed(col):
 def _nid(client):
     assert client.portal is not None
     return client.portal.call(
-        client.app.state.service.run, lambda col: list(col.find_notes(""))[0]
+        client.app.state.service.run, lambda col: next(iter(col.find_notes("")))
     )
-
 
 def _drain_call(ws, fn, tries=6):
     for _ in range(tries):

@@ -1,13 +1,14 @@
-from typing import Any, cast
-import pytest
 from pathlib import Path
+from typing import Any, cast
 from urllib.parse import quote
+
+import pytest
+from conftest import parse_datastar_events
 from fastapi.testclient import TestClient
 
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
 from ankiweb import import_tmp
-from conftest import parse_datastar_events
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 PNG = bytes.fromhex(
     "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c434"

@@ -1,6 +1,7 @@
 """Download the Datastar frontend bundle into ankiweb/shell/static/datastar.js."""
 
 from __future__ import annotations
+
 import urllib.request
 from pathlib import Path
 

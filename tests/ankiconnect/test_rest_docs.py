@@ -1,13 +1,15 @@
 """Tests for the typed /actions/<name> REST surface + OpenAPI schemas."""
 
 import inspect
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.ankiconnect.app import create_ankiconnect_app
 from ankiweb.ankiconnect.config import AnkiConnectConfig
 from ankiweb.core.ankiconnect_actions.registry import ACTION_SPECS, EXTRA_ACTION_SPECS
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture

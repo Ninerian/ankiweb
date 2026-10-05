@@ -1,7 +1,12 @@
 from __future__ import annotations
-from ankiweb.core.i18n import tr
-from ankiweb.core.html_sanitize import sanitize_html
+
+import logging
+
+from anki.errors import AnkiException
+
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.html_sanitize import sanitize_html
+from ankiweb.core.i18n import tr
 
 SECOND = 1.0
 MINUTE = 60.0 * SECOND
@@ -48,7 +53,7 @@ def _build_next_learn_msg(info) -> str:
     if secs_until >= 86_400:
         return ""
     unit = _natural_unit(secs_until)
-    amount = int(round(secs_until / _unit_seconds(unit)))
+    amount = round(secs_until / _unit_seconds(unit))
     next_learn_due = tr.scheduling_next_learn_due(amount=amount, unit=unit)
     remaining = tr.scheduling_learn_remaining(remaining=info.learn_remaining)
     return f"{next_learn_due} {remaining}"
@@ -61,6 +66,8 @@ def _bridge_link(command: str, label: str) -> str:
         return f'<a href="#" data-on:click__prevent="@post(\'/overview/studymore\')">{label}</a>'
     return f'<a href="#">{label}</a>'
 
+
+logger = logging.getLogger(__name__)
 
 def render_congrats_html(col) -> str:
     info = col.sched.congratulations_info()
@@ -97,7 +104,8 @@ def render_congrats_html(col) -> str:
             raw_desc = deck.get("desc", "")
             if raw_desc and deck.get("md"):
                 raw_desc = col.render_markdown(raw_desc)
-        except Exception:
+        except (AnkiException, AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
+            logger.exception("Failed to render congratulations deck description")
             raw_desc = ""
     sanitized_desc = sanitize_html(raw_desc) if raw_desc else ""
 

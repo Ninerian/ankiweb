@@ -4,8 +4,7 @@
     New available: {{ avail_new }} &nbsp; Review available: {{ avail_rev }}
   </div>
   {# cfg_json is pre-serialized JSON; HTML-escape it so translated apostrophes do not close this single-quoted attribute. #}
-  <form id="cs" onsubmit="return false" data-signals='{"radio": 1, "spin": {{ spin_default }}, "error": "", "cfg": {{ cfg_json | e }}}'>
-    {# Datastar v1.0.3 bind values are signal keys; omit the $ prefix used in expressions. #}
+  <form id="cs" onsubmit="return false" data-signals='{"radio": 1, "spin": {{ spin_default }}, "cram_kind": 1, "include": [], "exclude": [], "error": "", "cfg": {{ cfg_json | e }}}' data-computed="{value: () => parseInt($spin || '0')}">
     {# Keep translation HTML escaped, but leave apostrophes literal in this text node. #}
     <div class="space-y-2 mb-3">
       {% for v, t in radios %}
@@ -41,7 +40,7 @@
     <div id="cramblock" class="space-y-3 mb-3" style="display:none;" data-show="$radio == 6">
       <div>
         <label for="cramkind" class="block text-sm font-medium mb-1">{{ tr.browsing_sidebar_card_state() }}</label>
-        <select id="cramkind" class="select select-sm w-full">
+        <select id="cramkind" class="select select-sm w-full" data-bind="cram_kind">
           {% for k, t in kinds %}<option value="{{ k }}">{{ t }}</option>{%
             endfor
           %}
@@ -49,7 +48,7 @@
       </div>
       <div>
         <label for="inc" class="block text-sm font-medium mb-1">{{ tr.custom_study_require_one_or_more_of_these() }}</label>
-        <select id="inc" class="select select-sm w-full h-auto" multiple size="4">
+        <select id="inc" class="select select-sm w-full h-auto" multiple size="4" data-bind="include">
           {% for t in tags %}<option value="{{ t }}">{{ t }}</option>{%
             endfor
           %}
@@ -57,7 +56,7 @@
       </div>
       <div>
         <label for="exc" class="block text-sm font-medium mb-1">{{ tr.custom_study_select_tags_to_exclude() }}</label>
-        <select id="exc" class="select select-sm w-full h-auto" multiple size="4">
+        <select id="exc" class="select select-sm w-full h-auto" multiple size="4" data-bind="exclude">
           {% for t in tags %}<option value="{{ t }}">{{ t }}</option>{%
             endfor
           %}
@@ -65,7 +64,7 @@
       </div>
     </div>
     <div class="mt-4 flex items-center gap-2">
-      <button class="btn btn-primary btn-sm" type="button" id="go" data-on:click__prevent="$error = ''; const payload = {radio: parseInt($radio), value: parseInt($spin || '0')}; if (parseInt($radio) === 6) { payload.cram_kind = parseInt(document.getElementById('cramkind').value); payload.include = multiVals('inc'); payload.exclude = multiVals('exc'); }; @post('/custom-study/submit', {payload: payload})">
+      <button class="btn btn-primary btn-sm" type="button" id="go" data-on:click__prevent="$error = ''; @post('/custom-study/submit')">
         {{ tr.custom_study_ok() }}
       </button>
       <button class="btn btn-neutral btn-sm" type="button" data-on:click__prevent="@post('/custom-study/cancel')">
@@ -75,13 +74,3 @@
     <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
   </form>
 </div>
-<script>
-  // Keep DOM reads for cramkind and the multi-selects; multi-select values have no scalar signal binding.
-  function multiVals(id) {
-      var out = [],
-          el = document.getElementById(id);
-      for (var i = 0; i < el.options.length; i++)
-          if (el.options[i].selected) out.push(el.options[i].value);
-      return out;
-  }
-</script>

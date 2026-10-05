@@ -3,15 +3,15 @@ import tempfile
 import urllib.parse
 from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
 import anki.import_export_pb2 as ie
+import pytest
 from anki.collection import Collection
-
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
-from ankiweb import import_tmp
 from conftest import parse_datastar_events
+from fastapi.testclient import TestClient
+
+from ankiweb import import_tmp
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -102,7 +102,7 @@ def test_next_import_anki_package_do_import_success(client_and_settings):
 
 
 def test_next_import_anki_package_rejects_path_outside_tmp(client_and_settings):
-    client, settings = client_and_settings
+    client, _settings = client_and_settings
     resp = client.post(
         "/import-anki-package/do-import",
         headers={"Datastar-Request": "true"},
@@ -247,7 +247,10 @@ def test_next_import_page_duplicate_log_flow(client_and_settings):
 
 def test_next_import_page_browse_search_query_generation(client_and_settings):
     import anki.import_export_pb2 as ie
-    from ankiweb.adapters.inbound.http_pages.import_package import _build_log_summary_and_rows
+
+    from ankiweb.adapters.inbound.http_pages.import_package import (
+        _build_log_summary_and_rows,
+    )
     resp_pb = ie.ImportResponse()
     log = resp_pb.log
     log.found_notes = 3

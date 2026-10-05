@@ -1,22 +1,27 @@
 from __future__ import annotations
+
 import logging
 import os
 import urllib.parse
-from typing import Any, Callable, cast
+from collections.abc import Callable
+from typing import Any, cast
 
-from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+import anki.errors
+import anki.import_export_pb2 as ie
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
+from fastapi.responses import HTMLResponse
 
-from ankiweb.core.i18n import tr
+from ankiweb import import_tmp
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
-import anki.import_export_pb2 as ie
-from ankiweb import import_tmp
+from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -237,7 +242,7 @@ def make_router(get_service: Callable) -> APIRouter:
         def get_options(col):
             try:
                 return col._backend.get_import_anki_package_presets()
-            except Exception:
+            except anki.errors.AnkiException:
                 return ie.ImportAnkiPackageOptions()
 
         options = await service.run(get_options)
@@ -251,7 +256,7 @@ def make_router(get_service: Callable) -> APIRouter:
         def get_options(col):
             try:
                 return col._backend.get_import_anki_package_presets()
-            except Exception:
+            except anki.errors.AnkiException:
                 return ie.ImportAnkiPackageOptions()
 
         options = await service.run(get_options)

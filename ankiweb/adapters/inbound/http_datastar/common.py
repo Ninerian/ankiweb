@@ -12,9 +12,11 @@ use standard backend redirects and native anchors per the Tao of Datastar.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE
+from datastar_py.fastapi import DatastarResponse
+from datastar_py.fastapi import ServerSentEventGenerator as SSE
 
 
 async def refresh_screen(
