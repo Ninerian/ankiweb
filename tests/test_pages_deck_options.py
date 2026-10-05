@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 from ankiweb.core.config import Settings
 from ankiweb.app import create_app
 from conftest import parse_datastar_events
-import anki.deck_config_pb2 as dc
 
 
 @pytest.fixture
@@ -41,7 +40,11 @@ def test_next_deck_options_filtered_deck(client):
         g.name = "MyFilteredDeck"
         del g.config.search_terms[:]
         g.config.search_terms.append(
-            dp.Deck.Filtered.SearchTerm(search="deck:Default", limit=10, order=5)
+            dp.Deck.Filtered.SearchTerm(
+                search="deck:Default",
+                limit=10,
+                order=dp.Deck.Filtered.SearchTerm.Order.ADDED,
+            )
         )
         return col.sched.add_or_update_filtered_deck(g).id
 
@@ -142,7 +145,7 @@ def test_next_deck_options_rename_preset(client):
 def test_next_deck_options_delete_preset(client):
     def setup_decks_and_presets(col):
         pid = col.decks.add_config_returning_id("To Delete")
-        pid_other = col.decks.add_config_returning_id("Other Preset")
+        _ = col.decks.add_config_returning_id("Other Preset")
         did_parent = col.decks.id("Parent")
         did_child = col.decks.id("Parent::Child")
 

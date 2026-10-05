@@ -1,9 +1,9 @@
 from __future__ import annotations
 import json
 import logging
-from typing import Any, Callable
+from typing import Callable, cast
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from datastar_py.fastapi import (
     DatastarResponse,
     ServerSentEventGenerator as SSE,
@@ -13,7 +13,6 @@ from datastar_py.fastapi import (
 import anki.scheduler_pb2 as sched_pb
 import anki.deck_config_pb2 as deck_cfg_pb
 from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +258,7 @@ def make_router(get_service: Callable) -> APIRouter:
             search=search,
             new_cards_ignore_review_limit=bool(payload.get("new_cards_ignore_review_limit", False)),
             easy_days_percentages=cfg.get("easy_days_percentages") or [1.0] * 7,
-            review_order=int(cfg.get("review_order", 0)),
+            review_order=cast(deck_cfg_pb.DeckConfig.Config.ReviewCardOrder.ValueType, int(cfg.get("review_order", 0))),
             suspend_after_lapse_count=0,
             historical_retention=float(cfg.get("historical_retention", 0.9)),
             learning_step_count=len(cfg.get("learn_steps") or [1, 10]),
@@ -360,7 +359,7 @@ def make_router(get_service: Callable) -> APIRouter:
                     "fsrsWorkloadFactor": factor,
                 })
             )
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed to get retention workload")
             return DatastarResponse()
 
@@ -370,7 +369,7 @@ def make_router(get_service: Callable) -> APIRouter:
         service = get_service()
         try:
             await service.backend_raw_concurrent("set_wants_abort", b"")
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed to set abort flag")
         return DatastarResponse(
             SSE.patch_signals({

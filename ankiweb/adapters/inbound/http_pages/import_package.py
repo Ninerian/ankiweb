@@ -2,9 +2,9 @@ from __future__ import annotations
 import logging
 import os
 import urllib.parse
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 from datastar_py.fastapi import (
     DatastarResponse,
@@ -63,8 +63,8 @@ def _update_choices() -> list[dict[str, Any]]:
     ]
 
 
-def _build_log_summary_and_rows(log: ie.ImportLog) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Build the summaries and details table rows from protobuf ImportLog.
+def _build_log_summary_and_rows(log: ie.ImportResponse.Log) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Build the summaries and details table rows from protobuf ImportResponse.Log.
     Matches upstream ts/routes/import-page/ logic exactly:
     - new notes: action = tr.adding_added(), reason = tr.importing_added_new_note(), can_browse = True
     - duplicate notes: action = tr.importing_skipped(), reason = tr.importing_existing_note_skipped(), can_browse = True
@@ -205,7 +205,7 @@ def render_import_anki_package_html(
 def render_import_package_modal(package_path: str, options: ie.ImportAnkiPackageOptions) -> str:
     return render_import_anki_package_html(package_path, options, as_modal=True)
 def render_import_page_html(
-    log: ie.ImportLog | None = None,
+    log: ie.ImportResponse.Log | None = None,
     error: str | None = None,
 ) -> str:
     if error or log is None:
@@ -283,8 +283,8 @@ def make_router(get_service: Callable) -> APIRouter:
                 with_scheduling=with_scheduling,
                 with_deck_configs=with_deck_configs,
                 merge_notetypes=merge_notetypes,
-                update_notes=update_notes,
-                update_notetypes=update_notetypes,
+                update_notes=cast(ie.ImportAnkiPackageUpdateCondition.ValueType, update_notes),
+                update_notetypes=cast(ie.ImportAnkiPackageUpdateCondition.ValueType, update_notetypes),
             ),
         )
 

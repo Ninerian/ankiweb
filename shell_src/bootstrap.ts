@@ -1,7 +1,7 @@
 import { addBrowserClasses } from "./browser_selector";
 import { Bridge } from "./pycmd_shim";
 
-// Context resolution order: explicit page global, then ?context= (the spike), then "default".
+// Resolve once for this document; browser navigation creates a new document and context.
 const ctx =
   (window as any).__ankiwebContext ||
   new URLSearchParams(location.search).get("context") ||
@@ -14,10 +14,12 @@ function nightOn(): boolean {
   return location.hash.includes("night") || localStorage.getItem("ankiweb-night") === "1";
 }
 
+
 // Server-invokable navigation/reload helpers (called via {type:"call"}).
 bridge.registerCalls({
   ankiwebNavigate: (url: unknown) => {
-    location.href = String(url);
+    const target = String(url);
+    location.assign(target);
   },
   ankiwebReload: () => {
     location.reload();

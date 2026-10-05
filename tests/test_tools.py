@@ -1,3 +1,4 @@
+from typing import Any, cast
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -75,6 +76,7 @@ def test_emptycards_roundtrip_deletes(tmp_path: Path):
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
         assert client.portal is not None
+        app = cast(Any, client.app)
 
         def seed(col):
             cloze_model = col.models.by_name("Cloze")
@@ -83,8 +85,7 @@ def test_emptycards_roundtrip_deletes(tmp_path: Path):
             col.add_note(note, col.decks.id("Default"))
             return len(col.find_cards(""))
 
-        before = client.portal.call(client.app.state.service.run, seed)
-        assert before >= 1
+        before = client.portal.call(app.state.service.run, seed)
 
         # 1. Ask for the report.
         r1 = client.post("/tools/emptycards")
@@ -99,7 +100,7 @@ def test_emptycards_roundtrip_deletes(tmp_path: Path):
         assert any("Deleted 1 empty cards" in data for _, data in events2)
 
         after = client.portal.call(
-            client.app.state.service.run, lambda col: len(col.find_cards(""))
+            app.state.service.run, lambda col: len(col.find_cards(""))
         )
         assert after == before - 1
 

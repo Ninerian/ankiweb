@@ -1,9 +1,6 @@
 """Tests for Image Occlusion shape serialization, cloze formatting, and backend round-trip."""
 
 from __future__ import annotations
-import re
-import pytest
-from pathlib import Path
 from anki.collection import Collection
 import anki.image_occlusion_pb2 as pb
 

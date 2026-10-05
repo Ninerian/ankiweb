@@ -1,3 +1,4 @@
+from typing import Any, cast
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -11,7 +12,8 @@ def client(tmp_path: Path):
     with TestClient(create_app(settings)) as c:
         assert c.portal is not None
         # seed a card so the deck browser has content
-        c.portal.call(c.app.state.service.run, _seed)
+        app = cast(Any, c.app)
+        c.portal.call(app.state.service.run, _seed)
         yield c
 
 

@@ -1,14 +1,14 @@
 import pytest
 from pathlib import Path
+from anki.cards import CardId
 from anki.collection import Collection
-from anki.scheduler.v3 import Scheduler as V3Scheduler, CardAnswer
+from anki.scheduler.v3 import CardAnswer, Scheduler as V3Scheduler
 from fastapi.testclient import TestClient
 
 from ankiweb.core.config import Settings
 from ankiweb.app import create_app
 from ankiweb.adapters.inbound.http_pages.graph_svg import (
-    LinearScale, BandScale, render_x_axis, render_y_axis, render_bars,
-    render_stacked_bars, render_line, render_pie_slice, render_no_data_overlay
+    LinearScale, BandScale, render_pie_slice
 )
 
 
@@ -23,7 +23,7 @@ def test_col(tmp_path: Path):
         assert did is not None
 
         # Add 10 cards
-        cids = []
+
         for i in range(10):
             n = col.new_note(nt)
             n["Front"] = f"Question {i}"
@@ -31,9 +31,10 @@ def test_col(tmp_path: Path):
             col.add_note(n, did)
 
         # Answer 5 cards to generate revlog, future due, today stats
+        assert isinstance(col.sched, V3Scheduler)
         queued = col.sched.get_queued_cards(fetch_limit=5)
         for qc in queued.cards:
-            card = col.get_card(qc.card.id)
+            card = col.get_card(CardId(qc.card.id))
             card.start_timer()
             ans = col.sched.build_answer(card=card, states=qc.states, rating=CardAnswer.Rating.GOOD)
             col.sched.answer_card(ans)

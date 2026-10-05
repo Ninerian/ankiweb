@@ -1,4 +1,5 @@
 from pathlib import Path
+from anki.cards import CardId
 import anki.consts
 from ankiweb.core.config import Settings
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
@@ -56,7 +57,8 @@ async def _make(tmp_path, n_cards=3):
 async def test_mark_toggles_tag_and_draws(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    cid = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    cid = CardId(hub.ui_state.current_card_id)
     await handler("mark")
     has_tag = await svc.run(lambda col: "marked" in col.get_card(cid).note().tags)
     assert has_tag is True
@@ -76,7 +78,8 @@ async def test_mark_toggles_tag_and_draws(tmp_path: Path):
 async def test_setflag_sets_user_flag_and_draws(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    cid = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    cid = CardId(hub.ui_state.current_card_id)
     await handler("setflag:2")
     flag = await svc.run(lambda col: col.get_card(cid).user_flag())
     assert flag == 2
@@ -111,7 +114,8 @@ async def test_buryc_advances(tmp_path: Path):
 async def test_suspendc_suspends_and_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    first = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    first = CardId(hub.ui_state.current_card_id)
     await handler("suspendc")
     queue = await svc.run(lambda col: col.get_card(first).queue)
     assert queue == anki.consts.QUEUE_TYPE_SUSPENDED
@@ -125,7 +129,8 @@ async def test_suspendc_suspends_and_advances(tmp_path: Path):
 async def test_suspendn_suspends_note_and_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    first = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    first = CardId(hub.ui_state.current_card_id)
     await handler("suspendn")
     queue = await svc.run(lambda col: col.get_card(first).queue)
     assert queue == anki.consts.QUEUE_TYPE_SUSPENDED
@@ -151,7 +156,8 @@ async def test_buryn_buries_note_and_advances(tmp_path: Path):
 async def test_forget_resets_card(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    cid = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    cid = CardId(hub.ui_state.current_card_id)
     # answer it so it's no longer new, then reload that card by id and forget it
     await handler("ease3")
     ctype = await svc.run(lambda col: col.get_card(cid).type)

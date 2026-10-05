@@ -1,4 +1,3 @@
-import pytest
 from ankiweb.adapters.inbound.http_shared.templating import tr_clean
 from ankiweb.core.i18n import tr
 import anki.lang

@@ -1,7 +1,5 @@
 import pytest
 from pathlib import Path
-import json
-import time
 from fastapi.testclient import TestClient
 
 from ankiweb.core.config import Settings

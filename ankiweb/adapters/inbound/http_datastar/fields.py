@@ -42,7 +42,6 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
     @router.post("/cancel")
     async def cancel():
         return DatastarResponse(SSE.redirect("/deckbrowser"))
-
     @router.post("/savefields")
     async def save_fields(payload: ReadSignals):
         service = get_service()

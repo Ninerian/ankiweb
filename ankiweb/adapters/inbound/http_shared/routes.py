@@ -23,10 +23,9 @@ from ankiweb.adapters.inbound.http_datastar.browser import (
     make_browser_routes,
 )
 from ankiweb.adapters.inbound.http_screens.editor import (
-    editor_page_body,
     make_editor_handler,
 )
-from ankiweb.adapters.inbound.http_screens.add import render_add_html, make_add_handler
+from ankiweb.adapters.inbound.http_screens.add import make_add_handler
 from ankiweb.adapters.inbound.http_datastar.custom_study import (
     render_custom_study_html,
     make_custom_study_routes,
@@ -66,7 +65,6 @@ from ankiweb.adapters.inbound.http_shared.notify import (
     config_from_form,
 )
 from ankiweb.core.notify.engine import header_safe
-
 _MIME_EXT = {
     "image/png": ".png",
     "image/jpeg": ".jpg",
@@ -79,6 +77,8 @@ _MIME_EXT = {
 
 def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=None) -> APIRouter:
     router = APIRouter()
+
+
     router.include_router(make_deckbrowser_routes(get_service))
     router.include_router(make_overview_routes(get_service))
     router.include_router(make_custom_study_routes(get_service))

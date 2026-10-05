@@ -1,5 +1,4 @@
-import io
-import os
+from typing import Any, cast
 import pytest
 from pathlib import Path
 from urllib.parse import quote
@@ -25,7 +24,7 @@ def client(tmp_path: Path):
 
 
 def _img_in_tmp(client: TestClient, name: str = "test.png") -> str:
-    settings = client.app.state.service.settings
+    settings = cast(Any, client.app).state.service.settings
     d = import_tmp.io_dir(settings)
     p = d / name
     p.write_bytes(PNG)
@@ -50,7 +49,7 @@ def test_next_image_occlusion_add_page_serves_html(client):
 
 
 def test_next_image_occlusion_add_note_save(client):
-    svc = client.app.state.service
+    svc = cast(Any, client.app).state.service
     img_path = _img_in_tmp(client, "save_add.png")
     before_notes = client.portal.call(svc.run, lambda col: col.note_count())
 

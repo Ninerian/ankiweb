@@ -56,7 +56,7 @@ def editor_page_body(nid: int) -> str:
 
 
 def make_editor_handler(service, hub):
-    state = {"nid": None}
+    state: dict[str, int | None] = {"nid": None}
 
     async def handler(arg: str):
         head, _, rest = arg.partition(":")

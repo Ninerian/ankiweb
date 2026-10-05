@@ -1,3 +1,4 @@
+from typing import Any, cast
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -9,7 +10,8 @@ from ankiweb.app import create_app
 def client(tmp_path: Path):
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
         assert c.portal is not None
-        c.portal.call(c.app.state.service.run, _seed)
+        app = cast(Any, c.app)
+        c.portal.call(app.state.service.run, _seed)
         yield c
 
 
@@ -310,8 +312,9 @@ def test_editor_listens_for_in_place_note_switch(client):
 
 
 def test_row_data_rich_fields_and_formatted_due(client):
-    import datetime, time
-    from ankiweb.adapters.inbound.http_datastar.browser import _row_data, _format_due
+    import datetime
+    import time
+    from ankiweb.adapters.inbound.http_datastar.browser import _row_data
 
     def seed_various_cards(col):
         m_rev = col.models.by_name("Basic (and reversed card)")

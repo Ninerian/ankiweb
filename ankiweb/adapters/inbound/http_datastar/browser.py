@@ -2,7 +2,6 @@ from __future__ import annotations
 import html
 import datetime
 import re
-import time
 from typing import Callable
 from fastapi import APIRouter
 from datastar_py.fastapi import (

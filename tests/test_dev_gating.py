@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 from ankiweb.core.config import Settings
 from ankiweb.app import create_app

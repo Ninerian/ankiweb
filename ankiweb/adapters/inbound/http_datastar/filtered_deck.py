@@ -1,6 +1,6 @@
 from __future__ import annotations
 from ankiweb.adapters.inbound.http_datastar.common import error_response
-from typing import Callable
+from typing import Callable, cast
 from fastapi import APIRouter
 from datastar_py.fastapi import (
     DatastarResponse,
@@ -37,6 +37,7 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
     preview_hard = cfg.preview_hard_secs
     preview_good = cfg.preview_good_secs
     initial_signals = {
+        "error": "",
         "id": did,
         "name": name,
         "allow_empty": allow_empty,
@@ -82,7 +83,6 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
     @router.post("/cancel")
     async def cancel():
         return DatastarResponse(SSE.redirect("/overview"))
-
     @router.post("/submit")
     async def submit(payload: ReadSignals):
         service = get_service()
@@ -106,7 +106,7 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
                 dp.Deck.Filtered.SearchTerm(
                     search=p.get("search1", ""),
                     limit=int(p.get("limit1", 100)),
-                    order=int(p.get("order1", 0)),
+                    order=cast(dp.Deck.Filtered.SearchTerm.Order.ValueType, int(p.get("order1", 0))),
                 )
             ]
             if p.get("second"):
@@ -114,7 +114,7 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
                     dp.Deck.Filtered.SearchTerm(
                         search=p.get("search2", ""),
                         limit=int(p.get("limit2", 20)),
-                        order=int(p.get("order2", 5)),
+                        order=cast(dp.Deck.Filtered.SearchTerm.Order.ValueType, int(p.get("order2", 5))),
                     )
                 )
             del cfg.search_terms[:]

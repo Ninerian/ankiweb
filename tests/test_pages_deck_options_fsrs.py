@@ -1,11 +1,9 @@
 import pytest
 import time
-import random
 from pathlib import Path
 from fastapi.testclient import TestClient
 
 from ankiweb.core.config import Settings
-from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.app import create_app
 import anki.collection
 
@@ -15,8 +13,10 @@ def _populate_test_reviews(col_path: Path):
     col = anki.collection.Collection(str(col_path))
     try:
         m = col.models.by_name("Basic")
-        deck_id = col.decks.add_normal_deck_with_name("TestDeck").id
-        
+        assert m is not None
+        assert col.db is not None
+        deck_id = col.decks.id("TestDeck")
+        assert deck_id is not None
         cards = []
         for i in range(120):
             note = col.new_note(m)
@@ -26,7 +26,6 @@ def _populate_test_reviews(col_path: Path):
 
         cards = col.find_cards("deck:TestDeck")
         base_time = int(time.time() * 1000) - 200 * 86400 * 1000
-        rev_id = base_time
 
         for idx, cid in enumerate(cards):
             t = base_time + idx * 60000

@@ -7,23 +7,20 @@ Serves:
 """
 
 from __future__ import annotations
-import base64
 import logging
 import os
 import re
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 
 from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, Response, PlainTextResponse
+from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
 from datastar_py.fastapi import (
     DatastarResponse,
     ServerSentEventGenerator as SSE,
     ReadSignals,
 )
 
-import anki.image_occlusion_pb2 as iopb
-from anki.collection import OpChanges
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.core.i18n import tr
@@ -198,7 +195,7 @@ def make_router(get_service: Callable) -> APIRouter:
         occlusions = payload.get("occlusions", "")
         hide_all = bool(payload.get("hide_all", True))
         notetype_id = int(payload.get("selected_notetype_id", 0))
-        deck_id = int(payload.get("selected_deck_id", 1))
+        int(payload.get("selected_deck_id", 1))
 
         # Count non-text occlusions: c1, c2, ... (c0 is text)
         non_text_occlusions = re.findall(r"\{\{c([1-9]\d*)::image-occlusion:", occlusions or "")
@@ -278,8 +275,7 @@ def make_router(get_service: Callable) -> APIRouter:
                 return op
 
         try:
-            op = await service.run_op(do_save)
-            msg = tr.notetypes_io_card_count(count=1) if hasattr(tr, "notetypes_io_card_count") else "Cards created successfully"
+            await service.run_op(do_save)
             return DatastarResponse([
                 SSE.patch_signals({
                     "is_saving": False,

@@ -2,19 +2,17 @@ from __future__ import annotations
 import math
 import json
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter
 from datastar_py.fastapi import (
     DatastarResponse,
     ServerSentEventGenerator as SSE,
     ReadSignals,
 )
 
+import anki.deck_config_pb2 as deck_cfg_pb
 import anki.scheduler_pb2 as sched_pb
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_pages.graph_svg import (
     LinearScale,
     render_x_axis,
@@ -291,7 +289,7 @@ def make_router(get_service: Callable) -> APIRouter:
             search=search,
             new_cards_ignore_review_limit=ignore_rev_limit,
             easy_days_percentages=easy_days,
-            review_order=review_order,
+            review_order=cast(deck_cfg_pb.DeckConfig.Config.ReviewCardOrder.ValueType, review_order),
             historical_retention=float(cfg.get("historical_retention", 0.9)),
             learning_step_count=len(cfg.get("learn_steps", [1.0, 10.0])),
             relearning_step_count=len(cfg.get("relearn_steps", [10.0])),
@@ -422,7 +420,7 @@ def make_router(get_service: Callable) -> APIRouter:
             search=search,
             new_cards_ignore_review_limit=ignore_rev_limit,
             easy_days_percentages=easy_days,
-            review_order=review_order,
+            review_order=cast(deck_cfg_pb.DeckConfig.Config.ReviewCardOrder.ValueType, review_order),
             historical_retention=float(cfg.get("historical_retention", 0.9)),
             learning_step_count=len(cfg.get("learn_steps", [1.0, 10.0])),
             relearning_step_count=len(cfg.get("relearn_steps", [10.0])),

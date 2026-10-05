@@ -1,4 +1,3 @@
-import pytest
 from ankiweb.adapters.inbound.http_shared.routes import _MIME_EXT
 
 

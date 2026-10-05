@@ -1,4 +1,3 @@
-import pytest
 from ankiweb.core.html_sanitize import sanitize_html
 
 

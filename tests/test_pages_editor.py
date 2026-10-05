@@ -1,4 +1,4 @@
-import json
+from typing import Any, cast
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -10,7 +10,8 @@ from ankiweb.app import create_app
 def client(tmp_path: Path):
     with TestClient(create_app(Settings(collection_path=tmp_path / "editor_test.anki2"))) as c:
         assert c.portal is not None
-        c.portal.call(c.app.state.service.run, _seed)
+        app = cast(Any, c.app)
+        c.portal.call(app.state.service.run, _seed)
         yield c
 
 
@@ -32,7 +33,7 @@ def _seed(col):
 def _first_nid(client):
     assert client.portal is not None
     return client.portal.call(
-        client.app.state.service.run, lambda col: list(col.find_notes("FranceCapital"))[0]
+        cast(Any, client.app).state.service.run, lambda col: list(col.find_notes("FranceCapital"))[0]
     )
 
 

@@ -22,7 +22,6 @@ D3 / Svelte chart components used in Anki's statistics and deck options simulato
 
 from __future__ import annotations
 import math
-from datetime import datetime, date, timedelta
 from typing import Any, Callable, Sequence
 
 
@@ -57,7 +56,6 @@ class LinearScale:
         if reverse:
             start, stop = stop, start
 
-        span = stop - start
         step = self._tick_increment(start, stop, count)
         if step == 0 or not math.isfinite(step):
             return []
@@ -280,7 +278,6 @@ def render_stacked_bars(
 ) -> str:
     """Render stacked vertical bars for multi-category data."""
     elements = []
-    y_zero = y_scale(0)
 
     for cat_idx, key in enumerate(keys):
         elements.append(f'<g class="bars{cat_idx}">')

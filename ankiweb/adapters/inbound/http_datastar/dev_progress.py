@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import AsyncGenerator
+from datastar_py.sse import DatastarEvent
 from fastapi import APIRouter
 from datastar_py.fastapi import (
     DatastarResponse,
@@ -11,7 +12,7 @@ from datastar_py.fastapi import (
 router = APIRouter(prefix="/dev")
 
 
-async def _simulate_progress_events() -> AsyncGenerator[str, None]:
+async def _simulate_progress_events() -> AsyncGenerator[DatastarEvent, None]:
     """Simulate a long-running backend task emitting progress events via Datastar SSE.
     
     In a real operation (e.g. FSRS parameter computation or media checking),

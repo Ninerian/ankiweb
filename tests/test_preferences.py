@@ -1,3 +1,4 @@
+from typing import Any, cast
 import anki.lang
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -28,8 +29,9 @@ def test_saveprefs_roundtrip(tmp_path: Path):
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
         assert client.portal is not None
+        app = cast(Any, client.app)
         base = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+            app.state.service.run, lambda col: col.get_preferences()
         )
         payload = {
             "rollover": 6,
@@ -62,7 +64,7 @@ def test_saveprefs_roundtrip(tmp_path: Path):
         events = parse_datastar_events(r.text)
         assert any("window.location = '/deckbrowser'" in data for _, data in events)
         p = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+            app.state.service.run, lambda col: col.get_preferences()
         )
         assert p.scheduling.rollover == 6
         assert p.scheduling.learn_ahead_secs == 20 * 60  # form minutes -> proto seconds
@@ -78,8 +80,9 @@ def test_saveprefs_svelte_editor_roundtrip(tmp_path: Path):
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
         assert client.portal is not None
-        base = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+        app = cast(Any, client.app)
+        client.portal.call(
+            app.state.service.run, lambda col: col.get_preferences()
         )
         payload = {
             "rollover": 4,
@@ -111,7 +114,7 @@ def test_saveprefs_svelte_editor_roundtrip(tmp_path: Path):
         )
         assert r.status_code == 200
         exp = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_config("experimentalFeatures")
+            app.state.service.run, lambda col: col.get_config("experimentalFeatures")
         )
         assert exp == {"1": True}
 
@@ -122,7 +125,7 @@ def test_saveprefs_svelte_editor_roundtrip(tmp_path: Path):
         )
         assert r.status_code == 200
         exp = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_config("experimentalFeatures")
+            app.state.service.run, lambda col: col.get_config("experimentalFeatures")
         )
         assert exp == {"1": False}
 
@@ -132,8 +135,9 @@ def test_saveprefs_inverse_checkboxes(tmp_path: Path):
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
         assert client.portal is not None
+        app = cast(Any, client.app)
         base = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+            app.state.service.run, lambda col: col.get_preferences()
         )
         payload = {
             f.name: getattr(base.scheduling, f.name)
@@ -168,7 +172,7 @@ def test_saveprefs_inverse_checkboxes(tmp_path: Path):
         )
         assert r.status_code == 200
         p = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+            app.state.service.run, lambda col: col.get_preferences()
         )
         assert p.scheduling.new_timezone is False
         assert p.reviewing.hide_audio_play_buttons is True

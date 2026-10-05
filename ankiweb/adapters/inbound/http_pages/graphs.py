@@ -5,11 +5,10 @@ Serves /graphs with pure Jinja + Datastar + pure-Python SVG generation.
 
 from __future__ import annotations
 import math
-import html
-from datetime import datetime, date, timedelta
-from typing import Any, Callable, Sequence
+from datetime import date, timedelta
+from typing import Any, Callable, Sequence, cast
 
-from fastapi import APIRouter, Request, Response, Query
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse
 
 from ankiweb.adapters.inbound.http_shared import templating
@@ -65,8 +64,8 @@ def generate_today_stats(today: stats_pb2.GraphsResponse.Today) -> dict[str, Any
     # Formats: 'Studied X cards in Y.YY seconds today (Z.ZZs/card)'
     studied_str = tr.statistics_studied_today(
         unit=unit,
-        secs_per_card=round(secs_per_card, 2),
-        amount=round(amount, 2),
+        secs_per_card=cast(int, round(secs_per_card, 2)),
+        amount=cast(int, round(amount, 2)),
         cards=count,
     )
 
@@ -193,7 +192,6 @@ def generate_future_due_chart(
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
 
     svg_parts.append('<g class="bars">')
-    future_data = [item for item in data if not item["is_backlog"]]
     for idx, item in enumerate(data):
         bx = x_scale(item["day"])
         by = y_scale(item["count"])
@@ -209,7 +207,7 @@ def generate_future_due_chart(
         )
     svg_parts.append('</g>')
 
-    svg_parts.append(f'<g class="hover-columns">')
+    svg_parts.append('<g class="hover-columns">')
     for item in data:
         bx = x_scale(item["day"])
         tt = item["tooltip"]
@@ -342,7 +340,7 @@ def generate_reviews_chart(
 
     for d in range(-max_day, 1):
         entry = data_map.get(d)
-        item = {"day": d}
+        item: dict[str, Any] = {"day": d}
         running_base = 0.0
         day_tot = 0.0
         if entry:
@@ -386,7 +384,7 @@ def generate_reviews_chart(
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
     svg_parts.append(render_stacked_bars(items, "day", series_keys, colors, x_scale, y_scale, bar_width=bar_w))
 
-    svg_parts.append(f'<g class="hover-columns">')
+    svg_parts.append('<g class="hover-columns">')
     for item in items:
         bx = x_scale(item["day"])
         tt = item["tooltip"]
@@ -548,7 +546,7 @@ def generate_intervals_chart(
     margin_top = 20
     margin_bottom = 25
     chart_w = width - margin_left - margin_right
-    chart_h = height - margin_top - margin_bottom
+
 
     x_scale = LinearScale((0, max_interval), (margin_left, width - margin_right))
     y_scale = LinearScale((0, max(max_count, 1)), (height - margin_bottom, margin_top))
@@ -902,7 +900,7 @@ def generate_buttons_chart(
     margin_right = 70
     margin_top = 20
     margin_bottom = 25
-    chart_w = width - margin_left - margin_right
+
 
     b_scale = BandScale(categories, (margin_left, width - margin_right), padding_inner=0.2)
     max_tot = max(cd["total"] for cd in cat_data) if cat_data else 0

@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 import anki.import_export_pb2 as ie
-import anki.generic_pb2 as gen
 from anki.collection import Collection
 
 from ankiweb.core.config import Settings
@@ -31,7 +30,9 @@ def _create_test_apkg(out_path: str, front: str = "Test Front", back: str = "Tes
         src_col_path = os.path.join(tmp, "src.anki2")
         col = Collection(src_col_path)
         did = col.decks.id("TestDeck")
+        assert did is not None
         model = col.models.by_name("Basic")
+        assert model is not None
         note = col.new_note(model)
         note["Front"] = front
         note["Back"] = back
@@ -44,7 +45,7 @@ def _create_test_apkg(out_path: str, front: str = "Test Front", back: str = "Tes
                 with_media=False,
                 legacy=False,
             ),
-            limit=ie.ExportLimit(whole_collection=gen.Empty()),
+            limit=None,
         )
         col.close()
 

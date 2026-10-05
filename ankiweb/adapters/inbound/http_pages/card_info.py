@@ -7,7 +7,7 @@ from __future__ import annotations
 import math
 import datetime
 import json
-from typing import Any, Callable
+from typing import Any, Callable, cast
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
@@ -96,7 +96,7 @@ def format_timespan(
             MONTHS: tr.scheduling_time_span_months,
             YEARS: tr.scheduling_time_span_years,
         }
-    return lookup[r](amount=n)
+    return lookup[r](amount=cast(int, n))
 
 
 def format_date(timestamp: int | float) -> str:
@@ -513,14 +513,14 @@ def render_forgetting_curve_svg(
             continue
 
         M = (S - h) / 86400.0
-        I = 0.0
-        while I < M - step:
-            I += step
-            ret = _fsrs_retrievability(s, I, decay)
+        elapsed_days = 0.0
+        while elapsed_days < M - step:
+            elapsed_days += step
+            ret = _fsrs_retrievability(s, elapsed_days, decay)
             pts.append({
-                "time": h + I * 86400.0,
+                "time": h + elapsed_days * 86400.0,
                 "daysSinceFirstLearn": pts[-1]["daysSinceFirstLearn"] + step,
-                "elapsedDaysSinceLastReview": I,
+                "elapsedDaysSinceLastReview": elapsed_days,
                 "retrievability": ret * 100.0,
                 "stability": s,
             })
@@ -741,7 +741,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             c_proto, p_proto = await service.run(fetch_both)
-        except Exception as exc:
+        except Exception:
             # Determine which card failed
             def check_which(col):
                 try:

@@ -2,9 +2,9 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 from datastar_py.fastapi import (
     DatastarResponse,
@@ -70,7 +70,7 @@ def _build_context(
 ) -> dict[str, Any]:
     req = ie.CsvMetadataRequest(path=csv_path)
     if override_delimiter is not None:
-        req.delimiter = override_delimiter
+        req.delimiter = cast(ie.CsvMetadata.Delimiter.ValueType, override_delimiter)
     if override_is_html is not None:
         req.is_html = override_is_html
     if override_notetype_id is not None:
@@ -483,7 +483,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
         def do_import(col):
             req = ie.CsvMetadataRequest(path=csv_path)
-            req.delimiter = delimiter
+            req.delimiter = cast(ie.CsvMetadata.Delimiter.ValueType, delimiter)
             req.is_html = is_html
             req.notetype_id = notetype_id
             if deck_id != 0:

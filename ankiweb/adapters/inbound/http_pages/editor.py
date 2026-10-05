@@ -352,7 +352,7 @@ def make_router(get_service: Callable) -> APIRouter:
             if not col.undo_status().undo:
                 return False, "Nothing to undo"
             try:
-                op = col.undo()
+                col.undo()
                 return True, "Undone"
             except UndoEmpty:
                 return False, "Nothing to undo"

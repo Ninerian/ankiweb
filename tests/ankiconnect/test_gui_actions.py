@@ -1,3 +1,4 @@
+from typing import Any, cast
 import pytest
 from pathlib import Path
 from fastapi.testclient import TestClient
@@ -15,7 +16,8 @@ def client(tmp_path: Path):
     # so gui* reviewer-control actions (which reuse hub.dispatch_cmd) work end-to-end.
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
         assert c.portal is not None
-        c.portal.call(c.app.state.service.run, _seed)
+        app = cast(Any, c.app)
+        c.portal.call(app.state.service.run, _seed)
         yield c
 
 

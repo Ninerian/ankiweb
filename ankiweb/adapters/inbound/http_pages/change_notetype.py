@@ -1,9 +1,9 @@
 from __future__ import annotations
 import json
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
 from datastar_py.fastapi import (
     DatastarResponse,
@@ -203,7 +203,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
         def check_and_render(col):
             try:
-                info = col.models.change_notetype_info(
+                col.models.change_notetype_info(
                     old_notetype_id=old_id,
                     new_notetype_id=new_id,
                 )
@@ -231,8 +231,8 @@ def make_router(get_service: Callable) -> APIRouter:
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         try:
-            old_id = int(payload.get("old_notetype_id"))
-            new_id = int(payload.get("target_notetype_id"))
+            old_id = int(cast(Any, payload.get("old_notetype_id")))
+            new_id = int(cast(Any, payload.get("target_notetype_id")))
         except (ValueError, TypeError):
             err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
@@ -268,8 +268,8 @@ def make_router(get_service: Callable) -> APIRouter:
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         try:
-            old_id = int(payload.get("old_notetype_id"))
-            new_id = int(payload.get("target_notetype_id"))
+            old_id = int(cast(Any, payload.get("old_notetype_id")))
+            new_id = int(cast(Any, payload.get("target_notetype_id")))
         except (ValueError, TypeError):
             err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
@@ -336,8 +336,8 @@ def make_router(get_service: Callable) -> APIRouter:
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         try:
-            old_id = int(payload.get("old_notetype_id"))
-            new_id = int(payload.get("target_notetype_id"))
+            old_id = int(cast(Any, payload.get("old_notetype_id")))
+            new_id = int(cast(Any, payload.get("target_notetype_id")))
         except (ValueError, TypeError):
             err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
@@ -415,8 +415,8 @@ def make_router(get_service: Callable) -> APIRouter:
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))
 
         try:
-            old_id = int(payload.get("old_notetype_id"))
-            new_id = int(payload.get("target_notetype_id"))
+            old_id = int(cast(Any, payload.get("old_notetype_id")))
+            new_id = int(cast(Any, payload.get("target_notetype_id")))
         except (ValueError, TypeError):
             err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return DatastarResponse(SSE.patch_elements(err_html, selector="#change-notetype-alert-area"))

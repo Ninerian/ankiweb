@@ -8,7 +8,6 @@ normalizes them, and outputs:
 """
 
 import json
-import os
 import re
 import urllib.request
 from pathlib import Path

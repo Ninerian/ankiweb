@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Callable
-from fastapi import APIRouter, Request, Query
-from fastapi.responses import JSONResponse
+from typing import Callable
+from fastapi import APIRouter, Query
 
 
 def make_router(get_service: Callable) -> APIRouter:
