@@ -5,6 +5,7 @@
       class="side-item"
       title="{{ d.name }}"
       href="#"
+      data-indicator="_busy"
       data-on:click__prevent="@post('/browse/searchdeck/{{ d.id }}')"
     >{{ d.name }}</a>
   {% endfor %}
@@ -14,7 +15,8 @@
       class="side-item"
       title="{{ t }}"
       href="#"
-      data-on:click__prevent="@post('/browse/searchtag', {payload: {tag: '{{ t }}'}})"
+      data-indicator="_busy"
+      data-on:click__prevent="$tag = {{ (t | tojson | forceescape) }}; @post('/browse/searchtag')"
     >{{ t }}</a>
   {% endfor %}
 {% endmacro %}
@@ -202,7 +204,32 @@
     border: 0;
   }
 </style>
-<div id="browser" class="text-sm">
+{% set raw_title = tr.browsing_window_title(total=987654, selected=123456) %}
+{% set clean_title = raw_title | replace('\u2068', '') | replace('\u2069', '') %}
+{% if '(' in clean_title and ')' in clean_title %}
+  {% set sel_pattern = clean_title.split('(')[1].split(')')[0] %}
+{% else %}
+  {% set sel_pattern = clean_title %}
+{% endif %}
+<div
+  id="browser"
+  class="text-sm"
+  data-signals='{{ {
+    "selectedCids": [],
+    "_selectionAnchor": None,
+    "_browserAction": "",
+    "_visibleCids": initial_cids,
+    "_matchedCount": initial_count | default(0),
+    "query": query | default(""),
+    "browserQuery": query | default(""),
+    "value": "",
+    "deck": "",
+    "tag": "",
+    "error": "",
+    "_busy": false
+  } | tojson }}'
+  data-on:ankiweb:browser-refresh__window="@post('/browse/refresh')"
+>
   <div id="browser-top" class="flex flex-wrap items-center gap-2 p-2 border-b border-base-300">
     <button
       class="btn btn-sm btn-outline md:hidden"
@@ -211,30 +238,39 @@
     >
       {{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}
     </button>
-    <input
-      id="search"
-      class="input input-sm grow md:grow-0"
-      type="text"
-      autofocus
-      placeholder="{{ tr.actions_search() }}…"
-      value="{{ query }}"
-      data-on:keydown__enter__prevent="document.getElementById('search-trigger').click()"
+    <form
+      class="grow md:grow-0"
+      data-indicator="_busy"
+      data-on:submit__prevent="@post('/browse/search')"
     >
+      <input
+        id="search"
+        class="input input-sm w-full md:w-80"
+        type="text"
+        autofocus
+        placeholder="{{ tr.actions_search() }}…"
+        data-bind="query"
+        value="{{ query }}"
+      >
+    </form>
     <div class="inline-flex items-center gap-2">
       <span id="browser-status" class="text-base-content/60">{{ count_label }}</span>
-      <span id="browser-selected-status" class="badge badge-neutral" style="display: none;"></span>
+      <span
+        id="browser-selected-status"
+        class="badge badge-neutral"
+        data-show="$selectedCids.length > 0"
+        data-text="{{ (sel_pattern | tojson | forceescape) }}.replace('123456', $selectedCids.length).replace('987654', $_matchedCount || $selectedCids.length)"
+        style="display: none;"
+      ></span>
     </div>
     <div id="browser-actions" class="flex flex-wrap items-center gap-1 ms-auto">
-      <button id="search-trigger" style="display:none" data-on:click__prevent="const q = document.getElementById('search').value; @post('/browse/search', {payload: {query: q}})"></button>
-      <button id="refresh-trigger" style="display:none" data-on:click__prevent="@post('/browse/refresh')"></button>
-      <button id="select-trigger" style="display:none" data-on:click__prevent="const cids = window.__ankiwebGetSel(); @post('/browse/select', {payload: {cids: cids}})"></button>
-
       <div class="join" role="group">
         <button
           id="btn-suspend"
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
-          disabled
+          data-indicator="_busy"
+          data-attr:disabled="!$selectedCids.length || $_busy"
           data-on:click__prevent="@post('/browse/suspend')"
         >
           {{ tr.studying_suspend() }}
@@ -243,7 +279,8 @@
           id="btn-unsuspend"
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
-          disabled
+          data-indicator="_busy"
+          data-attr:disabled="!$selectedCids.length || $_busy"
           data-on:click__prevent="@post('/browse/unsuspend')"
         >
           {{ tr.actions_unbury_unsuspend() }}
@@ -252,7 +289,8 @@
           id="btn-forget"
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
-          disabled
+          data-indicator="_busy"
+          data-attr:disabled="!$selectedCids.length || $_busy"
           data-on:click__prevent="@post('/browse/forget')"
         >
           {{ tr.actions_forget_card() }}
@@ -261,8 +299,8 @@
           id="btn-setdue"
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
-          disabled
-          data-on:click__prevent="ankiwebPrompt('Due in days (e.g. 0, 3, 1-7):').then(function(x) { if (x !== null && x !== '') @post('/browse/setdue', {payload: {value: x}}); })"
+          data-attr:disabled="!$selectedCids.length || $_busy"
+          data-on:click__prevent="$error = ''; $value = ''; $_browserAction = 'setdue'"
         >
           {{ tr.actions_set_due_date() }}
         </button>
@@ -270,8 +308,8 @@
           id="btn-changedeck"
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
-          disabled
-          data-on:click__prevent="ankiwebPrompt('Move to deck:').then(function(x) { if (x !== null && x !== '') @post('/browse/changedeck', {payload: {deck: x}}); })"
+          data-attr:disabled="!$selectedCids.length || $_busy"
+          data-on:click__prevent="$error = ''; $deck = ''; $_browserAction = 'changedeck'"
         >
           {{ tr.browsing_change_deck() }}
         </button>
@@ -279,8 +317,8 @@
           id="btn-addtag"
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
-          disabled
-          data-on:click__prevent="ankiwebPrompt('Add tag:').then(function(x) { if (x !== null && x !== '') @post('/browse/addtag', {payload: {tag: x}}); })"
+          data-attr:disabled="!$selectedCids.length || $_busy"
+          data-on:click__prevent="$error = ''; $tag = ''; $_browserAction = 'addtag'"
         >
           {{ tr.editing_tags_add() }}
         </button>
@@ -288,8 +326,8 @@
           id="btn-removetag"
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
-          disabled
-          data-on:click__prevent="ankiwebPrompt('Remove tag:').then(function(x) { if (x !== null && x !== '') @post('/browse/removetag', {payload: {tag: x}}); })"
+          data-attr:disabled="!$selectedCids.length || $_busy"
+          data-on:click__prevent="$error = ''; $tag = ''; $_browserAction = 'removetag'"
         >
           {{ tr.actions_remove_tag() }}
         </button>
@@ -297,76 +335,126 @@
           id="btn-delete"
           class="btn btn-sm btn-outline btn-error join-item hidden md:inline-flex"
           type="button"
-          disabled
-          data-on:click__prevent="ankiwebConfirm({{ (tr.browsing_delete_notes() ~ '?') | tojson | forceescape }}, {danger: true}).then(function(ok) { if (ok) @post('/browse/delete'); })"
+          data-attr:disabled="!$selectedCids.length || $_busy"
+          data-on:click__prevent="$error = ''; $_browserAction = 'delete'"
         >
           {{ tr.actions_delete() }}
         </button>
-        <button
+        <a
           id="btn-cardinfo"
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
-          type="button"
-          disabled
-          onclick="ankiwebCardInfo()"
+          role="button"
+          data-attr:href="$selectedCids.length ? ('/card-info/' + $selectedCids[0]) : '#'"
+          data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
+          data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
         >
           {{ tr.actions_card_info() }}
-        </button>
+        </a>
 
         <!-- Mobile dropdown collapsible -->
-        <details id="mobile-actions-dropdown" class="dropdown dropdown-end md:hidden">
+        <details
+          id="mobile-actions-dropdown"
+          class="dropdown dropdown-end md:hidden"
+          data-effect="if (!$selectedCids.length && el.hasAttribute('open')) el.removeAttribute('open')"
+        >
           <summary
             id="btn-actions-dropdown"
             class="btn btn-sm btn-outline"
             role="button"
+            data-class="{'btn-disabled': !$selectedCids.length || $_busy}"
+            data-attr:aria-disabled="(!$selectedCids.length || $_busy) ? 'true' : 'false'"
           >
             {{ tr.studying_more() }}
           </summary>
           <ul class="dropdown-content menu bg-base-100 rounded-box shadow-sm z-50 p-2 w-48 text-sm">
             <li>
-              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-suspend').click()">
+              <button
+                type="button"
+                data-indicator="_busy"
+                data-attr:disabled="!$selectedCids.length || $_busy"
+                data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/suspend')"
+              >
                 {{ tr.studying_suspend() }}
               </button>
             </li>
             <li>
-              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-unsuspend').click()">
+              <button
+                type="button"
+                data-indicator="_busy"
+                data-attr:disabled="!$selectedCids.length || $_busy"
+                data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/unsuspend')"
+              >
                 {{ tr.actions_unbury_unsuspend() }}
               </button>
             </li>
             <li>
-              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-forget').click()">
+              <button
+                type="button"
+                data-indicator="_busy"
+                data-attr:disabled="!$selectedCids.length || $_busy"
+                data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/forget')"
+              >
                 {{ tr.actions_forget_card() }}
               </button>
             </li>
             <li>
-              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-setdue').click()">
+              <button
+                type="button"
+                data-attr:disabled="!$selectedCids.length || $_busy"
+                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $value = ''; $_browserAction = 'setdue'"
+              >
                 {{ tr.actions_set_due_date() }}
               </button>
             </li>
             <li>
-              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-changedeck').click()">
+              <button
+                type="button"
+                data-attr:disabled="!$selectedCids.length || $_busy"
+                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $deck = ''; $_browserAction = 'changedeck'"
+              >
                 {{ tr.browsing_change_deck() }}
               </button>
             </li>
             <li>
-              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-addtag').click()">
+              <button
+                type="button"
+                data-attr:disabled="!$selectedCids.length || $_busy"
+                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $tag = ''; $_browserAction = 'addtag'"
+              >
                 {{ tr.editing_tags_add() }}
               </button>
             </li>
             <li>
-              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-removetag').click()">
+              <button
+                type="button"
+                data-attr:disabled="!$selectedCids.length || $_busy"
+                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $tag = ''; $_browserAction = 'removetag'"
+              >
                 {{ tr.actions_remove_tag() }}
               </button>
             </li>
             <li><hr class="border-base-300 my-1"></li>
             <li>
-              <button class="text-error" type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-delete').click()">
+              <button
+                class="text-error"
+                type="button"
+                data-attr:disabled="!$selectedCids.length || $_busy"
+                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $_browserAction = 'delete'"
+              >
                 {{ tr.actions_delete() }}
               </button>
             </li>
             <li>
-              <button type="button" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('btn-cardinfo').click()">
+              <a
+                id="btn-cardinfo-mobile"
+                role="button"
+                data-attr:href="$selectedCids.length ? ('/card-info/' + $selectedCids[0]) : '#'"
+                data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
+                data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
+                data-on:click="el.closest('details')?.removeAttribute('open')"
+              >
                 {{ tr.actions_card_info() }}
-              </button>
+              </a>
             </li>
           </ul>
         </details>
@@ -380,6 +468,7 @@
       id="sidebar-offcanvas"
       class="modal modal-bottom sm:modal-middle md:modal-open md:static md:h-full md:max-h-none md:bg-transparent md:border-0 md:p-0 md:shadow-none"
       aria-labelledby="sidebar-offcanvas-label"
+      data-on:click="if (evt.target.closest('.side-item') && window.innerWidth < 768 && el.open && typeof el.close === 'function') el.close()"
     >
       <div class="modal-box p-0 md:max-w-none md:w-full md:h-full md:p-0 md:rounded-none md:shadow-none md:bg-transparent">
         <div class="flex justify-between items-center md:hidden border-b border-base-300 p-2">
@@ -423,164 +512,134 @@
           </form>
         </div>
         <div class="p-0 overflow-y-auto">
-          <div id="detail"></div>
+          <div id="detail" data-attr:data-selected-cids="$selectedCids.join(',')"></div>
         </div>
       </div>
       <form method="dialog" class="modal-backdrop md:hidden"><button>close</button></form>
     </dialog>
   </div>
+
+  <!-- Consolidated Action Dialogs Macro -->
+  {% macro action_dialog(act_key, act_title, prompt_label, input_id, input_bind, placeholder_text, endpoint, is_danger=false, is_confirm=false) %}
+  <dialog
+    id="dialog-{{ act_key }}"
+    class="modal modal-bottom sm:modal-middle"
+    aria-labelledby="dialog-{{ act_key }}-title"
+    data-effect="if ($_browserAction === '{{ act_key }}') { if (!el.open) { el.showModal(); el.querySelector('input, button.btn-error, button.btn-primary')?.focus(); } } else { if (el.open && !$_busy) el.close(); }"
+    data-on:cancel="if ($_busy) { evt.preventDefault(); } else if ($_browserAction === '{{ act_key }}') { $_browserAction = ''; $error = ''; }"
+    data-on:close="if (!$_busy && $_browserAction === '{{ act_key }}') { $_browserAction = ''; $error = ''; }"
+  >
+    <div class="modal-box">
+      <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
+        <h5 class="font-bold text-lg{% if is_danger %} text-error{% endif %}" id="dialog-{{ act_key }}-title">{{ act_title }}</h5>
+        <button
+          type="button"
+          class="btn btn-sm btn-circle btn-ghost"
+          aria-label="Close"
+          data-attr:disabled="$_busy"
+          data-on:click="if (!$_busy) { $_browserAction = ''; $error = ''; el.closest('dialog')?.close(); }"
+        >✕</button>
+      </div>
+      <div id="browser-action-error-{{ act_key }}" class="mb-3 text-error text-sm font-semibold" role="alert" data-show="$error" data-text="$error"></div>
+      <form data-indicator="_busy" data-on:submit__prevent="@post('{{ endpoint }}')">
+        {% if is_confirm %}
+          <p class="py-2 text-sm">{{ prompt_label }}</p>
+        {% else %}
+          <div class="mb-4">
+            <label for="{{ input_id }}" class="block py-1 text-sm font-semibold">{{ prompt_label }}</label>
+            <input
+              id="{{ input_id }}"
+              type="text"
+              class="input input-sm w-full"
+              placeholder="{{ placeholder_text }}"
+              data-bind="{{ input_bind }}"
+              value=""
+            >
+          </div>
+        {% endif %}
+        <div class="modal-action">
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost"
+            data-attr:disabled="$_busy"
+            data-on:click="if (!$_busy) { $_browserAction = ''; $error = ''; el.closest('dialog')?.close(); }"
+          >
+            {{ tr.actions_cancel() }}
+          </button>
+          <button
+            type="submit"
+            class="btn btn-sm {% if is_danger %}btn-error{% else %}btn-primary{% endif %}"
+            data-attr:disabled="{% if is_confirm %}!$selectedCids.length || $_busy{% else %}!${{ input_bind }}.trim() || !$selectedCids.length || $_busy{% endif %}"
+          >
+            {{ act_title }}
+          </button>
+        </div>
+      </form>
+    </div>
+    <div class="modal-backdrop" data-on:click="if (!$_busy) { $_browserAction = ''; $error = ''; el.closest('dialog')?.close(); }"><button type="button" tabindex="-1" data-attr:disabled="$_busy">close</button></div>
+  </dialog>
+  {% endmacro %}
+
+  <!-- The five consolidated prompt/confirm action dialogs -->
+  {{ action_dialog(
+      act_key="setdue",
+      act_title=tr.actions_set_due_date(),
+      prompt_label="Due in days (e.g. 0, 3, 1-7):",
+      input_id="input-setdue",
+      input_bind="value",
+      placeholder_text="0, 3, 1-7",
+      endpoint="/browse/setdue"
+  ) }}
+
+  {{ action_dialog(
+      act_key="changedeck",
+      act_title=tr.browsing_change_deck(),
+      prompt_label="Move to deck:",
+      input_id="input-changedeck",
+      input_bind="deck",
+      placeholder_text="Deck name",
+      endpoint="/browse/changedeck"
+  ) }}
+
+  {{ action_dialog(
+      act_key="addtag",
+      act_title=tr.editing_tags_add(),
+      prompt_label="Add tag:",
+      input_id="input-addtag",
+      input_bind="tag",
+      placeholder_text="Tag",
+      endpoint="/browse/addtag"
+  ) }}
+
+  {{ action_dialog(
+      act_key="removetag",
+      act_title=tr.actions_remove_tag(),
+      prompt_label="Remove tag:",
+      input_id="input-removetag",
+      input_bind="tag",
+      placeholder_text="Tag",
+      endpoint="/browse/removetag"
+  ) }}
+
+  {{ action_dialog(
+      act_key="delete",
+      act_title=tr.actions_delete(),
+      prompt_label=(tr.browsing_delete_notes() ~ '?'),
+      input_id="",
+      input_bind="",
+      placeholder_text="",
+      endpoint="/browse/delete",
+      is_danger=true,
+      is_confirm=true
+  ) }}
+
 </div>
 <script>
   (function() {
+      // Bridge for shell_src/bootstrap.ts to refresh in place on external opchanges without full reload
       window.__ankiwebOnOpchanges = function() {
-          var btn = document.getElementById('refresh-trigger');
-          if (btn) btn.click();
+          window.dispatchEvent(new CustomEvent('ankiweb:browser-refresh'));
       };
-      var _sel = [],
-          _anchor = null;
-
-      function _updateBulkButtons() {
-          var count = _sel.length;
-          var hasSel = count > 0;
-          var actionIds = [
-              'btn-suspend', 'btn-unsuspend', 'btn-forget', 'btn-setdue',
-              'btn-changedeck', 'btn-addtag', 'btn-removetag', 'btn-delete',
-              'btn-cardinfo'
-          ];
-          for (var i = 0; i < actionIds.length; i++) {
-              var el = document.getElementById(actionIds[i]);
-              if (el) el.disabled = !hasSel;
-          }
-          var moreSummary = document.getElementById('btn-actions-dropdown');
-          var moreDetails = document.getElementById('mobile-actions-dropdown');
-          if (moreSummary) {
-              moreSummary.classList.toggle('btn-disabled', !hasSel);
-              moreSummary.setAttribute('aria-disabled', !hasSel ? 'true' : 'false');
-              if (!hasSel && moreDetails) {
-                  moreDetails.removeAttribute('open');
-              }
-          }
-          var selBadge = document.getElementById('browser-selected-status');
-          if (selBadge) {
-              if (hasSel) {
-                  // Anki's window title "Browse (2 of 5480 cards selected)": take the parenthetical,
-                  // substituting sentinel numbers so the text stays localized.
-                  var tpl = {{ tr.browsing_window_title(total=987654, selected=123456) | tojson }};
-                  var st = document.getElementById('browser-status');
-                  var total = st ? parseInt(st.textContent, 10) : count;
-                  var txt = tpl.replace(/[\u2068\u2069]/g, '')
-                      .replace('123456', count).replace('987654', isNaN(total) ? count : total);
-                  var m = txt.match(/\((.*)\)/);
-                  selBadge.textContent = m ? m[1] : txt;
-                  selBadge.style.display = 'inline-block';
-              } else {
-                  selBadge.style.display = 'none';
-              }
-          }
-      }
-
-      window.__ankiwebGetSel = function() {
-          return _sel.map(function(x) { return parseInt(x); });
-      };
-
-      window.__ankiwebResetSel = function() {
-          _sel = [];
-          _anchor = null;
-          _hl();
-          _updateBulkButtons();
-      };
-
-      function _rows() {
-          return Array.prototype.slice.call(
-              document.querySelectorAll('#results-body tr[data-cid]'));
-      }
-
-      function _hl() {
-          _rows().forEach(function(tr) {
-              tr.classList.toggle('selected', _sel.indexOf(tr.dataset.cid) >= 0);
-          });
-      }
-
-      function _selChanged() {
-          _hl();
-          _updateBulkButtons();
-          var btn = document.getElementById('select-trigger');
-          if (btn) btn.click();
-      }
-
-      function _openDetailOnMobile() {
-          if (window.innerWidth < 768) {
-              var panel = document.getElementById('detail-offcanvas');
-              if (panel && typeof panel.showModal === 'function' && !panel.open) {
-                  panel.showModal();
-              }
-          }
-      }
-
-      function _click(tr, e) {
-          var cid = tr.dataset.cid,
-              rs = _rows();
-          if (e.shiftKey && _anchor !== null) {
-              var i = rs.findIndex(function(r) {
-                      return r.dataset.cid === _anchor;
-                  }),
-                  j = rs.findIndex(function(r) {
-                      return r.dataset.cid === cid;
-                  });
-              if (i >= 0 && j >= 0) {
-                  var lo = Math.min(i, j),
-                      hi = Math.max(i, j);
-                  _sel = rs.slice(lo, hi + 1).map(function(r) {
-                      return r.dataset.cid;
-                  });
-              }
-          } else if (e.ctrlKey || e.metaKey) {
-              var k = _sel.indexOf(cid);
-              if (k >= 0) _sel.splice(k, 1);
-              else _sel.push(cid);
-              _anchor = cid;
-          } else {
-              _sel = [cid];
-              _anchor = cid;
-          }
-          _selChanged();
-          if (_sel.length > 0) {
-              _openDetailOnMobile();
-          }
-      }
-
-      window.ankiwebCardInfo = function() {
-          if (_sel.length) window.location.href = '/card-info/' + _sel[0];
-      };
-
-      document.getElementById('results-body').addEventListener('click', function(e) {
-          var tr = e.target.closest('tr');
-          if (tr && tr.dataset.cid) {
-              _click(tr, e);
-          }
-      });
-
-      document.getElementById('results-body').addEventListener('contextmenu', function(e) {
-          if (e.ctrlKey) {
-              e.preventDefault();
-              var tr = e.target.closest('tr');
-              if (tr && tr.dataset.cid) {
-                  _click(tr, e);
-              }
-          }
-      });
-
-      // Close sidebar offcanvas on mobile when clicking an item
-      var sidebarEl = document.getElementById('sidebar-offcanvas');
-      if (sidebarEl) {
-          sidebarEl.addEventListener('click', function(e) {
-              if (e.target.closest('.side-item') && window.innerWidth < 768) {
-                  if (typeof sidebarEl.close === 'function' && sidebarEl.open) {
-                      sidebarEl.close();
-                  }
-              }
-          });
-      }
 
       // Close mobile dialogs when viewport crosses the md breakpoint
       if (window.matchMedia) {
@@ -595,8 +654,5 @@
               }
           });
       }
-
-      // Initial state
-      _updateBulkButtons();
   })();
 </script>

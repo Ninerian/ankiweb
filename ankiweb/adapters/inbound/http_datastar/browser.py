@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import html
+import json
 import logging
 import re
 from collections.abc import Callable
@@ -16,6 +17,7 @@ from datastar_py.fastapi import (
 )
 from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import error_response
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
@@ -74,7 +76,8 @@ def render_browser_html(col, query: str = "") -> str:
         cids = list(col.find_cards(query or ""))
     except (SearchError, InvalidInput):
         cids = []
-    initial_rows = _rows_html(_row_data(col, cids[:_LIMIT]))
+    visible_cids = cids[:_LIMIT]
+    initial_rows = _rows_html(_row_data(col, visible_cids))
     return templating.render(
         "browser.html.jinja",
         decks=decks,
@@ -83,6 +86,7 @@ def render_browser_html(col, query: str = "") -> str:
         initial_rows=initial_rows,
         initial_count=len(cids),
         count_label=_card_count_str(len(cids)),
+        initial_cids=visible_cids,
     )
 
 
@@ -143,15 +147,41 @@ def _detail_html(col, cid) -> str:
         fields=fields,
     )
 
+def _detail_shell_html(content: str = "") -> str:
+    return f'<div id="detail" data-attr:data-selected-cids="$selectedCids.join(\',\')">{content}</div>'
+
 
 def _io_detail_html(nid) -> str:
     return templating.render("browser_io_detail.html.jinja", nid=nid)
 
-
 def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
     router = APIRouter(prefix="/browse")
-
-    async def _search_events(query: str):
+    def _reset_signals(
+        *,
+        query: str,
+        browser_query: str,
+        visible_cids: list[int],
+        matched_count: int,
+    ) -> str:
+        return json.dumps({
+            "selectedCids": [],
+            "_selectionAnchor": None,
+            "_browserAction": "",
+            "_visibleCids": visible_cids,
+            "_matchedCount": matched_count,
+            "query": query,
+            "browserQuery": browser_query,
+            "value": "",
+            "deck": "",
+            "tag": "",
+            "error": "",
+        })
+    async def _search_events(
+        query: str,
+        *,
+        applied_query: str | None = None,
+        reset_selection: bool = True,
+    ):
         service = get_service()
         hub = get_hub()
 
@@ -164,37 +194,92 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
 
         cids, rows_html = await service.run(run)
         if cids is None:
+            if hub:
+                hub.ui_state.browser_open = True
+                hub.ui_state.last_browse_query = ""
+                hub.ui_state.matched_card_ids = []
+                if reset_selection:
+                    hub.ui_state.selected_card_ids = []
+                    hub.ui_state.selected_note_ids = []
             err_body = '<tbody id="results-body"><tr><td colspan="5">invalid search</td></tr></tbody>'
             status_html = _status_html(0)
-            return [
+            events = [
                 SSE.patch_elements(err_body, selector="#results-body"),
                 SSE.patch_elements(status_html, selector="#browser-status"),
-                SSE.execute_script("window.__ankiwebResetSel && window.__ankiwebResetSel();"),
             ]
+            if reset_selection:
+                empty_detail = _detail_shell_html()
+                events.extend([
+                    SSE.patch_elements(empty_detail, selector="#detail"),
+                    SSE.patch_signals(
+                        _reset_signals(
+                            query=query,
+                            browser_query="",
+                            visible_cids=[],
+                            matched_count=0,
+                        )
+                    ),
+                ])
+            else:
+                events.append(
+                    SSE.patch_signals(
+                        json.dumps({
+                            "_visibleCids": [],
+                            "_matchedCount": 0,
+                        })
+                    )
+                )
+            return events
         if hub:
             hub.ui_state.browser_open = True
             hub.ui_state.last_browse_query = query
             hub.ui_state.matched_card_ids = cids
+            if reset_selection:
+                hub.ui_state.selected_card_ids = []
+                hub.ui_state.selected_note_ids = []
         body_html = f'<tbody id="results-body">{rows_html}</tbody>'
         status_html = _status_html(len(cids))
-        return [
+        actual_applied_query = query if applied_query is None else applied_query
+        visible_cids = cids[:_LIMIT]
+        events = [
             SSE.patch_elements(body_html, selector="#results-body"),
             SSE.patch_elements(status_html, selector="#browser-status"),
-            SSE.execute_script("window.__ankiwebResetSel && window.__ankiwebResetSel();"),
         ]
+        if reset_selection:
+            empty_detail = _detail_shell_html()
+            events.extend([
+                SSE.patch_elements(empty_detail, selector="#detail"),
+                SSE.patch_signals(
+                    _reset_signals(
+                        query=actual_applied_query,
+                        browser_query=actual_applied_query,
+                        visible_cids=visible_cids,
+                        matched_count=len(cids),
+                    )
+                ),
+            ])
+        else:
+            events.append(
+                SSE.patch_signals(
+                    json.dumps({
+                        "_visibleCids": visible_cids,
+                        "_matchedCount": len(cids),
+                    })
+                )
+            )
+        return events
 
     async def _do_search(query: str):
         events = await _search_events(query)
         return DatastarResponse(events)
 
-    async def _reload():
-        hub = get_hub()
-        last_q = hub.ui_state.last_browse_query if hub else ""
-        events = await _search_events(last_q or "")
-        empty_detail = '<div id="detail"></div>'
-        all_events = [*events, SSE.patch_elements(empty_detail, selector="#detail")]
-        return DatastarResponse(all_events)
-
+    async def _reload(applied_query: str = "", *, reset_selection: bool = True):
+        events = await _search_events(
+            applied_query,
+            applied_query=applied_query,
+            reset_selection=reset_selection,
+        )
+        return DatastarResponse(events)
     def _nids(col, cids):
         out = []
         for c in cids:
@@ -205,6 +290,29 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             if nid not in out:
                 out.append(nid)
         return out
+
+    def _get_requested_cids(payload: ReadSignals | None) -> list[int]:
+        if not payload or not isinstance(payload, dict):
+            return []
+        raw = payload.get("selectedCids")
+        if not isinstance(raw, list):
+            return []
+        out: list[int] = []
+        for item in raw:
+            try:
+                out.append(int(item))
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    def _get_browser_query(payload: ReadSignals | None) -> str:
+        if not payload or not isinstance(payload, dict):
+            return ""
+        raw = payload.get("browserQuery")
+        if raw is None:
+            return ""
+        return str(raw)
+
 
     @router.post("/search")
     async def search(payload: ReadSignals):
@@ -227,21 +335,19 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         return await _do_search(f'tag:"{tag}"')
 
     @router.post("/refresh")
-    async def refresh():
-        return await _reload()
-
+    async def refresh(payload: ReadSignals = None):
+        applied_q = _get_browser_query(payload)
+        return await _reload(applied_q, reset_selection=False)
     @router.post("/select")
     async def select_cards(payload: ReadSignals):
-        cids = []
-        if payload and isinstance(payload, dict):
-            cids = [int(c) for c in payload.get("cids", []) if c is not None]
-        return await _handle_selection(cids)
+        cids = _get_requested_cids(payload)
+        return await _handle_selection(cids, echo_selection=False)
 
     @router.post("/open/{cid}")
     async def open_card(cid: int):
-        return await _handle_selection([cid])
+        return await _handle_selection([cid], echo_selection=True)
 
-    async def _handle_selection(cids: list[int]):
+    async def _handle_selection(cids: list[int], *, echo_selection: bool = False):
         service = get_service()
         hub = get_hub()
 
@@ -260,10 +366,42 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             hub.ui_state.selected_card_ids = cids
             hub.ui_state.selected_note_ids = nids
 
+        events = []
+        if echo_selection:
+            events.append(
+                SSE.patch_signals(
+                    json.dumps({
+                        "selectedCids": cids,
+                        "_selectionAnchor": cids[0] if cids else None,
+                    })
+                )
+            )
+
+        guard_cond = ""
+        if not echo_selection:
+            sorted_cids_json = json.dumps(sorted(cids))
+            guard_cond = f"""
+                var rows = document.querySelectorAll('#results-body tr.browser-row.selected[data-cid]');
+                var cur = Array.prototype.map.call(rows, function(r) {{ return +r.dataset.cid; }}).sort(function(a, b) {{ return a - b; }});
+                var expected = {sorted_cids_json};
+                if (cur.length !== expected.length) return;
+                for (var i = 0; i < cur.length; i++) {{
+                    if (cur[i] !== expected[i]) return;
+                }}
+            """
+
+        cids_joined = ",".join(str(c) for c in cids)
+        detail_selector = (
+            "#detail"
+            if echo_selection
+            else f'#detail[data-selected-cids="{cids_joined}"]'
+        )
+
         if len(cids) == 1 and nids and not is_io:
             nid = nids[0]
-            edit_script = f"""(function() {{
+            edit_script = f"""(function() {{{guard_cond}
                 var d = document.getElementById('detail');
+                if (!d) return;
                 var f = document.getElementById('editor-frame');
                 if (f && f.contentWindow) {{
                     f.contentWindow.postMessage({{
@@ -274,129 +412,126 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
                     d.innerHTML = "<iframe id='editor-frame' class='editor-frame' src='/edit?nid={nid}'></iframe>";
                 }}
             }})();"""
-            return DatastarResponse(SSE.execute_script(edit_script))
+            events.append(SSE.execute_script(edit_script))
+            return DatastarResponse(events)
         elif len(cids) == 1 and nids:
-            detail = f'<div id="detail">{_io_detail_html(nids[0])}</div>'
-            return DatastarResponse(SSE.patch_elements(detail, selector="#detail"))
+            io_detail = _detail_shell_html(_io_detail_html(nids[0]))
+            events.append(SSE.patch_elements(io_detail, selector=detail_selector))
+            return DatastarResponse(events)
         else:
-            empty_detail = '<div id="detail"></div>'
-            return DatastarResponse(
-                SSE.patch_elements(empty_detail, selector="#detail")
-            )
+            empty_detail = _detail_shell_html()
+            events.append(SSE.patch_elements(empty_detail, selector=detail_selector))
+            return DatastarResponse(events)
 
     @router.post("/suspend")
-    async def suspend():
+    async def suspend(payload: ReadSignals = None):
         service = get_service()
-        hub = get_hub()
-        cids = list(hub.ui_state.selected_card_ids or []) if hub else []
+        cids = _get_requested_cids(payload)
         if not cids:
             return DatastarResponse()
         await service.run_op(
             lambda col: col.sched.suspend_cards(cids), initiator="browser"
         )
-        if hub:
-            hub.ui_state.selected_card_ids = []
-            hub.ui_state.selected_note_ids = []
-        return await _reload()
+        applied_q = _get_browser_query(payload)
+        return await _reload(applied_q)
 
     @router.post("/unsuspend")
-    async def unsuspend():
+    async def unsuspend(payload: ReadSignals = None):
         service = get_service()
-        hub = get_hub()
-        cids = list(hub.ui_state.selected_card_ids or []) if hub else []
+        cids = _get_requested_cids(payload)
         if not cids:
             return DatastarResponse()
         await service.run_op(
             lambda col: col.sched.unsuspend_cards(cids), initiator="browser"
         )
-        if hub:
-            hub.ui_state.selected_card_ids = []
-            hub.ui_state.selected_note_ids = []
-        return await _reload()
+        applied_q = _get_browser_query(payload)
+        return await _reload(applied_q)
 
     @router.post("/forget")
-    async def forget():
+    async def forget(payload: ReadSignals = None):
         service = get_service()
-        hub = get_hub()
-        cids = list(hub.ui_state.selected_card_ids or []) if hub else []
+        cids = _get_requested_cids(payload)
         if not cids:
             return DatastarResponse()
         await service.run_op(
             lambda col: col.sched.schedule_cards_as_new(cids), initiator="browser"
         )
-        if hub:
-            hub.ui_state.selected_card_ids = []
-            hub.ui_state.selected_note_ids = []
-        return await _reload()
+        applied_q = _get_browser_query(payload)
+        return await _reload(applied_q)
 
     @router.post("/delete")
-    async def delete_notes():
+    async def delete_notes(payload: ReadSignals = None):
         service = get_service()
-        hub = get_hub()
-        cids = list(hub.ui_state.selected_card_ids or []) if hub else []
+        cids = _get_requested_cids(payload)
         if not cids:
             return DatastarResponse()
         await service.run_op(
             lambda col: col.remove_notes(_nids(col, cids)), initiator="browser"
         )
-        if hub:
-            hub.ui_state.selected_card_ids = []
-            hub.ui_state.selected_note_ids = []
-        return await _reload()
+        applied_q = _get_browser_query(payload)
+        return await _reload(applied_q)
 
     @router.post("/setdue")
     async def set_due(payload: ReadSignals):
         service = get_service()
-        hub = get_hub()
-        cids = list(hub.ui_state.selected_card_ids or []) if hub else []
+        cids = _get_requested_cids(payload)
         val = ""
         if payload and isinstance(payload, dict):
             val = str(payload.get("value", "")).strip()
         if not (cids and val):
             return DatastarResponse()
-        await service.run_op(
-            lambda col: col.sched.set_due_date(cids, val), initiator="browser"
-        )
-        return await _reload()
+        try:
+            await service.run_op(
+                lambda col: col.sched.set_due_date(cids, val), initiator="browser"
+            )
+        except (InvalidInput, NotFoundError) as exc:
+            return error_response(exc)
+        applied_q = _get_browser_query(payload)
+        return await _reload(applied_q)
 
     @router.post("/changedeck")
     async def change_deck(payload: ReadSignals):
         service = get_service()
-        hub = get_hub()
-        cids = list(hub.ui_state.selected_card_ids or []) if hub else []
+        cids = _get_requested_cids(payload)
         deck = ""
         if payload and isinstance(payload, dict):
             deck = str(payload.get("deck", "")).strip()
         if not (cids and deck):
             return DatastarResponse()
-        await service.run_op(
-            lambda col: col.set_deck(cids, col.decks.id(deck)), initiator="browser"
-        )
-        return await _reload()
+        try:
+            await service.run_op(
+                lambda col: col.set_deck(cids, col.decks.id(deck)), initiator="browser"
+            )
+        except (InvalidInput, NotFoundError) as exc:
+            return error_response(exc)
+        applied_q = _get_browser_query(payload)
+        return await _reload(applied_q)
 
     @router.post("/changenotetype")
-    async def change_notetype():
+    async def change_notetype(payload: ReadSignals = None):
         service = get_service()
         hub = get_hub()
-        cids = list(hub.ui_state.selected_card_ids or []) if hub else []
-        nids = list(hub.ui_state.selected_note_ids or []) if hub else []
-        if not nids and cids:
-            nids = await service.run(lambda col: _nids(col, cids))
-        if nids:
-            try:
-                old = await service.run(
-                    lambda col: col.models.get_single_notetype_of_notes(nids)
-                )
-            except (InvalidInput, NotFoundError):
-                return DatastarResponse()
-            return DatastarResponse(SSE.redirect(f"/change-notetype/{old}"))
-        return DatastarResponse()
+        cids = _get_requested_cids(payload)
+        if not cids:
+            return DatastarResponse()
+        nids = await service.run(lambda col: _nids(col, cids))
+        if not nids:
+            return DatastarResponse()
+        if hub:
+            hub.ui_state.selected_card_ids = cids
+            hub.ui_state.selected_note_ids = nids
+        try:
+            old = await service.run(
+                lambda col: col.models.get_single_notetype_of_notes(nids)
+            )
+        except (InvalidInput, NotFoundError) as exc:
+            return error_response(exc)
+        return DatastarResponse(SSE.redirect(f"/change-notetype/{old}"))
 
     @router.post("/addtag")
     async def add_tag(payload: ReadSignals):
         service = get_service()
-        hub = get_hub()
-        cids = list(hub.ui_state.selected_card_ids or []) if hub else []
+        cids = _get_requested_cids(payload)
         tag = ""
         if payload and isinstance(payload, dict):
             tag = str(payload.get("tag", "")).strip()
@@ -407,14 +542,17 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             nids = _nids(col, cids)
             return col.tags.bulk_add(nids, tag)
 
-        await service.run_op(do_tag, initiator="browser")
-        return await _reload()
+        try:
+            await service.run_op(do_tag, initiator="browser")
+        except (InvalidInput, NotFoundError) as exc:
+            return error_response(exc)
+        applied_q = _get_browser_query(payload)
+        return await _reload(applied_q)
 
     @router.post("/removetag")
     async def remove_tag(payload: ReadSignals):
         service = get_service()
-        hub = get_hub()
-        cids = list(hub.ui_state.selected_card_ids or []) if hub else []
+        cids = _get_requested_cids(payload)
         tag = ""
         if payload and isinstance(payload, dict):
             tag = str(payload.get("tag", "")).strip()
@@ -425,7 +563,10 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             nids = _nids(col, cids)
             return col.tags.bulk_remove(nids, tag)
 
-        await service.run_op(do_untag, initiator="browser")
-        return await _reload()
-
+        try:
+            await service.run_op(do_untag, initiator="browser")
+        except (InvalidInput, NotFoundError) as exc:
+            return error_response(exc)
+        applied_q = _get_browser_query(payload)
+        return await _reload(applied_q)
     return router

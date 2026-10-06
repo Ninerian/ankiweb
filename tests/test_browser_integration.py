@@ -76,6 +76,103 @@ def test_browse_search_and_open(live_server_browse):
         browser.close()
 
 
+def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
+    live_server_browse,
+):
+    from urllib.parse import urljoin
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(f"{live_server_browse}/browse")
+        page.wait_for_function(
+            "document.getElementById('results-body').children.length>=2", timeout=6000
+        )
+
+        row = page.locator(".browser-row").first
+        cid = row.get_attribute("data-cid")
+        assert cid is not None
+        row.click()
+        selected_row = page.locator(f'.browser-row[data-cid="{cid}"].selected')
+        selected_row.wait_for(state="visible", timeout=6000)
+
+        iframe_selector = "#detail iframe#editor-frame.editor-frame"
+        page.locator(iframe_selector).wait_for(state="visible", timeout=6000)
+        frame = page.frame_locator(iframe_selector)
+        field0 = frame.locator(
+            '#editor-field-0 .rich-text-input[data-ankiweb-rich]'
+        )
+        field1 = frame.locator(
+            '#editor-field-1 .rich-text-input[data-ankiweb-rich]'
+        )
+        field0.wait_for(state="visible", timeout=8000)
+        field1.wait_for(state="visible", timeout=8000)
+
+        original_iframe = page.locator(iframe_selector).element_handle()
+        assert original_iframe is not None
+        original_document = page.evaluate_handle(
+            "(iframe) => iframe.contentDocument", original_iframe
+        )
+
+        def assert_editor_identity_is_unchanged():
+            assert page.evaluate(
+                "(original) => original === document.querySelector("
+                "'#detail iframe#editor-frame.editor-frame')",
+                original_iframe,
+            )
+            assert page.evaluate(
+                "(original) => { const iframe = document.querySelector("
+                "'#detail iframe#editor-frame.editor-frame'); "
+                "return iframe && iframe.contentDocument === original; }",
+                original_document,
+            )
+
+        def expect_refresh_on_click(locator):
+            with page.expect_response(
+                lambda response: response.request.method == "POST"
+                and response.url.endswith("/browse/refresh"),
+                timeout=10000,
+            ) as refresh_info:
+                locator.click()
+            response = refresh_info.value
+            assert response.status == 200
+            _ = response.text()
+
+        # An untouched field blur still causes the real browser refresh. The next
+        # field must stay focused in the same editor document after that response.
+        field0.click()
+        expect_refresh_on_click(field1)
+        assert_editor_identity_is_unchanged()
+        assert selected_row.is_visible()
+        assert field1.evaluate("(el) => el.ownerDocument.activeElement === el")
+
+        first_value = "dogword first field saved"
+        field0.fill(first_value)
+        expect_refresh_on_click(field1)
+        page.locator(f'.browser-row[data-cid="{cid}"]').filter(
+            has_text=first_value
+        ).wait_for(state="visible", timeout=10000)
+        assert_editor_identity_is_unchanged()
+        assert selected_row.is_visible()
+        assert field1.evaluate("(el) => el.ownerDocument.activeElement === el")
+
+        second_value = "second field remains editable"
+        field1.fill(second_value)
+        expect_refresh_on_click(field0)
+        page.locator(f'.browser-row[data-cid="{cid}"]').filter(
+            has_text=first_value
+        ).wait_for(state="visible", timeout=10000)
+        assert_editor_identity_is_unchanged()
+        assert selected_row.is_visible()
+
+        editor_src = page.locator(iframe_selector).get_attribute("src")
+        assert editor_src is not None
+        saved_editor = page.request.get(urljoin(live_server_browse, editor_src))
+        assert saved_editor.status == 200
+        assert second_value in saved_editor.text()
+        browser.close()
+
+
 def test_select_all_and_suspend(live_server_browse):
     with sync_playwright() as p:
         browser = p.chromium.launch()

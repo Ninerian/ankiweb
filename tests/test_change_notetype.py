@@ -118,9 +118,15 @@ def test_browser_change_notetype_navigates(client):
 
     cid = client.portal.call(svc.run, seed)
     client.post(
-        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+        "/browse/select",
+        json={"selectedCids": [cid]},
+        headers={"Datastar-Request": "true"},
     )
-    r = client.post("/browse/changenotetype")
+    r = client.post(
+        "/browse/changenotetype",
+        json={"selectedCids": [cid]},
+        headers={"Datastar-Request": "true"},
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any(

@@ -128,23 +128,120 @@ def test_browse_page_with_invalid_compiled_regex_renders_empty_results(client):
     assert 'value="re:["' in response.text
     assert "0 cards" in response.text
 
-def test_search_and_refresh_reset_client_selection(client):
-    # rows-repatch responses (search/refresh/mutation reload) must instruct the
-    # client to clear its stale _sel/_anchor state, since the freshly-rendered
-    # rows carry no "selected" markup of their own — old ankiwebSetRows did this
-    # on every row push; __ankiwebResetSel must be invoked the same way now.
-    for path, kwargs in [
-        (
-            "/browse/search",
-            {"json": {"query": "dog"}, "headers": {"Datastar-Request": "true"}},
-        ),
-        ("/browse/refresh", {}),
-    ]:
-        r = client.post(path, **kwargs)
-        assert r.status_code == 200
-        assert "__ankiwebResetSel" in r.text, (
-            f"{path} must reset client selection state"
-        )
+def test_browse_refresh_preserves_editor_state_and_updates_rows(client):
+    import re
+
+    from conftest import parse_datastar_events
+
+    hub = client.app.state.hub
+    cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
+    nid = _run(client, lambda col: col.get_card(cid).nid)
+
+    search = client.post(
+        "/browse/search", json={"query": "dog"}, headers={"Datastar-Request": "true"}
+    )
+    assert search.status_code == 200
+    opened = client.post(f"/browse/open/{cid}")
+    assert opened.status_code == 200
+    assert hub.ui_state.selected_card_ids == [cid]
+    assert hub.ui_state.selected_note_ids == [nid]
+
+    def update_front(col):
+        note = col.get_note(nid)
+        note["Front"] = "dog refreshed"
+        col.update_note(note, skip_undo_entry=True)
+
+    _run(client, update_front)
+    response = client.post(
+        "/browse/refresh",
+        json={
+            "selectedCids": [cid],
+            "_selectionAnchor": cid,
+            "_browserAction": "setdue",
+            "query": "draft cat query",
+            "browserQuery": "dog",
+            "value": "7",
+            "deck": "Spanish",
+            "tag": "draft-tag",
+            "error": "existing action error",
+        },
+        headers={"Datastar-Request": "true"},
+    )
+    assert response.status_code == 200
+    events = parse_datastar_events(response.text)
+    element_patches = [
+        data for event_type, data in events if event_type == "datastar-patch-elements"
+    ]
+    signal_patches = [
+        data for event_type, data in events if event_type == "datastar-patch-signals"
+    ]
+
+    assert any(
+        "results-body" in data and "dog refreshed" in data
+        for data in element_patches
+    )
+    assert any("browser-status" in data for data in element_patches)
+    assert all("#detail" not in data for data in element_patches)
+    assert signal_patches
+    signal_data = "\n".join(signal_patches)
+    assert re.search(r'"_visibleCids"\s*:\s*\[' + str(cid) + r"\]", signal_data)
+    assert re.search(r'"_matchedCount"\s*:\s*1\b', signal_data)
+    preserved_fields = (
+        "selectedCids",
+        "_selectionAnchor",
+        "_browserAction",
+        "query",
+        "browserQuery",
+        "value",
+        "deck",
+        "tag",
+        "error",
+    )
+    for state_key in preserved_fields:
+        assert f'"{state_key}"' not in signal_data
+    assert hub.ui_state.selected_card_ids == [cid]
+    assert hub.ui_state.selected_note_ids == [nid]
+    assert hub.ui_state.matched_card_ids == [cid]
+    assert hub.ui_state.last_browse_query == "dog"
+
+    invalid_response = client.post(
+        "/browse/refresh",
+        json={
+            "selectedCids": [cid],
+            "_selectionAnchor": cid,
+            "_browserAction": "setdue",
+            "query": "draft cat query",
+            "browserQuery": "re:[",
+            "value": "7",
+            "deck": "Spanish",
+            "tag": "draft-tag",
+            "error": "existing action error",
+        },
+        headers={"Datastar-Request": "true"},
+    )
+    assert invalid_response.status_code == 200
+    invalid_events = parse_datastar_events(invalid_response.text)
+    invalid_elements = [
+        data
+        for event_type, data in invalid_events
+        if event_type == "datastar-patch-elements"
+    ]
+    invalid_signals = [
+        data
+        for event_type, data in invalid_events
+        if event_type == "datastar-patch-signals"
+    ]
+    assert any("invalid search" in data for data in invalid_elements)
+    assert any("browser-status" in data for data in invalid_elements)
+    assert all("#detail" not in data for data in invalid_elements)
+    invalid_signal_data = "\n".join(invalid_signals)
+    assert re.search(r'"_visibleCids"\s*:\s*\[\s*\]', invalid_signal_data)
+    assert re.search(r'"_matchedCount"\s*:\s*0\b', invalid_signal_data)
+    for state_key in preserved_fields:
+        assert f'"{state_key}"' not in invalid_signal_data
+    assert hub.ui_state.selected_card_ids == [cid]
+    assert hub.ui_state.selected_note_ids == [nid]
+    assert hub.ui_state.matched_card_ids == []
 
 
 def _run(client, fn):
@@ -158,16 +255,58 @@ def test_select_then_suspend(client):
     hub = client.app.state.hub
     cids = _run(client, lambda col: list(col.find_cards("")))
     r1 = client.post(
-        "/browse/select", json={"cids": cids}, headers={"Datastar-Request": "true"}
+        "/browse/select",
+        json={"selectedCids": cids},
+        headers={"Datastar-Request": "true"},
     )
     assert r1.status_code == 200
     assert hub.ui_state.selected_card_ids == cids
     assert len(hub.ui_state.selected_note_ids) == 2
 
-    r2 = client.post("/browse/suspend")
+    r2 = client.post(
+        "/browse/suspend",
+        json={
+            "selectedCids": cids,
+            "_browserAction": "suspend",
+            "query": "draft query",
+            "browserQuery": "",
+            "value": "7",
+            "deck": "Spanish",
+            "tag": "stale-tag",
+            "error": "stale error",
+        },
+        headers={"Datastar-Request": "true"},
+    )
     assert r2.status_code == 200
     events2 = parse_datastar_events(r2.text)
     assert any("results-body" in data for _, data in events2)
+    assert any(
+        event_type == "datastar-patch-elements" and "#detail" in data
+        for event_type, data in events2
+    )
+    assert any(
+        event_type == "datastar-patch-signals"
+        and '"selectedCids"' in data
+        and "[]" in data
+        for event_type, data in events2
+    )
+    reset_signal = next(
+        data
+        for event_type, data in events2
+        if event_type == "datastar-patch-signals"
+    )
+    for signal, value in (
+        ("_browserAction", ""),
+        ("query", ""),
+        ("browserQuery", ""),
+        ("value", ""),
+        ("deck", ""),
+        ("tag", ""),
+        ("error", ""),
+    ):
+        assert f'"{signal}": "{value}"' in reset_signal
+    assert hub.ui_state.selected_card_ids == []
+    assert hub.ui_state.selected_note_ids == []
     assert all(_run(client, lambda col, c=c: col.get_card(c).queue) == -1 for c in cids)
 
 
@@ -179,25 +318,49 @@ def test_mutation_routes_are_silent_noop_with_empty_selection(client):
     hub.ui_state.selected_card_ids = []
     hub.ui_state.selected_note_ids = []
     for path, kwargs in [
-        ("/browse/suspend", {}),
-        ("/browse/unsuspend", {}),
-        ("/browse/forget", {}),
-        ("/browse/delete", {}),
+        (
+            "/browse/suspend",
+            {"json": {"selectedCids": []}, "headers": {"Datastar-Request": "true"}},
+        ),
+        (
+            "/browse/unsuspend",
+            {"json": {"selectedCids": []}, "headers": {"Datastar-Request": "true"}},
+        ),
+        (
+            "/browse/forget",
+            {"json": {"selectedCids": []}, "headers": {"Datastar-Request": "true"}},
+        ),
+        (
+            "/browse/delete",
+            {"json": {"selectedCids": []}, "headers": {"Datastar-Request": "true"}},
+        ),
         (
             "/browse/setdue",
-            {"json": {"value": "0"}, "headers": {"Datastar-Request": "true"}},
+            {
+                "json": {"selectedCids": [], "value": "0"},
+                "headers": {"Datastar-Request": "true"},
+            },
         ),
         (
             "/browse/changedeck",
-            {"json": {"deck": "Spanish"}, "headers": {"Datastar-Request": "true"}},
+            {
+                "json": {"selectedCids": [], "deck": "Spanish"},
+                "headers": {"Datastar-Request": "true"},
+            },
         ),
         (
             "/browse/addtag",
-            {"json": {"tag": "marked"}, "headers": {"Datastar-Request": "true"}},
+            {
+                "json": {"selectedCids": [], "tag": "marked"},
+                "headers": {"Datastar-Request": "true"},
+            },
         ),
         (
             "/browse/removetag",
-            {"json": {"tag": "marked"}, "headers": {"Datastar-Request": "true"}},
+            {
+                "json": {"selectedCids": [], "tag": "marked"},
+                "headers": {"Datastar-Request": "true"},
+            },
         ),
     ]:
         r = client.post(path, **kwargs)
@@ -211,7 +374,9 @@ def test_select_one_pushes_editor(client):
     cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
     nid = _run(client, lambda col: col.get_card(cid).nid)
     r = client.post(
-        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+        "/browse/select",
+        json={"selectedCids": [cid]},
+        headers={"Datastar-Request": "true"},
     )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
@@ -223,10 +388,11 @@ def test_delete_removes_notes(client):
 
     cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
     before = _run(client, lambda col: len(col.find_notes("")))
-    client.post(
-        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+    r = client.post(
+        "/browse/delete",
+        json={"selectedCids": [cid]},
+        headers={"Datastar-Request": "true"},
     )
-    r = client.post("/browse/delete")
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("results-body" in data for _, data in events)
@@ -237,12 +403,9 @@ def test_changedeck_moves_card(client):
     from conftest import parse_datastar_events
 
     cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
-    client.post(
-        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
-    )
     r = client.post(
         "/browse/changedeck",
-        json={"deck": "Spanish"},
+        json={"selectedCids": [cid], "deck": "Spanish"},
         headers={"Datastar-Request": "true"},
     )
     assert r.status_code == 200
@@ -255,21 +418,17 @@ def test_changedeck_moves_card(client):
 def test_add_and_remove_tag(client):
     cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
     nid = _run(client, lambda col: col.get_card(cid).nid)
-    client.post(
-        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
-    )
     r1 = client.post(
-        "/browse/addtag", json={"tag": "marked"}, headers={"Datastar-Request": "true"}
+        "/browse/addtag",
+        json={"selectedCids": [cid], "tag": "marked"},
+        headers={"Datastar-Request": "true"},
     )
     assert r1.status_code == 200
     assert "marked" in _run(client, lambda col: col.get_note(nid).tags)
 
-    client.post(
-        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
-    )
     r2 = client.post(
         "/browse/removetag",
-        json={"tag": "marked"},
+        json={"selectedCids": [cid], "tag": "marked"},
         headers={"Datastar-Request": "true"},
     )
     assert r2.status_code == 200
@@ -280,57 +439,167 @@ def test_setdue_runs(client):
     from conftest import parse_datastar_events
 
     cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
-    client.post(
-        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
-    )
     r = client.post(
-        "/browse/setdue", json={"value": "0"}, headers={"Datastar-Request": "true"}
+        "/browse/setdue",
+        json={"selectedCids": [cid], "value": "0"},
+        headers={"Datastar-Request": "true"},
     )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("results-body" in data for _, data in events)
 
 
-def test_browse_refresh_repushes_rows(client):
+def test_action_selection_overrides_differently_populated_hub(client):
+    # The client payload selectedCids is authoritative for actions, NEVER cached hub selection.
+    hub = client.app.state.hub
+    dog_cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
+    cat_cid = _run(client, lambda col: next(iter(col.find_cards("cat"))))
+    # Hub holds dog_cid, but action requests cat_cid
+    hub.ui_state.selected_card_ids = [dog_cid]
+    r = client.post(
+        "/browse/suspend",
+        json={"selectedCids": [cat_cid]},
+        headers={"Datastar-Request": "true"},
+    )
+    assert r.status_code == 200
+    cat_queue = _run(client, lambda col: col.get_card(cat_cid).queue)
+    dog_queue = _run(client, lambda col: col.get_card(dog_cid).queue)
+    assert cat_queue == -1
+    assert dog_queue != -1
+
+
+def test_empty_submitted_selection_never_affects_cached_cards(client):
+    # When payload has selectedCids=[], mutator does not touch collection cards
+    # even if hub had cached cards
+    hub = client.app.state.hub
+    cids = _run(client, lambda col: list(col.find_cards("")))
+    hub.ui_state.selected_card_ids = list(cids)
+    r = client.post(
+        "/browse/suspend",
+        json={"selectedCids": []},
+        headers={"Datastar-Request": "true"},
+    )
+    assert r.status_code == 204
+    assert all(_run(client, lambda col, c=c: col.get_card(c).queue) != -1 for c in cids)
+
+
+def test_valid_and_invalid_search_clearing_state(client):
+    import re
+
     from conftest import parse_datastar_events
 
-    client.post(
-        "/browse/search", json={"query": "dog"}, headers={"Datastar-Request": "true"}
+    hub = client.app.state.hub
+    hub.ui_state.selected_card_ids = [12345]
+    hub.ui_state.selected_note_ids = [67890]
+    hub.ui_state.matched_card_ids = [12345]
+
+    # Explicit searches still clear detail, selection, and any stale action draft.
+    r1 = client.post(
+        "/browse/search",
+        json={
+            "query": "dog",
+            "_browserAction": "setdue",
+            "browserQuery": "stale query",
+            "value": "7",
+            "deck": "Spanish",
+            "tag": "stale-tag",
+            "error": "stale error",
+        },
+        headers={"Datastar-Request": "true"},
     )
-    r = client.post("/browse/refresh")
+    assert r1.status_code == 200
+    events1 = parse_datastar_events(r1.text)
+    assert any(
+        event_type == "datastar-patch-elements" and "#detail" in data
+        for event_type, data in events1
+    )
+    signals1 = "\n".join(
+        data for event_type, data in events1 if event_type == "datastar-patch-signals"
+    )
+    assert re.search(r'"selectedCids"\s*:\s*\[\]', signals1)
+    assert re.search(r'"_browserAction"\s*:\s*""', signals1)
+    assert re.search(r'"query"\s*:\s*"dog"', signals1)
+    assert re.search(r'"browserQuery"\s*:\s*"dog"', signals1)
+    for field in ("value", "deck", "tag", "error"):
+        assert re.search(rf'"{field}"\s*:\s*""', signals1)
+    assert hub.ui_state.selected_card_ids == []
+    assert hub.ui_state.selected_note_ids == []
+    assert len(hub.ui_state.matched_card_ids) == 1
+
+    # An invalid explicit search has the same reset semantics.
+    hub.ui_state.selected_card_ids = [12345]
+    hub.ui_state.selected_note_ids = [67890]
+    hub.ui_state.matched_card_ids = [12345]
+    r2 = client.post(
+        "/browse/search",
+        json={
+            "query": "re:[",
+            "_browserAction": "setdue",
+            "value": "9",
+        },
+        headers={"Datastar-Request": "true"},
+    )
+    assert r2.status_code == 200
+    events2 = parse_datastar_events(r2.text)
+    assert any(
+        event_type == "datastar-patch-elements" and "#detail" in data
+        for event_type, data in events2
+    )
+    signals2 = "\n".join(
+        data for event_type, data in events2 if event_type == "datastar-patch-signals"
+    )
+    assert re.search(r'"selectedCids"\s*:\s*\[\]', signals2)
+    assert re.search(r'"_browserAction"\s*:\s*""', signals2)
+    assert hub.ui_state.selected_card_ids == []
+    assert hub.ui_state.matched_card_ids == []
+    assert hub.ui_state.selected_note_ids == []
+
+
+def test_note_deduplication_for_sibling_cards(client):
+    # Sibling cards belonging to the same note should de-duplicate for note-level actions
+    def seed_siblings(col):
+        m_rev = col.models.by_name("Basic (and reversed card)")
+        d = col.decks.id("Default")
+        n = col.new_note(m_rev)
+        n["Front"] = "sibling1"
+        n["Back"] = "sibling2"
+        col.add_note(n, d)
+        cards = n.cards()
+        return n.id, cards[0].id, cards[1].id
+
+    nid, c1, c2 = _run(client, seed_siblings)
+    # Adding tag with both sibling card IDs selected
+    r = client.post(
+        "/browse/addtag",
+        json={"selectedCids": [c1, c2], "tag": "siblingtag"},
+        headers={"Datastar-Request": "true"},
+    )
+    assert r.status_code == 200
+    tags = _run(client, lambda col: col.get_note(nid).tags)
+    assert tags.count("siblingtag") == 1
+
+
+def test_invalid_due_response_without_mutation(client):
+    from conftest import parse_datastar_events
+
+    cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
+    orig_due = _run(client, lambda col: col.get_card(cid).due)
+    orig_queue = _run(client, lambda col: col.get_card(cid).queue)
+
+    r = client.post(
+        "/browse/setdue",
+        json={"selectedCids": [cid], "value": "not-a-valid-due"},
+        headers={"Datastar-Request": "true"},
+    )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
-    assert any("dog" in data for _, data in events)
-
-
-def test_browser_select_emits_reusable_editor_script(client):
-    # the reuse wiring: each single-note select response must postMessage an
-    # already-mounted iframe, falling back to creating one only if none exists —
-    # not rebuild a fresh iframe unconditionally on every selection.
-    from conftest import parse_datastar_events
-
-    cid1 = _run(client, lambda col: next(iter(col.find_cards("dog"))))
-    nid1 = _run(client, lambda col: col.get_card(cid1).nid)
-    cid2 = _run(client, lambda col: next(iter(col.find_cards("cat"))))
-    nid2 = _run(client, lambda col: col.get_card(cid2).nid)
-
-    for cid, nid in ((cid1, nid1), (cid2, nid2)):
-        r = client.post(
-            "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
-        )
-        assert r.status_code == 200
-        _, script = parse_datastar_events(r.text)[0]
-        assert "contentWindow" in script and "postMessage" in script
-        assert f"nid: {nid}" in script
-        assert "editor-frame" in script
-
-
-def test_editor_listens_for_in_place_note_switch(client):
-    nid = _run(client, lambda col: next(iter(col.find_notes("dog"))))
-    html = client.get(f"/edit?nid={nid}").text
-    # editor reloads a note in-place on a parent postMessage (no full editor.js reload)
-    assert "addEventListener('message'" in html
-    assert "ankiwebLoadNid" in html
+    assert any(etype == "datastar-patch-signals" and '"error"' in data for etype, data in events)
+    # Does not wipe client selection on invalid action input
+    assert "selectedCids" not in r.text
+    # Collection remains completely unmutated
+    card_after = _run(client, lambda col: col.get_card(cid))
+    assert card_after.due == orig_due
+    assert card_after.queue == orig_queue
 
 
 def test_row_data_rich_fields_and_formatted_due(client):

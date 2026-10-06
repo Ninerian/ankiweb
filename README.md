@@ -306,6 +306,32 @@ draft to the collection; **Cancel** discards it. Card Layout's **Preview** conti
 to use the saved collection state, not the uncommitted draft. Anki's editor/reviewer
 WebSocket and `pycmd` bridges are unchanged.
 
+### Browser selection and actions
+
+The card Browser keeps its selection in the numeric `selectedCids` signal array.
+Single clicks, Ctrl/Cmd toggles, Shift ranges, highlighting, selection counts, and
+action availability share that state. Shift-click without an anchor selects one
+card. Searches and successful mutations reset the selection and stale details.
+
+Browser action requests submit `selectedCids` directly; the cached bridge selection
+is only a mirror for legacy consumers, never the authority for an HTTP mutation.
+`query` is the editable search draft; `browserQuery` is the applied filter used when
+refreshing results after an action. Due dates, deck changes, tags, and note deletion
+use bound native dialog forms. Validation errors preserve the selection and input;
+Cancel/Escape make no changes before submission. While a mutation is pending, close
+controls are disabled rather than implying that a committed operation can be undone.
+
+Detail responses are guarded against obsolete selections. Image Occlusion and
+empty/multiple selections use SSE element patches with selection-specific targets;
+regular notes reuse the live editor iframe through its existing `postMessage`
+bridge. Background operation changes, including editor field saves, refresh only
+the result rows, match count, and visible-ID metadata. They preserve the selection,
+live editor iframe, field focus, action inputs, and unsubmitted search draft; an
+edited card stays open even if the changed content no longer matches the applied
+filter. Explicit searches and successful browser actions still reset the detail
+pane. Card Info and other page changes remain native links and backend redirects,
+with no soft-navigation layer.
+
 ## Architecture
 
 ankiweb follows a **Ports & Adapters (hexagonal)** layout — see

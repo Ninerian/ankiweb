@@ -131,7 +131,9 @@ def test_browser_routes_io_note_to_io_editor(client):
     io_cid, normal_cid = client.portal.call(svc.run, seed_normal)
 
     r1 = client.post(
-        "/browse/select", json={"cids": [io_cid]}, headers={"Datastar-Request": "true"}
+        "/browse/select",
+        json={"selectedCids": [io_cid]},
+        headers={"Datastar-Request": "true"},
     )
     assert r1.status_code == 200
     events1 = parse_datastar_events(r1.text)
@@ -139,7 +141,7 @@ def test_browser_routes_io_note_to_io_editor(client):
 
     r2 = client.post(
         "/browse/select",
-        json={"cids": [normal_cid]},
+        json={"selectedCids": [normal_cid]},
         headers={"Datastar-Request": "true"},
     )
     assert r2.status_code == 200
