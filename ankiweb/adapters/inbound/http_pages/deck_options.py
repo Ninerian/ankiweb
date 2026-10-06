@@ -17,6 +17,7 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 from google.protobuf.json_format import MessageToDict
 
+from ankiweb.adapters.inbound.http_datastar.common import signals_response
 from ankiweb.adapters.inbound.http_pages.deck_options_help import HELP_MODALS
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
@@ -343,7 +344,7 @@ def make_router(get_service: Callable) -> APIRouter:
             "relearnStepsStr": relearn_steps_str,
             "dirty": True,
         }
-        return DatastarResponse(SSE.patch_signals(signals_update))
+        return signals_response(signals_update)
 
     @router.post("/deck-options/add-preset")
     async def add_preset(payload: ReadSignals):
@@ -642,9 +643,9 @@ def make_router(get_service: Callable) -> APIRouter:
             state = await service.run_op(do_save, initiator="deck-options")
         except Exception as e:
             logger.exception("Failed to save deck options")
-            return DatastarResponse(SSE.patch_signals({
+            return signals_response({
                 "statusMessage": f"Error saving: {e}",
-            }))
+            })
 
         target_extra = next((c for c in state.all_config if c.config.id == current_preset_id), state.all_config[0])
         saved_cfg_dict = _cfg_to_dict(target_extra.config.config)
@@ -664,9 +665,7 @@ def make_router(get_service: Callable) -> APIRouter:
             "statusMessage": "Saved successfully!" if not apply_to_subdecks else "Saved to deck and all subdecks!",
         }
 
-        return DatastarResponse([
-            SSE.patch_signals(signals_update),
-        ])
+        return signals_response(signals_update)
 
     @router.post("/deck-options/revert")
     async def revert_options(payload: ReadSignals):
@@ -693,6 +692,6 @@ def make_router(get_service: Callable) -> APIRouter:
             "warnings": [],
             "statusMessage": "Changes reverted",
         }
-        return DatastarResponse(SSE.patch_signals(signals_update))
+        return signals_response(signals_update)
 
     return router

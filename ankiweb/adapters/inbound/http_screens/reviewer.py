@@ -1,3 +1,15 @@
+"""Native Reviewer bridge screen and session handler.
+
+Transport boundary:
+- Operates over WebSocket `/ws?context=reviewer` handling desktop `pycmd` verbs
+  (`show`, `ans`, `ease1`..`ease4`, `replay`, `play:<side>:<idx>`, `mark`, `setflag:`,
+  `buryc`, `buryn`, `suspendc`, `suspendn`, `setdue:`, `forget`, `deletenote`, `undo`,
+  `cardinfo`, `edit`, `starttimer`).
+- Server pushes QA rendering and ease bars (`_showQuestion`, `_showAnswer`,
+  `ankiwebSetAnswerBar`) and AV audio filenames (`ankiwebPlayAudio`).
+- Audio playback and MathJax rendering are client runtime side effects; no audio or
+  typesetting runs over WebSocket frames.
+"""
 from __future__ import annotations
 
 import logging

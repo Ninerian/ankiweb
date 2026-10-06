@@ -12,6 +12,8 @@ from datastar_py.fastapi import (
 from datastar_py.sse import DatastarEvent
 from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import signals_response
+
 router = APIRouter(prefix="/dev")
 
 
@@ -57,14 +59,11 @@ async def simulate_progress() -> DatastarResponse:
 
 @router.post("/progress/reset")
 async def reset_progress() -> DatastarResponse:
-    """Reset the progress state."""
-    return DatastarResponse(
-        SSE.patch_signals({
-            "progressRunning": False,
-            "progressDone": False,
-            "progressFraction": 0.0,
-            "progressPercent": 0,
-            "progressLabel": "Idle",
-            "progressError": "",
-        })
-    )
+    return signals_response({
+        "progressRunning": False,
+        "progressDone": False,
+        "progressFraction": 0.0,
+        "progressPercent": 0,
+        "progressLabel": "Idle",
+        "progressError": "",
+    })

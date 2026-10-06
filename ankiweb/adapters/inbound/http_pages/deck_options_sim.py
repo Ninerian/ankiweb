@@ -17,6 +17,10 @@ from datastar_py.fastapi import (
 )
 from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import (
+    elements_response,
+    signals_response,
+)
 from ankiweb.adapters.inbound.http_pages.graph_svg import (
     LinearScale,
     render_line,
@@ -354,12 +358,10 @@ def make_router(get_service: Callable) -> APIRouter:
             ])
         except Exception as exc:
             logger.exception("simulate_fsrs_review failed")
-            return DatastarResponse([
-                SSE.patch_signals({
-                    "simProcessing": False,
-                    "simError": f"Simulation failed: {exc!s}",
-                })
-            ])
+            return signals_response({
+                "simProcessing": False,
+                "simError": f"Simulation failed: {exc!s}",
+            })
 
     @router.post("/run-workload")
     async def run_workload(payload: ReadSignals):
@@ -469,12 +471,10 @@ def make_router(get_service: Callable) -> APIRouter:
             ])
         except Exception as exc:
             logger.exception("simulate_fsrs_workload failed")
-            return DatastarResponse([
-                SSE.patch_signals({
-                    "workloadProcessing": False,
-                    "workloadError": f"Workload simulation failed: {exc!s}",
-                })
-            ])
+            return signals_response({
+                "workloadProcessing": False,
+                "workloadError": f"Workload simulation failed: {exc!s}",
+            })
 
     @router.post("/clear-simulation")
     async def clear_simulation(payload: ReadSignals):
@@ -541,17 +541,13 @@ def make_router(get_service: Callable) -> APIRouter:
             workload_history = payload.get("workloadHistory", [])
             subgraph = payload.get("workloadSubgraph", "ratio")
             svg_content = render_workload_svg(workload_history, subgraph=subgraph)
-            return DatastarResponse(
-                SSE.patch_elements(f'<div id="workloadChartContainer" class="sim-svg-container">{svg_content}</div>', selector="#workloadChartContainer")
-            )
+            return elements_response(f'<div id="workloadChartContainer" class="sim-svg-container">{svg_content}</div>', selector="#workloadChartContainer")
         else:
             sim_history = payload.get("simHistory", [])
             subgraph = payload.get("simSubgraph", "count")
             smooth = bool(payload.get("simSmooth", True))
             svg_content = render_simulation_svg(sim_history, subgraph=subgraph, smooth=smooth)
-            return DatastarResponse(
-                SSE.patch_elements(f'<div id="simChartContainer" class="sim-svg-container">{svg_content}</div>', selector="#simChartContainer")
-            )
+            return elements_response(f'<div id="simChartContainer" class="sim-svg-container">{svg_content}</div>', selector="#simChartContainer")
 
     @router.post("/save-sim-to-preset")
     async def save_sim_to_preset(payload: ReadSignals):
@@ -587,13 +583,11 @@ def make_router(get_service: Callable) -> APIRouter:
             if easy_days and isinstance(easy_days, list):
                 cfg["easy_days_percentages"] = [float(x) for x in easy_days]
 
-        return DatastarResponse(
-            SSE.patch_signals({
-                "cfg": cfg,
-                "dirty": True,
-                "simSavedSuccess": True,
-            })
-        )
+        return signals_response({
+            "cfg": cfg,
+            "dirty": True,
+            "simSavedSuccess": True,
+        })
 
 
     return router

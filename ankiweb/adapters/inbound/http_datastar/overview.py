@@ -11,7 +11,10 @@ from datastar_py.fastapi import (
 )
 from fastapi import APIRouter
 
-from ankiweb.adapters.inbound.http_datastar.common import refresh_screen
+from ankiweb.adapters.inbound.http_datastar.common import (
+    redirect_response,
+    refresh_screen,
+)
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 from ankiweb.core.html_sanitize import sanitize_html
@@ -24,11 +27,11 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
     async def study():
         service = get_service()
         await service.run(lambda col: col.startTimebox())
-        return DatastarResponse(SSE.redirect("/reviewer"))
+        return redirect_response("/reviewer")
 
     @router.post("/decks")
     async def decks():
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
+        return redirect_response("/deckbrowser")
     @router.post("/unbury")
     async def unbury():
         service = get_service()
@@ -75,7 +78,7 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
 
     @router.post("/studymore")
     async def studymore():
-        return DatastarResponse(SSE.redirect("/custom-study"))
+        return redirect_response("/custom-study")
 
     @router.post("/opts")
     async def opts():
@@ -83,7 +86,7 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
         did = await service.run(lambda col: col.decks.get_current_id())
         is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
         path = f"/filtered-deck/{did}" if is_dyn else f"/deck-options/{did}"
-        return DatastarResponse(SSE.redirect(path))
+        return redirect_response(path)
 
     @router.post("/setdesc")
     async def setdesc(payload: ReadSignals):

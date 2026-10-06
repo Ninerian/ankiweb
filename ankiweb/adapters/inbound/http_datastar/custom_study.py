@@ -9,12 +9,12 @@ from datastar_py.fastapi import (
     DatastarResponse,
     ReadSignals,
 )
-from datastar_py.fastapi import (
-    ServerSentEventGenerator as SSE,
-)
 from fastapi import APIRouter
 
-from ankiweb.adapters.inbound.http_datastar.common import error_response
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+)
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
@@ -90,7 +90,7 @@ def make_custom_study_routes(get_service: Callable) -> APIRouter:
 
     @router.post("/cancel")
     async def cancel():
-        return DatastarResponse(SSE.redirect("/overview"))
+        return redirect_response("/overview")
     @router.post("/submit")
     async def submit(payload: ReadSignals):
         service = get_service()
@@ -135,6 +135,6 @@ def make_custom_study_routes(get_service: Callable) -> APIRouter:
             )
             return error_response(msg)
 
-        return DatastarResponse(SSE.redirect("/overview"))
+        return redirect_response("/overview")
 
     return router

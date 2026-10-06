@@ -26,6 +26,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 
 from ankiweb import import_tmp
+from ankiweb.adapters.inbound.http_datastar.common import signals_response
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.core.i18n import tr
@@ -209,13 +210,11 @@ def make_router(get_service: Callable) -> APIRouter:
 
         # Reject empty occlusion / 0 non-text shapes (legacy returns early without saving)
         if not occlusions or shapes_count <= 0 or len(non_text_occlusions) == 0:
-            return DatastarResponse(
-                SSE.patch_signals({
-                    "is_saving": False,
-                    "status_msg": "Cannot save: no occlusions drawn.",
-                    "status_type": "danger",
-                })
-            )
+            return signals_response({
+                "is_saving": False,
+                "status_msg": "Cannot save: no occlusions drawn.",
+                "status_type": "danger",
+            })
 
         # Adjust occlusions for hide_all (ensure :oi=1 is present on all shapes or removed)
         if hide_all:
@@ -291,12 +290,10 @@ def make_router(get_service: Callable) -> APIRouter:
             ])
         except Exception as e:
             logger.exception("Failed to save image occlusion note")
-            return DatastarResponse(
-                SSE.patch_signals({
-                    "is_saving": False,
-                    "status_msg": f"Failed to save: {e!s}",
-                    "status_type": "danger",
-                })
-            )
+            return signals_response({
+                "is_saving": False,
+                "status_msg": f"Failed to save: {e!s}",
+                "status_type": "danger",
+            })
 
     return router

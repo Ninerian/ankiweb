@@ -13,11 +13,10 @@ from collections.abc import Callable
 from typing import Any, cast
 
 from anki.errors import AnkiException, NotFoundError
-from datastar_py.fastapi import DatastarResponse
-from datastar_py.fastapi import ServerSentEventGenerator as SSE
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
+from ankiweb.adapters.inbound.http_datastar.common import elements_response
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.core.i18n import tr
@@ -792,6 +791,6 @@ def make_router(get_service: Callable) -> APIRouter:
             comp_block=True,
             card_data=card_data,
         )
-        return DatastarResponse(SSE.patch_elements(chart_html, selector=f"#curve-{cid}"))
+        return elements_response(chart_html, selector=f"#curve-{cid}")
 
     return router

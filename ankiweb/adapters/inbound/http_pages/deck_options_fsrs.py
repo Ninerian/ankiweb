@@ -16,6 +16,7 @@ from datastar_py.fastapi import (
 )
 from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import signals_response
 from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
@@ -357,12 +358,10 @@ def make_router(get_service: Callable) -> APIRouter:
             else:
                 workload_msg = tr.deck_config_workload_factor_change(factor=f"{factor:.2f}", previous_dr=str(prev_key)) if hasattr(tr, "deck_config_workload_factor_change") else f"Workload factor: {factor:.2f}"
 
-            return DatastarResponse(
-                SSE.patch_signals({
-                    "fsrsWorkloadMsg": workload_msg,
-                    "fsrsWorkloadFactor": factor,
-                })
-            )
+            return signals_response({
+                "fsrsWorkloadMsg": workload_msg,
+                "fsrsWorkloadFactor": factor,
+            })
         except Exception:
             logger.exception("Failed to get retention workload")
             return DatastarResponse()
@@ -375,14 +374,12 @@ def make_router(get_service: Callable) -> APIRouter:
             await service.backend_raw_concurrent("set_wants_abort", b"")
         except Exception:
             logger.exception("Failed to set abort flag")
-        return DatastarResponse(
-            SSE.patch_signals({
-                "fsrsComputing": False,
-                "fsrsEvaluating": False,
-                "fsrsComputingRetention": False,
-                "fsrsProgressLabel": "Aborted",
-                "fsrsProgressPercent": 0,
-            })
-        )
+        return signals_response({
+            "fsrsComputing": False,
+            "fsrsEvaluating": False,
+            "fsrsComputingRetention": False,
+            "fsrsProgressLabel": "Aborted",
+            "fsrsProgressPercent": 0,
+        })
 
     return router

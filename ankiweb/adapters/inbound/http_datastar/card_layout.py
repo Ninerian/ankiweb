@@ -7,12 +7,12 @@ from datastar_py.fastapi import (
     DatastarResponse,
     ReadSignals,
 )
-from datastar_py.fastapi import (
-    ServerSentEventGenerator as SSE,
-)
 from fastapi import APIRouter
 
-from ankiweb.adapters.inbound.http_datastar.common import error_response
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+)
 from ankiweb.adapters.inbound.http_shared import templating
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
 
     @router.post("/cancel")
     async def cancel():
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
+        return redirect_response("/deckbrowser")
     @router.post("/previewlayout")
     @router.post("/previewlayout/{ntid}")
     async def preview_layout(ntid: int | None = None):
@@ -75,7 +75,7 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
 
         nid = await service.run(find_nid)
         if nid is not None:
-            return DatastarResponse(SSE.redirect(f"/preview/{nid}"))
+            return redirect_response(f"/preview/{nid}")
         else:
             return error_response("Add a note of this type first to preview.")
 
@@ -141,6 +141,6 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
             logger.exception("Failed to save card layout")
             return error_response(exc)
 
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
+        return redirect_response("/deckbrowser")
 
     return router

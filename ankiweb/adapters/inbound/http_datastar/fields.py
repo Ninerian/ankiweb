@@ -7,12 +7,12 @@ from datastar_py.fastapi import (
     DatastarResponse,
     ReadSignals,
 )
-from datastar_py.fastapi import (
-    ServerSentEventGenerator as SSE,
-)
 from fastapi import APIRouter
 
-from ankiweb.adapters.inbound.http_datastar.common import error_response
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+)
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
@@ -64,7 +64,7 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
 
     @router.post("/cancel")
     async def cancel():
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
+        return redirect_response("/deckbrowser")
     @router.post("/savefields")
     async def save_fields(payload: ReadSignals):
         service = get_service()
@@ -143,6 +143,6 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
             logger.exception("Failed to save note type fields")
             return error_response(exc)
 
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
+        return redirect_response("/deckbrowser")
 
     return router

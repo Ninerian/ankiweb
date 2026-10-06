@@ -12,7 +12,11 @@ from datastar_py.fastapi import (
 )
 from fastapi import APIRouter
 
-from ankiweb.adapters.inbound.http_datastar.common import refresh_screen
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+    refresh_screen,
+)
 from ankiweb.adapters.inbound.http_shared import templating
 
 logger = logging.getLogger(__name__)
@@ -49,7 +53,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         await service.run_op(
             lambda col: col.decks.set_current(did), initiator="deckbrowser"
         )
-        return DatastarResponse(SSE.redirect("/overview"))
+        return redirect_response("/overview")
     @router.post("/select/{did}")
     async def select_deck(did: int):
         service = get_service()
@@ -73,9 +77,8 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             )
 
         await service.run_op(toggle, initiator="deckbrowser")
-        list_html = await service.run(render_deck_list)
-        return DatastarResponse(
-            SSE.patch_elements(list_html, selector="main.deck-list")
+        return await refresh_screen(
+            service, render_deck_list, selector="main.deck-list"
         )
 
     @router.post("/create")
@@ -99,7 +102,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         service = get_service()
         is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
         path = f"/filtered-deck/{did}" if is_dyn else f"/deck-options/{did}"
-        return DatastarResponse(SSE.redirect(path))
+        return redirect_response(path)
 
     @router.post("/rename/{did}")
     async def rename_deck(did: int, payload: ReadSignals):
@@ -117,7 +120,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             await service.run_op(do_rename, initiator="deckbrowser")
         except Exception as exc:
             logger.exception("Failed to rename deck %s", did)
-            return DatastarResponse(SSE.patch_signals({"error": str(exc)}))
+            return error_response(exc)
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
     @router.post("/delete/{did}")
@@ -131,11 +134,11 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             await service.run_op(do_delete, initiator="deckbrowser")
         except Exception as exc:
             logger.exception("Failed to delete deck %s", did)
-            return DatastarResponse(SSE.patch_signals({"error": str(exc)}))
+            return error_response(exc)
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
     @router.post("/createfiltered")
     async def create_filtered():
-        return DatastarResponse(SSE.redirect("/filtered-deck"))
+        return redirect_response("/filtered-deck")
 
     return router

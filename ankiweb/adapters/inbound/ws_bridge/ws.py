@@ -1,3 +1,11 @@
+"""WebSocket endpoint for Anki desktop bridge compatibility (/ws).
+
+Transport boundary:
+- Serves native reviewer/legacy screen pycmd commands and server push calls.
+- Dispatches commands to BridgeHub and registers client contexts.
+- Broadcasts opchanges flags across connected sessions for cross-screen sync.
+- Modern Datastar in-page actions, field saves, and queries use HTTP/SSE, not this socket.
+"""
 from __future__ import annotations
 
 import json

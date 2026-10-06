@@ -17,7 +17,10 @@ from datastar_py.fastapi import (
 )
 from fastapi import APIRouter
 
-from ankiweb.adapters.inbound.http_datastar.common import error_response
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+)
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
@@ -526,7 +529,7 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             )
         except (InvalidInput, NotFoundError) as exc:
             return error_response(exc)
-        return DatastarResponse(SSE.redirect(f"/change-notetype/{old}"))
+        return redirect_response(f"/change-notetype/{old}")
 
     @router.post("/addtag")
     async def add_tag(payload: ReadSignals):

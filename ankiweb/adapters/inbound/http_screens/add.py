@@ -1,3 +1,11 @@
+"""Bridge-backed add screen adapter for vendored editor.js embedding.
+
+Transport boundary:
+- Handles WebSocket commands (`addReady`, `setnotetype:`, `setdeck:`, `saveTags:`,
+  `addnote:`) emitted by vendored `editor.js` via `pycmd_shim.ts`.
+- Modern note additions in the web app utilize Datastar routes in
+  `ankiweb/adapters/inbound/http_pages/editor.py` (`GET /add`).
+"""
 from __future__ import annotations
 
 import json

@@ -1,3 +1,12 @@
+"""Bridge-backed editor screen adapter for vendored editor.js embedding.
+
+Transport boundary:
+- Handles WebSocket commands (`load:`, `blur:`, `key:`, `saveTags:`) emitted by
+  vendored `editor.js` via `pycmd_shim.ts`.
+- Modern note editing in the web app uses Datastar HTTP routes in
+  `ankiweb/adapters/inbound/http_pages/editor.py` (`POST /editor/save-field`, etc.).
+  Field saves in the modern editor do not require WebSocket traffic.
+"""
 from __future__ import annotations
 
 import json

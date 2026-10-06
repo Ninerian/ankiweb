@@ -11,11 +11,11 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any, cast
 
 from anki import stats_pb2
-from datastar_py.fastapi import DatastarResponse, ReadSignals
-from datastar_py.fastapi import ServerSentEventGenerator as SSE
+from datastar_py.fastapi import ReadSignals
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse
 
+from ankiweb.adapters.inbound.http_datastar.common import elements_response
 from ankiweb.adapters.inbound.http_pages.graph_svg import (
     BandScale,
     LinearScale,
@@ -1247,6 +1247,6 @@ def make_router(get_service: Callable[[], Any]) -> APIRouter:
             difficulty=difficulty_data,
         )
 
-        return DatastarResponse(SSE.patch_elements(updated_html, selector="#graphs-cards-container"))
+        return elements_response(updated_html, selector="#graphs-cards-container")
 
     return router
