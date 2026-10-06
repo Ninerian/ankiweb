@@ -316,11 +316,6 @@ def test_editor_links_js_has_fields_branch():
     assert "/fields/" in js
 
 
-def test_cancel_navigates(client):
-    r = client.post("/fields/cancel")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
 
 def test_save_reordered_edited_added_row_with_sort_selection(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
@@ -377,11 +372,7 @@ def test_cancel_does_not_persist_uncommitted_changes(client):
         client.app.state.service.run, lambda col: col.models.get(ntid)["sortf"]
     )
 
-    r = client.post("/fields/cancel")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
-
+    # Navigating away without posting savefields leaves fields unchanged
     after_names = client.portal.call(
         client.app.state.service.run, lambda col: _field_names(col, ntid)
     )

@@ -54,9 +54,6 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/card-layout")
     state: dict[str, int | None] = {"ntid": None}
 
-    @router.post("/cancel")
-    async def cancel():
-        return redirect_response("/deckbrowser")
     @router.post("/previewlayout")
     @router.post("/previewlayout/{ntid}")
     async def preview_layout(ntid: int | None = None):

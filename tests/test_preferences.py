@@ -231,11 +231,3 @@ def test_saveprefs_direct_signals(tmp_path: Path):
         assert p.editing.render_latex is True
 
 
-def test_cancel_navigates(tmp_path: Path):
-    with TestClient(
-        create_app(Settings(collection_path=tmp_path / "c.anki2"))
-    ) as client:
-        r = client.post("/preferences/cancel")
-        assert r.status_code == 200
-        events = parse_datastar_events(r.text)
-        assert any("window.location = '/deckbrowser'" in data for _, data in events)

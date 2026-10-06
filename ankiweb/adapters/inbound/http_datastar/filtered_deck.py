@@ -88,9 +88,6 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
 def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/filtered-deck")
 
-    @router.post("/cancel")
-    async def cancel():
-        return redirect_response("/overview")
     @router.post("/submit")
     async def submit(payload: ReadSignals):
         service = get_service()

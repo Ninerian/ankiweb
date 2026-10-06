@@ -97,13 +97,6 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             )
         return DatastarResponse()
 
-    @router.post("/opts/{did}")
-    async def opts_deck(did: int):
-        service = get_service()
-        is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
-        path = f"/filtered-deck/{did}" if is_dyn else f"/deck-options/{did}"
-        return redirect_response(path)
-
     @router.post("/rename/{did}")
     async def rename_deck(did: int, payload: ReadSignals):
         service = get_service()
@@ -137,8 +130,5 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             return error_response(exc)
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
-    @router.post("/createfiltered")
-    async def create_filtered():
-        return redirect_response("/filtered-deck")
 
     return router

@@ -64,9 +64,9 @@
         </button>
       </div>
       <div class="flex flex-wrap justify-center gap-2">
-        <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/opts')">
+        <a href="{{ '/filtered-deck/' ~ deck_id if is_dyn else '/deck-options/' ~ deck_id }}" class="btn btn-outline btn-sm">
           {{ tr.actions_options() | tr_clean }}
-        </button>
+        </a>
         {% if is_dyn %}
           <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/refresh')">
             {{ tr.actions_rebuild() | tr_clean }}
@@ -75,9 +75,9 @@
             {{ tr.studying_empty() | tr_clean }}
           </button>
         {% else %}
-          <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/studymore')">
+          <a href="/custom-study" class="btn btn-outline btn-sm">
             {{ tr.actions_custom_study() | tr_clean }}
-          </button>
+          </a>
         {% endif %}
         {% if have_buried %}
           <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/unbury')">

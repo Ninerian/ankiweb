@@ -29,9 +29,6 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
         await service.run(lambda col: col.startTimebox())
         return redirect_response("/reviewer")
 
-    @router.post("/decks")
-    async def decks():
-        return redirect_response("/deckbrowser")
     @router.post("/unbury")
     async def unbury():
         service = get_service()
@@ -76,17 +73,6 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             )
         return DatastarResponse()
 
-    @router.post("/studymore")
-    async def studymore():
-        return redirect_response("/custom-study")
-
-    @router.post("/opts")
-    async def opts():
-        service = get_service()
-        did = await service.run(lambda col: col.decks.get_current_id())
-        is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
-        path = f"/filtered-deck/{did}" if is_dyn else f"/deck-options/{did}"
-        return redirect_response(path)
 
     @router.post("/setdesc")
     async def setdesc(payload: ReadSignals):
@@ -124,6 +110,7 @@ def render_overview_html(col) -> str:
 
     return templating.render(
         "overview.html.jinja",
+        deck_id=deck["id"],
         name=deck["name"],
         desc=desc,
         desc_is_markdown=desc_is_markdown,

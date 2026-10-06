@@ -45,9 +45,21 @@
             <button class="btn btn-sm btn-primary" type="button" data-on:click="$applyToSubdecks = false; @post('/deck-options/save')">
                 {{ tr.deck_config_save_button() }}
             </button>
-            <button class="btn btn-sm btn-outline" type="button" data-on:click="if (!$dirty || confirm('You have unsaved changes. Are you sure you want to close?')) { window.location.href = '/deckbrowser'; }">
+            <a class="btn btn-sm btn-outline" href="/deckbrowser" data-on:click="
+                if (
+                    $dirty &&
+                    evt.button === 0 &&
+                    !evt.ctrlKey &&
+                    !evt.metaKey &&
+                    !evt.shiftKey &&
+                    !evt.altKey
+                ) {
+                    evt.preventDefault();
+                    $_leaveDialog.showModal();
+                }
+            ">
                 Close
-            </button>
+            </a>
         </div>
     </div>
 
@@ -1064,6 +1076,22 @@
     </div>
 
     <!-- Modals -->
+    <!-- Leave Without Saving Modal -->
+    <dialog id="deck-options-close-dialog" class="modal" data-ref="_leaveDialog" aria-labelledby="deck-options-close-dialog-title" aria-describedby="deck-options-close-dialog-description">
+        <div class="modal-box">
+            <h2 class="font-bold text-lg" id="deck-options-close-dialog-title">Unsaved changes</h2>
+            <p class="py-4" id="deck-options-close-dialog-description">You have unsaved changes. Are you sure you want to close?</p>
+            <div class="modal-action flex-wrap">
+                <form method="dialog">
+                    <button class="btn btn-sm btn-ghost" autofocus>Keep editing</button>
+                </form>
+                <a class="btn btn-sm btn-error" href="/deckbrowser">Discard changes and close</a>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
     <!-- Add Preset Modal -->
     <dialog class="modal" id="addPresetModal">
         <div class="modal-box">

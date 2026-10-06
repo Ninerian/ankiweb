@@ -80,9 +80,6 @@ def render_preferences_html(col) -> str:
 def make_preferences_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/preferences")
 
-    @router.post("/cancel")
-    async def cancel():
-        return redirect_response("/deckbrowser")
     @router.post("/savePrefs")
     async def save_prefs(payload: ReadSignals):
         service = get_service()

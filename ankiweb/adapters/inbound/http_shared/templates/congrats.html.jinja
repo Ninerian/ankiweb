@@ -33,7 +33,7 @@
       {% endif %}
 
       <div class="congrats-actions mt-4 pt-2 border-t border-base-300">
-        <button class="btn btn-primary" type="button" data-on:click__prevent="@post('/overview/decks')">Back to Decks</button>
+        <a href="/deckbrowser" class="btn btn-primary">Back to Decks</a>
       </div>
     </div>
   {% endcall %}
@@ -49,6 +49,10 @@
   .congrats a {
     color: var(--color-primary);
     text-decoration: none;
+  }
+
+  .congrats a.btn-primary {
+    color: var(--color-primary-content, #fff);
   }
   .congrats a:hover {
     text-decoration: underline;

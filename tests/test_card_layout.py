@@ -295,11 +295,6 @@ def test_previewlayout_navigates(client):
     assert any(f"window.location = '/preview/{nid}'" in data for _, data in events)
 
 
-def test_cancel_navigates(client):
-    r = client.post("/card-layout/cancel")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
 
 
 # (j) editor_links_js() contains the cards branch + /card-layout/

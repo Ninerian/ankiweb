@@ -152,21 +152,3 @@ def test_custom_study_error_when_no_cards_match(client):
     assert not any("window.location = '/overview'" in data for _, data in events)
 
 
-def test_overview_studymore_navigates_to_custom_study(client):
-    from conftest import parse_datastar_events
-
-    _seed(client)
-    r = client.post("/overview/studymore")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/custom-study'" in data for _, data in events)
-
-
-def test_overview_opts_navigates_to_deck_options(client):
-    from conftest import parse_datastar_events
-
-    did = _seed(client)
-    r = client.post("/overview/opts")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any(f"window.location = '/deck-options/{did}'" in data for _, data in events)

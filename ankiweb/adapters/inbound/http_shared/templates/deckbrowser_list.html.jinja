@@ -60,7 +60,7 @@
         </button>
         <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-lg z-50 w-44 p-1 border border-base-300">
           <li>
-            <a href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent="@post('/deckbrowser/opts/{{ node.deck_id }}')">
+            <a href="{{ '/filtered-deck/' ~ node.deck_id if node.filtered else '/deck-options/' ~ node.deck_id }}" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();">
               {{ tr.actions_options() }}
             </a>
           </li>

@@ -237,14 +237,13 @@
           >
             {{ tr.actions_save() }}
           </button>
-          <button
+          <a
             class="btn btn-neutral px-3 min-h-[44px]"
-            type="button"
             id="cancel"
-            data-on:click__prevent="@post('/preferences/cancel')"
+            href="/deckbrowser"
           >
             {{ tr.actions_cancel() }}
-          </button>
+          </a>
         </div>
         <div id="status-area" class="flex items-center ms-auto">
           <div id="err" class="text-error text-sm font-semibold" data-text="$error"></div>

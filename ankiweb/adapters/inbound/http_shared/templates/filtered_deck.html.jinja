@@ -155,9 +155,9 @@
     </div>
     <div class="mt-4 flex items-center gap-2">
       <button class="btn btn-primary btn-sm" type="button" id="go" data-on:click__prevent="$error = ''; @post('/filtered-deck/submit', {payload: {id: $id, name: $name, allow_empty: $allow_empty, reschedule: $resched, preview_again: $preview_again, preview_hard: $preview_hard, preview_good: $preview_good, search1: $search1, limit1: $limit1, order1: $order1, second: $second, search2: $search2, limit2: $limit2, order2: $order2}})">{{ oklabel }}</button>
-      <button class="btn btn-neutral btn-sm" type="button" data-on:click__prevent="@post('/filtered-deck/cancel')">
+      <a class="btn btn-neutral btn-sm" href="/overview">
         {{ tr.actions_cancel() }}
-      </button>
+      </a>
     </div>
     <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
   </form>

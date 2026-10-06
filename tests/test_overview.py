@@ -49,7 +49,6 @@ def test_congrats_states_and_upstream_parity(col):
     assert "container-sm" in html
     assert "--gutter-block: 1rem" in html
     assert "custom study" in html
-    assert "@post('/overview/studymore')" in html
     assert "Back to Decks" in html
     assert "data-on-interval__duration.60s" in html
 

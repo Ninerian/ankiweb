@@ -71,9 +71,9 @@
       <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="$error = ''; @post('/card-layout/savelayout')">
         {{ tr.actions_save() }}
       </button>
-      <button class="btn btn-neutral" type="button" data-on:click__prevent="@post('/card-layout/cancel')">
+      <a class="btn btn-neutral" href="/deckbrowser">
         {{ tr.actions_cancel() }}
-      </button>
+      </a>
       <button
         class="btn btn-outline"
         type="button"

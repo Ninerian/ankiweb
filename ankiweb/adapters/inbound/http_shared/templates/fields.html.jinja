@@ -92,9 +92,9 @@
       <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="$error = ''; @post('/fields/savefields')">
         {{ save_label }}
       </button>
-      <button class="btn btn-neutral" type="button" data-on:click__prevent="@post('/fields/cancel')">
+      <a class="btn btn-neutral" href="/deckbrowser">
         {{ cancel_label }}
-      </button>
+      </a>
     </div>
     <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
   </form>

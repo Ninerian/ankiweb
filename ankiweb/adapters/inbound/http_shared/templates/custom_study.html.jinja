@@ -67,9 +67,9 @@
       <button class="btn btn-primary btn-sm" type="button" id="go" data-on:click__prevent="$error = ''; @post('/custom-study/submit')">
         {{ tr.custom_study_ok() }}
       </button>
-      <button class="btn btn-neutral btn-sm" type="button" data-on:click__prevent="@post('/custom-study/cancel')">
+      <a class="btn btn-neutral btn-sm" href="/overview">
         {{ tr.actions_cancel() }}
-      </button>
+      </a>
     </div>
     <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
   </form>

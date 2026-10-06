@@ -62,9 +62,6 @@ def render_fields_html(col, ntid: int) -> str:
 def make_fields_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/fields")
 
-    @router.post("/cancel")
-    async def cancel():
-        return redirect_response("/deckbrowser")
     @router.post("/savefields")
     async def save_fields(payload: ReadSignals):
         service = get_service()

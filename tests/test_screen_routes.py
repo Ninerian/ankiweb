@@ -79,13 +79,6 @@ def test_overview_study_navigates_to_reviewer(client):
     assert any("window.location = '/reviewer'" in data for _, data in events)
 
 
-def test_overview_decks_navigates_home(client):
-    from conftest import parse_datastar_events
-
-    r = client.post("/overview/decks")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
 
 
 def test_reviewer_route_serves_real_page(client):

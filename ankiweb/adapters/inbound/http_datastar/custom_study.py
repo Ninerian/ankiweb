@@ -88,9 +88,6 @@ def render_custom_study_html(col) -> str:
 def make_custom_study_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/custom-study")
 
-    @router.post("/cancel")
-    async def cancel():
-        return redirect_response("/overview")
     @router.post("/submit")
     async def submit(payload: ReadSignals):
         service = get_service()

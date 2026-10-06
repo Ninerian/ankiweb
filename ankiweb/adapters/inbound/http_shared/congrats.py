@@ -63,7 +63,7 @@ def _bridge_link(command: str, label: str) -> str:
     if command == "unbury":
         return f'<a href="#" data-on:click__prevent="@post(\'/overview/unbury\')">{label}</a>'
     elif command == "customStudy":
-        return f'<a href="#" data-on:click__prevent="@post(\'/overview/studymore\')">{label}</a>'
+        return f'<a href="/custom-study">{label}</a>'
     return f'<a href="#">{label}</a>'
 
 
