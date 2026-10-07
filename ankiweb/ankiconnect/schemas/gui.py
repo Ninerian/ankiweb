@@ -1,8 +1,11 @@
 """Request models for the GUI actions (ankiweb/ankiconnect/actions/gui.py)."""
 
 from __future__ import annotations
-from typing import Any, Optional
+
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 from ankiweb.ankiconnect.schemas._base import ACBaseModel
 
 
@@ -29,7 +32,7 @@ class GuiShowAnswerParams(ACBaseModel):
 class GuiAnswerCardParams(ACBaseModel):
     """Answer the current reviewer card with the given ease button."""
 
-    ease: Optional[int] = Field(
+    ease: int | None = Field(
         default=None, description="Answer button: 1=Again, 2=Hard, 3=Good, 4=Easy."
     )
 
@@ -41,13 +44,13 @@ class GuiDeckBrowserParams(ACBaseModel):
 class GuiDeckOverviewParams(ACBaseModel):
     """Open the Deck Overview screen for a deck by name."""
 
-    name: Optional[str] = Field(default=None, description="Deck name.")
+    name: str | None = Field(default=None, description="Deck name.")
 
 
 class GuiDeckReviewParams(ACBaseModel):
     """Start reviewing a deck by name."""
 
-    name: Optional[str] = Field(default=None, description="Deck name.")
+    name: str | None = Field(default=None, description="Deck name.")
 
 
 class GuiUndoParams(ACBaseModel):
@@ -68,8 +71,8 @@ class GuiBrowseReorder(BaseModel):
 class GuiBrowseParams(ACBaseModel):
     """Open the Card Browser and search for a query."""
 
-    query: Optional[str] = Field(default=None, description="Anki search string.")
-    reorderCards: Optional[GuiBrowseReorder] = Field(
+    query: str | None = Field(default=None, description="Anki search string.")
+    reorderCards: GuiBrowseReorder | None = Field(
         default=None, description="Optional column/order to reorder the matched cards."
     )
 
@@ -77,13 +80,13 @@ class GuiBrowseParams(ACBaseModel):
 class GuiSelectCardParams(ACBaseModel):
     """Select a card (by card id) in the open Card Browser."""
 
-    card: Optional[int] = Field(default=None, description="Card id to select.")
+    card: int | None = Field(default=None, description="Card id to select.")
 
 
 class GuiSelectNoteParams(ACBaseModel):
     """Deprecated alias of guiSelectCard; selects by card id."""
 
-    note: Optional[int] = Field(default=None, description="Card id to select.")
+    note: int | None = Field(default=None, description="Card id to select.")
 
 
 class GuiSelectedNotesParams(ACBaseModel):
@@ -97,8 +100,8 @@ class GuiPlayAudioParams(ACBaseModel):
 class GuiAddNoteSetDataNote(BaseModel):
     """Note spec used to prefill the open Add Note dialog."""
 
-    deckName: Optional[str] = Field(default=None, description="Target deck name.")
-    modelName: Optional[str] = Field(
+    deckName: str | None = Field(default=None, description="Target deck name.")
+    modelName: str | None = Field(
         default=None, description="Note type (model) name."
     )
     fields: dict[str, str] = Field(
@@ -112,7 +115,7 @@ class GuiAddNoteSetDataNote(BaseModel):
 class GuiAddNoteSetDataParams(ACBaseModel):
     """Prefill the open Add Note dialog with deck/model/fields/tags."""
 
-    note: Optional[GuiAddNoteSetDataNote] = Field(
+    note: GuiAddNoteSetDataNote | None = Field(
         default=None, description="Note spec."
     )
     append: bool = Field(
@@ -123,14 +126,14 @@ class GuiAddNoteSetDataParams(ACBaseModel):
 class GuiEditNoteParams(ACBaseModel):
     """Open the Edit dialog for a note id."""
 
-    note: Optional[int] = Field(default=None, description="Note id to edit.")
+    note: int | None = Field(default=None, description="Note id to edit.")
 
 
 class GuiAddCardsNote(BaseModel):
     """Note spec used to preset the Add Cards dialog."""
 
-    deckName: Optional[str] = Field(default=None, description="Target deck name.")
-    modelName: Optional[str] = Field(
+    deckName: str | None = Field(default=None, description="Target deck name.")
+    modelName: str | None = Field(
         default=None, description="Note type (model) name."
     )
     fields: dict[str, str] = Field(
@@ -153,7 +156,7 @@ class GuiAddCardsNote(BaseModel):
 class GuiAddCardsParams(ACBaseModel):
     """Preset the Add Cards dialog; returns the prospective note id."""
 
-    note: Optional[GuiAddCardsNote] = Field(
+    note: GuiAddCardsNote | None = Field(
         default=None, description="Note spec to preset."
     )
 
@@ -161,7 +164,7 @@ class GuiAddCardsParams(ACBaseModel):
 class GuiImportFileParams(ACBaseModel):
     """Invoke the Import dialog (unsupported in ankiweb)."""
 
-    path: Optional[str] = Field(
+    path: str | None = Field(
         default=None, description="Server-side path of the file to import."
     )
 

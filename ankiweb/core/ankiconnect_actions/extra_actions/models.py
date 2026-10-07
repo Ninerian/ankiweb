@@ -1,9 +1,10 @@
 """Note-type extra actions."""
 
 from __future__ import annotations
-from ankiweb.core.ankiconnect_actions.registry import extra_action
-from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
+
 from ankiweb.ankiconnect.schemas.extra import DeleteModelParams
+from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
+from ankiweb.core.ankiconnect_actions.registry import extra_action
 
 
 @extra_action(
@@ -22,16 +23,16 @@ async def delete_model(rt, modelName=None, modelId=None):
         if m is None and modelName:
             m = col.models.by_name(modelName)
         if m is None:
-            raise Exception(
+            raise ValueError(
                 "model was not found: " + str(modelName if modelName else modelId)
             )
         used = col.models.use_count(m)
         if used:
-            raise Exception(
+            raise ValueError(
                 f"cannot delete note type '{m['name']}': {used} note(s) still use it"
             )
         if len(col.models.all_names_and_ids()) <= 1:
-            raise Exception("cannot delete the only remaining note type")
+            raise ValueError("cannot delete the only remaining note type")
         return True, col.models.remove(m["id"])
 
     return await run_emit(rt, fn)

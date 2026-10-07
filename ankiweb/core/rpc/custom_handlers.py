@@ -1,7 +1,18 @@
 from __future__ import annotations
-from typing import Awaitable, Callable
 
-# camelCaseMethod -> async handler(service, body: bytes) -> bytes
+import logging
+from collections.abc import Awaitable, Callable
+
+from google.protobuf.message import DecodeError
+
+logger = logging.getLogger(__name__)
+async def _emit_best_effort(service, flags: dict, initiator: str) -> None:
+    try:
+        await service.emit(flags, initiator)
+    except Exception:
+        logger.exception("Failed to broadcast RPC operation changes (%s)", initiator)
+
+
 CUSTOM: dict[str, Callable[..., Awaitable[bytes]]] = {}
 
 
@@ -19,6 +30,7 @@ async def update_deck_configs(service, body: bytes, hub=None) -> bytes:
     out = await service.backend_raw("update_deck_configs", body)
     try:
         from anki.collection_pb2 import OpChanges
+
         from ankiweb.core.op_changes import (
             op_changes_to_flags,
         )
@@ -27,9 +39,9 @@ async def update_deck_configs(service, body: bytes, hub=None) -> bytes:
         op.ParseFromString(bytes(out))
         flags = op_changes_to_flags(op)
         if any(flags.values()):
-            await service.emit(flags, "deck-options")
-    except Exception:
-        pass
+            await _emit_best_effort(service, flags, "deck-options")
+    except (DecodeError, AttributeError) as exc:
+        logger.debug("Failed to decode OpChanges for update_deck_configs: %s", exc)
     return out
 
 
@@ -64,6 +76,7 @@ async def change_notetype(service, body: bytes, hub=None) -> bytes:
     out = await service.backend_raw("change_notetype", req.SerializeToString())
     try:
         from anki.collection_pb2 import OpChanges
+
         from ankiweb.core.op_changes import (
             op_changes_to_flags,
         )
@@ -72,9 +85,9 @@ async def change_notetype(service, body: bytes, hub=None) -> bytes:
         op.ParseFromString(bytes(out))
         flags = op_changes_to_flags(op)
         if any(flags.values()):
-            await service.emit(flags, "change-notetype")
-    except Exception:
-        pass
+            await _emit_best_effort(service, flags, "change-notetype")
+    except (DecodeError, AttributeError) as exc:
+        logger.debug("Failed to decode OpChanges for change_notetype: %s", exc)
     return out
 
 
@@ -84,6 +97,7 @@ CUSTOM["changeNotetype"] = change_notetype
 async def _emit_import_changes(service, out: bytes) -> None:
     try:
         import anki.import_export_pb2 as ie
+
         from ankiweb.core.op_changes import (
             op_changes_to_flags,
         )
@@ -92,13 +106,14 @@ async def _emit_import_changes(service, out: bytes) -> None:
         resp.ParseFromString(bytes(out))
         flags = op_changes_to_flags(resp.changes)
         if any(flags.values()):
-            await service.emit(flags, "import")
-    except Exception:
-        pass
+            await _emit_best_effort(service, flags, "import")
+    except (DecodeError, AttributeError) as exc:
+        logger.debug("Failed to decode ImportResponse changes: %s", exc)
 
 
 async def get_csv_metadata(service, body: bytes, hub) -> bytes:
     import anki.import_export_pb2 as ie
+
     from ankiweb import import_tmp
 
     req = ie.CsvMetadataRequest()
@@ -110,6 +125,7 @@ async def get_csv_metadata(service, body: bytes, hub) -> bytes:
 
 async def import_csv(service, body: bytes, hub) -> bytes:
     import anki.import_export_pb2 as ie
+
     from ankiweb import import_tmp
 
     req = ie.ImportCsvRequest()
@@ -123,6 +139,7 @@ async def import_csv(service, body: bytes, hub) -> bytes:
 
 async def import_anki_package(service, body: bytes, hub) -> bytes:
     import anki.import_export_pb2 as ie
+
     from ankiweb import import_tmp
 
     req = ie.ImportAnkiPackageRequest()
@@ -144,6 +161,7 @@ async def _emit_opchanges(service, out: bytes) -> None:
     """Parse a raw OpChanges reply and broadcast its flags (image-occlusion writes)."""
     try:
         from anki.collection_pb2 import OpChanges
+
         from ankiweb.core.op_changes import (
             op_changes_to_flags,
         )
@@ -152,14 +170,16 @@ async def _emit_opchanges(service, out: bytes) -> None:
         op.ParseFromString(bytes(out))
         flags = op_changes_to_flags(op)
         if any(flags.values()):
-            await service.emit(flags, "image-occlusion")
-    except Exception:
-        pass
+            await _emit_best_effort(service, flags, "image-occlusion")
+    except (DecodeError, AttributeError) as exc:
+        logger.debug("Failed to decode OpChanges for image occlusion: %s", exc)
 
 
 async def get_image_for_occlusion(service, body: bytes, hub) -> bytes:
     import os
+
     import anki.image_occlusion_pb2 as iopb
+
     from ankiweb import import_tmp
 
     req = iopb.GetImageForOcclusionRequest()
@@ -177,6 +197,7 @@ async def get_image_for_occlusion(service, body: bytes, hub) -> bytes:
 
 async def add_image_occlusion_note(service, body: bytes, hub) -> bytes:
     import anki.image_occlusion_pb2 as iopb
+
     from ankiweb import import_tmp
 
     req = iopb.AddImageOcclusionNoteRequest()
@@ -199,7 +220,7 @@ CUSTOM["addImageOcclusionNote"] = add_image_occlusion_note
 CUSTOM["updateImageOcclusionNote"] = update_image_occlusion_note
 
 async def get_profile_config_json(service, body: bytes, hub=None) -> bytes:
-    import anki.generic_pb2 as generic_pb2
+    from anki import generic_pb2
     return generic_pb2.Json(json=b"null").SerializeToString()
 
 

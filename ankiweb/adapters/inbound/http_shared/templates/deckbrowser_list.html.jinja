@@ -60,17 +60,17 @@
         </button>
         <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-lg z-50 w-44 p-1 border border-base-300">
           <li>
-            <a href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent="@post('/deckbrowser/opts/{{ node.deck_id }}')">
+            <a href="{{ '/filtered-deck/' ~ node.deck_id if node.filtered else '/deck-options/' ~ node.deck_id }}" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();">
               {{ tr.actions_options() }}
             </a>
           </li>
           <li>
-            <a href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebPrompt("{{ tr.decks_new_deck_name() }}", {{ node.name | tojson }}).then(function(name) { if (name) @post(&#39;/deckbrowser/rename/{{ node.deck_id }}&#39;, {payload: {name: name}}); })'>
+            <a href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent='$error = ""; ankiwebPrompt("{{ tr.decks_new_deck_name() }}", {{ node.name | tojson }}).then(function(name) { if (name) @post(&#39;/deckbrowser/rename/{{ node.deck_id }}&#39;, {payload: {name: name}}); })'>
               {{ tr.actions_rename() }}
             </a>
           </li>
           <li>
-            <a class="text-error" href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent='document.getElementById("err").textContent = ""; ankiwebConfirm("{{ tr.decks_delete_deck() }}: " + {{ node.name | tojson }} + "?", {danger: true}).then(function(ok) { if (ok) @post(&#39;/deckbrowser/delete/{{ node.deck_id }}&#39;); })'>
+            <a class="text-error" href="#" onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();" data-on:click__prevent='$error = ""; ankiwebConfirm("{{ tr.decks_delete_deck() }}: " + {{ node.name | tojson }} + "?", {danger: true}).then(function(ok) { if (ok) @post(&#39;/deckbrowser/delete/{{ node.deck_id }}&#39;); })'>
               {{ tr.actions_delete() }}
             </a>
           </li>

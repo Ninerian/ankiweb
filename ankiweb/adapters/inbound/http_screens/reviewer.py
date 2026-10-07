@@ -1,10 +1,27 @@
+"""Native Reviewer bridge screen and session handler.
+
+Transport boundary:
+- Operates over WebSocket `/ws?context=reviewer` handling desktop `pycmd` verbs
+  (`show`, `ans`, `ease1`..`ease4`, `replay`, `play:<side>:<idx>`, `mark`, `setflag:`,
+  `buryc`, `buryn`, `suspendc`, `suspendn`, `setdue:`, `forget`, `deletenote`,
+  `undo`, `starttimer`). Card Info and Edit use native links.
+- Server pushes QA rendering and ease bars (`_showQuestion`, `_showAnswer`,
+  `ankiwebSetAnswerBar`) and AV audio filenames (`ankiwebPlayAudio`).
+- Audio playback and MathJax rendering are client runtime side effects; no audio or
+  typesetting runs over WebSocket frames.
+"""
 from __future__ import annotations
+
+import logging
 from dataclasses import dataclass
 from typing import Any
-from anki.sound import SoundOrVideoTag, AV_REF_RE
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
 
+from anki.sound import AV_REF_RE, SoundOrVideoTag
+
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 def render_av_buttons(text: str) -> str:
     """Replace [anki:play:<side>:<N>] refs with inline replay buttons (pycmd('play:..'))."""
@@ -129,10 +146,8 @@ def ease_buttons_bar(labels) -> str:
     return templating.render("reviewer_ease_buttons_bar.html.jinja", cells=cells)
 
 
-def reviewer_actions_bar() -> str:
-    """A compact bar of card-action buttons (Anki's reviewer 'More' menu), each issuing a
-    pycmd handled by make_reviewer_handler. Labels follow the active language via tr (with
-    keyless English fallbacks). Set Due / Forget / Delete prompt/confirm client-side."""
+def reviewer_actions_bar(cid: int | None = None, nid: int | None = None) -> str:
+    """Render reviewer controls and native navigation links for the current card."""
 
     def lbl(key, fallback):
         f = getattr(tr, key, None)
@@ -162,10 +177,6 @@ def reviewer_actions_bar() -> str:
             "onclick": "ankiwebDeleteNote()",
             "label": lbl("studying_delete_note", "Delete Note"),
         },
-        {
-            "onclick": "pycmd('cardinfo')",
-            "label": lbl("actions_card_info", "Card Info"),
-        },
         {"onclick": "pycmd('undo')", "label": lbl("undo_undo", "Undo")},
     ]
     # Flag buttons 1..4 + a clear (flag 0)
@@ -182,7 +193,21 @@ def reviewer_actions_bar() -> str:
     buttons.append(
         {"onclick": "pycmd('setflag:0')", "label": lbl("browsing_no_flag", "No Flag")}
     )
-    return templating.render("reviewer_actions_bar.html.jinja", buttons=buttons)
+    nav_links = [
+        {
+            "id": "reviewer-card-info",
+            "href": f"/card-info/{cid}" if cid is not None else None,
+            "label": lbl("actions_card_info", "Card Info"),
+        },
+        {
+            "id": "reviewer-card-edit",
+            "href": f"/edit?nid={nid}" if nid is not None else None,
+            "label": lbl("studying_edit", "Edit"),
+        },
+    ]
+    return templating.render(
+        "reviewer_actions_bar.html.jinja", buttons=buttons, nav_links=nav_links
+    )
 
 
 def reviewer_page_body() -> str:
@@ -209,7 +234,14 @@ def make_reviewer_handler(service, hub):
         hub.ui_state.current_card_id = session.card.id
         hub.ui_state.side = "question"
         await hub.push_call(
-            "reviewer", "_showQuestion", [info["q"], info["a"], info["bodyclass"]]
+            "reviewer",
+            "_showQuestion",
+            [
+                info["q"],
+                info["a"],
+                info["bodyclass"],
+                reviewer_actions_bar(cid=session.card.id, nid=session.card.nid),
+            ],
         )
         await hub.push_call("reviewer", "ankiwebSetAnswerBar", [show_answer_bar()])
         q_files = await service.run(
@@ -227,7 +259,7 @@ def make_reviewer_handler(service, hub):
             await _show_next()
         elif arg == "ans":
             if session.card is None:
-                return None
+                return
             info = await service.run(lambda col: render_answer(col, session))
             await hub.push_call("reviewer", "_showAnswer", [info["a"]])
             await hub.push_call(
@@ -245,18 +277,12 @@ def make_reviewer_handler(service, hub):
                 await hub.push_call("reviewer", "ankiwebPlayAudio", [a_files])
         elif arg in ("ease1", "ease2", "ease3", "ease4"):
             if session.card is None:
-                return None
+                return
             ease = int(arg[4:])
             await service.run_op(
                 lambda col: answer_current(col, session, ease), initiator="reviewer"
             )
             await _show_next()
-        elif arg == "edit":
-            if session.card is not None:
-                nid = await service.run(lambda col: session.card.nid)
-                await hub.push_call(
-                    "reviewer", "ankiwebNavigate", ["/edit?nid=" + str(nid)]
-                )
         elif arg == "starttimer":
             if session.card is not None:
                 await service.run(lambda col: session.card.start_timer())
@@ -296,7 +322,7 @@ def make_reviewer_handler(service, hub):
             await hub.push_call("reviewer", "ankiwebNavigate", ["/deckbrowser"])
         elif arg == "mark":
             if session.card is None:
-                return None
+                return
 
             state = {}
 
@@ -314,13 +340,13 @@ def make_reviewer_handler(service, hub):
             await hub.push_call("reviewer", "_drawMark", [state["marked"]])
         elif arg.startswith("setflag:"):
             if session.card is None:
-                return None
+                return
             try:
                 flag = int(arg[len("setflag:") :])
             except ValueError:
-                return None
+                return
             if not 0 <= flag <= 4:
-                return None
+                return
             cid = session.card.id
             await service.run_op(
                 lambda col: col.set_user_flag_for_cards(flag, [cid]),
@@ -329,7 +355,7 @@ def make_reviewer_handler(service, hub):
             await hub.push_call("reviewer", "_drawFlag", [flag])
         elif arg == "buryc":
             if session.card is None:
-                return None
+                return
             cid = session.card.id
             await service.run_op(
                 lambda col: col.sched.bury_cards([cid]), initiator="reviewer"
@@ -337,7 +363,7 @@ def make_reviewer_handler(service, hub):
             await _show_next()
         elif arg == "buryn":
             if session.card is None:
-                return None
+                return
             nid = session.card.note().id
             await service.run_op(
                 lambda col: col.sched.bury_notes([nid]), initiator="reviewer"
@@ -345,7 +371,7 @@ def make_reviewer_handler(service, hub):
             await _show_next()
         elif arg == "suspendc":
             if session.card is None:
-                return None
+                return
             cid = session.card.id
             await service.run_op(
                 lambda col: col.sched.suspend_cards([cid]), initiator="reviewer"
@@ -353,7 +379,7 @@ def make_reviewer_handler(service, hub):
             await _show_next()
         elif arg == "suspendn":
             if session.card is None:
-                return None
+                return
 
             def suspend_note(col):
                 cids = [c.id for c in session.card.note().cards()]
@@ -363,7 +389,7 @@ def make_reviewer_handler(service, hub):
             await _show_next()
         elif arg.startswith("setdue:"):
             if session.card is None:
-                return None
+                return
             spec = arg[len("setdue:") :]
             cid = session.card.id
             try:
@@ -372,12 +398,13 @@ def make_reviewer_handler(service, hub):
                     initiator="reviewer",
                 )
             except Exception as e:  # invalid spec, etc.
+                logger.exception("Failed to set due date for card %s", cid)
                 await hub.push_call("reviewer", "ankiwebReviewerError", [str(e)])
-                return None
+                return
             await _show_next()
         elif arg == "forget":
             if session.card is None:
-                return None
+                return
             cid = session.card.id
             await service.run_op(
                 lambda col: col.sched.schedule_cards_as_new([cid]), initiator="reviewer"
@@ -385,7 +412,7 @@ def make_reviewer_handler(service, hub):
             await _show_next()
         elif arg == "deletenote":
             if session.card is None:
-                return None
+                return
             nid = session.card.note().id
             await service.run_op(
                 lambda col: col.remove_notes([nid]), initiator="reviewer"
@@ -393,7 +420,7 @@ def make_reviewer_handler(service, hub):
             await _show_next()
         elif arg == "undo":
             if session.card is None:
-                return None
+                return
             import anki.errors
 
             try:
@@ -402,16 +429,9 @@ def make_reviewer_handler(service, hub):
                 await hub.push_call(
                     "reviewer", "ankiwebReviewerError", [tr.actions_nothing_to_undo()]
                 )
-                return None
+                return
             await _show_next()
-        elif arg == "cardinfo":
-            if session.card is None:
-                return None
-            cid = session.card.id
-            await hub.push_call(
-                "reviewer", "ankiwebNavigate", ["/card-info/" + str(cid)]
-            )
         # ignore everything else (e.g. reviewer.js emits "updateToolbar" after each render)
-        return None
+        return
 
     return handler

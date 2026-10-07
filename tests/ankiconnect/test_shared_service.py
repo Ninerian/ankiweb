@@ -1,13 +1,15 @@
 import inspect
 from pathlib import Path
+
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
-from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
-from ankiweb.app import create_app
-from ankiweb.ankiconnect.config import AnkiConnectConfig
-from ankiweb.core.ankiconnect_actions.runtime import Runtime
-from ankiweb.core.ankiconnect_actions.actions.decks import create_deck
+
 from ankiweb.adapters.inbound.http_datastar.deckbrowser import render_deckbrowser_html
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
+from ankiweb.ankiconnect.config import AnkiConnectConfig
+from ankiweb.app import create_app
+from ankiweb.core.ankiconnect_actions.actions.decks import create_deck
+from ankiweb.core.ankiconnect_actions.runtime import Runtime
+from ankiweb.core.config import Settings
 
 
 async def test_both_layers_share_one_service(tmp_path: Path):

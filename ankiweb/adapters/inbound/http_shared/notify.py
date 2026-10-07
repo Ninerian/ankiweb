@@ -4,10 +4,11 @@ ankiweb-original feature — labels are intentionally English/keyless (like "Sou
 translation keys."""
 
 from __future__ import annotations
+
 import time
 
-from ankiweb.core.notify.engine import NotifyConfig
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.notify.engine import NotifyConfig
 
 
 def config_from_form(

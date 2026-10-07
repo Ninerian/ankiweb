@@ -1,9 +1,9 @@
 <div class="export mx-auto px-4 py-3 max-w-xl">
   <h3 class="text-xl font-bold mb-3">{{ tr.actions_export() | tr_clean }}</h3>
-  <form id="ex" method="post" action="/export">
+  <form id="ex" method="post" action="/export" data-signals="{fmt: 'apkg'}">
     <div class="mb-4">
       <label for="target" class="block text-sm font-medium mb-1">{{ tr.actions_export() | tr_clean }}:</label>
-      <select name="target" id="target" class="select select-sm w-full">
+      <select name="target" id="target" class="select select-sm w-full" data-attr="{disabled: $fmt === 'colpkg'}">
         <option value="all">{{ tr.browsing_whole_collection() | tr_clean }}</option>
         {% for d in decks %}<option value="{{ d.id }}">{{ d.name }}</option>{%
           endfor
@@ -14,32 +14,32 @@
       <legend class="text-sm font-bold px-2">{{ tr.exporting_export_format() | tr_clean }}</legend>
       <div class="space-y-2">
         <div class="flex items-center gap-2 cursor-pointer">
-          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_apkg" value="apkg" checked onchange="onFmt()">
+          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_apkg" value="apkg" checked data-bind="fmt">
           <label class="cursor-pointer text-sm" for="fmt_apkg">
             {{ tr.exporting_anki_deck_package() | tr_clean }} (.apkg)
           </label>
         </div>
         <div class="flex items-center gap-2 cursor-pointer">
-          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_colpkg" value="colpkg" onchange="onFmt()">
+          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_colpkg" value="colpkg" data-bind="fmt">
           <label class="cursor-pointer text-sm" for="fmt_colpkg">
             {{ tr.exporting_anki_collection_package() | tr_clean }} (.colpkg)
           </label>
         </div>
         <div class="flex items-center gap-2 cursor-pointer">
-          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_notes_csv" value="notes_csv" onchange="onFmt()">
+          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_notes_csv" value="notes_csv" data-bind="fmt">
           <label class="cursor-pointer text-sm" for="fmt_notes_csv">
             {{ tr.exporting_notes_in_plain_text() | tr_clean }} (.csv)
           </label>
         </div>
         <div class="flex items-center gap-2 cursor-pointer">
-          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_cards_csv" value="cards_csv" onchange="onFmt()">
+          <input class="radio radio-primary radio-sm" type="radio" name="fmt" id="fmt_cards_csv" value="cards_csv" data-bind="fmt">
           <label class="cursor-pointer text-sm" for="fmt_cards_csv">
             {{ tr.exporting_cards_in_plain_text() | tr_clean }} (.csv)
           </label>
         </div>
       </div>
     </fieldset>
-    <fieldset id="pkgopts" class="mb-4 border border-base-300 rounded-box p-3">
+    <fieldset id="pkgopts" class="mb-4 border border-base-300 rounded-box p-3" data-show="$fmt === 'apkg' || $fmt === 'colpkg'">
       <legend class="text-sm font-bold px-2">{{ tr.actions_options() | tr_clean }}</legend>
       <div class="space-y-2">
         <div class="flex items-center gap-2 cursor-pointer">
@@ -68,7 +68,7 @@
         </div>
       </div>
     </fieldset>
-    <fieldset id="csvopts" class="mb-4 border border-base-300 rounded-box p-3" style="display:none;">
+    <fieldset id="csvopts" class="mb-4 border border-base-300 rounded-box p-3" data-show="$fmt === 'notes_csv' || $fmt === 'cards_csv'" style="display:none;">
       <legend class="text-sm font-bold px-2">CSV {{ tr.actions_options() | tr_clean }}</legend>
       <div class="space-y-2">
         <div class="flex items-center gap-2 cursor-pointer">
@@ -109,13 +109,3 @@
     </div>
   </form>
 </div>
-<script>
-  function onFmt() {
-      var f = document.querySelector("input[name='fmt']:checked").value;
-      var pkg = (f === 'apkg' || f === 'colpkg');
-      document.getElementById('pkgopts').style.display = pkg ? '' : 'none';
-      document.getElementById('csvopts').style.display = pkg ? 'none' : '';
-      document.getElementById('target').disabled = (f === 'colpkg');
-  }
-  onFmt();
-</script>

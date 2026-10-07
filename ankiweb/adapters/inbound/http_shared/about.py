@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+from importlib.metadata import PackageNotFoundError, version
+
 from ankiweb.adapters.inbound.http_shared import templating
 
 _ANKI_SRC = "https://github.com/ankitects/anki"
@@ -8,10 +11,8 @@ _AC_SRC = "https://github.com/FooSoft/anki-connect"
 def render_about_html(settings) -> str:
     """The AGPL §13 Corresponding-Source offer, shown to every user of the running app."""
     try:
-        from importlib.metadata import version
-
         ver = version("ankiweb")
-    except Exception:
+    except PackageNotFoundError:
         ver = "0.1.0"
     src = (getattr(settings, "source_url", "") or "").strip()
     return templating.render(

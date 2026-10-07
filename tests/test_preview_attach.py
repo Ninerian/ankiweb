@@ -1,9 +1,11 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
+
 from ankiweb.adapters.inbound.http_shared.preview import render_preview_html
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -62,8 +64,8 @@ def test_editor_links_and_navigation(client):
     assert r.status_code == 200
     html = r.text
     # Edit screen has links to Fields, Cards, and Preview
-    assert f"/fields/" in html and 'id="editor-fields-btn"' in html
-    assert f"/card-layout/" in html and 'id="editor-cards-btn"' in html
+    assert "/fields/" in html and 'id="editor-fields-btn"' in html
+    assert "/card-layout/" in html and 'id="editor-cards-btn"' in html
     assert f"/preview/{nid}" in html and 'id="editor-preview-btn"' in html
     assert 'data-editor-command="attach"' in html
 
@@ -73,6 +75,6 @@ def test_add_links_and_navigation(client):
     assert r.status_code == 200
     html = r.text
     # Add screen has links to Fields and Cards and media attach button
-    assert f"/fields/" in html and 'id="editor-fields-btn"' in html
-    assert f"/card-layout/" in html and 'id="editor-cards-btn"' in html
+    assert "/fields/" in html and 'id="editor-fields-btn"' in html
+    assert "/card-layout/" in html and 'id="editor-cards-btn"' in html
     assert 'data-editor-command="attach"' in html

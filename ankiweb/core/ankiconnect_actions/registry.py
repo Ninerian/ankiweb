@@ -1,6 +1,9 @@
 from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
+
 from pydantic import BaseModel
 
 # action name -> async handler(rt, **params). This is the hot dispatch path (dispatch.py);

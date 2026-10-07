@@ -1,14 +1,25 @@
 from __future__ import annotations
-import html
-from typing import Callable
-from fastapi import APIRouter
+
+import logging
+from collections.abc import Callable
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
+)
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
+
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+    refresh_screen,
 )
 from ankiweb.adapters.inbound.http_shared import templating
 
+logger = logging.getLogger(__name__)
 
 def render_deckbrowser_html(col) -> str:
     tree = col.sched.deck_due_tree()
@@ -42,15 +53,16 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         await service.run_op(
             lambda col: col.decks.set_current(did), initiator="deckbrowser"
         )
-        return DatastarResponse(SSE.redirect("/overview"))
-
+        return redirect_response("/overview")
     @router.post("/select/{did}")
     async def select_deck(did: int):
         service = get_service()
         await service.run_op(
             lambda col: col.decks.set_current(did), initiator="deckbrowser"
         )
-        return DatastarResponse(SSE.execute_script("window.location.reload()"))
+        return await refresh_screen(
+            service, render_deckbrowser_html, selector="#deckbrowser-page"
+        )
 
     @router.post("/collapse/{did}")
     async def collapse_deck(did: int):
@@ -65,9 +77,8 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             )
 
         await service.run_op(toggle, initiator="deckbrowser")
-        list_html = await service.run(render_deck_list)
-        return DatastarResponse(
-            SSE.patch_elements(list_html, selector="main.deck-list")
+        return await refresh_screen(
+            service, render_deck_list, selector="main.deck-list"
         )
 
     @router.post("/create")
@@ -81,15 +92,10 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
                 lambda col: col.decks.add_normal_deck_with_name(name),
                 initiator="deckbrowser",
             )
-            return DatastarResponse(SSE.execute_script("window.location.reload()"))
+            return await refresh_screen(
+                service, render_deckbrowser_html, selector="#deckbrowser-page"
+            )
         return DatastarResponse()
-
-    @router.post("/opts/{did}")
-    async def opts_deck(did: int):
-        service = get_service()
-        is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
-        path = f"/filtered-deck/{did}" if is_dyn else f"/deck-options/{did}"
-        return DatastarResponse(SSE.redirect(path))
 
     @router.post("/rename/{did}")
     async def rename_deck(did: int, payload: ReadSignals):
@@ -106,8 +112,8 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_rename, initiator="deckbrowser")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-error mt-2">{html.escape(str(exc))}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            logger.exception("Failed to rename deck %s", did)
+            return error_response(exc)
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
     @router.post("/delete/{did}")
@@ -120,12 +126,9 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(do_delete, initiator="deckbrowser")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-error mt-2">{html.escape(str(exc))}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            logger.exception("Failed to delete deck %s", did)
+            return error_response(exc)
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
 
-    @router.post("/createfiltered")
-    async def create_filtered():
-        return DatastarResponse(SSE.redirect("/filtered-deck"))
 
     return router

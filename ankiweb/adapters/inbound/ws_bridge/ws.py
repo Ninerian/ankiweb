@@ -1,7 +1,23 @@
+"""WebSocket endpoint for Anki desktop bridge compatibility (/ws).
+
+Transport boundary:
+- Serves native reviewer/legacy screen pycmd commands and server push calls.
+- Dispatches commands to BridgeHub and registers client contexts.
+- Broadcasts opchanges flags across connected sessions for cross-screen sync.
+- Modern Datastar in-page actions, field saves, and queries use HTTP/SSE, not this socket.
+"""
 from __future__ import annotations
+
+import json
+import logging
+
+from anki.errors import AnkiException
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from ankiweb.core.config import host_allowed
+
 from ankiweb.core.auth import COOKIE, cookie_ok
+from ankiweb.core.config import host_allowed
+
+logger = logging.getLogger(__name__)
 
 
 def build_router(get_hub, allowed_hosts=(), password="") -> APIRouter:
@@ -29,7 +45,8 @@ def build_router(get_hub, allowed_hosts=(), password="") -> APIRouter:
                     msg = await websocket.receive_json()
                 except WebSocketDisconnect:
                     raise
-                except Exception:
+                except (json.JSONDecodeError, ValueError) as exc:
+                    logger.warning("Ignoring malformed WebSocket frame: %s", exc)
                     continue  # malformed JSON frame — skip, keep the connection alive
                 if not isinstance(msg, dict):
                     continue
@@ -37,7 +54,8 @@ def build_router(get_hub, allowed_hosts=(), password="") -> APIRouter:
                 if mtype == "cmd":
                     try:
                         result = await hub.dispatch_cmd(context, msg.get("arg", ""))
-                    except Exception:
+                    except (AnkiException, OSError, RuntimeError, TypeError, ValueError):
+                        logger.exception("WebSocket command dispatch failed for context %s", context)
                         result = None  # a handler error must not drop the session
                     if msg.get("id") is not None:
                         await websocket.send_json(

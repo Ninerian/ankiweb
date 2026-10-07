@@ -1,10 +1,13 @@
-import anki.lang
 from pathlib import Path
-from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
-from ankiweb.adapters.inbound.http_datastar.preferences import render_preferences_html
+from typing import Any, cast
+
+import anki.lang
 from conftest import parse_datastar_events
+from fastapi.testclient import TestClient
+
+from ankiweb.adapters.inbound.http_datastar.preferences import render_preferences_html
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 def test_render_default_english(temp_collection):
@@ -28,8 +31,9 @@ def test_saveprefs_roundtrip(tmp_path: Path):
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
         assert client.portal is not None
+        app = cast(Any, client.app)
         base = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+            app.state.service.run, lambda col: col.get_preferences()
         )
         payload = {
             "rollover": 6,
@@ -62,7 +66,7 @@ def test_saveprefs_roundtrip(tmp_path: Path):
         events = parse_datastar_events(r.text)
         assert any("window.location = '/deckbrowser'" in data for _, data in events)
         p = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+            app.state.service.run, lambda col: col.get_preferences()
         )
         assert p.scheduling.rollover == 6
         assert p.scheduling.learn_ahead_secs == 20 * 60  # form minutes -> proto seconds
@@ -78,8 +82,9 @@ def test_saveprefs_svelte_editor_roundtrip(tmp_path: Path):
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
         assert client.portal is not None
-        base = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+        app = cast(Any, client.app)
+        client.portal.call(
+            app.state.service.run, lambda col: col.get_preferences()
         )
         payload = {
             "rollover": 4,
@@ -111,7 +116,7 @@ def test_saveprefs_svelte_editor_roundtrip(tmp_path: Path):
         )
         assert r.status_code == 200
         exp = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_config("experimentalFeatures")
+            app.state.service.run, lambda col: col.get_config("experimentalFeatures")
         )
         assert exp == {"1": True}
 
@@ -122,7 +127,7 @@ def test_saveprefs_svelte_editor_roundtrip(tmp_path: Path):
         )
         assert r.status_code == 200
         exp = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_config("experimentalFeatures")
+            app.state.service.run, lambda col: col.get_config("experimentalFeatures")
         )
         assert exp == {"1": False}
 
@@ -132,8 +137,9 @@ def test_saveprefs_inverse_checkboxes(tmp_path: Path):
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
         assert client.portal is not None
+        app = cast(Any, client.app)
         base = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+            app.state.service.run, lambda col: col.get_preferences()
         )
         payload = {
             f.name: getattr(base.scheduling, f.name)
@@ -168,17 +174,60 @@ def test_saveprefs_inverse_checkboxes(tmp_path: Path):
         )
         assert r.status_code == 200
         p = client.portal.call(
-            client.app.state.service.run, lambda col: col.get_preferences()
+            app.state.service.run, lambda col: col.get_preferences()
         )
         assert p.scheduling.new_timezone is False
         assert p.reviewing.hide_audio_play_buttons is True
 
 
-def test_cancel_navigates(tmp_path: Path):
+def test_saveprefs_direct_signals(tmp_path: Path):
+    """Verify savePrefs succeeds when sending direct frontend signals (including legacy_timezone/show_play_buttons)."""
     with TestClient(
         create_app(Settings(collection_path=tmp_path / "c.anki2"))
     ) as client:
-        r = client.post("/preferences/cancel")
+        assert client.portal is not None
+        app = cast(Any, client.app)
+        signals = {
+            "rollover": 5,
+            "learn_ahead_mins": 15,
+            "new_review_mix": 1,
+            "legacy_timezone": True,
+            "new_timezone": False,
+            "day_learn_first": False,
+            "show_play_buttons": False,
+            "hide_audio_play_buttons": True,
+            "interrupt_audio_when_answering": False,
+            "show_remaining_due_counts": False,
+            "show_intervals_on_buttons": False,
+            "time_limit_mins": 5,
+            "load_balancer_enabled": False,
+            "fsrs_short_term_with_steps_enabled": True,
+            "adding_defaults_to_current_deck": False,
+            "paste_images_as_png": True,
+            "paste_strips_formatting": True,
+            "default_search_text": "tag:test",
+            "ignore_accents_in_search": True,
+            "render_latex": True,
+            "daily": 3,
+            "weekly": 2,
+            "monthly": 1,
+            "minimum_interval_mins": 60,
+            "svelte_editor": True,
+            "dirty": True,
+            "initial": {},
+        }
+        r = client.post(
+            "/preferences/savePrefs", json=signals, headers={"Datastar-Request": "true"}
+        )
         assert r.status_code == 200
-        events = parse_datastar_events(r.text)
-        assert any("window.location = '/deckbrowser'" in data for _, data in events)
+        p = client.portal.call(
+            app.state.service.run, lambda col: col.get_preferences()
+        )
+        assert p.scheduling.rollover == 5
+        assert p.scheduling.new_timezone is False
+        assert p.reviewing.hide_audio_play_buttons is True
+        assert p.reviewing.fsrs_short_term_with_steps_enabled is True
+        assert p.editing.default_search_text == "tag:test"
+        assert p.editing.render_latex is True
+
+

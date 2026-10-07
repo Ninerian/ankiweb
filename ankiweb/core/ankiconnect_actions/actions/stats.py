@@ -1,16 +1,21 @@
 from __future__ import annotations
+
+import logging
 import time
-from ankiweb.core.ankiconnect_actions.registry import action
+
 from ankiweb.ankiconnect.schemas.stats import (
-    GetNumCardsReviewedTodayParams,
-    GetNumCardsReviewedByDayParams,
-    GetCollectionStatsHTMLParams,
     CardReviewsParams,
-    GetReviewsOfCardsParams,
-    GetLatestReviewIDParams,
-    InsertReviewsParams,
+    GetCollectionStatsHTMLParams,
     GetDeckStatsParams,
+    GetLatestReviewIDParams,
+    GetNumCardsReviewedByDayParams,
+    GetNumCardsReviewedTodayParams,
+    GetReviewsOfCardsParams,
+    InsertReviewsParams,
 )
+from ankiweb.core.ankiconnect_actions.registry import action
+
+_logger = logging.getLogger(__name__)
 
 _REVLOG_COLS = "id, cid, usn, ease, ivl, lastIvl, factor, time, type"
 
@@ -59,8 +64,8 @@ async def get_collection_stats_html(rt, wholeCollection=True):
         stats = col.stats()
         try:
             stats.wholeCollection = wholeCollection
-        except Exception:
-            pass
+        except AttributeError as exc:
+            _logger.debug("Collection stats do not expose wholeCollection: %s", exc)
         return stats.report()
 
     return await rt.service.run(fn)
@@ -139,7 +144,6 @@ async def insert_reviews(rt, reviews=None):
                 f"insert into revlog({_REVLOG_COLS}) values (?,?,?,?,?,?,?,?,?)", rows
             )
             col.save()
-        return None
 
     return await rt.service.run(fn)
 

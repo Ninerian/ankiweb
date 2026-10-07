@@ -1,7 +1,9 @@
 import os
 import tempfile
+
 import pytest
 from anki.collection import Collection
+
 from ankiweb.adapters.inbound.http_screens.reviewer import (
     ReviewerSession,
     load_question,

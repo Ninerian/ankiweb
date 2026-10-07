@@ -1,29 +1,36 @@
 from __future__ import annotations
-from ankiweb.core.ankiconnect_actions.registry import action
-from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit, build_note
+
+import logging
+
+from anki.errors import NotFoundError
+
 from ankiweb.ankiconnect.schemas.gui import (
-    GuiReviewActiveParams,
-    GuiCurrentCardParams,
-    GuiStartCardTimerParams,
-    GuiShowQuestionParams,
-    GuiShowAnswerParams,
+    GuiAddCardsParams,
+    GuiAddNoteSetDataParams,
     GuiAnswerCardParams,
+    GuiBrowseParams,
+    GuiCheckDatabaseParams,
+    GuiCurrentCardParams,
     GuiDeckBrowserParams,
     GuiDeckOverviewParams,
     GuiDeckReviewParams,
-    GuiUndoParams,
-    GuiCheckDatabaseParams,
-    GuiBrowseParams,
-    GuiSelectCardParams,
-    GuiSelectNoteParams,
-    GuiSelectedNotesParams,
-    GuiPlayAudioParams,
-    GuiAddNoteSetDataParams,
     GuiEditNoteParams,
-    GuiAddCardsParams,
-    GuiImportFileParams,
     GuiExitAnkiParams,
+    GuiImportFileParams,
+    GuiPlayAudioParams,
+    GuiReviewActiveParams,
+    GuiSelectCardParams,
+    GuiSelectedNotesParams,
+    GuiSelectNoteParams,
+    GuiShowAnswerParams,
+    GuiShowQuestionParams,
+    GuiStartCardTimerParams,
+    GuiUndoParams,
 )
+from ankiweb.core.ankiconnect_actions.actions._helpers import build_note, run_emit
+from ankiweb.core.ankiconnect_actions.registry import action
+
+_logger = logging.getLogger(__name__)
 
 
 def _ui(rt):
@@ -49,7 +56,7 @@ async def gui_review_active(rt):
 async def gui_current_card(rt):
     ui = _ui(rt)
     if not ui.review_active:
-        raise Exception("Gui review is not currently active.")
+        raise RuntimeError("Gui review is not currently active.")
     cid = ui.current_card_id
 
     def build(col):
@@ -66,7 +73,13 @@ async def gui_current_card(rt):
                         col._backend.get_scheduling_states(cid)
                     )
                 )
-            except Exception:
+            except Exception as exc:
+                _logger.debug(
+                    "Could not describe next review states for card %s: %s",
+                    cid,
+                    exc,
+                    exc_info=True,
+                )
                 labels = []
         card = col.get_card(cid)
         note = card.note()
@@ -158,7 +171,6 @@ async def _navigate(rt, url):
 @action("guiDeckBrowser", params=GuiDeckBrowserParams, summary="Open the deck browser")
 async def gui_deck_browser(rt):
     await _navigate(rt, "/deckbrowser")
-    return None
 
 
 @action(
@@ -231,16 +243,16 @@ async def gui_browse(rt, query=None, reorderCards=None):
         reorderCards is not None
     ):  # reference checks 1-3; columnId-resolves (4) needs the table (Plan D)
         if not isinstance(reorderCards, dict):
-            raise Exception("reorderCards should be a dict")
+            raise TypeError("reorderCards should be a dict")
         if "columnId" not in reorderCards or "order" not in reorderCards:
-            raise Exception('Must provide a "columnId" and an "order" property')
+            raise ValueError('Must provide a "columnId" and an "order" property')
         if reorderCards["order"] not in ("ascending", "descending"):
-            raise Exception("invalid card order: " + str(reorderCards["order"]))
+            raise ValueError("invalid card order: " + str(reorderCards["order"]))
         valid = await rt.service.run(
             lambda col: {c.key for c in col.all_browser_columns()}
         )
         if reorderCards["columnId"] not in valid:
-            raise Exception("invalid columnId: " + str(reorderCards["columnId"]))
+            raise ValueError("invalid columnId: " + str(reorderCards["columnId"]))
     # findCards(None) returns [] (ref); only a real query searches.
     cids = await rt.service.run(
         lambda col: [] if query is None else list(col.find_cards(query))
@@ -266,7 +278,7 @@ async def gui_select_card(rt, card=None):
     def note_of(col):
         try:
             return col.get_card(card).nid
-        except Exception:
+        except NotFoundError:
             return None
 
     nid = await rt.service.run(note_of)
@@ -339,7 +351,6 @@ async def gui_edit_note(rt, note=None):
     screen = _ui(rt).current_screen
     if screen:
         await rt.hub.push_call(screen, "ankiwebNavigate", ["/edit?nid=" + str(note)])
-    return None
 
 
 @action(
@@ -362,7 +373,7 @@ async def gui_add_cards(rt, note=None):
     def build(col):
         did = col.decks.id_for_name(note.get("deckName", ""))
         if did is None:
-            raise Exception("deck was not found: " + str(note.get("deckName")))
+            raise ValueError("deck was not found: " + str(note.get("deckName")))
         n, _ = build_note(
             col, note
         )  # raises on unknown model/fields (faithful validation)
@@ -379,7 +390,7 @@ async def gui_add_cards(rt, note=None):
 # ---------- server-incompatible (refuse / no-op) ----------
 @action("guiImportFile", params=GuiImportFileParams, summary="Invoke the import dialog")
 async def gui_import_file(rt, path=None):
-    raise Exception("guiImportFile is not supported in ankiweb (no GUI file picker)")
+    raise RuntimeError("guiImportFile is not supported in ankiweb (no GUI file picker)")
 
 
 @action(

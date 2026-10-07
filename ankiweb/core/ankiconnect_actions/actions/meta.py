@@ -1,15 +1,16 @@
 from __future__ import annotations
-from ankiweb.core.ankiconnect_actions.registry import action, ACTIONS
+
 from ankiweb.ankiconnect.schemas.meta import (
-    VersionParams,
     ApiReflectParams,
-    RequestPermissionParams,
-    ReloadCollectionParams,
-    GetProfilesParams,
     GetActiveProfileParams,
+    GetProfilesParams,
     LoadProfileParams,
+    ReloadCollectionParams,
+    RequestPermissionParams,
     SyncParams,
+    VersionParams,
 )
+from ankiweb.core.ankiconnect_actions.registry import ACTIONS, action
 
 
 @action("version", params=VersionParams, returns=int, summary="Get the API version")
@@ -84,4 +85,4 @@ async def load_profile(rt, name=None):
 
 @action("sync", params=SyncParams, summary="Synchronize the collection")
 async def sync(rt):
-    raise Exception("sync is not supported by ankiweb")
+    raise RuntimeError("sync is not supported by ankiweb")

@@ -1,16 +1,24 @@
 from __future__ import annotations
-import html
+
 import json
-from typing import Callable
-from fastapi import APIRouter
+import logging
+from collections.abc import Callable
+from typing import cast
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
+from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+)
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 def render_custom_study_html(col) -> str:
     did = col.decks.get_current_id()
@@ -80,10 +88,6 @@ def render_custom_study_html(col) -> str:
 def make_custom_study_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/custom-study")
 
-    @router.post("/cancel")
-    async def cancel():
-        return DatastarResponse(SSE.redirect("/overview"))
-
     @router.post("/submit")
     async def submit(payload: ReadSignals):
         service = get_service()
@@ -109,15 +113,16 @@ def make_custom_study_routes(get_service: Callable) -> APIRouter:
             elif radio == 5:
                 req.preview_days = value
             elif radio == 6:
-                req.cram.kind = int(p.get("cram_kind", 1))
+                req.cram.kind = cast(sp.CustomStudyRequest.Cram.CramKind.ValueType, int(p.get("cram_kind", 1)))
                 req.cram.card_limit = value
-                req.cram.tags_to_include.extend(p.get("include", []))
-                req.cram.tags_to_exclude.extend(p.get("exclude", []))
+                req.cram.tags_to_include.extend([str(t) for t in p.get("include", [])])
+                req.cram.tags_to_exclude.extend([str(t) for t in p.get("exclude", [])])
             return col.sched.custom_study(req)
 
         try:
             await service.run_op(build_and_run, initiator="customstudy")
         except Exception as e:
+            logger.exception("Failed to create custom study session")
             from anki.errors import CustomStudyError
 
             msg = (
@@ -125,9 +130,8 @@ def make_custom_study_routes(get_service: Callable) -> APIRouter:
                 if isinstance(e, CustomStudyError)
                 else "Could not create a custom study session."
             )
-            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(msg)}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            return error_response(msg)
 
-        return DatastarResponse(SSE.redirect("/overview"))
+        return redirect_response("/overview")
 
     return router

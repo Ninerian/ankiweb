@@ -7,15 +7,18 @@ of how the test collection was opened.
 """
 
 from __future__ import annotations
+
 from pathlib import Path
+
+import anki.lang
 import pytest
 from fastapi.testclient import TestClient
-import anki.lang
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
-from ankiweb.adapters.inbound.http_shared.page import render_page
-from ankiweb.adapters.inbound.http_datastar.deckbrowser import render_deckbrowser_html
+
 from ankiweb.adapters.inbound.http_datastar.custom_study import render_custom_study_html
+from ankiweb.adapters.inbound.http_datastar.deckbrowser import render_deckbrowser_html
+from ankiweb.adapters.inbound.http_shared.page import render_page
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture

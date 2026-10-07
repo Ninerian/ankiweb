@@ -1,8 +1,10 @@
 from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -19,8 +21,8 @@ def client(tmp_path: Path):
 
 
 def test_passthrough_and_custom_registered():
-    from ankiweb.core.rpc.passthrough import PASSTHROUGH
     from ankiweb.core.rpc.custom_handlers import CUSTOM
+    from ankiweb.core.rpc.passthrough import PASSTHROUGH
 
     for m in ("get_deck_names", "get_field_names", "get_import_anki_package_presets"):
         assert m in PASSTHROUGH, m

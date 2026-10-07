@@ -275,10 +275,121 @@ Toggle with the 🌙 button in the top toolbar (persisted in `localStorage`); it
 daisyUI theme (`data-theme="light"` / `"dark"`) and themes the server-rendered pages and threads `#night` into links to the SvelteKit pages so those
 render dark too.
 
-### Navigation
+### Navigation & Transport Boundaries
 
 Every server-rendered screen has an always-present top toolbar — **Decks · Add · Browse ·
 Stats** (Anki's main-window toolbar, minus Sync) plus the night-mode toggle.
+
+Navigation follows the Tao of Datastar:
+- Pure page navigation uses standard native links (`<a href="...">`), letting the browser handle keyboard activation, new tabs, URL history, and document lifecycles naturally. Cancel in Preferences, Fields, Card Layout, Custom Study, and Filtered Deck discards the local draft without submitting signals. Back to Decks, Custom Study (including the finished-deck page), and Create Filtered Deck likewise navigate directly by GET, without a preliminary navigation POST.
+- Browse's **Change Notetype** action is a native GET link to `/change-notetype?cids=<comma-separated positive card IDs>`, built from the current `$selectedCids` in selection order. The server resolves each requested card and derives its current note type; no `nids` query or old/new-notetype path is used. With no selected cards, the link is disabled and has no usable destination, and navigation does not depend on the shared hub selection mirror.
+- Deckbrowser and Overview options links resolve the normal or filtered options destination while rendering, using the displayed deck's ID and type. They do not re-resolve the globally current deck when clicked.
+- Deck Options **Close** is a native `/deckbrowser` link. An unmodified primary click with unsaved changes opens an accessible native `<dialog>` styled with DaisyUI. **Keep editing**, Escape, or a backdrop click closes the dialog without changing the draft; **Discard changes and close** navigates by GET without saving. Modified and middle clicks retain native link behavior, leaving the original tab and its draft intact. No close-confirmation request or `window.location` navigation is needed.
+- Package import keeps the native dialog, modal box, title, and header **Close**
+  control outside the Datastar replacement target. Completion replaces only the
+  options and import actions with results, including error results. The header
+  Close button, Escape, and backdrop dismiss the dialog without navigating away;
+  successful import results remain available until dismissed.
+  Only the content pane scrolls, keeping Close visible in short viewports.
+  Both the modal and standalone package import reuse `backend_progress` while the
+  Datastar request is pending, hiding the options and import actions. The server
+  streams real `latest_progress.importing` stage messages and note/media counters
+  through the concurrent backend path while the collection worker imports. Anki
+  supplies text rather than a total/percentage here, so the component shows its
+  indeterminate spinner without fabricated percentages. Success and error results
+  replace the indicator.
+- Actions with side effects remain POST: opening a deck selects it, starting study initializes the timebox, and Save/Submit applies or validates changes. Actions that navigate return whole-document Datastar SSE redirects (`common.redirect_response(url)` via `SSE.redirect(target)`); in-page mutations update targeted fragments without soft-routing layers or client router shims. The ten obsolete pure-navigation POST handlers have been removed, with no compatibility aliases.
+- Remaining full-page reload endpoints: notetype mutating endpoints (`/notetypes/rename/{ntid}`, `/notetypes/add/{base_ntid}`, `/notetypes/delete/{ntid}`) and deck description save (`/overview/setdesc`) remain explicit deferred Phase 3 reloads. Deckbrowser rename/delete endpoints (`/deckbrowser/rename/{did}`, `/deckbrowser/delete/{did}`) also retain full reloads in Phase 5 without prior explicit deferral. No soft routing is introduced.
+
+#### Transport Responsibilities & Entrypoints
+
+| Layer / Channel | Transport & Format | Responsibilities & Entrypoints | State Authority & Lifecycle |
+|---|---|---|---|
+| **Datastar Views & In-Page Actions** | HTTP `POST`/`GET`, Datastar SSE (`text/event-stream`), JSON signals | Fragment morphs, signal patches, dialog workflows (`/deckbrowser`, `/overview`, `/browse`, `/preferences`, `/custom-study`, `/filtered-deck`, `/fields`, `/card-layout`, `/notetypes`, `/change-notetype`, `/image-occlusion`). | Request signals (e.g. `$selectedCids`, form drafts) are the source of truth for mutations. Responses patch targeted elements or signals directly. |
+| **Modern Note Editor & Add** | HTTP `GET`/`POST`, Datastar SSE signals & elements | Rich editor routes (`GET /edit`, `GET /add`) and in-place field/tag saves: `POST /editor/save-field`, `POST /editor/blur-field`, `POST /editor/save-tags`, `POST /editor/toggle-collapse`, `POST /editor/toggle-sticky`. | Field contents live in Datastar signals (`field_val_<idx>`, `nid`, `tags_str`; `tags` is a template value); field blur triggers collection mutation and broadcasts `opchanges` across the hub. Does not require WebSocket for saves. |
+| **Native Reviewer & Bridge Commands** | WebSocket `/ws?context=reviewer`, JSON frames | Upstream desktop reviewer compatibility and timing: `pycmd` commands (`show`, `ans`, `ease1`..`ease4`, `replay`, `play:<side>:<idx>`, `typed:<val>`, `decks`, `mark`, `setflag:<0-4>`, `buryc`, `buryn`, `suspendc`, `suspendn`, `setdue:<spec>`, `forget`, `deletenote`, `undo`, `starttimer`). Card Info and Edit use native navigation links. | Server manages `ReviewerSession` (timer, queued cards, scheduling states). Drives DOM via bridge push calls (`_showQuestion`, `_showAnswer`, `ankiwebSetAnswerBar`). |
+| **Reviewer Controls & Audio Runtime** | DOM events, WebSocket commands, HTML5 Audio | Show answer button (`#ansbut` / `.ansbut`), QA element (`#qa`), answer container (`#ankiweb-answer`), ease buttons (`.ease[data-ease='1']`..`[data-ease='4']`), mark/flag (`#_mark`, `#_flag`), type-in (`#typeans`), replay button (`.replay-button`), action wrapper (`#reviewer-actions-bar`), Card Info link (`#reviewer-card-info`), and Edit link (`#reviewer-card-edit`). `i`/`e` activate those native links. Replay calls `pycmd('play:<side>:<idx>')` over `/ws?context=reviewer`. Audio files dispatched via push call `ankiwebPlayAudio` and played sequentially via browser `new Audio(...)`. | Audio playback is a client browser runtime side effect over static files; no WebSocket audio streaming. |
+| **MathJax Typesetting & Editor Overlay** | Static assets (`GET /_anki/...`), client DOM custom element | `/_anki/js/mathjax.js`, `/_anki/js/vendor/mathjax/tex-chtml-full.js`, CHTML glyph fonts (cached 1 year). In editor, `<anki-mathjax>` custom element handles inline preview and modal edits; saved delimiters convert to `\[...\]` / `\(...\)`. | Local in-browser rendering runtime; completely decoupled from WebSocket traffic. |
+| **Browser Iframe Integration** | DOM `postMessage` (`ankiwebLoadNid`) | On single row selection in `/browse`, `#detail` embeds or reuses `<iframe id="editor-frame" class="editor-frame" src="/edit?nid=X">`. Subsequent selections post `{type: 'ankiwebLoadNid', nid: X}` to that same iframe element; its `/edit` listener navigates `window.location.href` to `/edit?nid=X`, replacing the iframe document but retaining the element. | Selection changes navigate the iframe to the newly selected note. Background `/browse/refresh` preserves the current iframe element and document. For `/browse/select`, a script checks the currently selected rows before loading a regular-note iframe; selection-specific `#detail[data-selected-cids="..."]` selectors guard Image Occlusion and empty/multiple element patches. |
+| **Cross-Screen Opchanges Refresh** | WebSocket push `{"type":"opchanges","flags":{...},"initiator":str}` | `service.run_op` broadcasts collection changes through `BridgeHub.broadcast_opchanges`. Handled in `shell_src/bootstrap.ts`: screens with `window.__ankiwebOnOpchanges` (e.g. `/browse` re-querying via Datastar `POST /browse/refresh`) preserve the live editor iframe element/document, selection, focus, and search drafts; default screens reload on relevant flags. | Server collection ops emit flags; HTTP response owner handles its own local mutation response while remote contexts refresh selectively. |
+| **Selection State & BridgeHub Mirror** | Datastar `$selectedCids` signal vs. `hub.ui_state.selected_card_ids` | Datastar browser actions (`POST /browse/suspend`, `POST /browse/setdue`, etc.) submit `$selectedCids` directly; native Change Notetype navigation uses `GET /change-notetype?cids=<comma-separated card IDs>` from the same signal. Selection updates `hub.ui_state.selected_card_ids` and `selected_note_ids` as a mirror for legacy bridge consumers and external AnkiConnect `gui*` actions. | Submitted `$selectedCids` is authoritative for Datastar HTTP mutations and Change Notetype navigation; those handlers never infer their selection from the cached mirror. |
+| **Backend Protobuf RPC** | HTTP `POST /_anki/{method}` (binary protobuf) | Direct binary bridge to Rust backend or custom handlers (`ankiweb/core/rpc/dispatch.py`), including `updateDeckConfigs`, `changeNotetype`, image occlusion mutations, and FSRS computations. | Direct request-response over `application/binary`; bypasses WebSocket bridge. |
+| **External AnkiConnect API** | HTTP `POST /` (JSON-RPC) & typed REST `POST /actions/{name}` | External client automation (Yomitan, integrations). Interacts with `CollectionService` and reads `hub.ui_state` to coordinate with live UI. | Operates on dedicated port (`8765` by default) independent of browser session lifecycles. |
+
+Reviewer navigation links are server-rendered for the selected card at each `_show_next`. The card-info URL is `/card-info/{cid}` and the edit URL is `/edit?nid={nid}`. The resulting action-bar HTML is the fourth argument to the existing `_showQuestion` push; its registered bridge wrapper updates `#reviewer-actions-bar` before passing the question to Anki's renderer. The initial no-card markup keeps both anchors disabled without `href` attributes, so a previous card destination is never active. The `i` and `e` keyboard shortcuts click these same native links. Their navigation is not sent as `cardinfo` or `edit` `pycmd` commands.
+
+#### Shared Datastar Response Helpers (`http_datastar.common`)
+
+Response construction across Datastar screens standardizes on concrete helpers in `ankiweb/adapters/inbound/http_datastar/common.py`:
+- `elements_response(elements: str, selector: str | None = None) -> DatastarResponse`: emits `SSE.patch_elements` preserving default SDK outer patch semantics and target selector behavior.
+- `signals_response(signals: dict[str, SignalValue]) -> DatastarResponse`: emits `SSE.patch_signals`, preserving all JSON value types (including `False`, `0`, `""`, and `None`) without truthy filtering or extra validation.
+- `redirect_response(location: str) -> DatastarResponse`: emits `SSE.redirect(location)` to trigger whole-document native browser navigation.
+- `refresh_screen(service: CollectionPort | Any, render: Callable[..., str], selector: str | None = None) -> DatastarResponse`: runs renderer on collection thread and reuses `elements_response`.
+- `error_response(message: object) -> DatastarResponse`: reuses `signals_response({"error": str(message)})`.
+
+Heterogeneous, multi-event streams (e.g. ordered multi-signal patches, scripts, custom patch modes, or guarded multi-target streams) continue to invoke `ServerSentEventGenerator` directly without synthetic wrappers.
+
+### Form state (Datastar 1.0.4)
+
+Preferences, Custom Study, Fields, and Card Layout bind editable values to Datastar
+signals and submit them directly with `@post(...)`; saving does not scrape the DOM
+or construct a separate JavaScript payload. Custom Study's tag selectors use native
+multi-select array bindings. Preferences derives its unsaved-change indicator from
+the current signal values, so restoring the original values clears the indicator.
+
+Fields and Card Layout keep a local, uncommitted draft: `fieldDraft` or `layoutDraft`
+contains a stable-keyed `rows` map, an `order` array, and a monotonic `nextId` counter.
+Fields tracks the sort field by `sortKey`; Card Layout stores styling in
+`layoutDraft.css`. The HTTP save handlers resolve the ordered records from these
+signals. Moving a row does not change its identity or binding; deleting the selected
+sort field selects the first remaining field.
+
+Small local helpers still clone, remove, and move row/block markup because Datastar
+has no built-in list renderer. These helpers never read input values or serialize
+form data, and row operations require no server requests. Only **Save** applies the
+draft to the collection; **Cancel** discards it. Card Layout's **Preview** is a native
+GET link to `/preview/{nid}` for an existing note of the selected type; when none is
+available, Preview is unavailable with an inline hint to add a note. Preview uses the
+saved collection state and never submits the uncommitted draft. The editor and reviewer
+WebSocket bridges remain for commands; reviewer Card Info/Edit navigation uses the
+native links described above.
+
+### Browser selection and actions
+
+The card Browser keeps its selection in the numeric `selectedCids` signal array.
+Single clicks, Ctrl/Cmd toggles, Shift ranges, highlighting, selection counts, and
+action availability share that state. Shift-click without an anchor selects one
+card. Searches and successful mutations reset the selection and stale details.
+
+Deck and tag sidebar entries have real `/browse?q=...` links. Anki's search builder
+escapes literal names, and the server URL-encodes the query, including quotes,
+wildcards, Unicode, and URL-special characters. All deck and tag clicks perform
+native browser navigation, keeping the address bar, search query, and browser
+history (back/forward) in sync. Native modified or middle clicks open new tabs
+while preserving the original tab. Links can be copied and bookmarked. The search
+form and browser actions remain Datastar-powered, while the obsolete
+`/browse/searchdeck/{did}` and `/browse/searchtag` handlers are removed.
+
+Browser action requests submit `selectedCids` directly; the cached bridge selection
+is only a mirror for legacy consumers, never the authority for an HTTP mutation.
+`query` is the editable search draft; `browserQuery` is the applied filter used when
+refreshing results after an action. Due dates, deck changes, tags, and note deletion
+use bound native dialog forms. Validation errors preserve the selection and input;
+Cancel/Escape make no changes before submission. While a mutation is pending, close
+controls are disabled rather than implying that a committed operation can be undone.
+
+Detail responses are guarded against obsolete selections. Image Occlusion and
+empty/multiple selections use SSE element patches with selection-specific targets;
+regular notes reuse the live editor iframe through its existing `postMessage`
+bridge. A new note selection reuses the iframe element but the `ankiwebLoadNid`
+listener navigates its document to that note's `/edit?nid=X` URL. Background
+`POST /browse/refresh` instead patches rows, match count, and visible-ID metadata;
+it preserves the iframe element **and current document**, field focus, selection,
+action inputs, and unsubmitted search draft. The edited card stays open even if
+its changed content no longer matches the applied filter. Explicit searches and
+successful browser actions still reset the detail
+pane. Card Info and other page changes remain native links and backend redirects,
+with no soft-navigation layer.
 
 ## Architecture
 
@@ -330,11 +441,17 @@ for the migration that built it.
 ## Test
 
 ```bash
+uv sync --extra dev      # project dependencies and test tools in .venv
+uvx ruff check .         # lint all Python sources and tests
+uvx pyright              # type-check using the project's .venv
 uv run pytest            # full suite (Playwright tests skip if chromium absent)
 ```
 
 Integration tests use Playwright + real Chromium against a live uvicorn server; install the
 browser once with `python -m playwright install chromium`.
+
+Pyright's Python 3.12 environment is configured in `pyproject.toml`; run these commands
+from the repository root so imports resolve against the installed project dependencies.
 
 ## Project layout
 

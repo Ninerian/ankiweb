@@ -1,9 +1,10 @@
 """Download the aqt wheel (no deps) via uv and extract _aqt/data/web/ into ankiweb/web_assets/."""
 
 from __future__ import annotations
+
+import shutil
 import subprocess
 import sys
-import shutil
 import tempfile
 from pathlib import Path
 

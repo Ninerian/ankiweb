@@ -1,9 +1,10 @@
-import pytest
-import json
 from unittest.mock import MagicMock
-from ankiweb.adapters.inbound.http_pages.editor_tags import make_router
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+from ankiweb.adapters.inbound.http_pages.editor_tags import make_router
 
 
 @pytest.fixture

@@ -1,9 +1,10 @@
 """Scheduling extra actions."""
 
 from __future__ import annotations
-from ankiweb.core.ankiconnect_actions.registry import extra_action
-from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
+
 from ankiweb.ankiconnect.schemas.extra import ExtendCardLimitsParams
+from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
+from ankiweb.core.ankiconnect_actions.registry import extra_action
 
 
 def _find_node(node, did):
@@ -39,7 +40,7 @@ async def extend_card_limits(rt, deck=None, deckId=None, new=0, review=0):
             d = col.decks.by_name(deck)
             did = d["id"] if d is not None else None
         if did is None:
-            raise Exception("deck was not found: " + str(deck if deck else deckId))
+            raise ValueError("deck was not found: " + str(deck if deck else deckId))
         last_op = None
         if new:
             last_op = col.sched.custom_study(

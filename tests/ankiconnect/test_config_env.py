@@ -1,4 +1,6 @@
+#!/usr/bin/env python3
 import json
+
 from ankiweb.ankiconnect.config import AnkiConnectConfig
 
 
@@ -35,8 +37,9 @@ def test_env_overrides_json(tmp_path, monkeypatch):
 def test_collection_parent_dir_created(tmp_path):
     # CollectionService.open() must create a missing parent dir for a custom path
     import anyio
-    from ankiweb.core.config import Settings
+
     from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
+    from ankiweb.core.config import Settings
 
     nested = tmp_path / "deep" / "sub" / "c.anki2"
     assert not nested.parent.exists()

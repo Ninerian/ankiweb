@@ -1,10 +1,10 @@
 """Request models for the note actions (ankiweb/ankiconnect/actions/notes.py)."""
 
 from __future__ import annotations
-from typing import Optional
-from pydantic import Field
-from ankiweb.ankiconnect.schemas._base import ACBaseModel
 
+from pydantic import Field
+
+from ankiweb.ankiconnect.schemas._base import ACBaseModel
 
 # --- shared nested helpers for the addNote/addNotes note spec ---------------
 
@@ -13,16 +13,16 @@ class AddNoteMedia(ACBaseModel):
     """A single audio/video/picture media item to download and embed in a new note."""
 
     filename: str = Field(description="Target filename in the media folder.")
-    data: Optional[str] = Field(
+    data: str | None = Field(
         default=None, description="Base64-encoded file contents."
     )
-    path: Optional[str] = Field(
+    path: str | None = Field(
         default=None, description="Absolute path to read the file from."
     )
-    url: Optional[str] = Field(
+    url: str | None = Field(
         default=None, description="URL to download the file from."
     )
-    skipHash: Optional[str] = Field(
+    skipHash: str | None = Field(
         default=None, description="Skip the file if its MD5 hash matches this value."
     )
     fields: list[str] = Field(
@@ -34,7 +34,7 @@ class AddNoteMedia(ACBaseModel):
 class AddNoteDuplicateScopeOptions(ACBaseModel):
     """Extra settings controlling how duplicates are detected."""
 
-    deckName: Optional[str] = Field(
+    deckName: str | None = Field(
         default=None,
         description="Deck used for the duplicate check (defaults to target deck).",
     )
@@ -52,10 +52,10 @@ class AddNoteOptions(ACBaseModel):
     allowDuplicate: bool = Field(
         default=False, description="Allow adding a duplicate note."
     )
-    duplicateScope: Optional[str] = Field(
+    duplicateScope: str | None = Field(
         default=None, description="'deck' to limit duplicate checks to the target deck."
     )
-    duplicateScopeOptions: Optional[AddNoteDuplicateScopeOptions] = Field(
+    duplicateScopeOptions: AddNoteDuplicateScopeOptions | None = Field(
         default=None, description="Additional duplicate-scope settings."
     )
 
@@ -69,7 +69,7 @@ class AddNoteSpec(ACBaseModel):
         default_factory=dict, description="Field name -> value map."
     )
     tags: list[str] = Field(default_factory=list, description="Tags to apply.")
-    options: Optional[AddNoteOptions] = Field(default=None, description="Add options.")
+    options: AddNoteOptions | None = Field(default=None, description="Add options.")
     audio: list[AddNoteMedia] = Field(
         default_factory=list, description="Audio media to attach."
     )
@@ -122,7 +122,7 @@ class CanAddNotesWithErrorDetailParams(ACBaseModel):
 class FindNotesParams(ACBaseModel):
     """Find note ids matching an Anki browser search query."""
 
-    query: Optional[str] = Field(
+    query: str | None = Field(
         default=None, description="Anki search string, e.g. 'deck:French'."
     )
 
@@ -130,8 +130,8 @@ class FindNotesParams(ACBaseModel):
 class NotesInfoParams(ACBaseModel):
     """Return full info for the given note ids, or for notes matching a query."""
 
-    notes: Optional[list[int]] = Field(default=None, description="Note ids.")
-    query: Optional[str] = Field(
+    notes: list[int] | None = Field(default=None, description="Note ids.")
+    query: str | None = Field(
         default=None, description="Anki search string (used when `notes` is omitted)."
     )
 
@@ -180,10 +180,10 @@ class UpdateNoteSpec(ACBaseModel):
     """A combined fields/tags update spec; either `fields` or `tags` may be omitted."""
 
     id: int = Field(description="Note id to update.")
-    fields: Optional[dict[str, str]] = Field(
+    fields: dict[str, str] | None = Field(
         default=None, description="Field name -> new value map."
     )
-    tags: Optional[list[str]] = Field(
+    tags: list[str] | None = Field(
         default=None, description="New complete tag list."
     )
     audio: list[AddNoteMedia] = Field(
@@ -211,7 +211,7 @@ class UpdateNoteModelSpec(ACBaseModel):
     fields: dict[str, str] = Field(
         default_factory=dict, description="Field name -> new value map."
     )
-    tags: Optional[list[str]] = Field(
+    tags: list[str] | None = Field(
         default=None, description="New complete tag list."
     )
 
@@ -228,7 +228,7 @@ class AddTagsParams(ACBaseModel):
     """Add tags to the given notes."""
 
     notes: list[int] = Field(default_factory=list, description="Note ids.")
-    tags: Optional[str] = Field(
+    tags: str | None = Field(
         default=None, description="Space-separated tags to add."
     )
     add: bool = Field(default=True, description="Reserved flag; tags are always added.")
@@ -238,7 +238,7 @@ class RemoveTagsParams(ACBaseModel):
     """Remove tags from the given notes."""
 
     notes: list[int] = Field(default_factory=list, description="Note ids.")
-    tags: Optional[str] = Field(
+    tags: str | None = Field(
         default=None, description="Space-separated tags to remove."
     )
 
@@ -255,10 +255,10 @@ class ReplaceTagsParams(ACBaseModel):
     """Replace a tag with another tag on the given notes."""
 
     notes: list[int] = Field(default_factory=list, description="Note ids.")
-    tag_to_replace: Optional[str] = Field(
+    tag_to_replace: str | None = Field(
         default=None, description="Existing tag to replace."
     )
-    replace_with_tag: Optional[str] = Field(
+    replace_with_tag: str | None = Field(
         default=None, description="Replacement tag."
     )
 
@@ -266,10 +266,10 @@ class ReplaceTagsParams(ACBaseModel):
 class ReplaceTagsInAllNotesParams(ACBaseModel):
     """Replace a tag with another tag across all notes."""
 
-    tag_to_replace: Optional[str] = Field(
+    tag_to_replace: str | None = Field(
         default=None, description="Existing tag to replace."
     )
-    replace_with_tag: Optional[str] = Field(
+    replace_with_tag: str | None = Field(
         default=None, description="Replacement tag."
     )
 

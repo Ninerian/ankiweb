@@ -3,6 +3,7 @@ automated enforcement of the hexagonal dependency rule from
 docs/superpowers/specs/2026-09-12-ankiweb-hexagonal-architecture-design.md."""
 
 from __future__ import annotations
+
 import ast
 from pathlib import Path
 

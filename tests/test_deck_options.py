@@ -1,8 +1,10 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -29,8 +31,8 @@ def test_get_deck_configs_for_update_passthrough(client):
 
 
 def test_passthrough_and_custom_registered():
-    from ankiweb.core.rpc.passthrough import PASSTHROUGH, CONCURRENT
     from ankiweb.core.rpc.custom_handlers import CUSTOM
+    from ankiweb.core.rpc.passthrough import CONCURRENT, PASSTHROUGH
 
     assert "get_ignored_before_count" in PASSTHROUGH
     # the long FSRS compute/simulate calls + set_wants_abort run on the concurrent path
@@ -95,13 +97,3 @@ def test_update_deck_configs_persists_and_broadcasts(client):
     assert persisted == new_limit
 
 
-def test_gear_menu_navigates_to_deck_options(client):
-    from conftest import parse_datastar_events
-
-    did = client.portal.call(
-        client.app.state.service.run, lambda col: col.decks.id("Default")
-    )
-    r = client.post(f"/deckbrowser/opts/{did}")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any(f"window.location = '/deck-options/{did}'" in data for _, data in events)

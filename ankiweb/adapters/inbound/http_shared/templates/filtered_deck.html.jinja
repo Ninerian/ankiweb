@@ -1,5 +1,5 @@
-{% macro order_select(sel_id, selected, labels) %}
-  <select id="{{ sel_id }}" class="select select-sm w-auto inline-block">
+{% macro order_select(sel_id, selected, labels, signal_name) %}
+  <select id="{{ sel_id }}" class="select select-sm w-auto inline-block" data-bind="{{ signal_name }}">
     {% for l in labels %}<option
         value="{{ loop.index0 }}"
         {% if loop.index0 == selected %}
@@ -12,13 +12,17 @@
 {% endmacro %}
 <div class="filtered-deck mx-auto px-4 py-3 max-w-xl">
   <h3 class="text-xl font-bold mb-3">{{ heading }}</h3>
-  <form id="fd" onsubmit="return false">
+  <form
+    id="fd"
+    onsubmit="return false"
+    data-signals='{{ initial_signals | tojson }}'
+  >
     <input type="hidden" id="did" value="{{ did }}">
     <div class="mb-4">
       <label for="name" class="block text-sm font-medium mb-1">
         {{ tr.deck_config_name_prompt() }}
       </label>
-      <input type="text" id="name" class="input w-full" value="{{ name }}" size="30">
+      <input type="text" id="name" class="input w-full" value="{{ name }}" size="30" data-bind="name">
     </div>
     <fieldset class="mb-4 border border-base-300 rounded-box p-3">
       <legend class="text-sm font-bold px-2">{{ tr.actions_filter() }}</legend>
@@ -26,7 +30,7 @@
         <label for="search1" class="block text-sm font-medium mb-1">
           {{ tr.actions_search() }}
         </label>
-        <input type="text" id="search1" class="input input-sm w-full" value="{{ search1 }}">
+        <input type="text" id="search1" class="input input-sm w-full" value="{{ search1 }}" data-bind="search1">
       </div>
       <div class="flex items-center flex-wrap gap-2 text-sm">
         <label for="limit1" class="mb-0">
@@ -38,9 +42,10 @@
           class="input input-sm w-24"
           value="{{ limit1 }}"
           min="1"
+          data-bind="limit1"
         >
         <span>{{ tr.scheduling_order() }}</span>
-        {{ order_select('order1', order1, labels) }}
+        {{ order_select('order1', order1, labels, 'order1') }}
       </div>
     </fieldset>
     <div class="flex items-center gap-2 mb-4 cursor-pointer">
@@ -51,17 +56,17 @@
         {% if has2 %}
           checked
         {% endif %}
-        onchange="onSecond()"
+        data-bind="second"
       >
       <label class="cursor-pointer text-sm" for="second">{{ tr.decks_enable_second_filter() }}</label>
     </div>
-    <fieldset id="filter2" class="mb-4 border border-base-300 rounded-box p-3" {% if not has2 %}style="display:none;"{% endif %}>
+    <fieldset id="filter2" class="mb-4 border border-base-300 rounded-box p-3" data-show="$second" {% if not has2 %}style="display:none;"{% endif %}>
       <legend class="text-sm font-bold px-2">{{ tr.decks_filter_2() }}</legend>
       <div class="mb-3">
         <label for="search2" class="block text-sm font-medium mb-1">
           {{ tr.actions_search() }}
         </label>
-        <input type="text" id="search2" class="input input-sm w-full" value="{{ search2 }}">
+        <input type="text" id="search2" class="input input-sm w-full" value="{{ search2 }}" data-bind="search2">
       </div>
       <div class="flex items-center flex-wrap gap-2 text-sm">
         <label for="limit2" class="mb-0">
@@ -73,9 +78,10 @@
           class="input input-sm w-24"
           value="{{ limit2 }}"
           min="1"
+          data-bind="limit2"
         >
         <span>{{ tr.scheduling_order() }}</span>
-        {{ order_select('order2', order2, labels) }}
+        {{ order_select('order2', order2, labels, 'order2') }}
       </div>
     </fieldset>
     <div class="flex items-center gap-2 mb-4 cursor-pointer">
@@ -86,13 +92,14 @@
         {% if resched %}
           checked
         {% endif %}
-        onchange="onResched()"
+        data-bind="resched"
       >
       <label class="cursor-pointer text-sm" for="resched">{{ tr.decks_reschedule_cards_based_on_my_answers() }}</label>
     </div>
     <fieldset
       id="previewblock"
       class="mb-4 border border-base-300 rounded-box p-3"
+      data-show="!$resched"
       {% if resched %}
         style="display:none;"
       {% endif %}
@@ -107,6 +114,7 @@
             class="input input-sm w-24"
             value="{{ preview_again }}"
             min="0"
+            data-bind="preview_again"
           >
         </div>
         <div class="flex items-center gap-1">
@@ -117,6 +125,7 @@
             class="input input-sm w-24"
             value="{{ preview_hard }}"
             min="0"
+            data-bind="preview_hard"
           >
         </div>
         <div class="flex items-center gap-1">
@@ -127,6 +136,7 @@
             class="input input-sm w-24"
             value="{{ preview_good }}"
             min="0"
+            data-bind="preview_good"
           >
         </div>
       </div>
@@ -139,56 +149,16 @@
         {% if allow_empty %}
           checked
         {% endif %}
+        data-bind="allow_empty"
       >
       <label class="cursor-pointer text-sm" for="allow_empty">{{ tr.decks_create_even_if_empty() }}</label>
     </div>
     <div class="mt-4 flex items-center gap-2">
-      <button class="btn btn-primary btn-sm" type="button" id="go" data-on:click__prevent="const payload = buildFdPayload(); @post('/filtered-deck/submit', {payload: payload})">{{ oklabel }}</button>
-      <button class="btn btn-neutral btn-sm" type="button" data-on:click__prevent="@post('/filtered-deck/cancel')">
+      <button class="btn btn-primary btn-sm" type="button" id="go" data-on:click__prevent="$error = ''; @post('/filtered-deck/submit', {payload: {id: $id, name: $name, allow_empty: $allow_empty, reschedule: $resched, preview_again: $preview_again, preview_hard: $preview_hard, preview_good: $preview_good, search1: $search1, limit1: $limit1, order1: $order1, second: $second, search2: $search2, limit2: $limit2, order2: $order2}})">{{ oklabel }}</button>
+      <a class="btn btn-neutral btn-sm" href="/overview">
         {{ tr.actions_cancel() }}
-      </button>
+      </a>
     </div>
-    <div id="err" class="text-error text-sm font-semibold mt-2"></div>
+    <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
   </form>
 </div>
-<script>
-  function chk(id) {
-      return document.getElementById(id).checked;
-  }
-
-  function val(id) {
-      return document.getElementById(id).value;
-  }
-
-  function num(id) {
-      return parseInt(document.getElementById(id).value || '0');
-  }
-
-  function onSecond() {
-      document.getElementById('filter2').style.display = chk('second') ? '' : 'none';
-  }
-
-  function onResched() {
-      document.getElementById('previewblock').style.display = chk('resched') ? 'none' : '';
-  }
-
-  function buildFdPayload() {
-      document.getElementById('err').textContent = '';
-      return {
-          id: parseInt(val('did')),
-          name: val('name'),
-          reschedule: chk('resched'),
-          search1: val('search1'),
-          limit1: num('limit1'),
-          order1: parseInt(val('order1')),
-          second: chk('second'),
-          search2: val('search2'),
-          limit2: num('limit2'),
-          order2: parseInt(val('order2')),
-          preview_again: num('preview_again'),
-          preview_hard: num('preview_hard'),
-          preview_good: num('preview_good'),
-          allow_empty: chk('allow_empty')
-      };
-  }
-</script>

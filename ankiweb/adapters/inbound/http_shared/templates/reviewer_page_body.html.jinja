@@ -10,7 +10,7 @@
     <a href="/deckbrowser" class="btn btn-sm btn-outline inline-flex items-center">
       &lsaquo; {{ tr.actions_decks() }}
     </a>
-    {{ actions_bar | safe }}
+    <div id="reviewer-actions-bar">{{ actions_bar | safe }}</div>
   </header>
 
   <div class="flex-1 overflow-y-auto px-3 py-2">
@@ -83,9 +83,20 @@
           });
       }
       window.ankiwebDeleteNote = ankiwebDeleteNote;
+      function activateReviewerLink(id) {
+          var link = document.getElementById(id);
+          if (!link || !link.hasAttribute('href')) return false;
+          link.click();
+          return true;
+      }
+
       b.registerCalls({
           _showQuestion: function() {
               _side = 'question';
+              var actionsBar = document.getElementById('reviewer-actions-bar');
+              if (actionsBar && arguments.length > 3) {
+                  actionsBar.innerHTML = String(arguments[3]);
+              }
               return window._showQuestion.apply(window, arguments);
           },
           _showAnswer: function() {
@@ -132,8 +143,7 @@
               e.preventDefault();
               window.pycmd('replay');
           } else if (k === 'e' || k === 'E') {
-              e.preventDefault();
-              window.pycmd('edit');
+              if (activateReviewerLink('reviewer-card-edit')) e.preventDefault();
           } else if (k === '*') {
               e.preventDefault();
               window.pycmd('mark');
@@ -150,8 +160,7 @@
               e.preventDefault();
               window.pycmd('suspendn');
           } else if (k === 'i' || k === 'I') {
-              e.preventDefault();
-              window.pycmd('cardinfo');
+              if (activateReviewerLink('reviewer-card-info')) e.preventDefault();
           } else if (k === 'u' || k === 'U') {
               e.preventDefault();
               window.pycmd('undo');

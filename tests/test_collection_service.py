@@ -1,8 +1,10 @@
 import asyncio
-import pytest
 from pathlib import Path
-from ankiweb.core.config import Settings
+
+import pytest
+
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -53,10 +55,12 @@ async def test_opchanges_bus_notifies_subscribers(service):
 
 
 def test_op_changes_to_flags():
-    from ankiweb.core.op_changes import op_changes_to_flags
-    from anki.collection import Collection
-    import tempfile
     import os
+    import tempfile
+
+    from anki.collection import Collection
+
+    from ankiweb.core.op_changes import op_changes_to_flags
 
     col = Collection(os.path.join(tempfile.mkdtemp(), "c.anki2"))
     try:

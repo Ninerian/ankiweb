@@ -1,19 +1,22 @@
 from __future__ import annotations
+
 import asyncio
+
 import uvicorn
-from ankiweb.core.config import Settings
+
+from ankiweb.adapters.outbound import json_config_store
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
-from ankiweb.core.bridge.hub import BridgeHub
+from ankiweb.adapters.outbound.httpx_notification_adapter import post as http_post
+from ankiweb.ankiconnect.app import create_ankiconnect_app
 from ankiweb.ankiconnect.config import AnkiConnectConfig
 from ankiweb.app import create_app
-from ankiweb.ankiconnect.app import create_ankiconnect_app
-from ankiweb.adapters.outbound import json_config_store
-from ankiweb.adapters.outbound.httpx_notification_adapter import post as http_post
+from ankiweb.core.bridge.hub import BridgeHub
+from ankiweb.core.config import Settings
 from ankiweb.core.notify.engine import (
-    NotifierState,
     DeckNotifier,
-    snapshot,
+    NotifierState,
     adapt_transport,
+    snapshot,
 )
 
 

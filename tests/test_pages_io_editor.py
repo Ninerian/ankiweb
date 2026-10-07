@@ -1,12 +1,9 @@
 """Tests for Image Occlusion shape serialization, cloze formatting, and backend round-trip."""
 
 from __future__ import annotations
-import re
-import pytest
-from pathlib import Path
-from anki.collection import Collection
-import anki.image_occlusion_pb2 as pb
 
+import anki.image_occlusion_pb2 as pb
+from anki.collection import Collection
 
 PNG_BYTES = bytes.fromhex(
     "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"

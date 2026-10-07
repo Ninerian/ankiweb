@@ -4,6 +4,18 @@
       More Actions
     </button>
     <ul tabindex="0" class="dropdown-content menu flex-nowrap bg-base-100 rounded-box shadow-lg z-50 w-52 p-1 border border-base-300" style="max-height: calc(100dvh - 4rem); overflow-y: auto;">
+      {% for link in nav_links %}
+        <li>
+          <a
+            id="{{ link.id }}"
+            class="rev-act text-sm py-1.5 px-3{% if not link.href %} pointer-events-none opacity-50{% endif %}"
+            {% if link.href %}href="{{ link.href }}"{% else %}role="link" aria-disabled="true" tabindex="-1"{% endif %}
+            onclick="this.closest('.dropdown')?.removeAttribute('open'); document.activeElement?.blur();"
+          >
+            {{ link.label }}
+          </a>
+        </li>
+      {% endfor %}
       {% for b in buttons %}
         <li>
           <button

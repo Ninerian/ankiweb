@@ -1,14 +1,14 @@
-import io
-import os
-import pytest
 from pathlib import Path
+from typing import Any, cast
 from urllib.parse import quote
+
+import pytest
+from conftest import parse_datastar_events
 from fastapi.testclient import TestClient
 
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
 from ankiweb import import_tmp
-from conftest import parse_datastar_events
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 PNG = bytes.fromhex(
     "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c434"
@@ -25,7 +25,7 @@ def client(tmp_path: Path):
 
 
 def _img_in_tmp(client: TestClient, name: str = "test.png") -> str:
-    settings = client.app.state.service.settings
+    settings = cast(Any, client.app).state.service.settings
     d = import_tmp.io_dir(settings)
     p = d / name
     p.write_bytes(PNG)
@@ -50,7 +50,7 @@ def test_next_image_occlusion_add_page_serves_html(client):
 
 
 def test_next_image_occlusion_add_note_save(client):
-    svc = client.app.state.service
+    svc = cast(Any, client.app).state.service
     img_path = _img_in_tmp(client, "save_add.png")
     before_notes = client.portal.call(svc.run, lambda col: col.note_count())
 
@@ -251,3 +251,38 @@ def test_next_image_occlusion_zero_shapes_rejected(client):
     assert after_notes == before_notes
     # Assert danger status_msg was returned
     assert any("Cannot save" in data for _, data in events)
+
+
+def test_next_image_occlusion_embedded_no_toolbar(client):
+    svc = client.app.state.service
+    img_path = _img_in_tmp(client, "embed_test.png")
+
+    def create_note(col):
+        col.add_image_occlusion_notetype()
+        nt = col.models.by_name("Image Occlusion")
+        col.add_image_occlusion_note(
+            notetype_id=nt["id"],
+            image_path=img_path,
+            occlusions=OCCL_HIDE_ALL,
+            header="Embed Test",
+            back_extra="",
+            tags=[],
+        )
+        return col.find_notes('note:"Image Occlusion"')[-1]
+
+    nid = client.portal.call(svc.run, create_note)
+
+    # 1. Edit mode (embedded in browser iframe): no toolbar and no bottom dock nav
+    r_edit = client.get(f"/image-occlusion/{nid}")
+    assert r_edit.status_code == 200
+    assert "ankiweb-toolbar" not in r_edit.text
+    assert "ankiweb-bottom-nav" not in r_edit.text
+    assert "dock" not in r_edit.text
+    assert "io-save-btn" in r_edit.text
+
+    # 2. Standalone Add mode: toolbar and dock nav present
+    r_add = client.get(f"/image-occlusion/{quote(img_path, safe='')}")
+    assert r_add.status_code == 200
+    assert "ankiweb-toolbar" in r_add.text
+    assert "ankiweb-bottom-nav" in r_add.text
+    assert "io-save-btn" in r_add.text

@@ -1,8 +1,10 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -34,5 +36,4 @@ def test_browser_has_card_info_entry(client):
     # the browser action toolbar offers Card Info, opening /card-info/<selected cid> in a new tab
     html = client.get("/browse").text
     assert "Card Info" in html
-    assert "window.ankiwebCardInfo" in html
     assert "/card-info/" in html

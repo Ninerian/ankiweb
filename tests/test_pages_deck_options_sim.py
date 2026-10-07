@@ -1,11 +1,12 @@
-import pytest
 import time
 from pathlib import Path
+
+import anki.collection
+import pytest
 from fastapi.testclient import TestClient
 
-from ankiweb.core.config import Settings
 from ankiweb.app import create_app
-import anki.collection
+from ankiweb.core.config import Settings
 
 
 def _populate_test_reviews(col_path: Path):
@@ -13,8 +14,10 @@ def _populate_test_reviews(col_path: Path):
     col = anki.collection.Collection(str(col_path))
     try:
         m = col.models.by_name("Basic")
-        deck_id = col.decks.add_normal_deck_with_name("TestDeck").id
-        
+        assert m is not None
+        assert col.db is not None
+        deck_id = col.decks.id("TestDeck")
+        assert deck_id is not None
         for i in range(100):
             note = col.new_note(m)
             note["Front"] = f"Front {i}"

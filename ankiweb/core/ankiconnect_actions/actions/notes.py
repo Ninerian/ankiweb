@@ -1,43 +1,49 @@
 from __future__ import annotations
-from typing import Optional
-from ankiweb.core.ankiconnect_actions.registry import action
-from ankiweb.core.ankiconnect_actions.actions._helpers import (
-    run_emit,
-    build_note,
-    check_addable,
-)
-from ankiweb.core.ankiconnect_actions.actions.media import attach_media
+
+import logging
+
+from anki.errors import NotFoundError
+
 from ankiweb.ankiconnect.schemas.notes import (
     AddNoteParams,
-    CanAddNoteParams,
-    CanAddNoteWithErrorDetailParams,
     AddNotesParams,
+    AddTagsParams,
+    CanAddNoteParams,
     CanAddNotesParams,
     CanAddNotesWithErrorDetailParams,
-    FindNotesParams,
-    NotesInfoParams,
-    UpdateNoteFieldsParams,
-    UpdateNoteTagsParams,
-    GetNoteTagsParams,
-    UpdateNoteParams,
-    UpdateNoteModelParams,
-    AddTagsParams,
-    RemoveTagsParams,
-    GetTagsParams,
-    ClearUnusedTagsParams,
-    ReplaceTagsParams,
-    ReplaceTagsInAllNotesParams,
-    NotesModTimeParams,
-    DeleteNotesParams,
-    RemoveEmptyNotesParams,
+    CanAddNoteWithErrorDetailParams,
     CardsToNotesParams,
+    ClearUnusedTagsParams,
+    DeleteNotesParams,
+    FindNotesParams,
+    GetNoteTagsParams,
+    GetTagsParams,
+    NotesInfoParams,
+    NotesModTimeParams,
+    RemoveEmptyNotesParams,
+    RemoveTagsParams,
+    ReplaceTagsInAllNotesParams,
+    ReplaceTagsParams,
+    UpdateNoteFieldsParams,
+    UpdateNoteModelParams,
+    UpdateNoteParams,
+    UpdateNoteTagsParams,
 )
+from ankiweb.core.ankiconnect_actions.actions._helpers import (
+    build_note,
+    check_addable,
+    run_emit,
+)
+from ankiweb.core.ankiconnect_actions.actions.media import attach_media
+from ankiweb.core.ankiconnect_actions.registry import action
+
+_logger = logging.getLogger(__name__)
 
 
 @action(
     "addNote",
     params=AddNoteParams,
-    returns=Optional[int],
+    returns=int | None,
     summary="Create a single note",
 )
 async def add_note(rt, note=None):
@@ -48,7 +54,7 @@ async def add_note(rt, note=None):
         n, _ = build_note(col, spec)
         ok, err = check_addable(col, n, spec.get("options"))
         if not ok:
-            raise Exception(err)
+            raise ValueError(err)
         did = col.decks.id(spec.get("deckName", "Default"))
         res = col.add_note(n, did)
         return n.id, res
@@ -67,7 +73,12 @@ async def can_add_note(rt, note=None):
             n, _ = build_note(col, spec)
             ok, _err = check_addable(col, n, spec.get("options"))
             return ok
-        except Exception:
+        except Exception as exc:
+            _logger.debug(
+                "Could not check whether note can be added: %s",
+                exc,
+                exc_info=True,
+            )
             return False
 
     return await rt.service.run(fn)
@@ -87,6 +98,11 @@ async def can_add_note_with_error_detail(rt, note=None):
             ok, err = check_addable(col, n, spec.get("options"))
             return {"canAdd": ok} if ok else {"canAdd": False, "error": err}
         except Exception as exc:
+            _logger.debug(
+                "Could not check whether note can be added: %s",
+                exc,
+                exc_info=True,
+            )
             return {"canAdd": False, "error": str(exc)}
 
     return await rt.service.run(fn)
@@ -114,16 +130,17 @@ async def add_notes(rt, notes=None):
                 n, _ = build_note(col, spec)
                 ok, err = check_addable(col, n, spec.get("options"))
                 if not ok:
-                    raise Exception(err)
+                    raise ValueError(err)
                 did = col.decks.id(spec.get("deckName", "Default"))
                 last_op = col.add_note(n, did)
                 added_ids.append(n.id)
             except Exception as e:
+                _logger.debug("Could not add note: %s", e, exc_info=True)
                 errs.append(str(e))
         if errs:
             if added_ids:
                 col.remove_notes(added_ids)
-            raise Exception(str(errs))
+            raise ValueError(str(errs))
         return added_ids, last_op
 
     return await run_emit(rt, fn)
@@ -158,7 +175,7 @@ async def find_notes(rt, query=None):
     return await rt.service.run(lambda col: list(col.find_notes(query or "")))
 
 
-from ankiweb.core.ankiconnect_actions.actions._helpers import note_to_info  # noqa: E402
+from ankiweb.core.ankiconnect_actions.actions._helpers import note_to_info
 
 
 @action("notesInfo", params=NotesInfoParams, summary="Full info for each note")
@@ -169,7 +186,7 @@ async def notes_info(rt, notes=None, query=None):
         for nid in ids:
             try:
                 out.append(note_to_info(col, col.get_note(nid)))
-            except Exception:
+            except NotFoundError:
                 out.append({})
         return out
 
@@ -192,7 +209,6 @@ async def update_note_fields(rt, note=None):
         return None, col.update_note(n, skip_undo_entry=True)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action("updateNoteTags", params=UpdateNoteTagsParams, summary="Replace a note's tags")
@@ -205,7 +221,6 @@ async def update_note_tags(rt, note=None, tags=None):
         return None, col.update_note(n)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -224,12 +239,11 @@ async def get_note_tags(rt, note=None):
 async def update_note(rt, note=None):
     spec = note or {}
     if "fields" not in spec and "tags" not in spec:
-        raise Exception('Must provide a "fields" or "tags" property.')
+        raise ValueError('Must provide a "fields" or "tags" property.')
     if "fields" in spec:
         await update_note_fields(rt, note=spec)
     if "tags" in spec:
         await update_note_tags(rt, note=spec["id"], tags=spec["tags"])
-    return None
 
 
 @action(
@@ -245,7 +259,7 @@ async def update_note_model(rt, note=None):
         n = col.get_note(spec["id"])
         model = col.models.by_name(spec.get("modelName", ""))
         if model is None:
-            raise Exception("model was not found: " + str(spec.get("modelName")))
+            raise ValueError("model was not found: " + str(spec.get("modelName")))
         n.mid = model["id"]
         n.fields = [""] * len(model["flds"])
         by_lower = {f["name"].lower(): i for i, f in enumerate(model["flds"])}
@@ -258,7 +272,6 @@ async def update_note_model(rt, note=None):
         return None, col.update_note(n)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action("addTags", params=AddTagsParams, summary="Add tags to notes")
@@ -269,7 +282,6 @@ async def add_tags(rt, notes=None, tags=None, add=True):
         return None, col.tags.bulk_add(notes, tags or "")
 
     await run_emit(rt, fn)
-    return None
 
 
 @action("removeTags", params=RemoveTagsParams, summary="Remove tags from notes")
@@ -280,7 +292,6 @@ async def remove_tags(rt, notes=None, tags=None):
         return None, col.tags.bulk_remove(notes, tags or "")
 
     await run_emit(rt, fn)
-    return None
 
 
 @action("getTags", params=GetTagsParams, returns=list[str], summary="List all tags")
@@ -294,7 +305,6 @@ async def clear_unused_tags(rt):
         return None, col.tags.clear_unused_tags()
 
     await run_emit(rt, fn)
-    return None
 
 
 @action("replaceTags", params=ReplaceTagsParams, summary="Replace a tag on notes")
@@ -309,10 +319,8 @@ async def replace_tags(rt, notes=None, tag_to_replace=None, replace_with_tag=Non
                     replace_with_tag if t == tag_to_replace else t for t in n.tags
                 ]
                 col.update_note(n)
-        return None
 
     await rt.service.run(fn)
-    return None
 
 
 @action(
@@ -325,7 +333,6 @@ async def replace_tags_in_all_notes(rt, tag_to_replace=None, replace_with_tag=No
         return None, col.tags.rename(tag_to_replace, replace_with_tag)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -339,7 +346,7 @@ async def notes_mod_time(rt, notes=None):
         for nid in notes:
             try:
                 out.append({"noteId": nid, "mod": col.get_note(nid).mod})
-            except Exception:
+            except NotFoundError:
                 out.append({})
         return out
 
@@ -354,7 +361,6 @@ async def delete_notes(rt, notes=None):
         return None, col.remove_notes(notes)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action("removeEmptyNotes", params=RemoveEmptyNotesParams, summary="Remove empty notes")
@@ -368,7 +374,6 @@ async def remove_empty_notes(rt):
         return None, None  # run_emit tolerates a None op
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -387,7 +392,7 @@ async def cards_to_notes(rt, cards=None):
         # card ids (instead of looping col.get_card, which raises NotFoundError on a bad id).
         placeholders = ",".join("?" * len(cards))
         return col.db.list(
-            "select distinct nid from cards where id in (%s)" % placeholders, *cards
+            f"select distinct nid from cards where id in ({placeholders})", *cards
         )
 
     return await rt.service.run(fn)

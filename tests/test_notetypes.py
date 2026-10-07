@@ -1,9 +1,11 @@
-import pytest
 from pathlib import Path
-from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
+
+import pytest
 from conftest import parse_datastar_events
+from fastapi.testclient import TestClient
+
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture

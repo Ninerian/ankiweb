@@ -1,11 +1,12 @@
-import io
 from pathlib import Path
-import pytest
-from fastapi.testclient import TestClient
-from anki.collection import Collection
-from ankiweb.core.config import Settings
-from ankiweb.app import create_app
+
 import anki.import_export_pb2 as ie
+import pytest
+from anki.collection import Collection
+from fastapi.testclient import TestClient
+
+from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -41,7 +42,7 @@ def test_next_import_csv_page_serves_html(test_setup):
 
 
 def test_next_import_csv_path_traversal_rejected(test_setup, tmp_path):
-    client, tmp_dir = test_setup
+    client, _tmp_dir = test_setup
     outside = tmp_path / "outside.csv"
     outside.write_text("a,b\n")
 

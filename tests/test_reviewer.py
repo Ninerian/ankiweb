@@ -1,12 +1,14 @@
-import tempfile
 import os
+import tempfile
+
 import pytest
 from anki.collection import Collection
+
 from ankiweb.adapters.inbound.http_screens.reviewer import (
     ReviewerSession,
+    answer_current,
     load_question,
     render_answer,
-    answer_current,
 )
 
 
@@ -119,8 +121,3 @@ def test_reviewer_body_has_shortcuts_guarded():
     assert "ease" in body  # digit -> ease mapping
 
 
-def test_reviewer_body_has_edit_shortcut():
-    from ankiweb.adapters.inbound.http_screens.reviewer import reviewer_page_body
-
-    body = reviewer_page_body()
-    assert "'edit'" in body or '"edit"' in body

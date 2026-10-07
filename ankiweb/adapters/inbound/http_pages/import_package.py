@@ -1,22 +1,31 @@
 from __future__ import annotations
+
+import asyncio
 import logging
 import os
 import urllib.parse
-from typing import Any, Callable
+from collections.abc import AsyncGenerator, Callable
+from typing import Any, cast
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+import anki.collection_pb2 as col_pb
+import anki.errors
+import anki.import_export_pb2 as ie
+import anyio
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from datastar_py.sse import DatastarEvent
+from fastapi import APIRouter
+from fastapi.responses import HTMLResponse
 
-from ankiweb.core.i18n import tr
+from ankiweb import import_tmp
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
-import anki.import_export_pb2 as ie
-from ankiweb import import_tmp
+from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +72,8 @@ def _update_choices() -> list[dict[str, Any]]:
     ]
 
 
-def _build_log_summary_and_rows(log: ie.ImportLog) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Build the summaries and details table rows from protobuf ImportLog.
+def _build_log_summary_and_rows(log: ie.ImportResponse.Log) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Build the summaries and details table rows from protobuf ImportResponse.Log.
     Matches upstream ts/routes/import-page/ logic exactly:
     - new notes: action = tr.adding_added(), reason = tr.importing_added_new_note(), can_browse = True
     - duplicate notes: action = tr.importing_skipped(), reason = tr.importing_existing_note_skipped(), can_browse = True
@@ -205,7 +214,7 @@ def render_import_anki_package_html(
 def render_import_package_modal(package_path: str, options: ie.ImportAnkiPackageOptions) -> str:
     return render_import_anki_package_html(package_path, options, as_modal=True)
 def render_import_page_html(
-    log: ie.ImportLog | None = None,
+    log: ie.ImportResponse.Log | None = None,
     error: str | None = None,
 ) -> str:
     if error or log is None:
@@ -237,7 +246,7 @@ def make_router(get_service: Callable) -> APIRouter:
         def get_options(col):
             try:
                 return col._backend.get_import_anki_package_presets()
-            except Exception:
+            except anki.errors.AnkiException:
                 return ie.ImportAnkiPackageOptions()
 
         options = await service.run(get_options)
@@ -251,7 +260,7 @@ def make_router(get_service: Callable) -> APIRouter:
         def get_options(col):
             try:
                 return col._backend.get_import_anki_package_presets()
-            except Exception:
+            except anki.errors.AnkiException:
                 return ie.ImportAnkiPackageOptions()
 
         options = await service.run(get_options)
@@ -283,8 +292,8 @@ def make_router(get_service: Callable) -> APIRouter:
                 with_scheduling=with_scheduling,
                 with_deck_configs=with_deck_configs,
                 merge_notetypes=merge_notetypes,
-                update_notes=update_notes,
-                update_notetypes=update_notetypes,
+                update_notes=cast(ie.ImportAnkiPackageUpdateCondition.ValueType, update_notes),
+                update_notetypes=cast(ie.ImportAnkiPackageUpdateCondition.ValueType, update_notetypes),
             ),
         )
 
@@ -294,15 +303,49 @@ def make_router(get_service: Callable) -> APIRouter:
             resp.ParseFromString(out_raw)
             return resp
 
-        try:
-            resp = await service.run(execute_import)
-            html = render_import_page_html(log=resp.log)
-        except Exception as e:
-            logger.exception("Import package failed")
-            html = render_import_page_html(error=str(e))
+        async def _import_stream() -> AsyncGenerator[DatastarEvent, None]:
+            initial_label = tr.actions_import()
+            last_label = initial_label
+            yield SSE.patch_signals({"importProgressLabel": initial_label})
 
-        return DatastarResponse(SSE.patch_elements(html, selector="#import-package-container"))
+            worker_task = asyncio.create_task(service.run(execute_import))
+            worker_result_read = False
+            try:
+                while not worker_task.done():
+                    done, _ = await asyncio.wait([worker_task], timeout=0.1)
+                    if done:
+                        break
+                    try:
+                        raw_progress = await service.backend_raw_concurrent("latest_progress", b"")
+                        progress = col_pb.Progress()
+                        progress.ParseFromString(raw_progress)
+                        if progress.WhichOneof("value") == "importing":
+                            label = progress.importing
+                            if label and label != last_label:
+                                last_label = label
+                                yield SSE.patch_signals({"importProgressLabel": label})
+                    except Exception:
+                        logger.warning("Failed to poll latest_progress", exc_info=True)
 
+                try:
+                    resp = await asyncio.shield(worker_task)
+                    worker_result_read = True
+                    html = render_import_page_html(log=resp.log)
+                except Exception as e:
+                    worker_result_read = True
+                    logger.exception("Import package failed")
+                    html = render_import_page_html(error=str(e))
+
+                yield SSE.patch_elements(html, selector="#import-package-container")
+            finally:
+                with anyio.CancelScope(shield=True):
+                    if not worker_result_read:
+                        try:
+                            await asyncio.shield(worker_task)
+                        except Exception:
+                            logger.exception("Background import failed after client disconnect")
+
+        return DatastarResponse(_import_stream())
     @router.get("/import-page/{path:path}")
     async def import_page_route(path: str):
         service = get_service()

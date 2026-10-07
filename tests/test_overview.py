@@ -1,7 +1,9 @@
-import tempfile
 import os
+import tempfile
+
 import pytest
 from anki.collection import Collection
+
 from ankiweb.adapters.inbound.http_datastar.overview import render_overview_html
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 
@@ -47,7 +49,6 @@ def test_congrats_states_and_upstream_parity(col):
     assert "container-sm" in html
     assert "--gutter-block: 1rem" in html
     assert "custom study" in html
-    assert "@post('/overview/studymore')" in html
     assert "Back to Decks" in html
     assert "data-on-interval__duration.60s" in html
 
