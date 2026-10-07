@@ -351,6 +351,20 @@
         >
           {{ tr.actions_card_info() }}
         </a>
+        <a
+          id="btn-changenotetype"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex btn-disabled pointer-events-none"
+          role="button"
+          tabindex="-1"
+          href="#"
+          data-attr:tabindex="$selectedCids.length ? '0' : '-1'"
+          aria-disabled="true"
+          data-attr:href="$selectedCids.length ? ('/change-notetype?cids=' + $selectedCids.join(',')) : '#'"
+          data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
+          data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
+        >
+          {{ tr.browsing_change_notetype() }}
+        </a>
 
         <!-- Mobile dropdown collapsible -->
         <details
@@ -467,6 +481,23 @@
                 data-on:click="el.closest('details')?.removeAttribute('open')"
               >
                 {{ tr.actions_card_info() }}
+              </a>
+            </li>
+            <li>
+              <a
+                id="btn-changenotetype-mobile"
+                class="btn-disabled pointer-events-none"
+                role="button"
+                tabindex="-1"
+                href="#"
+                data-attr:tabindex="$selectedCids.length ? '0' : '-1'"
+                aria-disabled="true"
+                data-attr:href="$selectedCids.length ? ('/change-notetype?cids=' + $selectedCids.join(',')) : '#'"
+                data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
+                data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
+                data-on:click="el.closest('details')?.removeAttribute('open')"
+              >
+                {{ tr.browsing_change_notetype() }}
               </a>
             </li>
           </ul>

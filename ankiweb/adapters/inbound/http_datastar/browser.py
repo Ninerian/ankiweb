@@ -18,10 +18,7 @@ from datastar_py.fastapi import (
 )
 from fastapi import APIRouter
 
-from ankiweb.adapters.inbound.http_datastar.common import (
-    error_response,
-    redirect_response,
-)
+from ankiweb.adapters.inbound.http_datastar.common import error_response
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
@@ -509,27 +506,6 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
             return error_response(exc)
         applied_q = _get_browser_query(payload)
         return await _reload(applied_q)
-
-    @router.post("/changenotetype")
-    async def change_notetype(payload: ReadSignals = None):
-        service = get_service()
-        hub = get_hub()
-        cids = _get_requested_cids(payload)
-        if not cids:
-            return DatastarResponse()
-        nids = await service.run(lambda col: _nids(col, cids))
-        if not nids:
-            return DatastarResponse()
-        if hub:
-            hub.ui_state.selected_card_ids = cids
-            hub.ui_state.selected_note_ids = nids
-        try:
-            old = await service.run(
-                lambda col: col.models.get_single_notetype_of_notes(nids)
-            )
-        except (InvalidInput, NotFoundError) as exc:
-            return error_response(exc)
-        return redirect_response(f"/change-notetype/{old}")
 
     @router.post("/addtag")
     async def add_tag(payload: ReadSignals):

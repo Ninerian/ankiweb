@@ -85,7 +85,6 @@ def test_edit_iframe_has_no_toolbar(client):
     [
         "/graphs",
         "/deck-options/1",
-        "/change-notetype/1/2",
         "/card-info/1",
         "/import-csv/fake.csv",
         "/import-anki-package/fake.apkg",
@@ -97,6 +96,17 @@ def test_task_pages_have_toolbar(client, path):
     assert r.status_code == 200
     assert 'id="ankiweb-toolbar"' in r.text
     assert 'id="ankiweb-bottom-nav"' in r.text
+
+
+def test_change_notetype_page_has_toolbar(client):
+    cid = _seed(client)
+    response = client.get(f"/change-notetype?cids={cid}")
+
+    assert response.status_code == 200
+    assert 'id="ankiweb-toolbar"' in response.text
+    assert 'id="ankiweb-bottom-nav"' in response.text
+
+
 def _edit_seed(client):
     def seed(col):
         n = col.new_note(col.models.by_name("Basic"))

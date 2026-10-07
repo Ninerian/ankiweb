@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 import logging
 from collections.abc import Callable
@@ -181,54 +182,165 @@ def render_fatal_error_html(msg: str) -> str:
     return templating.render("pages/change_notetype.html.jinja", fatal_error=msg)
 
 
+class _SelectionError(ValueError):
+    pass
+
+
+def _parse_card_ids(raw_cids: str | None) -> list[int]:
+    if raw_cids is None or not raw_cids:
+        raise _SelectionError("Invalid card selection: provide at least one card ID.")
+
+    card_ids: list[int] = []
+    for raw_cid in raw_cids.split(","):
+        if not raw_cid.isascii() or not raw_cid.isdigit():
+            raise _SelectionError(
+                "Invalid card selection: card IDs must be positive integers separated by commas."
+            )
+        try:
+            card_id = int(raw_cid)
+        except ValueError as exc:
+            raise _SelectionError(
+                "Invalid card selection: card IDs must be positive integers separated by commas."
+            ) from exc
+        if card_id <= 0:
+            raise _SelectionError(
+                "Invalid card selection: card IDs must be positive integers separated by commas."
+            )
+        card_ids.append(card_id)
+    return card_ids
+
+
+def _resolve_card_selection(col, card_ids: list[int]) -> tuple[int, list[int]]:
+    old_ntid: int | None = None
+    note_ids: list[int] = []
+    seen_note_ids: set[int] = set()
+
+    for card_id in card_ids:
+        try:
+            card = col.get_card(card_id)
+            note = card.note()
+        except anki.errors.NotFoundError as exc:
+            raise _SelectionError(
+                "Invalid card selection: one or more selected cards no longer exist."
+            ) from exc
+
+        if old_ntid is None:
+            old_ntid = note.mid
+        elif note.mid != old_ntid:
+            raise _SelectionError(
+                "Invalid card selection: all selected cards must have the same note type."
+            )
+
+        if card.nid not in seen_note_ids:
+            note_ids.append(card.nid)
+            seen_note_ids.add(card.nid)
+
+    if old_ntid is None:
+        raise _SelectionError("Invalid card selection: provide at least one card ID.")
+    return old_ntid, note_ids
+
+
+def _parse_note_ids(raw_note_ids: Any) -> list[int]:
+    if not isinstance(raw_note_ids, list):
+        raise _SelectionError("Invalid note selection: note IDs must be provided as a list.")
+    if not raw_note_ids:
+        raise _SelectionError("Invalid note selection: select at least one note.")
+
+    note_ids: list[int] = []
+    for raw_note_id in raw_note_ids:
+        if isinstance(raw_note_id, bool):
+            raise _SelectionError("Invalid note selection: note IDs must be positive integers.")
+        if isinstance(raw_note_id, int):
+            note_id = raw_note_id
+        elif isinstance(raw_note_id, str) and raw_note_id.isascii() and raw_note_id.isdigit():
+            try:
+                note_id = int(raw_note_id)
+            except ValueError as exc:
+                raise _SelectionError(
+                    "Invalid note selection: note IDs must be positive integers."
+                ) from exc
+        else:
+            raise _SelectionError("Invalid note selection: note IDs must be positive integers.")
+
+        if note_id <= 0:
+            raise _SelectionError("Invalid note selection: note IDs must be positive integers.")
+        note_ids.append(note_id)
+    return note_ids
+
+
+def _validate_note_ids(col, note_ids: list[int], old_ntid: int) -> None:
+    for note_id in note_ids:
+        try:
+            note = col.get_note(note_id)
+        except anki.errors.NotFoundError as exc:
+            raise _SelectionError(
+                "Invalid note selection: one or more selected notes no longer exist."
+            ) from exc
+        if note.mid != old_ntid:
+            raise _SelectionError(
+                "Invalid note selection: selected notes must all have the source note type."
+            )
+
+
+def _selection_error_html(message: str) -> str:
+    return (
+        '<div class="alert alert-error py-2 px-3 mb-3">'
+        f"{html.escape(message)}</div>"
+    )
+
+
+def _selection_error_response(message: str):
+    return elements_response(
+        _selection_error_html(message),
+        selector="#change-notetype-alert-area",
+    )
+
+
 def make_router(get_service: Callable) -> APIRouter:
     router = APIRouter()
 
-    @router.get("/change-notetype/{ids:path}")
-    async def page(ids: str):
-        service = get_service()
-        raw_parts = ids.split("/")
-        from_str = raw_parts[0] if raw_parts else ""
-        to_str = raw_parts[1] if len(raw_parts) > 1 else None
-
+    @router.get("/change-notetype")
+    async def page(cids: str | None = Query(default=None)):
         try:
-            old_id = int(from_str)
-        except (ValueError, TypeError):
-            msg = f"Cannot convert {from_str} to a BigInt"
-            body = render_fatal_error_html(msg)
-            return HTMLResponse(render_page("changenotetype", body))
+            card_ids = _parse_card_ids(cids)
+        except _SelectionError as exc:
+            body = render_fatal_error_html(str(exc))
+            return HTMLResponse(
+                render_page("changenotetype", body),
+                status_code=400,
+            )
 
-        if to_str is not None:
-            try:
-                new_id = int(to_str)
-            except (ValueError, TypeError):
-                msg = f"Cannot convert {to_str} to a BigInt"
-                body = render_fatal_error_html(msg)
-                return HTMLResponse(render_page("changenotetype", body))
-        else:
-            new_id = old_id
+        service = get_service()
 
         def check_and_render(col):
             try:
+                old_id, note_ids = _resolve_card_selection(col, card_ids)
+            except _SelectionError as exc:
+                return render_fatal_error_html(str(exc)), True
+
+            try:
                 col.models.change_notetype_info(
                     old_notetype_id=old_id,
-                    new_notetype_id=new_id,
+                    new_notetype_id=old_id,
                 )
             except anki.errors.BackendError as exc:
-                return render_fatal_error_html(str(exc))
+                return render_fatal_error_html(str(exc)), False
 
-            # Fetch note ids of old_id
-            note_ids = list(col.models.nids(old_id))
-
-            return render_change_notetype_html(
-                col,
-                old_ntid=old_id,
-                new_ntid=new_id,
-                note_ids=note_ids,
+            return (
+                render_change_notetype_html(
+                    col,
+                    old_ntid=old_id,
+                    new_ntid=old_id,
+                    note_ids=note_ids,
+                ),
+                False,
             )
 
-        body = await service.run(check_and_render)
-        return HTMLResponse(render_page("changenotetype", body))
+        body, invalid_selection = await service.run(check_and_render)
+        return HTMLResponse(
+            render_page("changenotetype", body),
+            status_code=400 if invalid_selection else 200,
+        )
 
     @router.post("/change-notetype/select-target")
     async def select_target(payload: ReadSignals):
@@ -244,18 +356,22 @@ def make_router(get_service: Callable) -> APIRouter:
             err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return elements_response(err_html, selector="#change-notetype-alert-area")
 
-        note_ids = payload.get("note_ids", [])
-        if not isinstance(note_ids, list):
-            note_ids = []
+        try:
+            note_ids = _parse_note_ids(payload.get("note_ids"))
+        except _SelectionError as exc:
+            return _selection_error_response(str(exc))
 
         def render(col):
             try:
+                _validate_note_ids(col, note_ids, old_id)
                 return render_change_notetype_html(
                     col,
                     old_ntid=old_id,
                     new_ntid=new_id,
                     note_ids=note_ids,
                 )
+            except _SelectionError as exc:
+                return _selection_error_html(str(exc))
             except anki.errors.BackendError as exc:
                 return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
 
@@ -281,11 +397,13 @@ def make_router(get_service: Callable) -> APIRouter:
             err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return elements_response(err_html, selector="#change-notetype-alert-area")
 
-        note_ids = payload.get("note_ids", [])
-        if not isinstance(note_ids, list):
-            note_ids = []
+        try:
+            note_ids = _parse_note_ids(payload.get("note_ids"))
+        except _SelectionError as exc:
+            return _selection_error_response(str(exc))
 
         def get_counts(col):
+            _validate_note_ids(col, note_ids, old_id)
             info = col.models.change_notetype_info(
                 old_notetype_id=old_id,
                 new_notetype_id=new_id,
@@ -294,6 +412,8 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             num_fields, num_templates = await service.run(get_counts)
+        except _SelectionError as exc:
+            return _selection_error_response(str(exc))
         except anki.errors.BackendError as exc:
             err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return elements_response(err_html, selector="#change-notetype-alert-area")
@@ -349,11 +469,13 @@ def make_router(get_service: Callable) -> APIRouter:
             err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return elements_response(err_html, selector="#change-notetype-alert-area")
 
-        note_ids = payload.get("note_ids", [])
-        if not isinstance(note_ids, list):
-            note_ids = []
+        try:
+            note_ids = _parse_note_ids(payload.get("note_ids"))
+        except _SelectionError as exc:
+            return _selection_error_response(str(exc))
 
         def get_counts(col):
+            _validate_note_ids(col, note_ids, old_id)
             info = col.models.change_notetype_info(
                 old_notetype_id=old_id,
                 new_notetype_id=new_id,
@@ -362,6 +484,8 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             num_fields, num_templates = await service.run(get_counts)
+        except _SelectionError as exc:
+            return _selection_error_response(str(exc))
         except anki.errors.BackendError as exc:
             err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return elements_response(err_html, selector="#change-notetype-alert-area")
@@ -428,16 +552,13 @@ def make_router(get_service: Callable) -> APIRouter:
             err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
             return elements_response(err_html, selector="#change-notetype-alert-area")
 
-        raw_nids = payload.get("note_ids", [])
-        note_ids: list[int] = []
-        if isinstance(raw_nids, list):
-            for nid in raw_nids:
-                try:
-                    note_ids.append(int(nid))
-                except (ValueError, TypeError):
-                    pass
+        try:
+            note_ids = _parse_note_ids(payload.get("note_ids"))
+        except _SelectionError as exc:
+            return _selection_error_response(str(exc))
 
         def get_info(col):
+            _validate_note_ids(col, note_ids, old_id)
             return col.models.change_notetype_info(
                 old_notetype_id=old_id,
                 new_notetype_id=new_id,
@@ -445,6 +566,8 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             info = await service.run(get_info)
+        except _SelectionError as exc:
+            return _selection_error_response(str(exc))
         except anki.errors.BackendError as exc:
             err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
             return elements_response(err_html, selector="#change-notetype-alert-area")
@@ -490,11 +613,9 @@ def make_router(get_service: Callable) -> APIRouter:
             req.new_templates.extend([-1 if val is None else val for val in templates_map])
 
         def execute_change(col):
-            final_nids = note_ids
-            if not final_nids:
-                final_nids = list(col.models.nids(old_id))
+            _validate_note_ids(col, note_ids, old_id)
             return col._backend.change_notetype(
-                note_ids=final_nids,
+                note_ids=note_ids,
                 new_fields=req.new_fields,
                 new_templates=req.new_templates,
                 old_notetype_id=req.old_notetype_id,
@@ -506,6 +627,8 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             await service.run_op(execute_change, initiator="change-notetype")
+        except _SelectionError as exc:
+            return _selection_error_response(str(exc))
         except Exception as exc:
             logger.exception("Failed to change notetype")
             err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
