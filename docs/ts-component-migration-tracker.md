@@ -65,7 +65,7 @@ Reviewer runtime (`ts/reviewer/*`), MathJax setup, `sveltelib` and `tslib` are *
 | **IconConstrain** | `lib/components/IconConstrain.svelte` | `<span class="icon-constrain">` | `templates/components/icon_constrain.html.jinja` | Ported, agent-verified; gallery render confirmed | Aspect ratio wrapper |
 | **Item** | `lib/components/Item.svelte` | `<div class="item ...">` | `templates/components/item.html.jinja` | Ported, agent-verified; gallery render confirmed | Generic item container |
 | **Label** | `lib/components/Label.svelte` | `<label class="form-label">` | `templates/components/label.html.jinja` | Ported, verified by lead in orca browser | Form label |
-| **LabelButton** | `lib/components/LabelButton.svelte` | `<button class="btn label-button">` | `templates/components/label_button.html.jinja` | Ported, agent-verified; gallery render confirmed | Styled label trigger |
+| **LabelButton** | `lib/components/LabelButton.svelte` | `<button class="btn btn-xs">` | `templates/components/label_button.html.jinja` | Ported to the daisyUI button (`btn-xs`; `btn-primary` / `btn-active` modifiers), no custom CSS | Styled label trigger |
 | **RenderChildren** | `lib/components/RenderChildren.svelte` | Fragment / slot | `templates/components/render_children.html.jinja` | Ported, agent-verified | Slot pass-through |
 | **RevertButton** | `lib/components/RevertButton.svelte` | `<button class="btn btn-sm btn-outline-secondary revert-btn">` | `templates/components/revert_button.html.jinja` | Ported, agent-verified; gallery render confirmed | Reset-to-default button |
 | **Row** | `lib/components/Row.svelte` | `<div class="row ...">` | `templates/components/row.html.jinja` | Ported, agent-verified; gallery render confirmed | Tailwind flex row |

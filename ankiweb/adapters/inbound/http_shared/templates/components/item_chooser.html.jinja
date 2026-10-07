@@ -12,7 +12,6 @@
     class_: Extra class on trigger button
     modal_dialog_class: Extra class on modal-dialog (default: "max-w-3xl w-11/12")
 #}
-{% from "components/label_button.html.jinja" import label_button %}
 {% from "components/shortcut.html.jinja" import shortcut %}
 {% from "components/modal.html.jinja" import modal %}
 {% from "components/icon_constrain.html.jinja" import icon_constrain %}
@@ -53,7 +52,7 @@
      }|tojson).__str__() }}">
     <button
         type="button"
-        class="label-button chooser-button{% if class_ %} {{ class_ }}{% endif %}"
+        class="btn btn-xs w-full justify-start{% if class_ %} {{ class_ }}{% endif %}"
         {% if tooltip %}title="{{ tooltip }}"{% endif %}
         tabindex="0"
         id="{{ cid }}_btn"
