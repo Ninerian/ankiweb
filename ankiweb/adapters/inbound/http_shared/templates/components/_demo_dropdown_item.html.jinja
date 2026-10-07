@@ -1,8 +1,8 @@
 {# Demo for DropdownItem component #}
 {% from "components/dropdown_item.html.jinja" import dropdown_item %}
 
-<div
-  class="flex flex-col gap-2 border border-base-300 p-3 rounded-box bg-base-100 max-w-xs"
+<ul
+  class="dropdown-content menu border-base-300 p-3 rounded-box bg-base-100 max-w-xs"
   data-testid="demo-dropdown-item-container"
   data-signals="{ ddi_selected_item: 'first' }"
 >
@@ -46,4 +46,4 @@
   <div class="mt-2 text-base-content/60 text-sm">
     Selected: <span id="ddi-selected-text" data-text="$ddi_selected_item">first</span>
   </div>
-</div>
+</ul>

@@ -34,10 +34,9 @@
     {% call label_button(
         id="lbl-btn-toggle",
         tooltip="Toggle Active",
-        onclick="this.classList.toggle('active');",
         **{
           "data-on:click": "$label_btn_active = !$label_btn_active",
-          "data-class": "{ 'active': $label_btn_active }"
+          "data-class": "{ 'btn-primary': $label_btn_active, 'btn-active': $label_btn_active }"
         }
     ) %}
       Toggle Active
@@ -50,7 +49,7 @@
     {% endcall %}
   </div>
 
-  <div style="max-width: 140px;">
+  <div class="max-w-36">
     {% call label_button(ellipsis=true, tooltip="Very Long Ellipsis Text", id="lbl-btn-ellipsis") %}
       Very Long Text That Truncates With Ellipsis
     {% endcall %}

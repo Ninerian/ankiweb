@@ -1,4 +1,9 @@
-{# LabelButton component ported from ts/lib/components/LabelButton.svelte #}
+{# LabelButton: daisyUI text button (btn). Replaces ts/lib/components/LabelButton.svelte.
+   - primary: filled btn-primary
+   - active: pressed, primary-filled state (btn-primary btn-active); toggle both classes at runtime
+   - size: daisyUI button size modifier (xs, sm, md, lg); xs is 1.5rem, the former 26px button
+   - ellipsis: truncate overflowing text with "…" (the button needs a width constraint, e.g. from its container)
+   - tooltip: rendered as title #}
 {% macro label_button(
     id=none,
     class_="",
@@ -7,18 +12,19 @@
     active=false,
     disabled=false,
     tabbable=false,
-    ellipsis=false
+    ellipsis=false,
+    size="xs"
 ) %}
   <button
     {% if id %}id="{{ id }}"{% endif %}
-    class="label-button{% if class_ %} {{ class_ }}{% endif %}{% if active %} active{% endif %}{% if primary %} primary{% endif %}{% if ellipsis %} ellipsis{% endif %}"
+    class="btn btn-{{ size }}{% if primary or active %} btn-primary{% endif %}{% if active %} btn-active{% endif %}{% if ellipsis %} max-w-full justify-start{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
     {% if tooltip %}title="{{ tooltip }}"{% endif %}
     {% if disabled %}disabled{% endif %}
     tabindex="{% if tabbable %}0{% else %}-1{% endif %}"
     {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
   >
-    {% if caller is defined %}
-      {{ caller() }}
-    {% endif %}
+    {% if ellipsis %}<span class="truncate">{% endif %}
+    {% if caller is defined %}{{ caller() }}{% endif %}
+    {% if ellipsis %}</span>{% endif %}
   </button>
 {% endmacro %}

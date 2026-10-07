@@ -3,11 +3,6 @@
  * Batch: choosers
  */
 
-:global(.label-button.chooser-button),
-.label-button.chooser-button {
-    width: 100%;
-}
-
 .item-chooser-modal .modal-header {
     display: flex;
     align-items: center;
