@@ -160,23 +160,3 @@ def test_reviewer_ans_before_show_does_not_crash_socket(client):
         assert got_question
 
 
-def test_reviewer_edit_navigates_to_editor(client):
-    assert client.portal is not None
-    did = client.portal.call(
-        client.app.state.service.run, lambda col: col.decks.id("Default")
-    )
-    client.portal.call(
-        client.app.state.service.run, lambda col: col.decks.set_current(did)
-    )
-    nid = client.portal.call(
-        client.app.state.service.run, lambda col: next(iter(col.find_notes("")))
-    )
-    with client.websocket_connect("/ws?context=reviewer") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
-        ws.receive_json()
-        ws.receive_json()
-        ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "edit"})
-        m = ws.receive_json()
-        while m["type"] != "call" or m["fn"] != "ankiwebNavigate":
-            m = ws.receive_json()
-        assert m["args"] == [f"/edit?nid={nid}"]

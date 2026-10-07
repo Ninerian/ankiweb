@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 def render_card_layout_html(col, ntid: int) -> str:
     m = col.models.get(ntid)
+    nids = col.models.nids(ntid)
+    preview_nid = nids[0] if nids else None
     rows = {}
     order = []
     templates_for_template = []
@@ -47,34 +49,12 @@ def render_card_layout_html(col, ntid: int) -> str:
         layout_draft=layout_draft,
         css=css,
         ntid=int(ntid),
+        preview_nid=preview_nid,
     )
 
 
 def make_card_layout_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/card-layout")
-    state: dict[str, int | None] = {"ntid": None}
-
-    @router.post("/previewlayout")
-    @router.post("/previewlayout/{ntid}")
-    async def preview_layout(ntid: int | None = None):
-        service = get_service()
-        if ntid is None:
-            ntid = state["ntid"]
-
-        def find_nid(col):
-            if ntid is not None:
-                return (col.models.nids(ntid) or [None])[0]
-            for m in col.models.all():
-                nids = col.models.nids(m["id"])
-                if nids:
-                    return nids[0]
-            return None
-
-        nid = await service.run(find_nid)
-        if nid is not None:
-            return redirect_response(f"/preview/{nid}")
-        else:
-            return error_response("Add a note of this type first to preview.")
 
     @router.post("/savelayout")
     async def save_layout(payload: ReadSignals):
@@ -82,7 +62,6 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
         if not payload or not isinstance(payload, dict):
             return DatastarResponse()
         p = payload
-        state["ntid"] = int(p["notetypeId"])
 
         # Canonical layoutDraft structure strictly (no legacy payload fallback)
         draft = p.get("layoutDraft")

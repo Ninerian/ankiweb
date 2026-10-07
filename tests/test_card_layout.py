@@ -283,16 +283,71 @@ def test_delete_all_templates_errors(client):
     assert after == before
 
 
-# (i) previewlayout with an existing note -> redirect to /preview/<nid>
-def test_previewlayout_navigates(client):
+def test_preview_link_targets_note_of_requested_notetype(client):
+    def add_notes(col):
+        cloze = col.models.by_name("Cloze")
+        cloze_note = col.new_note(cloze)
+        cloze_note["Text"] = "Canberra is the capital of {{c1::Australia}}."
+        col.add_note(cloze_note, col.decks.id("Default"))
+
+        ntid = _basic_id(col)
+        basic_nid = _add_note(col, ntid)
+        return ntid, cloze_note.id, basic_nid
+
+    ntid, cloze_nid, basic_nid = client.portal.call(
+        client.app.state.service.run, add_notes
+    )
+    r = client.get(f"/card-layout/{ntid}")
+
+    assert r.status_code == 200
+    assert 'id="preview"' in r.text
+    assert f'href="/preview/{basic_nid}"' in r.text
+    assert f'href="/preview/{cloze_nid}"' not in r.text
+
+
+def test_preview_is_unavailable_with_hint_when_notetype_has_no_notes(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+
+    r = client.get(f"/card-layout/{ntid}")
+
+    assert r.status_code == 200
+    assert 'id="preview" aria-disabled="true"' in r.text
+    assert 'href="/preview/' not in r.text
+    assert "Preview" in r.text
+    assert "unavailable" in r.text
+    assert 'role="status"' in r.text
+    assert "Add a note of this type to enable preview." in r.text
+
+
+def test_preview_get_renders_saved_layout_from_native_link(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
     nid = client.portal.call(
         client.app.state.service.run, lambda col: _add_note(col, ntid)
     )
-    r = client.post(f"/card-layout/previewlayout/{ntid}")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any(f"window.location = '/preview/{nid}'" in data for _, data in events)
+    saved_layout = _make_layout_draft_payload(
+        ntid,
+        [
+            {
+                "orig": 0,
+                "name": "Card 1",
+                "qfmt": "{{Front}}<div>SAVED_LAYOUT_MARKER</div>",
+                "afmt": "{{FrontSide}}<hr id=answer>{{Back}}",
+            }
+        ],
+    )
+    save = client.post(
+        "/card-layout/savelayout",
+        json=saved_layout,
+        headers={"Datastar-Request": "true"},
+    )
+    assert save.status_code == 200
+
+    editor = client.get(f"/card-layout/{ntid}")
+    assert f'href="/preview/{nid}"' in editor.text
+    preview = client.get(f"/preview/{nid}")
+
+    assert preview.status_code == 200
+    assert "SAVED_LAYOUT_MARKER" in preview.text
 
 
 

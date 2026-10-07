@@ -3,8 +3,8 @@
 Transport boundary:
 - Operates over WebSocket `/ws?context=reviewer` handling desktop `pycmd` verbs
   (`show`, `ans`, `ease1`..`ease4`, `replay`, `play:<side>:<idx>`, `mark`, `setflag:`,
-  `buryc`, `buryn`, `suspendc`, `suspendn`, `setdue:`, `forget`, `deletenote`, `undo`,
-  `cardinfo`, `edit`, `starttimer`).
+  `buryc`, `buryn`, `suspendc`, `suspendn`, `setdue:`, `forget`, `deletenote`,
+  `undo`, `starttimer`). Card Info and Edit use native links.
 - Server pushes QA rendering and ease bars (`_showQuestion`, `_showAnswer`,
   `ankiwebSetAnswerBar`) and AV audio filenames (`ankiwebPlayAudio`).
 - Audio playback and MathJax rendering are client runtime side effects; no audio or
@@ -146,10 +146,8 @@ def ease_buttons_bar(labels) -> str:
     return templating.render("reviewer_ease_buttons_bar.html.jinja", cells=cells)
 
 
-def reviewer_actions_bar() -> str:
-    """A compact bar of card-action buttons (Anki's reviewer 'More' menu), each issuing a
-    pycmd handled by make_reviewer_handler. Labels follow the active language via tr (with
-    keyless English fallbacks). Set Due / Forget / Delete prompt/confirm client-side."""
+def reviewer_actions_bar(cid: int | None = None, nid: int | None = None) -> str:
+    """Render reviewer controls and native navigation links for the current card."""
 
     def lbl(key, fallback):
         f = getattr(tr, key, None)
@@ -179,10 +177,6 @@ def reviewer_actions_bar() -> str:
             "onclick": "ankiwebDeleteNote()",
             "label": lbl("studying_delete_note", "Delete Note"),
         },
-        {
-            "onclick": "pycmd('cardinfo')",
-            "label": lbl("actions_card_info", "Card Info"),
-        },
         {"onclick": "pycmd('undo')", "label": lbl("undo_undo", "Undo")},
     ]
     # Flag buttons 1..4 + a clear (flag 0)
@@ -199,7 +193,21 @@ def reviewer_actions_bar() -> str:
     buttons.append(
         {"onclick": "pycmd('setflag:0')", "label": lbl("browsing_no_flag", "No Flag")}
     )
-    return templating.render("reviewer_actions_bar.html.jinja", buttons=buttons)
+    nav_links = [
+        {
+            "id": "reviewer-card-info",
+            "href": f"/card-info/{cid}" if cid is not None else None,
+            "label": lbl("actions_card_info", "Card Info"),
+        },
+        {
+            "id": "reviewer-card-edit",
+            "href": f"/edit?nid={nid}" if nid is not None else None,
+            "label": lbl("studying_edit", "Edit"),
+        },
+    ]
+    return templating.render(
+        "reviewer_actions_bar.html.jinja", buttons=buttons, nav_links=nav_links
+    )
 
 
 def reviewer_page_body() -> str:
@@ -226,7 +234,14 @@ def make_reviewer_handler(service, hub):
         hub.ui_state.current_card_id = session.card.id
         hub.ui_state.side = "question"
         await hub.push_call(
-            "reviewer", "_showQuestion", [info["q"], info["a"], info["bodyclass"]]
+            "reviewer",
+            "_showQuestion",
+            [
+                info["q"],
+                info["a"],
+                info["bodyclass"],
+                reviewer_actions_bar(cid=session.card.id, nid=session.card.nid),
+            ],
         )
         await hub.push_call("reviewer", "ankiwebSetAnswerBar", [show_answer_bar()])
         q_files = await service.run(
@@ -268,12 +283,6 @@ def make_reviewer_handler(service, hub):
                 lambda col: answer_current(col, session, ease), initiator="reviewer"
             )
             await _show_next()
-        elif arg == "edit":
-            if session.card is not None:
-                nid = await service.run(lambda col: session.card.nid)
-                await hub.push_call(
-                    "reviewer", "ankiwebNavigate", ["/edit?nid=" + str(nid)]
-                )
         elif arg == "starttimer":
             if session.card is not None:
                 await service.run(lambda col: session.card.start_timer())
@@ -422,13 +431,6 @@ def make_reviewer_handler(service, hub):
                 )
                 return
             await _show_next()
-        elif arg == "cardinfo":
-            if session.card is None:
-                return
-            cid = session.card.id
-            await hub.push_call(
-                "reviewer", "ankiwebNavigate", ["/card-info/" + str(cid)]
-            )
         # ignore everything else (e.g. reviewer.js emits "updateToolbar" after each render)
         return
 

@@ -113,11 +113,68 @@ def test_import_apkg_modal_completion_and_dismissal(live_server_apkg, dismiss_me
         page.wait_for_selector("#deckbrowser-page", timeout=10000)
 
         dialog = _open_import_dialog(page, apkg_path)
+        progress_container = dialog.locator(".anki-backend-progress-container")
+        expect(progress_container).to_be_hidden()
+
+        # Install a DOM observer BEFORE clicking Import to capture intermediate progress visibility
+        page.evaluate(
+            """() => {
+                window.__importProgressHistory = [];
+                const isVisible = (el) => {
+                    if (!el) return false;
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
+                };
+                const record = () => {
+                    const progressEl = document.querySelector("#importPackageModal .anki-backend-progress-container");
+                    const resultEl = document.querySelector("#importPackageModal .details-table");
+                    const progressVisible = isVisible(progressEl);
+                    const resultsPresent = !!resultEl;
+                    const labelEl = progressEl ? progressEl.querySelector("#label") : null;
+                    const labelText = labelEl ? (labelEl.textContent || "").trim() : "";
+                    window.__importProgressHistory.push({
+                        progressVisible,
+                        resultsPresent,
+                        labelText,
+                    });
+                };
+                record();
+                const observer = new MutationObserver(() => record());
+                const target = document.querySelector("#importPackageModal #import-package-container") || document.querySelector("#importPackageModal");
+                if (target) {
+                    observer.observe(target, { childList: true, subtree: true, attributes: true });
+                }
+                window.__importProgressObserver = observer;
+            }"""
+        )
+
         dialog.get_by_role("button", name="Import", exact=True).click()
 
         # Wait for import completion results containing the unique note
         dialog.locator(".details-table").wait_for(state="visible", timeout=15000)
         assert dialog.get_by_text(note_front).is_visible()
+
+        # Progress component must no longer be visible once terminal result is presented
+        expect(progress_container).to_be_hidden()
+
+        # Inspect captured state transitions from the pre-click observer
+        history = page.evaluate(
+            """() => {
+                if (window.__importProgressObserver) {
+                    window.__importProgressObserver.disconnect();
+                }
+                return window.__importProgressHistory || [];
+            }"""
+        )
+        progress_while_active = [
+            entry
+            for entry in history
+            if entry["progressVisible"] and not entry["resultsPresent"]
+        ]
+        assert (
+            len(progress_while_active) > 0
+        ), f"Expected progress to be visible before results appeared; history: {history}"
+
         close_button = dialog.get_by_role("button", name="Close", exact=True)
         expect(close_button).to_be_in_viewport(ratio=1)
 
@@ -157,12 +214,46 @@ def test_import_apkg_modal_corrupt_file_error_and_dismissal(live_server_apkg):
         page.wait_for_selector("#deckbrowser-page", timeout=10000)
 
         dialog = _open_import_dialog(page, corrupt_path)
+        progress_container = dialog.locator(".anki-backend-progress-container")
+        expect(progress_container).to_be_hidden()
+
+        page.evaluate(
+            """() => {
+                window.__importErrorHistory = [];
+                const isVisible = (el) => {
+                    if (!el) return false;
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
+                };
+                const record = () => {
+                    const progressEl = document.querySelector("#importPackageModal .anki-backend-progress-container");
+                    const errorEl = document.querySelector("#importPackageModal .error-box");
+                    const progressVisible = isVisible(progressEl);
+                    const errorPresent = !!errorEl;
+                    window.__importErrorHistory.push({
+                        progressVisible,
+                        errorPresent,
+                    });
+                };
+                record();
+                const observer = new MutationObserver(() => record());
+                const target = document.querySelector("#importPackageModal #import-package-container") || document.querySelector("#importPackageModal");
+                if (target) {
+                    observer.observe(target, { childList: true, subtree: true, attributes: true });
+                }
+                window.__importErrorObserver = observer;
+            }"""
+        )
+
         dialog.get_by_role("button", name="Import", exact=True).click()
 
         # Wait for actual visible error box
         error_box = dialog.locator(".error-box")
         error_box.wait_for(state="visible", timeout=15000)
         assert dialog.locator(".error-text").is_visible()
+
+        # Progress component must not be visible on terminal error
+        expect(progress_container).to_be_hidden()
 
         # Localized header Close must dismiss the dialog while keeping deckbrowser usable
         dialog.get_by_role("button", name="Close", exact=True).click()
@@ -178,3 +269,4 @@ def test_import_apkg_modal_corrupt_file_error_and_dismissal(live_server_apkg):
         assert "/browse" in page.url
 
         browser.close()
+

@@ -74,14 +74,18 @@
       <a class="btn btn-neutral" href="/deckbrowser">
         {{ tr.actions_cancel() }}
       </a>
-      <button
-        class="btn btn-outline"
-        type="button"
-        id="preview"
-        data-on:click__prevent="$error = ''; @post('/card-layout/previewlayout/' + $notetypeId)"
-      >
+      {% if preview_nid is not none %}
+      <a class="btn btn-outline" id="preview" href="/preview/{{ preview_nid }}">
         {{ tr.actions_preview() }}
-      </button>
+      </a>
+      {% else %}
+      <span class="btn btn-outline btn-disabled" id="preview" aria-disabled="true">
+        {{ tr.actions_preview() }} unavailable
+      </span>
+      <p class="text-sm text-base-content/70" role="status">
+        Add a note of this type to enable preview.
+      </p>
+      {% endif %}
     </div>
     <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
   </form>
