@@ -175,11 +175,14 @@ def make_router(get_service: Callable) -> APIRouter:
             tr=tr,
             **ctx,
         )
+        # Edit mode (numeric note id) is only reached through the Browser's detail
+        # iframe, like /edit: render the editor alone, without the global toolbar
+        # and its mobile bottom dock. Add mode is a standalone page and keeps it.
         return HTMLResponse(
             render_page(
                 context="image-occlusion",
                 body=body,
-                toolbar=True,
+                toolbar=not is_edit,
             )
         )
 

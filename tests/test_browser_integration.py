@@ -253,3 +253,238 @@ def test_browse_sidebar_long_name_truncated(live_server_longdeck):
         assert geo["textOverflow"] == "ellipsis"
         assert geo["whiteSpace"] == "nowrap"
         browser.close()
+
+@pytest.fixture
+def live_server_sidebar_search(tmp_path: Path):
+    col_path = tmp_path / "sidebar_search.anki2"
+    col = Collection(str(col_path))
+    special_deck = 'Quoted "deck" + & # Ω'
+    special_tag = 'quote"+&#Ω*'
+    decoy_tag = 'quote"+&#Ω-decoy'
+    try:
+        did_default = col.decks.id("Default")
+        assert did_default is not None
+        did_special = col.decks.id(special_deck)
+        assert did_special is not None
+
+        nt = col.models.by_name("Basic")
+        assert nt is not None
+
+        # Note in special deck
+        n1 = col.new_note(nt)
+        n1["Front"] = "special deck front"
+        n1["Back"] = "special deck back"
+        col.add_note(n1, did_special)
+
+        # Note with literal wildcard tag
+        n2 = col.new_note(nt)
+        n2["Front"] = "special tag front"
+        n2["Back"] = "special tag back"
+        col.add_note(n2, did_default)
+        col.tags.bulk_add([n2.id], special_tag)
+
+        # Decoy note that would match if '*' were a wildcard
+        n3 = col.new_note(nt)
+        n3["Front"] = "decoy tag front"
+        n3["Back"] = "decoy tag back"
+        col.add_note(n3, did_default)
+        col.tags.bulk_add([n3.id], decoy_tag)
+    finally:
+        col.close()
+
+    settings = Settings(collection_path=col_path, port=8138)
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_app(settings), host="127.0.0.1", port=8138, log_level="warning"
+        )
+    )
+    t = threading.Thread(target=server.run, daemon=True)
+    t.start()
+    deadline = time.monotonic() + 10
+    while not server.started:
+        if time.monotonic() > deadline:
+            raise RuntimeError("server did not start")
+        time.sleep(0.05)
+    yield "http://127.0.0.1:8138", special_deck, special_tag
+    server.should_exit = True
+    t.join(timeout=5)
+
+
+def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sidebar_search):
+    from urllib.parse import parse_qs, urlparse
+
+    base, special_deck, special_tag = live_server_sidebar_search
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        page = context.new_page()
+        page.goto(f"{base}/browse")
+
+        page.wait_for_function(
+            "document.getElementById('results-body').children.length===3", timeout=6000
+        )
+        page.wait_for_selector("#sidebar .side-item", timeout=6000)
+
+        deck_item = page.get_by_role("link", name=special_deck, exact=True)
+        tag_item = page.get_by_role("link", name=special_tag, exact=True)
+        deck_href = deck_item.get_attribute("href")
+        tag_href = tag_item.get_attribute("href")
+        expected_deck_query = parse_qs(urlparse(deck_href or "").query).get("q", [""])[0]
+        expected_tag_query = parse_qs(urlparse(tag_href or "").query).get("q", [""])[0]
+        assert expected_deck_query
+        assert expected_tag_query
+
+        # Preserve the original tab's draft, results, and URL during modified/middle clicks.
+        page.fill("#search", "original page draft")
+        original_url = page.url
+        original_results = page.inner_text("#results-body")
+        assert page.eval_on_selector(
+            "#results-body", "el => el.children.length"
+        ) == 3
+        assert "special deck front" in original_results
+        assert "special tag front" in original_results
+        assert "decoy tag front" in original_results
+
+        with context.expect_page() as new_page_info:
+            tag_item.click(modifiers=["ControlOrMeta"])
+        new_page = new_page_info.value
+        new_page.wait_for_function(
+            "(query) => new URL(location.href).searchParams.get('q') === query",
+            arg=expected_tag_query,
+            timeout=6000,
+        )
+        new_page.wait_for_function(
+            "document.getElementById('results-body').children.length===1", timeout=6000
+        )
+        parsed_new_url = urlparse(new_page.url)
+        assert parsed_new_url.path == "/browse"
+        assert parse_qs(parsed_new_url.query).get("q") == [expected_tag_query]
+        assert new_page.input_value("#search") == expected_tag_query
+        new_results = new_page.inner_text("#results-body")
+        assert new_page.eval_on_selector(
+            "#results-body", "el => el.children.length"
+        ) == 1
+        assert "special tag front" in new_results
+        assert "special deck front" not in new_results
+        assert "decoy tag front" not in new_results
+
+        assert page.input_value("#search") == "original page draft"
+        assert page.url == original_url
+        assert page.inner_text("#results-body") == original_results
+        new_page.close()
+
+        with context.expect_page() as middle_page_info:
+            deck_item.click(button="middle")
+        middle_page = middle_page_info.value
+        middle_page.wait_for_function(
+            "(query) => new URL(location.href).searchParams.get('q') === query",
+            arg=expected_deck_query,
+            timeout=6000,
+        )
+        middle_page.wait_for_function(
+            "document.getElementById('results-body').children.length===1", timeout=6000
+        )
+        parsed_middle_url = urlparse(middle_page.url)
+        assert parsed_middle_url.path == "/browse"
+        assert parse_qs(parsed_middle_url.query).get("q") == [expected_deck_query]
+        assert middle_page.input_value("#search") == expected_deck_query
+        middle_results = middle_page.inner_text("#results-body")
+        assert middle_page.eval_on_selector(
+            "#results-body", "el => el.children.length"
+        ) == 1
+        assert "special deck front" in middle_results
+        assert "special tag front" not in middle_results
+        assert "decoy tag front" not in middle_results
+
+        assert page.input_value("#search") == "original page draft"
+        assert page.url == original_url
+        assert page.inner_text("#results-body") == original_results
+        middle_page.close()
+
+        # A primary click performs a GET, changing the address bar and loading deck results.
+        deck_item.click()
+        page.wait_for_function(
+            "(query) => new URL(location.href).searchParams.get('q') === query",
+            arg=expected_deck_query,
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "document.getElementById('results-body')?.textContent.includes('special deck front')",
+            timeout=6000,
+        )
+        parsed_deck_url = urlparse(page.url)
+        assert parsed_deck_url.path == "/browse"
+        assert parse_qs(parsed_deck_url.query).get("q") == [expected_deck_query]
+        assert page.input_value("#search") == expected_deck_query
+        deck_results = page.inner_text("#results-body")
+        assert page.eval_on_selector(
+            "#results-body", "el => el.children.length"
+        ) == 1
+        assert "special deck front" in deck_results
+        assert "special tag front" not in deck_results
+        assert "decoy tag front" not in deck_results
+
+        # Normal tag navigation keeps the literal '*' semantics and excludes the decoy.
+        page.get_by_role("link", name=special_tag, exact=True).click()
+        page.wait_for_function(
+            "(query) => new URL(location.href).searchParams.get('q') === query",
+            arg=expected_tag_query,
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "document.getElementById('results-body')?.textContent.includes('special tag front')",
+            timeout=6000,
+        )
+        parsed_tag_url = urlparse(page.url)
+        assert parsed_tag_url.path == "/browse"
+        assert parse_qs(parsed_tag_url.query).get("q") == [expected_tag_query]
+        assert page.input_value("#search") == expected_tag_query
+        tag_results = page.inner_text("#results-body")
+        assert page.eval_on_selector(
+            "#results-body", "el => el.children.length"
+        ) == 1
+        assert "special tag front" in tag_results
+        assert "special deck front" not in tag_results
+        assert "decoy tag front" not in tag_results
+
+        page.go_back()
+        page.wait_for_function(
+            "(query) => new URL(location.href).searchParams.get('q') === query",
+            arg=expected_deck_query,
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "document.getElementById('results-body')?.textContent.includes('special deck front')",
+            timeout=6000,
+        )
+        assert parse_qs(urlparse(page.url).query).get("q") == [expected_deck_query]
+        assert page.input_value("#search") == expected_deck_query
+        back_results = page.inner_text("#results-body")
+        assert page.eval_on_selector(
+            "#results-body", "el => el.children.length"
+        ) == 1
+        assert "special deck front" in back_results
+        assert "special tag front" not in back_results
+        assert "decoy tag front" not in back_results
+
+        page.go_forward()
+        page.wait_for_function(
+            "(query) => new URL(location.href).searchParams.get('q') === query",
+            arg=expected_tag_query,
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "document.getElementById('results-body')?.textContent.includes('special tag front')",
+            timeout=6000,
+        )
+        assert parse_qs(urlparse(page.url).query).get("q") == [expected_tag_query]
+        assert page.input_value("#search") == expected_tag_query
+        forward_results = page.inner_text("#results-body")
+        assert page.eval_on_selector(
+            "#results-body", "el => el.children.length"
+        ) == 1
+        assert "special tag front" in forward_results
+        assert "special deck front" not in forward_results
+        assert "decoy tag front" not in forward_results
+
+        browser.close()

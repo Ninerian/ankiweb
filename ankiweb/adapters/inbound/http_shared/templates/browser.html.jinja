@@ -1,23 +1,19 @@
 {% macro sidebar(decks, tags) %}
   <div class="side-section">{{ tr.browsing_sidebar_decks() }}</div>
-  {% for d in decks %}
+  {% for item in decks %}
     <a
       class="side-item"
-      title="{{ d.name }}"
-      href="#"
-      data-indicator="_busy"
-      data-on:click__prevent="@post('/browse/searchdeck/{{ d.id }}')"
-    >{{ d.name }}</a>
+      title="{{ item.name }}"
+      href="/browse?{{ {'q': item.query} | urlencode }}"
+    >{{ item.name }}</a>
   {% endfor %}
   <div class="side-section">{{ tr.browsing_sidebar_tags() }}</div>
-  {% for t in tags %}
+  {% for item in tags %}
     <a
       class="side-item"
-      title="{{ t }}"
-      href="#"
-      data-indicator="_busy"
-      data-on:click__prevent="$tag = {{ (t | tojson | forceescape) }}; @post('/browse/searchtag')"
-    >{{ t }}</a>
+      title="{{ item.name }}"
+      href="/browse?{{ {'q': item.query} | urlencode }}"
+    >{{ item.name }}</a>
   {% endfor %}
 {% endmacro %}
 <style>
@@ -167,27 +163,19 @@
     .cell-due { width: 15%; }
     .cell-tags { width: 20%; max-width: 0; }
   }
-  /* Desktop detail pane */
-  @media (min-width: 768px) {
-    #detail-offcanvas {
-      display: block !important;
-      position: static !important;
-      width: 46% !important;
-      height: 100% !important;
-      max-height: none !important;
-      flex-shrink: 0;
-      border-left: 1px solid var(--color-base-300);
-      overflow-y: auto;
-      background: transparent;
-      padding: 0;
-    }
-    #detail-offcanvas::backdrop {
-      display: none !important;
-    }
+  /* Desktop detail pane (mobile uses the bottom modal) */
+  #detail-desktop {
+    width: 46%;
+    height: 100%;
+    flex-shrink: 0;
+    border-left: 1px solid var(--color-base-300);
+    overflow: hidden;
   }
 
   #detail {
     width: 100%;
+    height: 100%;
+    box-sizing: border-box;
     padding: 6px;
   }
 
@@ -199,10 +187,13 @@
   }
 
   .editor-frame {
+    display: block;
     width: 100%;
-    height: calc(100dvh - 120px);
+    height: 100%;
     border: 0;
   }
+  #detail-mobile-slot #detail { height: auto; }
+  #detail-mobile-slot .editor-frame { height: 70dvh; }
 </style>
 {% set raw_title = tr.browsing_window_title(total=987654, selected=123456) %}
 {% set clean_title = raw_title | replace('\u2068', '') | replace('\u2069', '') %}
@@ -229,6 +220,7 @@
     "_busy": false
   } | tojson }}'
   data-on:ankiweb:browser-refresh__window="@post('/browse/refresh')"
+  data-on:popstate__window="$query = new URL(location.href).searchParams.get('q') || ''; @post('/browse/search')"
 >
   <div id="browser-top" class="flex flex-wrap items-center gap-2 p-2 border-b border-base-300">
     <button
@@ -246,8 +238,7 @@
       <input
         id="search"
         class="input input-sm w-full md:w-80"
-        type="text"
-        autofocus
+        data-init="if (!document.activeElement || document.activeElement.id !== 'search') el.focus()"
         placeholder="{{ tr.actions_search() }}…"
         data-bind="query"
         value="{{ query }}"
@@ -271,6 +262,7 @@
           type="button"
           data-indicator="_busy"
           data-attr:disabled="!$selectedCids.length || $_busy"
+          disabled
           data-on:click__prevent="@post('/browse/suspend')"
         >
           {{ tr.studying_suspend() }}
@@ -281,6 +273,7 @@
           type="button"
           data-indicator="_busy"
           data-attr:disabled="!$selectedCids.length || $_busy"
+          disabled
           data-on:click__prevent="@post('/browse/unsuspend')"
         >
           {{ tr.actions_unbury_unsuspend() }}
@@ -291,6 +284,7 @@
           type="button"
           data-indicator="_busy"
           data-attr:disabled="!$selectedCids.length || $_busy"
+          disabled
           data-on:click__prevent="@post('/browse/forget')"
         >
           {{ tr.actions_forget_card() }}
@@ -300,6 +294,7 @@
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           data-attr:disabled="!$selectedCids.length || $_busy"
+          disabled
           data-on:click__prevent="$error = ''; $value = ''; $_browserAction = 'setdue'"
         >
           {{ tr.actions_set_due_date() }}
@@ -309,6 +304,7 @@
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           data-attr:disabled="!$selectedCids.length || $_busy"
+          disabled
           data-on:click__prevent="$error = ''; $deck = ''; $_browserAction = 'changedeck'"
         >
           {{ tr.browsing_change_deck() }}
@@ -318,6 +314,7 @@
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           data-attr:disabled="!$selectedCids.length || $_busy"
+          disabled
           data-on:click__prevent="$error = ''; $tag = ''; $_browserAction = 'addtag'"
         >
           {{ tr.editing_tags_add() }}
@@ -327,6 +324,7 @@
           class="btn btn-sm btn-outline join-item hidden md:inline-flex"
           type="button"
           data-attr:disabled="!$selectedCids.length || $_busy"
+          disabled
           data-on:click__prevent="$error = ''; $tag = ''; $_browserAction = 'removetag'"
         >
           {{ tr.actions_remove_tag() }}
@@ -336,14 +334,17 @@
           class="btn btn-sm btn-outline btn-error join-item hidden md:inline-flex"
           type="button"
           data-attr:disabled="!$selectedCids.length || $_busy"
+          disabled
           data-on:click__prevent="$error = ''; $_browserAction = 'delete'"
         >
           {{ tr.actions_delete() }}
         </button>
         <a
           id="btn-cardinfo"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
+          class="btn btn-sm btn-outline join-item hidden md:inline-flex btn-disabled pointer-events-none"
           role="button"
+          href="#"
+          aria-disabled="true"
           data-attr:href="$selectedCids.length ? ('/card-info/' + $selectedCids[0]) : '#'"
           data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
           data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
@@ -359,8 +360,9 @@
         >
           <summary
             id="btn-actions-dropdown"
-            class="btn btn-sm btn-outline"
+            class="btn btn-sm btn-outline btn-disabled"
             role="button"
+            aria-disabled="true"
             data-class="{'btn-disabled': !$selectedCids.length || $_busy}"
             data-attr:aria-disabled="(!$selectedCids.length || $_busy) ? 'true' : 'false'"
           >
@@ -372,6 +374,7 @@
                 type="button"
                 data-indicator="_busy"
                 data-attr:disabled="!$selectedCids.length || $_busy"
+                disabled
                 data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/suspend')"
               >
                 {{ tr.studying_suspend() }}
@@ -382,6 +385,7 @@
                 type="button"
                 data-indicator="_busy"
                 data-attr:disabled="!$selectedCids.length || $_busy"
+                disabled
                 data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/unsuspend')"
               >
                 {{ tr.actions_unbury_unsuspend() }}
@@ -392,6 +396,7 @@
                 type="button"
                 data-indicator="_busy"
                 data-attr:disabled="!$selectedCids.length || $_busy"
+                disabled
                 data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/forget')"
               >
                 {{ tr.actions_forget_card() }}
@@ -401,6 +406,7 @@
               <button
                 type="button"
                 data-attr:disabled="!$selectedCids.length || $_busy"
+                disabled
                 data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $value = ''; $_browserAction = 'setdue'"
               >
                 {{ tr.actions_set_due_date() }}
@@ -410,6 +416,7 @@
               <button
                 type="button"
                 data-attr:disabled="!$selectedCids.length || $_busy"
+                disabled
                 data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $deck = ''; $_browserAction = 'changedeck'"
               >
                 {{ tr.browsing_change_deck() }}
@@ -419,6 +426,7 @@
               <button
                 type="button"
                 data-attr:disabled="!$selectedCids.length || $_busy"
+                disabled
                 data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $tag = ''; $_browserAction = 'addtag'"
               >
                 {{ tr.editing_tags_add() }}
@@ -428,6 +436,7 @@
               <button
                 type="button"
                 data-attr:disabled="!$selectedCids.length || $_busy"
+                disabled
                 data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $tag = ''; $_browserAction = 'removetag'"
               >
                 {{ tr.actions_remove_tag() }}
@@ -439,6 +448,7 @@
                 class="text-error"
                 type="button"
                 data-attr:disabled="!$selectedCids.length || $_busy"
+                disabled
                 data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $_browserAction = 'delete'"
               >
                 {{ tr.actions_delete() }}
@@ -447,7 +457,10 @@
             <li>
               <a
                 id="btn-cardinfo-mobile"
+                class="btn-disabled pointer-events-none"
                 role="button"
+                href="#"
+                aria-disabled="true"
                 data-attr:href="$selectedCids.length ? ('/card-info/' + $selectedCids[0]) : '#'"
                 data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
                 data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
@@ -468,7 +481,7 @@
       id="sidebar-offcanvas"
       class="modal modal-bottom sm:modal-middle md:modal-open md:static md:h-full md:max-h-none md:bg-transparent md:border-0 md:p-0 md:shadow-none"
       aria-labelledby="sidebar-offcanvas-label"
-      data-on:click="if (evt.target.closest('.side-item') && window.innerWidth < 768 && el.open && typeof el.close === 'function') el.close()"
+      data-on:click="const a = evt.target.closest('.side-item'); if (a && window.innerWidth < 768 && el.open && typeof el.close === 'function') el.close()"
     >
       <div class="modal-box p-0 md:max-w-none md:w-full md:h-full md:p-0 md:rounded-none md:shadow-none md:bg-transparent">
         <div class="flex justify-between items-center md:hidden border-b border-base-300 p-2">
@@ -478,7 +491,7 @@
           </form>
         </div>
         <div class="p-0 overflow-y-auto">
-          <div id="sidebar">{{ sidebar(decks, tags) }}</div>
+          <div id="sidebar" data-on:click="const a = evt.target.closest('.side-item'); if (a && evt.button === 0 && !evt.metaKey && !evt.ctrlKey && !evt.shiftKey && !evt.altKey) { evt.preventDefault(); history.pushState(null, '', a.href); $query = new URL(a.href).searchParams.get('q') || ''; @post('/browse/search'); }">{{ sidebar(decks, tags) }}</div>
         </div>
       </div>
       <form method="dialog" class="modal-backdrop md:hidden"><button>close</button></form>
@@ -498,25 +511,23 @@
         <tbody id="results-body">{{ initial_rows | safe }}</tbody>
       </table>
     </div>
-    <!-- Detail pane in modal dialog on mobile, static pane on md+ -->
-    <dialog
-      id="detail-offcanvas"
-      class="modal modal-bottom sm:modal-middle md:modal-open md:static md:h-full md:max-h-none md:w-full md:bg-transparent md:border-0 md:p-0 md:shadow-none"
-      aria-labelledby="detail-offcanvas-label"
-    >
-      <div class="modal-box p-0 max-w-full md:max-w-none md:w-full md:h-full md:p-0 md:rounded-none md:shadow-none md:bg-transparent">
-        <div class="flex justify-between items-center md:hidden border-b border-base-300 p-2">
+    <!-- Detail: desktop-only aside; mobile-only bottom modal. #detail is moved between them by script. -->
+    <aside id="detail-desktop" class="hidden md:block"><div id="detail" data-attr:data-selected-cids="$selectedCids.join(',')"></div></aside>
+    <dialog id="detail-offcanvas" class="modal modal-bottom md:hidden" aria-labelledby="detail-offcanvas-label">
+      <div class="modal-box p-0 max-w-full">
+        <div class="flex justify-between items-center border-b border-base-300 p-2">
           <h6 class="font-bold text-sm m-0" id="detail-offcanvas-label">{{ tr.browsing_card() }} – {{ tr.importing_details() }}</h6>
           <form method="dialog">
             <button class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
           </form>
         </div>
-        <div class="p-0 overflow-y-auto">
-          <div id="detail" data-attr:data-selected-cids="$selectedCids.join(',')"></div>
-        </div>
+        <div id="detail-mobile-slot" class="p-0 overflow-y-auto"></div>
       </div>
-      <form method="dialog" class="modal-backdrop md:hidden"><button>close</button></form>
+      <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
+    <script>
+      if (!window.matchMedia('(min-width: 768px)').matches) document.getElementById('detail-mobile-slot').appendChild(document.getElementById('detail'));
+    </script>
   </div>
 
   <!-- Consolidated Action Dialogs Macro -->
@@ -641,9 +652,15 @@
           window.dispatchEvent(new CustomEvent('ankiweb:browser-refresh'));
       };
 
-      // Close mobile dialogs when viewport crosses the md breakpoint
+      // Single #detail node: desktop aside on md+, bottom modal slot below md
       if (window.matchMedia) {
-          window.matchMedia('(min-width: 768px)').addEventListener('change', function(e) {
+          var mq = window.matchMedia('(min-width: 768px)');
+          var placeDetail = function() {
+              var d = document.getElementById('detail');
+              var host = document.getElementById(mq.matches ? 'detail-desktop' : 'detail-mobile-slot');
+              if (d && host && d.parentNode !== host) host.appendChild(d);
+          };
+          mq.addEventListener('change', function(e) {
               if (e.matches) {
                   ['sidebar-offcanvas', 'detail-offcanvas'].forEach(function(id) {
                       var d = document.getElementById(id);
@@ -652,7 +669,9 @@
                       }
                   });
               }
+              placeDetail();
           });
+          placeDetail();
       }
   })();
 </script>

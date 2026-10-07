@@ -56,27 +56,191 @@ def test_browse_search_pushes_rows_and_mirrors_ui_state(client):
     assert len(hub.ui_state.matched_card_ids) == 1
 
 
-def test_browse_searchdeck_and_searchtag(client):
+def _extract_sidebar_links(html_text: str) -> dict[str, str]:
+    from html.parser import HTMLParser
+
+    class SidebarParser(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.links: dict[str, str] = {}
+            self._current_href: str | None = None
+            self._current_text: list[str] = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "a":
+                attr_dict = dict(attrs)
+                classes = (attr_dict.get("class") or "").split()
+                if "side-item" in classes and "href" in attr_dict:
+                    self._current_href = attr_dict["href"]
+                    self._current_text = []
+
+        def handle_data(self, data):
+            if self._current_href is not None:
+                self._current_text.append(data)
+
+        def handle_endtag(self, tag):
+            if tag == "a" and self._current_href is not None:
+                label = "".join(self._current_text).strip()
+                self.links[label] = self._current_href
+                self._current_href = None
+                self._current_text = []
+
+    parser = SidebarParser()
+    parser.feed(html_text)
+    return parser.links
+
+
+def _extract_cids_from_html(html_text: str) -> list[int]:
+    import re
+
+    return [int(cid) for cid in re.findall(r'<tr[^>]*\bdata-cid="(\d+)"', html_text)]
+
+
+def _extract_cids_from_search_post(client, query: str) -> list[int]:
     from conftest import parse_datastar_events
 
-    assert client.portal is not None
-    did = client.portal.call(
-        client.app.state.service.run, lambda col: col.decks.id("Default")
-    )
-    r1 = client.post(f"/browse/searchdeck/{did}")
-    assert r1.status_code == 200
-    events1 = parse_datastar_events(r1.text)
-    assert any("dog" in data and "cat" in data for _, data in events1)
-
-    r2 = client.post(
-        "/browse/searchtag",
-        json={"tag": "animals"},
+    r = client.post(
+        "/browse/search",
+        json={"query": query},
         headers={"Datastar-Request": "true"},
     )
-    assert r2.status_code == 200
-    events2 = parse_datastar_events(r2.text)
-    assert any("dog" in data and "cat" in data for _, data in events2)
+    assert r.status_code == 200
+    events = parse_datastar_events(r.text)
+    for event_type, data in events:
+        if event_type == "datastar-patch-elements" and "results-body" in data:
+            return _extract_cids_from_html(data)
+    return []
 
+def test_browse_sidebar_links_and_exact_search_results(client):
+    from urllib.parse import parse_qs, urlparse
+
+    browse_get = client.get("/browse")
+    assert browse_get.status_code == 200
+    links = _extract_sidebar_links(browse_get.text)
+    assert "Default" in links
+    assert "animals" in links
+
+    default_href = links["Default"]
+    parsed_deck = urlparse(default_href)
+    assert parsed_deck.path == "/browse"
+    deck_query = parse_qs(parsed_deck.query).get("q", [""])[0]
+    assert deck_query
+
+    deck_get = client.get(default_href)
+    assert deck_get.status_code == 200
+    deck_get_cids = _extract_cids_from_html(deck_get.text)
+    deck_post_cids = _extract_cids_from_search_post(client, deck_query)
+    assert len(deck_get_cids) == 2
+    assert deck_get_cids == deck_post_cids
+
+    animals_href = links["animals"]
+    parsed_tag = urlparse(animals_href)
+    assert parsed_tag.path == "/browse"
+    tag_query = parse_qs(parsed_tag.query).get("q", [""])[0]
+    assert tag_query
+
+    tag_get = client.get(animals_href)
+    assert tag_get.status_code == 200
+    tag_get_cids = _extract_cids_from_html(tag_get.text)
+    tag_post_cids = _extract_cids_from_search_post(client, tag_query)
+    assert len(tag_get_cids) == 2
+    assert tag_get_cids == tag_post_cids
+
+
+def test_browse_sidebar_special_characters_and_wildcard_escaping(client):
+    from urllib.parse import parse_qs, urlparse
+
+    special_deck = 'Quoted "deck" + & # Ω'
+    special_tag = 'quote"+&#Ω*'
+    decoy_tag = 'quote"+&#Ω-decoy'
+    child_deck = 'Quoted "deck" + & # Ω::Subdeck'
+
+    def seed_special(col):
+        col.decks.id(special_deck)
+        col.decks.id(child_deck)
+
+        # Note in special deck
+        nt = col.models.by_name("Basic")
+        n1 = col.new_note(nt)
+        n1["Front"] = "special deck card"
+        n1["Back"] = "ans 1"
+        col.add_note(n1, col.decks.id(special_deck))
+
+        # Note in child deck
+        n2 = col.new_note(nt)
+        n2["Front"] = "child deck card"
+        n2["Back"] = "ans 2"
+        col.add_note(n2, col.decks.id(child_deck))
+
+        # Note with literal wildcard tag
+        n3 = col.new_note(nt)
+        n3["Front"] = "literal wildcard tag card"
+        n3["Back"] = "ans 3"
+        col.add_note(n3, col.decks.id("Default"))
+        col.tags.bulk_add([n3.id], special_tag)
+
+        # Decoy note that would match if '*' were interpreted as a wildcard
+        n4 = col.new_note(nt)
+        n4["Front"] = "decoy tag card"
+        n4["Back"] = "ans 4"
+        col.add_note(n4, col.decks.id("Default"))
+        col.tags.bulk_add([n4.id], decoy_tag)
+
+        return n1.id, n2.id, n3.id, n4.id
+
+    n1_id, n2_id, n3_id, n4_id = _run(client, seed_special)
+    c1_id = _run(client, lambda col: col.get_note(n1_id).cards()[0].id)
+    c2_id = _run(client, lambda col: col.get_note(n2_id).cards()[0].id)
+    c3_id = _run(client, lambda col: col.get_note(n3_id).cards()[0].id)
+    c4_id = _run(client, lambda col: col.get_note(n4_id).cards()[0].id)
+
+    browse_get = client.get("/browse")
+    assert browse_get.status_code == 200
+    links = _extract_sidebar_links(browse_get.text)
+
+    assert special_deck in links
+    assert child_deck in links
+    assert special_tag in links
+    assert decoy_tag in links
+
+    # 1. Deck link navigation vs canonical POST
+    deck_href = links[special_deck]
+    parsed_deck = urlparse(deck_href)
+    deck_query = parse_qs(parsed_deck.query).get("q", [""])[0]
+    assert deck_query
+
+    deck_get = client.get(deck_href)
+    assert deck_get.status_code == 200
+    deck_get_cids = _extract_cids_from_html(deck_get.text)
+    deck_post_cids = _extract_cids_from_search_post(client, deck_query)
+    assert deck_get_cids == deck_post_cids
+    # Parent deck includes child deck cards per Anki deck search semantics
+    assert c1_id in deck_get_cids
+    assert c2_id in deck_get_cids
+    assert c3_id not in deck_get_cids
+    assert c4_id not in deck_get_cids
+
+    # Child deck specifically
+    child_href = links[child_deck]
+    child_query = parse_qs(urlparse(child_href).query).get("q", [""])[0]
+    child_get = client.get(child_href)
+    assert child_get.status_code == 200
+    child_get_cids = _extract_cids_from_html(child_get.text)
+    child_post_cids = _extract_cids_from_search_post(client, child_query)
+    assert child_get_cids == child_post_cids
+    assert child_get_cids == [c2_id]
+
+    # 2. Tag with literal wildcard '*' vs decoy
+    tag_href = links[special_tag]
+    tag_query = parse_qs(urlparse(tag_href).query).get("q", [""])[0]
+    tag_get = client.get(tag_href)
+    assert tag_get.status_code == 200
+    tag_get_cids = _extract_cids_from_html(tag_get.text)
+    tag_post_cids = _extract_cids_from_search_post(client, tag_query)
+    assert tag_get_cids == tag_post_cids
+    # Must only match the exact note with special_tag, NOT the decoy note
+    assert tag_get_cids == [c3_id]
+    assert c4_id not in tag_get_cids
 
 def test_browse_open_pushes_detail_and_selection(client):
     from conftest import parse_datastar_events

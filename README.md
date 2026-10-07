@@ -284,6 +284,12 @@ Navigation follows the Tao of Datastar:
 - Pure page navigation uses standard native links (`<a href="...">`), letting the browser handle keyboard activation, new tabs, URL history, and document lifecycles naturally. Cancel in Preferences, Fields, Card Layout, Custom Study, and Filtered Deck discards the local draft without submitting signals. Back to Decks, Custom Study (including the finished-deck page), and Create Filtered Deck likewise navigate directly by GET, without a preliminary navigation POST.
 - Deckbrowser and Overview options links resolve the normal or filtered options destination while rendering, using the displayed deck's ID and type. They do not re-resolve the globally current deck when clicked.
 - Deck Options **Close** is a native `/deckbrowser` link. An unmodified primary click with unsaved changes opens an accessible native `<dialog>` styled with DaisyUI. **Keep editing**, Escape, or a backdrop click closes the dialog without changing the draft; **Discard changes and close** navigates by GET without saving. Modified and middle clicks retain native link behavior, leaving the original tab and its draft intact. No close-confirmation request or `window.location` navigation is needed.
+- Package import keeps the native dialog, modal box, title, and header **Close**
+  control outside the Datastar replacement target. Completion replaces only the
+  options and import actions with results, including error results. The header
+  Close button, Escape, and backdrop dismiss the dialog without navigating away;
+  successful import results remain available until dismissed.
+  Only the content pane scrolls, keeping Close visible in short viewports.
 - Actions with side effects remain POST: opening a deck selects it, starting study initializes the timebox, and Save/Submit applies or validates changes. Actions that navigate return whole-document Datastar SSE redirects (`common.redirect_response(url)` via `SSE.redirect(target)`); in-page mutations update targeted fragments without soft-routing layers or client router shims. The ten obsolete pure-navigation POST handlers have been removed, with no compatibility aliases.
 - Remaining full-page reload endpoints: notetype mutating endpoints (`/notetypes/rename/{ntid}`, `/notetypes/add/{base_ntid}`, `/notetypes/delete/{ntid}`) and deck description save (`/overview/setdesc`) remain explicit deferred Phase 3 reloads. Deckbrowser rename/delete endpoints (`/deckbrowser/rename/{did}`, `/deckbrowser/delete/{did}`) also retain full reloads in Phase 5 without prior explicit deferral. No soft routing is introduced.
 
@@ -341,6 +347,15 @@ The card Browser keeps its selection in the numeric `selectedCids` signal array.
 Single clicks, Ctrl/Cmd toggles, Shift ranges, highlighting, selection counts, and
 action availability share that state. Shift-click without an anchor selects one
 card. Searches and successful mutations reset the selection and stale details.
+
+Deck and tag sidebar entries have real `/browse?q=...` links. Anki's search builder
+escapes literal names, and the server URL-encodes the query, including quotes,
+wildcards, Unicode, and URL-special characters. All deck and tag clicks perform
+native browser navigation, keeping the address bar, search query, and browser
+history (back/forward) in sync. Native modified or middle clicks open new tabs
+while preserving the original tab. Links can be copied and bookmarked. The search
+form and browser actions remain Datastar-powered, while the obsolete
+`/browse/searchdeck/{did}` and `/browse/searchtag` handlers are removed.
 
 Browser action requests submit `selectedCids` directly; the cached bridge selection
 is only a mirror for legacy consumers, never the authority for an HTTP mutation.

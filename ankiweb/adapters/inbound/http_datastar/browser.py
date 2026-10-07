@@ -7,6 +7,7 @@ import logging
 import re
 from collections.abc import Callable
 
+from anki.collection import SearchNode
 from anki.errors import InvalidInput, NotFoundError, SearchError, TemplateError
 from datastar_py.fastapi import (
     DatastarResponse,
@@ -73,8 +74,20 @@ def _status_html(count: int) -> str:
 
 
 def render_browser_html(col, query: str = "") -> str:
-    decks = [{"id": d.id, "name": d.name} for d in col.decks.all_names_and_ids()]
-    tags = list(col.tags.all())
+    decks = [
+        {
+            "name": d.name,
+            "query": col.build_search_string(SearchNode(deck=d.name)),
+        }
+        for d in col.decks.all_names_and_ids()
+    ]
+    tags = [
+        {
+            "name": name,
+            "query": col.build_search_string(SearchNode(tag=name)),
+        }
+        for name in col.tags.all()
+    ]
     try:
         cids = list(col.find_cards(query or ""))
     except (SearchError, InvalidInput):
@@ -323,19 +336,6 @@ def make_browser_routes(get_service: Callable, get_hub: Callable) -> APIRouter:
         if payload and isinstance(payload, dict):
             q = str(payload.get("query", ""))
         return await _do_search(q)
-
-    @router.post("/searchdeck/{did}")
-    async def search_deck(did: int):
-        service = get_service()
-        name = await service.run(lambda col: col.decks.name(did))
-        return await _do_search(f'deck:"{name}"')
-
-    @router.post("/searchtag")
-    async def search_tag(payload: ReadSignals):
-        tag = ""
-        if payload and isinstance(payload, dict):
-            tag = str(payload.get("tag", ""))
-        return await _do_search(f'tag:"{tag}"')
 
     @router.post("/refresh")
     async def refresh(payload: ReadSignals = None):

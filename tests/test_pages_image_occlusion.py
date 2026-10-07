@@ -251,3 +251,38 @@ def test_next_image_occlusion_zero_shapes_rejected(client):
     assert after_notes == before_notes
     # Assert danger status_msg was returned
     assert any("Cannot save" in data for _, data in events)
+
+
+def test_next_image_occlusion_embedded_no_toolbar(client):
+    svc = client.app.state.service
+    img_path = _img_in_tmp(client, "embed_test.png")
+
+    def create_note(col):
+        col.add_image_occlusion_notetype()
+        nt = col.models.by_name("Image Occlusion")
+        col.add_image_occlusion_note(
+            notetype_id=nt["id"],
+            image_path=img_path,
+            occlusions=OCCL_HIDE_ALL,
+            header="Embed Test",
+            back_extra="",
+            tags=[],
+        )
+        return col.find_notes('note:"Image Occlusion"')[-1]
+
+    nid = client.portal.call(svc.run, create_note)
+
+    # 1. Edit mode (embedded in browser iframe): no toolbar and no bottom dock nav
+    r_edit = client.get(f"/image-occlusion/{nid}")
+    assert r_edit.status_code == 200
+    assert "ankiweb-toolbar" not in r_edit.text
+    assert "ankiweb-bottom-nav" not in r_edit.text
+    assert "dock" not in r_edit.text
+    assert "io-save-btn" in r_edit.text
+
+    # 2. Standalone Add mode: toolbar and dock nav present
+    r_add = client.get(f"/image-occlusion/{quote(img_path, safe='')}")
+    assert r_add.status_code == 200
+    assert "ankiweb-toolbar" in r_add.text
+    assert "ankiweb-bottom-nav" in r_add.text
+    assert "io-save-btn" in r_add.text
