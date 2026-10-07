@@ -7,7 +7,7 @@
 
 {% from "deckbrowser_list.html.jinja" import render_node %}
 
-<div class="deckbrowser-page mx-auto max-w-2xl px-3 py-2 md:py-4">
+<div id="deckbrowser-page" class="deckbrowser-page mx-auto max-w-2xl px-3 py-2 md:py-4" data-signals="{error: ''}">
   <!-- Header: Serif Due numeral & Continue button -->
   <header class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-base-300">
     <div class="flex items-baseline gap-2">
@@ -34,7 +34,7 @@
   {% include "deckbrowser_list.html.jinja" %}
 
   <div id="studiedToday" class="text-base-content/60 text-center mt-3"><span>{{ studied_today }}</span></div>
-  <div id="err" class="text-error mt-2 text-center"></div>
+  <div id="err" class="text-error mt-2 text-center" data-text="$error"></div>
 
   <!-- Floating Action Button with speed dial (daisyUI fab) -->
   <div class="fab deckbrowser-fab">
@@ -73,16 +73,15 @@
 
     <div>
       {{ tr.qt_misc_create_filtered_deck() }}
-      <button
-        class="btn btn-lg btn-circle"
-        type="button"
+      <a
+        href="/filtered-deck"
+        class="btn btn-lg btn-circle inline-flex items-center justify-center"
         aria-label="{{ tr.qt_misc_create_filtered_deck() }}"
-        data-on:click__prevent="@post('/deckbrowser/createfiltered')"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
         </svg>
-      </button>
+      </a>
     </div>
 
     <div>

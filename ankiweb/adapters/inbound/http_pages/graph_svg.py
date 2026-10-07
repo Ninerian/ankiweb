@@ -21,9 +21,10 @@ D3 / Svelte chart components used in Anki's statistics and deck options simulato
 """
 
 from __future__ import annotations
+
 import math
-from datetime import datetime, date, timedelta
-from typing import Any, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any
 
 
 class LinearScale:
@@ -57,7 +58,6 @@ class LinearScale:
         if reverse:
             start, stop = stop, start
 
-        span = stop - start
         step = self._tick_increment(start, stop, count)
         if step == 0 or not math.isfinite(step):
             return []
@@ -139,7 +139,7 @@ class BandScale:
 def format_tick_number(val: float) -> str:
     """Format tick value compactly (e.g. 5, -20, 1.5)."""
     if abs(val - round(val)) < 1e-9:
-        return str(int(round(val)))
+        return str(round(val))
     return f"{val:.1f}"
 
 
@@ -147,7 +147,7 @@ def format_percent(val: float) -> str:
     """Format ratio 0.0-1.0 or percent 0-100 as percentage string."""
     if val <= 1.0 and val >= 0.0:
         val = val * 100
-    return f"{int(round(val))}%"
+    return f"{round(val)}%"
 
 
 def render_x_axis(
@@ -280,7 +280,6 @@ def render_stacked_bars(
 ) -> str:
     """Render stacked vertical bars for multi-category data."""
     elements = []
-    y_zero = y_scale(0)
 
     for cat_idx, key in enumerate(keys):
         elements.append(f'<g class="bars{cat_idx}">')
@@ -383,9 +382,9 @@ def render_pie_slice(
 def interpolate_color(c1: tuple[int, int, int], c2: tuple[int, int, int], t: float) -> str:
     """Interpolate linearly between two RGB colors (t between 0.0 and 1.0)."""
     t = max(0.0, min(1.0, t))
-    r = int(round(c1[0] + t * (c2[0] - c1[0])))
-    g = int(round(c1[1] + t * (c2[1] - c1[1])))
-    b = int(round(c1[2] + t * (c2[2] - c1[2])))
+    r = round(c1[0] + t * (c2[0] - c1[0]))
+    g = round(c1[1] + t * (c2[1] - c1[1]))
+    b = round(c1[2] + t * (c2[2] - c1[2]))
     return f"rgb({r}, {g}, {b})"
 
 

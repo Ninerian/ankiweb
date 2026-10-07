@@ -1,35 +1,37 @@
 from __future__ import annotations
+
 import re
-from ankiweb.core.ankiconnect_actions.registry import action
-from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
+
 from ankiweb.ankiconnect.schemas.models import (
-    ModelNamesParams,
-    ModelNamesAndIdsParams,
-    ModelFieldNamesParams,
-    ModelFieldDescriptionsParams,
-    ModelFieldFontsParams,
-    ModelTemplatesParams,
-    ModelStylingParams,
-    ModelFieldsOnTemplatesParams,
+    CreateModelParams,
+    FindAndReplaceInModelsParams,
     FindModelsByIdParams,
     FindModelsByNameParams,
+    ModelFieldAddParams,
+    ModelFieldDescriptionsParams,
+    ModelFieldFontsParams,
+    ModelFieldNamesParams,
+    ModelFieldRemoveParams,
+    ModelFieldRenameParams,
+    ModelFieldRepositionParams,
+    ModelFieldSetDescriptionParams,
+    ModelFieldSetFontParams,
+    ModelFieldSetFontSizeParams,
+    ModelFieldsOnTemplatesParams,
     ModelNameFromIdParams,
-    CreateModelParams,
-    UpdateModelTemplatesParams,
-    UpdateModelStylingParams,
-    FindAndReplaceInModelsParams,
+    ModelNamesAndIdsParams,
+    ModelNamesParams,
+    ModelStylingParams,
     ModelTemplateAddParams,
     ModelTemplateRemoveParams,
     ModelTemplateRenameParams,
     ModelTemplateRepositionParams,
-    ModelFieldAddParams,
-    ModelFieldRemoveParams,
-    ModelFieldRenameParams,
-    ModelFieldRepositionParams,
-    ModelFieldSetFontParams,
-    ModelFieldSetFontSizeParams,
-    ModelFieldSetDescriptionParams,
+    ModelTemplatesParams,
+    UpdateModelStylingParams,
+    UpdateModelTemplatesParams,
 )
+from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
+from ankiweb.core.ankiconnect_actions.registry import action
 
 _FIELD_REF = re.compile(r"\{\{[#/^]?(?:[a-zA-Z0-9_-]+:)*([^{}:#/^]+?)\}\}")
 
@@ -37,7 +39,7 @@ _FIELD_REF = re.compile(r"\{\{[#/^]?(?:[a-zA-Z0-9_-]+:)*([^{}:#/^]+?)\}\}")
 def _model_or_raise(col, name):
     m = col.models.by_name(name)
     if m is None:
-        raise Exception("model was not found: " + str(name))
+        raise ValueError("model was not found: " + str(name))
     return m
 
 
@@ -160,7 +162,7 @@ async def find_models_by_id(rt, modelIds=None):
         for mid in modelIds:
             m = col.models.get(int(mid))
             if m is None:
-                raise Exception("model was not found: " + str(mid))
+                raise ValueError("model was not found: " + str(mid))
             out.append(m)
         return out
 
@@ -180,7 +182,7 @@ async def find_models_by_name(rt, modelNames=None):
         for n in modelNames:
             m = col.models.by_name(n)
             if m is None:
-                raise Exception("model was not found: " + str(n))
+                raise ValueError("model was not found: " + str(n))
             out.append(m)
         return out
 
@@ -196,10 +198,10 @@ async def find_models_by_name(rt, modelNames=None):
 async def model_name_from_id(rt, modelId=None):
     def fn(col):
         if modelId is None:
-            raise Exception("modelId is required")
+            raise ValueError("modelId is required")
         m = col.models.get(int(modelId))
         if m is None:
-            raise Exception("model was not found: " + str(modelId))
+            raise ValueError("model was not found: " + str(modelId))
         return m["name"]
 
     return await rt.service.run(fn)
@@ -213,18 +215,18 @@ async def create_model(
     cardTemplates = cardTemplates or []
     # Reference guards (plugin/__init__.py:1120-1127): reject empty field/template lists.
     if not inOrderFields:
-        raise Exception("Must provide at least one field for inOrderFields")
+        raise ValueError("Must provide at least one field for inOrderFields")
     if not cardTemplates:
-        raise Exception("Must provide at least one card for cardTemplates")
+        raise ValueError("Must provide at least one card for cardTemplates")
 
     def fn(col):
         if modelName in [m.name for m in col.models.all_names_and_ids()]:
-            raise Exception("Model name already exists")  # ref 1126-1127
+            raise ValueError("Model name already exists")  # ref 1126-1127
         m = col.models.new(modelName)
         for fname in inOrderFields:
             col.models.add_field(m, col.models.new_field(fname))
         for i, tmpl in enumerate(cardTemplates):
-            t = col.models.new_template(tmpl.get("Name", "Card %d" % (i + 1)))
+            t = col.models.new_template(tmpl.get("Name", f"Card {i + 1}"))
             t["qfmt"] = tmpl.get("Front", "")
             t["afmt"] = tmpl.get("Back", "")
             col.models.add_template(m, t)
@@ -259,7 +261,6 @@ async def update_model_templates(rt, model=None):
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -276,7 +277,6 @@ async def update_model_styling(rt, model=None):
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -324,14 +324,14 @@ def _field_or_raise(m, name):
     for f in m["flds"]:
         if f["name"] == name:
             return f
-    raise Exception("field was not found: " + str(name))
+    raise ValueError("field was not found: " + str(name))
 
 
 def _template_or_raise(m, name):
     for t in m["tmpls"]:
         if t["name"] == name:
             return t
-    raise Exception("template was not found: " + str(name))
+    raise ValueError("template was not found: " + str(name))
 
 
 @action(
@@ -361,7 +361,6 @@ async def model_template_add(rt, modelName=None, template=None):
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -376,7 +375,6 @@ async def model_template_remove(rt, modelName=None, templateName=None):
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -393,7 +391,6 @@ async def model_template_rename(
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -412,7 +409,6 @@ async def model_template_reposition(rt, modelName=None, templateName=None, index
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -428,7 +424,6 @@ async def model_field_add(rt, modelName=None, fieldName=None, index=None):
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -443,7 +438,6 @@ async def model_field_remove(rt, modelName=None, fieldName=None):
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -458,7 +452,6 @@ async def model_field_rename(rt, modelName=None, oldFieldName=None, newFieldName
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -475,7 +468,6 @@ async def model_field_reposition(rt, modelName=None, fieldName=None, index=None)
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -485,7 +477,7 @@ async def model_field_reposition(rt, modelName=None, fieldName=None, index=None)
 )
 async def model_field_set_font(rt, modelName=None, fieldName=None, font=None):
     if not isinstance(font, str):  # ref 1469-1470
-        raise Exception("font should be a string")
+        raise TypeError("font should be a string")
 
     def fn(col):
         m = _model_or_raise(col, modelName)
@@ -493,7 +485,6 @@ async def model_field_set_font(rt, modelName=None, fieldName=None, font=None):
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -503,7 +494,7 @@ async def model_field_set_font(rt, modelName=None, fieldName=None, font=None):
 )
 async def model_field_set_font_size(rt, modelName=None, fieldName=None, fontSize=None):
     if not isinstance(fontSize, int) or isinstance(fontSize, bool):  # ref 1483-1484
-        raise Exception("fontSize should be an integer")
+        raise TypeError("fontSize should be an integer")
 
     def fn(col):
         m = _model_or_raise(col, modelName)
@@ -511,7 +502,6 @@ async def model_field_set_font_size(rt, modelName=None, fieldName=None, fontSize
         return None, col.models.update_dict(m)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -524,7 +514,7 @@ async def model_field_set_description(
     rt, modelName=None, fieldName=None, description=None
 ):
     if not isinstance(description, str):  # ref 1497-1498
-        raise Exception("description should be a string")
+        raise TypeError("description should be a string")
 
     def fn(col):
         m = _model_or_raise(col, modelName)

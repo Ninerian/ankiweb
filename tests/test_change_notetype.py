@@ -1,8 +1,13 @@
-import pytest
+import html
+import json
+import re
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -18,10 +23,10 @@ def _basic_cloze(client):
     return client.portal.call(client.app.state.service.run, ids)
 
 
-def test_changenotetype_registered_custom():
-    from ankiweb.core.rpc.custom_handlers import CUSTOM
-
-    assert "changeNotetype" in CUSTOM
+def _signals(content):
+    match = re.search(r'data-signals="([^"]+)"', content)
+    assert match is not None
+    return json.loads(html.unescape(match.group(1)))
 
 
 def test_get_change_notetype_info_passthrough(client):
@@ -101,26 +106,32 @@ def test_change_notetype_falls_back_to_all_notes_when_no_selection(client):
     assert client.portal.call(svc.run, lambda col: col.get_note(nid).mid) == new
 
 
-def test_browser_change_notetype_navigates(client):
-    from conftest import parse_datastar_events
-
+def test_change_notetype_get_uses_requested_cards_not_shared_selection(client):
     old, _new = _basic_cloze(client)
     svc = client.app.state.service
 
     def seed(col):
-        n = col.new_note(col.models.get(old))
-        n["Front"] = "q"
-        n["Back"] = "r"
-        col.add_note(n, col.decks.id("Default"))
-        return col.find_cards("")[0]
+        def add_note(front):
+            note = col.new_note(col.models.get(old))
+            note["Front"] = front
+            note["Back"] = "answer"
+            col.add_note(note, col.decks.id("Default"))
+            cid = next(
+                cid
+                for cid in col.find_cards("")
+                if col.get_card(cid).nid == note.id
+            )
+            return note.id, cid
 
-    cid = client.portal.call(svc.run, seed)
-    client.post(
-        "/browse/select", json={"cids": [cid]}, headers={"Datastar-Request": "true"}
+        return add_note("selected"), add_note("unselected")
+
+    (selected_nid, selected_cid), (unselected_nid, unselected_cid) = (
+        client.portal.call(svc.run, seed)
     )
-    r = client.post("/browse/changenotetype")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any(
-        f"window.location = '/change-notetype/{old}'" in data for _, data in events
-    )
+    client.app.state.hub.ui_state.selected_card_ids = [unselected_cid]
+    client.app.state.hub.ui_state.selected_note_ids = [unselected_nid]
+
+    response = client.get(f"/change-notetype?cids={selected_cid}")
+
+    assert response.status_code == 200
+    assert _signals(response.text)["note_ids"] == [selected_nid]

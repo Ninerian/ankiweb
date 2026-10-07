@@ -1,8 +1,11 @@
 from __future__ import annotations
+
+import re
 from pathlib import Path
 from typing import Any, cast
-import re
+
 import jinja2
+
 from ankiweb.core.i18n import tr
 
 

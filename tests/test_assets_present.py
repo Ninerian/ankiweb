@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import pytest
 
 ASSETS = Path(__file__).resolve().parent.parent / "ankiweb" / "web_assets"

@@ -1,8 +1,9 @@
 """Request models for the stats actions (ankiweb/ankiconnect/actions/stats.py)."""
 
 from __future__ import annotations
-from typing import Optional
+
 from pydantic import Field
+
 from ankiweb.ankiconnect.schemas._base import ACBaseModel
 
 
@@ -25,7 +26,7 @@ class GetCollectionStatsHTMLParams(ACBaseModel):
 class CardReviewsParams(ACBaseModel):
     """All card reviews for a deck made after a given review id."""
 
-    deck: Optional[str] = Field(default=None, description="Deck name.")
+    deck: str | None = Field(default=None, description="Deck name.")
     startID: int = Field(
         default=0, description="Latest unix-ms review id NOT included in the result."
     )
@@ -40,7 +41,7 @@ class GetReviewsOfCardsParams(ACBaseModel):
 class GetLatestReviewIDParams(ACBaseModel):
     """Unix time of the latest review for the given deck (0 if none)."""
 
-    deck: Optional[str] = Field(default=None, description="Deck name.")
+    deck: str | None = Field(default=None, description="Deck name.")
 
 
 class InsertReviewsParams(ACBaseModel):

@@ -1,27 +1,32 @@
 from __future__ import annotations
+
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
-from ankiweb.core.config import Settings, host_allowed
-from ankiweb.core.auth import COOKIE, auth_token, cookie_ok, password_ok
-from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
-from ankiweb.core.bridge.hub import BridgeHub
-from ankiweb.assets import (
-    build_router as build_assets_router,
-    build_media_router,
+# Initialize Anki through the collection adapter before screens import its cyclic modules.
+import ankiweb.adapters.outbound.anki_collection_adapter as collection_adapter
+from ankiweb.adapters.inbound.http_shared.routes import (
+    build_screen_router,
+    register_screen_handlers,
 )
 from ankiweb.adapters.inbound.rpc_passthrough.route import (
     build_router as build_rpc_router,
 )
 from ankiweb.adapters.inbound.ws_bridge.ws import build_router as build_ws_router
-from ankiweb.adapters.inbound.http_shared.routes import (
-    build_screen_router,
-    register_screen_handlers,
-)
 from ankiweb.adapters.outbound import json_config_store
+from ankiweb.assets import (
+    build_media_router,
+)
+from ankiweb.assets import (
+    build_router as build_assets_router,
+)
+from ankiweb.core.auth import COOKIE, auth_token, cookie_ok, password_ok
+from ankiweb.core.bridge.hub import BridgeHub
+from ankiweb.core.config import Settings, host_allowed
 from ankiweb.core.notify.engine import NotifierState
 
 
@@ -52,7 +57,7 @@ def _login_html(error: bool = False) -> str:
 
 def create_app(
     settings: Settings | None = None,
-    service: CollectionService | None = None,
+    service: collection_adapter.CollectionService | None = None,
     hub: BridgeHub | None = None,
     notifier=None,
 ) -> FastAPI:
@@ -63,7 +68,7 @@ def create_app(
     async def lifespan(app: FastAPI):
         svc = service
         if owns:
-            svc = CollectionService(settings)
+            svc = collection_adapter.CollectionService(settings)
             await svc.open()
         h = hub if hub is not None else BridgeHub()
         if svc is not None:
@@ -100,13 +105,12 @@ def create_app(
     async def auth_guard(request, call_next):
         # Open by default; only gates when ANKIWEB_PASSWORD is set. /login, /logout, /healthz
         # stay reachable so an unauthenticated user can reach the login form.
-        if settings.password and request.url.path not in (
-            "/login",
-            "/logout",
-            "/healthz",
+        if (
+            settings.password
+            and request.url.path not in ("/login", "/logout", "/healthz")
+            and not cookie_ok(request.cookies.get(COOKIE), settings.password)
         ):
-            if not cookie_ok(request.cookies.get(COOKIE), settings.password):
-                return RedirectResponse("/login", status_code=303)
+            return RedirectResponse("/login", status_code=303)
         return await call_next(request)
 
     app.add_middleware(BaseHTTPMiddleware, dispatch=auth_guard)

@@ -1,17 +1,19 @@
 import asyncio
 import json
 from pathlib import Path
+
 import pytest
+
 from ankiweb.adapters.outbound import json_config_store
 from ankiweb.core.notify.engine import (
-    NotifyConfig,
-    NotifierState,
     DeckNotifier,
-    learnable,
-    diff_changes,
-    build_payload,
-    eval_response,
+    NotifierState,
+    NotifyConfig,
     adapt_transport,
+    build_payload,
+    diff_changes,
+    eval_response,
+    learnable,
     snapshot,
 )
 
@@ -122,6 +124,7 @@ async def test_adapt_transport_end_to_end_with_real_httpx_adapter(monkeypatch):
     httpx_notification_adapter.post function (not a fake) through a mocked httpx transport, to
     prove the actual production composition in ankiweb/__main__.py works end-to-end."""
     import httpx
+
     from ankiweb.adapters.outbound.httpx_notification_adapter import post as http_post
 
     captured = {}
@@ -300,8 +303,9 @@ async def test_tick_gone_deck_already_zero_drops_silently(tmp_path):
 @pytest.mark.asyncio
 async def test_disabled_config_never_posts(tmp_path):
     post = FakePost()
-    n, _ = _notifier(tmp_path, fetch=lambda: _async({"A": _counts(n=1)}), post=post)
-    # active() False -> the run loop would idle; _tick is only called when active, so we assert
+    _notifier_inst, _ = _notifier(
+        tmp_path, fetch=lambda: _async({"A": _counts(n=1)}), post=post
+    )
     # the gate directly
     assert not NotifyConfig(
         enabled=False, url="http://x", poll_sec=1, retry_sec=1

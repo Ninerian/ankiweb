@@ -1,10 +1,12 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
 from ankiweb.core.auth import COOKIE, auth_token
+from ankiweb.core.config import Settings
 
 
 def _client(tmp_path: Path, password: str = "") -> TestClient:
@@ -67,11 +69,12 @@ def test_logout_clears_session(tmp_path: Path):
 
 
 def test_ws_rejected_without_cookie(tmp_path: Path):
-    with _client(tmp_path, "secret") as c:
-        with pytest.raises(WebSocketDisconnect):
-            with c.websocket_connect("/ws?context=browser") as ws:
-                ws.receive_json()
-
+    with (
+        _client(tmp_path, "secret") as c,
+        pytest.raises(WebSocketDisconnect),
+        c.websocket_connect("/ws?context=browser") as ws,
+    ):
+        ws.receive_json()
 
 def test_ws_ok_with_cookie(tmp_path: Path):
     with _client(tmp_path, "secret") as c:
@@ -81,6 +84,5 @@ def test_ws_ok_with_cookie(tmp_path: Path):
 
 
 def test_ws_open_when_no_password(tmp_path: Path):
-    with _client(tmp_path) as c:
-        with c.websocket_connect("/ws?context=browser"):
-            pass
+    with _client(tmp_path) as c, c.websocket_connect("/ws?context=browser"):
+        pass

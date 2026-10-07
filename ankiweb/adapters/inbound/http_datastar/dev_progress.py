@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncGenerator
-from fastapi import APIRouter
+from collections.abc import AsyncGenerator
+
 from datastar_py.fastapi import (
     DatastarResponse,
+)
+from datastar_py.fastapi import (
     ServerSentEventGenerator as SSE,
 )
+from datastar_py.sse import DatastarEvent
+from fastapi import APIRouter
+
+from ankiweb.adapters.inbound.http_datastar.common import signals_response
 
 router = APIRouter(prefix="/dev")
 
 
-async def _simulate_progress_events() -> AsyncGenerator[str, None]:
+async def _simulate_progress_events() -> AsyncGenerator[DatastarEvent, None]:
     """Simulate a long-running backend task emitting progress events via Datastar SSE.
     
     In a real operation (e.g. FSRS parameter computation or media checking),
@@ -53,14 +59,11 @@ async def simulate_progress() -> DatastarResponse:
 
 @router.post("/progress/reset")
 async def reset_progress() -> DatastarResponse:
-    """Reset the progress state."""
-    return DatastarResponse(
-        SSE.patch_signals({
-            "progressRunning": False,
-            "progressDone": False,
-            "progressFraction": 0.0,
-            "progressPercent": 0,
-            "progressLabel": "Idle",
-            "progressError": "",
-        })
-    )
+    return signals_response({
+        "progressRunning": False,
+        "progressDone": False,
+        "progressFraction": 0.0,
+        "progressPercent": 0,
+        "progressLabel": "Idle",
+        "progressError": "",
+    })

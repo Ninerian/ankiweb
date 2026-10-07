@@ -1,6 +1,7 @@
 from __future__ import annotations
-from ankiweb.core.rpc.passthrough import PASSTHROUGH, CONCURRENT, camel_to_snake
+
 from ankiweb.core.rpc.custom_handlers import CUSTOM
+from ankiweb.core.rpc.passthrough import CONCURRENT, PASSTHROUGH, camel_to_snake
 
 
 async def dispatch_backend_rpc(method: str, body: bytes, hub, service) -> bytes:

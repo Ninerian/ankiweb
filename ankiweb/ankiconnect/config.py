@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import os
 from dataclasses import dataclass, field
@@ -14,7 +15,7 @@ class AnkiConnectConfig:
     ignore_origin_list: list = field(default_factory=list)
 
     @classmethod
-    def load(cls, path: Path) -> "AnkiConnectConfig":
+    def load(cls, path: Path) -> AnkiConnectConfig:
         data = {}
         if Path(path).exists():
             data = json.loads(Path(path).read_text() or "{}")
@@ -23,11 +24,14 @@ class AnkiConnectConfig:
         return cls(
             api_key=os.environ.get("ANKIWEB_AC_KEY") or data.get("apiKey"),
             cors_origin_list=data.get("webCorsOriginList", ["http://localhost"]),
-            bind_address=os.environ.get(
-                "ANKIWEB_AC_HOST", data.get("webBindAddress", "127.0.0.1")
+            bind_address=(
+                os.environ.get("ANKIWEB_AC_HOST")
+                or str(data.get("webBindAddress") or "127.0.0.1")
             ),
             bind_port=int(
-                os.environ.get("ANKIWEB_AC_PORT", data.get("webBindPort", 8765))
+                os.environ.get("ANKIWEB_AC_PORT")
+                or data.get("webBindPort")
+                or 8765
             ),
             ignore_origin_list=data.get("ignoreOriginList", []),
         )

@@ -4,6 +4,7 @@
 {% from "components/config_input.html.jinja" import config_input %}
 {% from "components/revert_button.html.jinja" import revert_button %}
 {% from "components/help_modal.html.jinja" import help_modal %}
+{% from "components/backend_progress.html.jinja" import backend_progress %}
 
 {% set help_btn %}
     {{ help_modal(
@@ -19,20 +20,8 @@
     class="modal modal-bottom sm:modal-middle"
     aria-labelledby="importPackageModalTitle"
 >
-    <div
-        class="modal-box p-0 max-w-2xl bg-base-100 border border-base-300 shadow-xl overflow-hidden"
-        id="import-package-container"
-        data-signals="{{ {
-            'package_path': package_path,
-            'with_scheduling': options.with_scheduling,
-            'with_deck_configs': options.with_deck_configs,
-            'merge_notetypes': options.merge_notetypes,
-            'update_notes': options.update_notes,
-            'update_notetypes': options.update_notetypes
-        } | tojson | forceescape }}"
-    >
-        {# Modal Header #}
-        <div class="flex items-center justify-between px-6 py-4 border-b border-base-300 bg-base-100">
+    <div class="modal-box flex flex-col p-0 max-w-2xl bg-base-100 border border-base-300 shadow-xl overflow-hidden">
+        <div class="flex shrink-0 items-center justify-between px-6 py-4 border-b border-base-300 bg-base-100">
             <div class="flex items-center gap-2">
                 <h2 class="text-lg font-bold text-base-content m-0" id="importPackageModalTitle">
                     {{ title }}
@@ -43,17 +32,32 @@
             </div>
             <div class="flex items-center gap-2">
                 {{ help_btn }}
-                <button
-                    type="button"
-                    class="btn btn-sm btn-circle btn-ghost"
-                    onclick="document.getElementById('importPackageModal')?.close()"
-                    aria-label="{{ tr.actions_cancel() }}"
-                >✕</button>
+                <form method="dialog">
+                    <button
+                        type="submit"
+                        class="btn btn-sm btn-circle btn-ghost"
+                        aria-label="{{ tr.actions_close() }}"
+                    >✕</button>
+                </form>
             </div>
         </div>
 
+        <div class="overflow-y-auto">
+        <div
+            id="import-package-container"
+            data-signals="{{ {
+                'package_path': package_path,
+                'with_scheduling': options.with_scheduling,
+                'with_deck_configs': options.with_deck_configs,
+                'merge_notetypes': options.merge_notetypes,
+                'update_notes': options.update_notes,
+                'update_notetypes': options.update_notetypes,
+                '_importBusy': false,
+                'importProgressLabel': tr.actions_import(),
+            } | tojson | forceescape }}"
+        >
         {# Modal Body #}
-        <div class="p-6 flex flex-col gap-5 text-base-content max-h-[70vh] overflow-y-auto">
+        <div class="p-6 flex flex-col gap-5 text-base-content max-h-[70vh] overflow-y-auto" data-show="!$_importBusy">
             {# 1. withScheduling switch row #}
             <div class="flex items-center justify-between gap-4">
                 <label for="withScheduling" class="cursor-pointer flex-1 font-medium text-sm text-base-content">
@@ -186,23 +190,35 @@
             </details>
         </div>
 
+        {{ backend_progress(
+            progress_signal="_importBusy",
+            label_signal="importProgressLabel",
+            percent_signal="",
+            label=tr.actions_import()
+        ) }}
+
         {# Modal Actions / Footer #}
-        <div class="modal-action flex justify-end items-center gap-3 px-6 py-4 border-t border-base-300 bg-base-100 m-0">
-            <button
-                type="button"
-                class="btn btn-ghost btn-sm"
-                onclick="document.getElementById('importPackageModal')?.close()"
-            >
-                {{ tr.actions_cancel() }}
-            </button>
+        <div class="modal-action flex justify-end items-center gap-3 px-6 py-4 border-t border-base-300 bg-base-100 m-0" data-show="!$_importBusy">
+            <form method="dialog">
+                <button
+                    type="submit"
+                    class="btn btn-ghost btn-sm"
+                >
+                    {{ tr.actions_cancel() }}
+                </button>
+            </form>
             <button
                 type="button"
                 class="btn btn-primary btn-sm import"
                 title="Control+Enter"
+                data-indicator="_importBusy"
+                data-attr:disabled="$_importBusy"
                 data-on:click="@post('/import-anki-package/do-import')"
             >
                 {{ tr.actions_import() }}
             </button>
+        </div>
+        </div>
         </div>
     </div>
     <form method="dialog" class="modal-backdrop">

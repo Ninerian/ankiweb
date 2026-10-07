@@ -1,8 +1,10 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.ankiconnect.app import create_ankiconnect_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -36,9 +38,8 @@ def test_model_field_names(client):
 
 def test_model_templates(client):
     tmpls = _call(client, "modelTemplates", modelName="Basic")
-    name = list(tmpls.keys())[0]
+    name = next(iter(tmpls.keys()))
     assert "Front" in tmpls[name] and "Back" in tmpls[name]
-
 
 def test_model_styling(client):
     assert "css" in _call(client, "modelStyling", modelName="Basic")
@@ -59,11 +60,10 @@ def test_model_name_from_id_and_find(client):
 
 def test_model_fields_on_templates(client):
     res = _call(client, "modelFieldsOnTemplates", modelName="Basic")
-    name = list(res.keys())[0]
+    name = next(iter(res.keys()))
     # Card 1: front refs == ["Front"]; back side strips FrontSide and de-dupes Front -> []
     assert res[name][0] == ["Front"]
     assert "FrontSide" not in res[name][1]
-
 
 def test_find_models_missing_raises(client):
     # reference RAISES on a missing model (never returns null entries)
@@ -267,10 +267,9 @@ def test_template_mutators(client):
         )
         is None
     )
-    assert list(_call(client, "modelTemplates", modelName=m).keys())[0] == "C3"
+    assert next(iter(_call(client, "modelTemplates", modelName=m).keys())) == "C3"
     assert _call(client, "modelTemplateRemove", modelName=m, templateName="C3") is None
     assert "C3" not in _call(client, "modelTemplates", modelName=m)
-
 
 def test_field_set_type_validation(client):
     m = _mk(client, "MV")

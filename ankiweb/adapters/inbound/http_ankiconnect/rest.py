@@ -4,13 +4,16 @@ that calls the same dispatch_one as `POST /`, so behavior never diverges from th
 JSON-RPC endpoint."""
 
 from __future__ import annotations
+
 import inspect
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Request, Security
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, create_model
 
+from ankiweb.ankiconnect.dispatch import dispatch_one
+from ankiweb.ankiconnect.schemas._base import LooseParams
 from ankiweb.core.ankiconnect_actions.registry import (
     ACTION_SPECS,
     ACTIONS,
@@ -18,9 +21,7 @@ from ankiweb.core.ankiconnect_actions.registry import (
     EXTRA_ACTIONS,
     ActionSpec,
 )
-from ankiweb.ankiconnect.dispatch import dispatch_one
 from ankiweb.core.ankiconnect_actions.runtime import Runtime
-from ankiweb.ankiconnect.schemas._base import LooseParams
 
 # Optional API key; auto_error=False so the request still reaches dispatch_one, which owns the
 # gate (and stays open when no key is configured). Renders the "Authorize" lock in Swagger.
@@ -32,7 +33,7 @@ class Envelope(BaseModel):
     error: <message>}. Errors are always returned with HTTP 200, as upstream does."""
 
     result: Any = None
-    error: Optional[str] = None
+    error: str | None = None
 
 
 def _pascal(name: str) -> str:
@@ -44,13 +45,13 @@ def _response_model(spec: ActionSpec) -> type:
         return Envelope
     return create_model(
         f"{_pascal(spec.name)}Response",
-        result=(Optional[spec.result_type], None),
-        error=(Optional[str], None),
+        result=(spec.result_type | None, None),
+        error=(str | None, None),
     )
 
 
 def _make_endpoint(name: str, model: type, registry: dict, op_name: str):
-    async def endpoint(params, request: Request, x_api_key: Optional[str]):
+    async def endpoint(params, request: Request, x_api_key: str | None):
         rt = Runtime(
             service=request.app.state.service,
             config=request.app.state.config,
@@ -68,28 +69,7 @@ def _make_endpoint(name: str, model: type, registry: dict, op_name: str):
 
     # Build the signature dynamically so FastAPI generates a distinct request-body schema per
     # action (the POC validated this works on fastapi 0.136 / pydantic 2.13).
-    setattr(
-        endpoint,
-        "__signature__",
-        inspect.Signature(
-            [
-                inspect.Parameter(
-                    "params", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=model
-                ),
-                inspect.Parameter(
-                    "request",
-                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=Request,
-                ),
-                inspect.Parameter(
-                    "x_api_key",
-                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    default=Security(_api_key_header),
-                    annotation=Optional[str],
-                ),
-            ]
-        ),
-    )
+    endpoint.__signature__ = inspect.Signature([inspect.Parameter("params", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=model), inspect.Parameter("request", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Request), inspect.Parameter("x_api_key", inspect.Parameter.POSITIONAL_OR_KEYWORD, default=Security(_api_key_header), annotation=str | None)])
     endpoint.__name__ = op_name  # unique operationId across the two namespaces
     return endpoint
 

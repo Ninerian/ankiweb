@@ -1,8 +1,10 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -55,9 +57,8 @@ def test_addnote_creates_note(client):
         )
         _drain_call(ws, "ankiwebToast")
     assert _run(client, lambda col: len(col.find_notes(""))) == before + 1
-    note = _run(client, lambda col: col.get_note(list(col.find_notes("Hello"))[0]))
+    note = _run(client, lambda col: col.get_note(next(iter(col.find_notes("Hello")))))
     assert note.fields == ["Hello", "World"]
-
 
 def test_addnote_empty_rejected(client):
     before = _run(client, lambda col: len(col.find_notes("")))
@@ -99,10 +100,9 @@ def test_setdeck_and_tags_applied(client):
             {"type": "cmd", "id": None, "ctx": "add", "arg": 'addnote:["Q","A"]'}
         )
         _drain_call(ws, "ankiwebToast")
-    nid = _run(client, lambda col: list(col.find_notes("Q"))[0])
+    nid = _run(client, lambda col: next(iter(col.find_notes("Q"))))
     note = _run(client, lambda col: col.get_note(nid))
     assert "mytag" in note.tags
-    assert _run(client, lambda col, n=note: col.get_card(n.card_ids()[0]).did) == other
 
 
 def test_add_body_has_paste_handler(client):

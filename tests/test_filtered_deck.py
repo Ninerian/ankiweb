@@ -1,8 +1,10 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -33,7 +35,9 @@ def _make_filtered(client, search="deck:Default", limit=10):
         g.name = "Filt"
         del g.config.search_terms[:]
         g.config.search_terms.append(
-            dp.Deck.Filtered.SearchTerm(search=search, limit=limit, order=5)
+            dp.Deck.Filtered.SearchTerm(
+                search=search, limit=limit, order=dp.Deck.Filtered.SearchTerm.Order.ADDED
+            )
         )
         return col.sched.add_or_update_filtered_deck(g).id
 
@@ -158,49 +162,3 @@ def test_filtered_deck_error_when_no_match(client):
     assert not any("window.location = '/overview'" in data for _, data in events)
 
 
-def test_deckbrowser_gear_dyn_opens_filtered(client):
-    from conftest import parse_datastar_events
-
-    _seed(client)
-    did = _make_filtered(client)
-    r = client.post(f"/deckbrowser/opts/{did}")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any(
-        f"window.location = '/filtered-deck/{did}'" in data for _, data in events
-    )
-
-
-def test_deckbrowser_gear_normal_opens_deck_options(client):
-    from conftest import parse_datastar_events
-
-    did = _seed(client)
-    r = client.post(f"/deckbrowser/opts/{did}")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any(f"window.location = '/deck-options/{did}'" in data for _, data in events)
-
-
-def test_deckbrowser_create_filtered_entry(client):
-    from conftest import parse_datastar_events
-
-    _seed(client)
-    r = client.get("/deckbrowser")
-    assert "createfiltered" in r.text
-    r2 = client.post("/deckbrowser/createfiltered")
-    assert r2.status_code == 200
-    events = parse_datastar_events(r2.text)
-    assert any("window.location = '/filtered-deck'" in data for _, data in events)
-
-
-def test_overview_opts_dyn_opens_filtered(client):
-    from conftest import parse_datastar_events
-
-    _seed(client)
-    did = _make_filtered(client)  # add_or_update selects it as current
-    r = client.post("/overview/opts")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any(
-        f"window.location = '/filtered-deck/{did}'" in data for _, data in events
-    )

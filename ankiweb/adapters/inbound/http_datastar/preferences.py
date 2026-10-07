@@ -1,15 +1,22 @@
 from __future__ import annotations
-import html
-from typing import Callable
-from fastapi import APIRouter
+
+import logging
+from collections.abc import Callable
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
+from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+)
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 def render_preferences_html(col) -> str:
     """Server-rendered Preferences form over col.get_preferences()/set_preferences()
@@ -19,6 +26,38 @@ def render_preferences_html(col) -> str:
     exp = col.get_config("experimentalFeatures") or {}
     svelte_editor = bool(exp.get("1", False))
 
+    initial_values = {
+        "rollover": s.rollover,
+        "learn_ahead_mins": s.learn_ahead_secs // 60,
+        "new_review_mix": s.new_review_mix,
+        "legacy_timezone": not s.new_timezone,
+        "day_learn_first": s.day_learn_first,
+        "show_play_buttons": not r.hide_audio_play_buttons,
+        "interrupt_audio_when_answering": r.interrupt_audio_when_answering,
+        "show_remaining_due_counts": r.show_remaining_due_counts,
+        "show_intervals_on_buttons": r.show_intervals_on_buttons,
+        "time_limit_mins": r.time_limit_secs // 60,
+        "load_balancer_enabled": r.load_balancer_enabled,
+        "fsrs_short_term_with_steps_enabled": r.fsrs_short_term_with_steps_enabled,
+        "adding_defaults_to_current_deck": e.adding_defaults_to_current_deck,
+        "paste_images_as_png": e.paste_images_as_png,
+        "paste_strips_formatting": e.paste_strips_formatting,
+        "default_search_text": e.default_search_text,
+        "ignore_accents_in_search": e.ignore_accents_in_search,
+        "render_latex": e.render_latex,
+        "daily": b.daily,
+        "weekly": b.weekly,
+        "monthly": b.monthly,
+        "minimum_interval_mins": b.minimum_interval_mins,
+        "svelte_editor": svelte_editor,
+    }
+
+    initial_signals = {
+        "error": "",
+        "dirty": False,
+        "initial": initial_values,
+        **initial_values,
+    }
     mix_opts = [
         (0, tr.scheduling_mix_new_cards_and_reviews()),
         (1, tr.scheduling_show_new_cards_after_reviews()),
@@ -33,14 +72,13 @@ def render_preferences_html(col) -> str:
         b=b,
         svelte_editor=svelte_editor,
         mix_opts=mix_opts,
+        initial_signals=initial_signals,
+        initial_values=initial_values,
     )
+
 
 def make_preferences_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/preferences")
-
-    @router.post("/cancel")
-    async def cancel():
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
 
     @router.post("/savePrefs")
     async def save_prefs(payload: ReadSignals):
@@ -93,9 +131,9 @@ def make_preferences_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(apply, initiator="preferences")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(str(exc))}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            logger.exception("Failed to save preferences")
+            return error_response(exc)
 
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
+        return redirect_response("/deckbrowser")
 
     return router

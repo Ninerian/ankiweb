@@ -34,8 +34,8 @@ def main() -> None:
     if dest_path.exists():
         dest_path.unlink()
 
-    from anki.collection import Collection
     import anki.import_export_pb2 as ie
+    from anki.collection import Collection
 
     col = Collection(str(dest_path))
     try:

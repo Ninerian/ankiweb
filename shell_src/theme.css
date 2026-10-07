@@ -1,4 +1,7 @@
 /* ankiweb custom theme - daisyUI compat layer & structural rules */
+html {
+  font-size: 16px !important;
+}
 
 :root,
 [data-theme],
@@ -380,10 +383,8 @@ body.context-add {
 
 #ankiweb-toolbar {
   z-index: 1029;
-}
-
-body.context-add > #ankiweb-toolbar {
-  flex: 0 0 auto !important;
+  flex: 0 0 auto;
+  font-size: 1rem;
 }
 
 body.context-add > .add-container {

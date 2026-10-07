@@ -5,8 +5,10 @@ mounted automatically.
 """
 
 from __future__ import annotations
+
 import importlib
 import pkgutil
+
 from fastapi import APIRouter
 
 

@@ -1,28 +1,33 @@
 """AnkiConnect card actions."""
 
 from __future__ import annotations
-from typing import Optional
+
+import logging
+
 from anki.errors import NotFoundError
-from ankiweb.core.ankiconnect_actions.registry import action
-from ankiweb.core.ankiconnect_actions.actions._helpers import card_to_info, run_emit
+
 from ankiweb.ankiconnect.schemas.cards import (
-    FindCardsParams,
+    AnswerCardsParams,
+    AreDueParams,
+    AreSuspendedParams,
     CardsInfoParams,
     CardsModTimeParams,
-    SuspendParams,
-    UnsuspendParams,
-    SuspendedParams,
-    AreSuspendedParams,
-    AreDueParams,
+    FindCardsParams,
+    ForgetCardsParams,
     GetEaseFactorsParams,
+    GetIntervalsParams,
+    RelearnCardsParams,
+    SetDueDateParams,
     SetEaseFactorsParams,
     SetSpecificValueOfCardParams,
-    GetIntervalsParams,
-    ForgetCardsParams,
-    RelearnCardsParams,
-    AnswerCardsParams,
-    SetDueDateParams,
+    SuspendedParams,
+    SuspendParams,
+    UnsuspendParams,
 )
+from ankiweb.core.ankiconnect_actions.actions._helpers import card_to_info, run_emit
+from ankiweb.core.ankiconnect_actions.registry import action
+
+_logger = logging.getLogger(__name__)
 
 
 @action(
@@ -44,7 +49,7 @@ async def cards_info(rt, cards=None):
         for cid in cards:
             try:
                 out.append(card_to_info(col, col.get_card(cid)))
-            except Exception:
+            except NotFoundError:
                 out.append({})
         return out
 
@@ -62,7 +67,7 @@ async def cards_mod_time(rt, cards=None):
         for cid in cards:
             try:
                 out.append({"cardId": cid, "mod": col.get_card(cid).mod})
-            except Exception:
+            except NotFoundError:
                 out.append({})
         return out
 
@@ -94,7 +99,6 @@ async def unsuspend(rt, cards=None):
         return None, col.sched.unsuspend_cards(cards)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action(
@@ -107,7 +111,7 @@ async def suspended(rt, card=None):
 @action(
     "areSuspended",
     params=AreSuspendedParams,
-    returns=list[Optional[bool]],
+    returns=list[bool | None],
     summary="Per-card suspended state",
 )
 async def are_suspended(rt, cards=None):
@@ -118,7 +122,7 @@ async def are_suspended(rt, cards=None):
         for cid in cards:
             try:
                 out.append(col.get_card(cid).queue == -1)
-            except Exception:
+            except NotFoundError:
                 out.append(None)
         return out
 
@@ -139,7 +143,7 @@ async def are_due(rt, cards=None):
 @action(
     "getEaseFactors",
     params=GetEaseFactorsParams,
-    returns=list[Optional[int]],
+    returns=list[int | None],
     summary="Per-card ease factor",
 )
 async def get_ease_factors(rt, cards=None):
@@ -150,7 +154,7 @@ async def get_ease_factors(rt, cards=None):
         for cid in cards:
             try:
                 out.append(col.get_card(cid).factor)
-            except Exception:
+            except NotFoundError:
                 out.append(None)  # faithful: AnkiConnect appends None for missing cards
         return out
 
@@ -226,6 +230,13 @@ async def set_specific_value_of_card(
                 setattr(c, key, val)
                 out.append(True)
             except Exception as exc:
+                _logger.debug(
+                    "Could not set card %s attribute %s: %s",
+                    card,
+                    key,
+                    exc,
+                    exc_info=True,
+                )
                 out.append([False, str(exc)])
         op = col.update_card(c)
         return out, op
@@ -261,7 +272,6 @@ async def forget_cards(rt, cards=None):
         return None, col.sched.schedule_cards_as_new(cards)
 
     await run_emit(rt, fn)
-    return None
 
 
 @action("relearnCards", params=RelearnCardsParams, summary="Move cards to relearning")
@@ -270,16 +280,15 @@ async def relearn_cards(rt, cards=None):
 
     def fn(col):
         if not cards:  # avoid invalid "where id in ()"
-            return None
+            return
+        placeholders = ",".join("?" * len(cards))
         col.db.execute(
-            "update cards set type=3, queue=1 where id in (%s)"
-            % ",".join("?" * len(cards)),
+            f"update cards set type=3, queue=1 where id in ({placeholders})",
             *cards,
         )
-        return None
+        return
 
     await rt.service.run(fn)
-    return None
 
 
 @action(

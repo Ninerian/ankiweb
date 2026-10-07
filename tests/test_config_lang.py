@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from ankiweb.core.config import Settings
 
 

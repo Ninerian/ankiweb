@@ -1,7 +1,9 @@
 """httpx implementation of ankiweb.core.ports.NotificationTransportPort."""
 
 from __future__ import annotations
+
 from typing import Any
+
 import httpx
 
 
@@ -10,6 +12,6 @@ async def post(url: str, headers: dict[str, str], json: dict) -> tuple[int, Any]
         r = await client.post(url, json=json, headers=headers)
     try:
         body = r.json()
-    except Exception:
+    except ValueError:
         body = None
     return r.status_code, body

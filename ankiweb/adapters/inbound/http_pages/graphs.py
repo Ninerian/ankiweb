@@ -4,24 +4,33 @@ Serves /graphs with pure Jinja + Datastar + pure-Python SVG generation.
 """
 
 from __future__ import annotations
-import math
-import html
-from datetime import datetime, date, timedelta
-from typing import Any, Callable, Sequence
 
-from fastapi import APIRouter, Request, Response, Query
+import math
+from collections.abc import Callable, Sequence
+from datetime import UTC, date, datetime, timedelta
+from typing import Any, cast
+
+from anki import stats_pb2
+from datastar_py.fastapi import ReadSignals
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse
 
+from ankiweb.adapters.inbound.http_datastar.common import elements_response
+from ankiweb.adapters.inbound.http_pages.graph_svg import (
+    BandScale,
+    LinearScale,
+    interpolate_color,
+    render_bars,
+    render_line,
+    render_no_data_overlay,
+    render_pie_slice,
+    render_stacked_bars,
+    render_x_axis,
+    render_y_axis,
+)
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.core.i18n import tr
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE, ReadSignals
-from ankiweb.adapters.inbound.http_pages.graph_svg import (
-    LinearScale, BandScale, render_x_axis, render_y_axis, render_bars,
-    render_stacked_bars, render_line, render_pie_slice, render_no_data_overlay,
-    interpolate_color
-)
-from anki import stats_pb2
 
 
 def _compute_median(numbers: Sequence[float]) -> float:
@@ -45,7 +54,7 @@ def _compute_percentile(numbers: Sequence[float], p: float) -> float:
     if n == 1:
         return float(sorted_nums[0])
     pos = (n - 1) * p
-    base = int(math.floor(pos))
+    base = math.floor(pos)
     rest = pos - base
     if base + 1 < n:
         return sorted_nums[base] + rest * (sorted_nums[base + 1] - sorted_nums[base])
@@ -65,8 +74,8 @@ def generate_today_stats(today: stats_pb2.GraphsResponse.Today) -> dict[str, Any
     # Formats: 'Studied X cards in Y.YY seconds today (Z.ZZs/card)'
     studied_str = tr.statistics_studied_today(
         unit=unit,
-        secs_per_card=round(secs_per_card, 2),
-        amount=round(amount, 2),
+        secs_per_card=cast(int, round(secs_per_card, 2)),
+        amount=cast(int, round(amount, 2)),
         cards=count,
     )
 
@@ -193,7 +202,6 @@ def generate_future_due_chart(
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
 
     svg_parts.append('<g class="bars">')
-    future_data = [item for item in data if not item["is_backlog"]]
     for idx, item in enumerate(data):
         bx = x_scale(item["day"])
         by = y_scale(item["count"])
@@ -209,7 +217,7 @@ def generate_future_due_chart(
         )
     svg_parts.append('</g>')
 
-    svg_parts.append(f'<g class="hover-columns">')
+    svg_parts.append('<g class="hover-columns">')
     for item in data:
         bx = x_scale(item["day"])
         tt = item["tooltip"]
@@ -234,7 +242,7 @@ def generate_future_due_chart(
 
     summary = [
         {"label": "Total", "value": f"{slice_total} reviews"},
-        {"label": "Average", "value": f"{avg_reviews:.1f} reviews/day" if avg_reviews >= 1.0 else f"{int(round(avg_reviews))} reviews/day"},
+        {"label": "Average", "value": f"{avg_reviews:.1f} reviews/day" if avg_reviews >= 1.0 else f"{round(avg_reviews)} reviews/day"},
         {"label": "Due tomorrow", "value": f"{tomorrow_due} reviews"},
         {"label": "Daily load", "value": f"{future_due.daily_load} reviews/day"},
     ]
@@ -273,7 +281,7 @@ def generate_calendar_chart(revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes,
     svg_parts.append('</g>')
 
     start_date = date(year, 1, 1)
-    today_dt = date.today()
+    today_dt = datetime.now(tz=UTC).astimezone().date()
     end_date = min(date(year, 12, 31), today_dt) if year == today_dt.year else date(year, 12, 31)
     cur = start_date
     counts = {k: v.learn + v.relearn + v.young + v.mature + v.filtered for k, v in revs.count.items()}
@@ -288,7 +296,7 @@ def generate_calendar_chart(revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes,
         cx = margin_left + week_of_year * (cell_size + 2)
         cy = margin_top + day_of_week * (cell_h + 2)
 
-        days_ago = (date.today() - cur).days
+        days_ago = (datetime.now(tz=UTC).astimezone().date() - cur).days
         c = counts.get(-days_ago, 0)
         if c > 0:
             t = c / max(max_c, 1)
@@ -324,7 +332,7 @@ def generate_reviews_chart(
 ) -> dict[str, Any]:
     """Generate Reviews history chart (count or time)."""
     data_map = revs.time if show_time else revs.count
-    max_day = days_range if days_range > 0 else (max(abs(k) for k in data_map.keys()) if data_map else 30)
+    max_day = days_range if days_range > 0 else (max(abs(k) for k in data_map) if data_map else 30)
     max_day = max(max_day, 1)
 
     series_keys = ["learn", "relearn", "young", "mature", "filtered"]
@@ -342,7 +350,7 @@ def generate_reviews_chart(
 
     for d in range(-max_day, 1):
         entry = data_map.get(d)
-        item = {"day": d}
+        item: dict[str, Any] = {"day": d}
         running_base = 0.0
         day_tot = 0.0
         if entry:
@@ -386,7 +394,7 @@ def generate_reviews_chart(
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
     svg_parts.append(render_stacked_bars(items, "day", series_keys, colors, x_scale, y_scale, bar_width=bar_w))
 
-    svg_parts.append(f'<g class="hover-columns">')
+    svg_parts.append('<g class="hover-columns">')
     for item in items:
         bx = x_scale(item["day"])
         tt = item["tooltip"]
@@ -521,9 +529,9 @@ def generate_intervals_chart(
     if days_range_or_percentile == "month":
         max_interval = 30
     elif days_range_or_percentile == "50":
-        max_interval = int(math.ceil(_compute_percentile(all_intervals, 0.5))) if all_intervals else 30
+        max_interval = math.ceil(_compute_percentile(all_intervals, 0.5)) if all_intervals else 30
     elif days_range_or_percentile == "95":
-        max_interval = int(math.ceil(_compute_percentile(all_intervals, 0.95))) if all_intervals else 30
+        max_interval = math.ceil(_compute_percentile(all_intervals, 0.95)) if all_intervals else 30
     else:  # "all"
         max_interval = max(imap.keys()) if imap else 30
 
@@ -548,7 +556,7 @@ def generate_intervals_chart(
     margin_top = 20
     margin_bottom = 25
     chart_w = width - margin_left - margin_right
-    chart_h = height - margin_top - margin_bottom
+
 
     x_scale = LinearScale((0, max_interval), (margin_left, width - margin_right))
     y_scale = LinearScale((0, max(max_count, 1)), (height - margin_bottom, margin_top))
@@ -567,7 +575,7 @@ def generate_intervals_chart(
 
     summary = []
     if total_cards > 0:
-        summary.append({"label": tr.statistics_median_interval(), "value": f"{int(round(median_ivl))} days"})
+        summary.append({"label": tr.statistics_median_interval(), "value": f"{round(median_ivl)} days"})
 
     return {
         "title": tr.statistics_intervals_title(),
@@ -613,7 +621,7 @@ def generate_ease_chart(eases: stats_pb2.GraphsResponse.Eases) -> dict[str, Any]
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
     svg_parts.append(render_bars(data, "ease", "count", x_scale, y_scale, width=bar_w, fill="#74c476"))
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=6, tick_format=lambda x: f"{int(round(x))}%"))
+    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=6, tick_format=lambda x: f"{round(x)}%"))
     svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
     svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
 
@@ -626,7 +634,7 @@ def generate_ease_chart(eases: stats_pb2.GraphsResponse.Eases) -> dict[str, Any]
         # eases.average is already in percentage units (e.g. 250.0)
         avg_val = eases.average if eases.average > 1.0 else eases.average * 100.0
         summary.append({"label": tr.statistics_average_ease(), "value": f"{avg_val:.0f}%"})
-        summary.append({"label": tr.statistics_median_ease(), "value": f"{int(round(median_e))}%"})
+        summary.append({"label": tr.statistics_median_ease(), "value": f"{round(median_e)}%"})
 
     return {
         "title": tr.statistics_card_ease_title(),
@@ -668,7 +676,7 @@ def generate_difficulty_chart(difficulty: stats_pb2.GraphsResponse.Eases) -> dic
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
     svg_parts.append(render_bars(data, "pct", "count", x_scale, y_scale, width=bar_w, fill="rgb(251, 106, 74)"))
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=6, tick_format=lambda x: f"{int(round(x))}%"))
+    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=6, tick_format=lambda x: f"{round(x)}%"))
     svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
     svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
 
@@ -680,7 +688,7 @@ def generate_difficulty_chart(difficulty: stats_pb2.GraphsResponse.Eases) -> dic
     if total_cards > 0:
         avg_val = difficulty.average if difficulty.average > 1.0 else difficulty.average * 100.0
         summary.append({"label": tr.statistics_average_difficulty(), "value": f"{avg_val:.0f}%"})
-        summary.append({"label": tr.statistics_median_difficulty(), "value": f"{int(round(median_d))}%"})
+        summary.append({"label": tr.statistics_median_difficulty(), "value": f"{round(median_d)}%"})
 
     return {
         "title": tr.statistics_card_difficulty_title(),
@@ -717,7 +725,7 @@ def generate_retrievability_chart(retrievability: stats_pb2.GraphsResponse.Retri
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
     svg_parts.append(render_bars(data, "pct", "count", x_scale, y_scale, width=bar_w, fill="rgb(49, 163, 84)"))
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=6, tick_format=lambda x: f"{int(round(x))}%"))
+    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=6, tick_format=lambda x: f"{round(x)}%"))
     svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
     svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
 
@@ -731,7 +739,7 @@ def generate_retrievability_chart(retrievability: stats_pb2.GraphsResponse.Retri
         summary.append({"label": tr.statistics_average_retrievability(), "value": f"{avg_val:.0f}%"})
         summary.append({
             "label": tr.statistics_estimated_total_knowledge(),
-            "value": f"{int(round(retrievability.sum_by_card))} cards / {int(round(retrievability.sum_by_note))} notes",
+            "value": f"{round(retrievability.sum_by_card)} cards / {round(retrievability.sum_by_note)} notes",
         })
 
     return {
@@ -756,9 +764,9 @@ def generate_stability_chart(stability: stats_pb2.GraphsResponse.Intervals, rang
     if range_choice == "month":
         max_days = 30
     elif range_choice == "50":
-        max_days = int(math.ceil(_compute_percentile(all_s, 0.5))) if all_s else 30
+        max_days = math.ceil(_compute_percentile(all_s, 0.5)) if all_s else 30
     elif range_choice == "95":
-        max_days = int(math.ceil(_compute_percentile(all_s, 0.95))) if all_s else 30
+        max_days = math.ceil(_compute_percentile(all_s, 0.95)) if all_s else 30
     else:
         max_days = max(smap.keys()) if smap else 30
 
@@ -795,7 +803,7 @@ def generate_stability_chart(stability: stats_pb2.GraphsResponse.Intervals, rang
 
     summary = []
     if total_cards > 0:
-        summary.append({"label": tr.statistics_median_stability(), "value": f"{int(round(median_s))} days"})
+        summary.append({"label": tr.statistics_median_stability(), "value": f"{round(median_s)} days"})
 
     return {
         "title": tr.statistics_card_stability_title(),
@@ -857,7 +865,7 @@ def generate_hours_chart(
 
     svg_parts.append(render_x_axis(x_scale, height - margin_bottom, ticks=list(range(24))))
     svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y2_scale, width - margin_right, right=True, tick_format=lambda y: f"{int(round(y))}%", ticks=[0, 20, 40, 60, 80, 100], css_class="y2-ticks"))
+    svg_parts.append(render_y_axis(y2_scale, width - margin_right, right=True, tick_format=lambda y: f"{round(y)}%", ticks=[0, 20, 40, 60, 80, 100], css_class="y2-ticks"))
 
     if max_tot == 0:
         svg_parts.append(render_no_data_overlay(width, height))
@@ -902,7 +910,7 @@ def generate_buttons_chart(
     margin_right = 70
     margin_top = 20
     margin_bottom = 25
-    chart_w = width - margin_left - margin_right
+
 
     b_scale = BandScale(categories, (margin_left, width - margin_right), padding_inner=0.2)
     max_tot = max(cd["total"] for cd in cat_data) if cat_data else 0
@@ -951,7 +959,7 @@ def generate_added_chart(
 ) -> dict[str, Any]:
     """Generate Added new cards history chart."""
     amap = dict(added.added)
-    max_day = days_range if days_range > 0 else (max(abs(k) for k in amap.keys()) if amap else 30)
+    max_day = days_range if days_range > 0 else (max(abs(k) for k in amap) if amap else 30)
     max_day = max(max_day, 1)
 
     items: list[dict[str, Any]] = []
@@ -1004,7 +1012,7 @@ def generate_added_chart(
     avg_added = total_added / max_day if max_day > 0 else 0
     summary = [
         {"label": "Total", "value": f"{total_added} cards"},
-        {"label": "Average", "value": f"{avg_added:.1f} cards/day" if avg_added >= 1.0 else f"{int(round(avg_added))} cards/day"},
+        {"label": "Average", "value": f"{avg_added:.1f} cards/day" if avg_added >= 1.0 else f"{round(avg_added)} cards/day"},
     ]
 
     return {
@@ -1180,9 +1188,9 @@ def make_router(get_service: Callable[[], Any]) -> APIRouter:
             col._backend.set_graph_preferences(prefs)
 
             actual_search = "" if scope == "collection" else search
-            return col._backend.graphs(search=actual_search, days=days), prefs
+            return col._backend.graphs(search=actual_search, days=days)
 
-        g_resp, prefs = await service.run(_fetch_and_set)
+        g_resp = await service.run(_fetch_and_set)
 
         # Select hours / buttons source based on per-chart range
         if hours_range <= 30:
@@ -1239,6 +1247,6 @@ def make_router(get_service: Callable[[], Any]) -> APIRouter:
             difficulty=difficulty_data,
         )
 
-        return DatastarResponse(SSE.patch_elements(updated_html, selector="#graphs-cards-container"))
+        return elements_response(updated_html, selector="#graphs-cards-container")
 
     return router

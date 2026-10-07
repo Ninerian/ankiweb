@@ -1,9 +1,12 @@
 from __future__ import annotations
-from typing import Callable
+
+from collections.abc import Callable
+
 from fastapi import APIRouter
-from datastar_py.fastapi import DatastarResponse, ServerSentEventGenerator as SSE
-from ankiweb.core.i18n import tr
+
+from ankiweb.adapters.inbound.http_datastar.common import elements_response
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
 
 
 def render_tools_html(col) -> str:
@@ -58,14 +61,14 @@ def make_tools_routes(get_service: Callable) -> APIRouter:
     def _push_media(mc):
         state["unused"] = list(mc.unused)
         res_html = f'<div id="res-media">{_media_result_html(mc)}</div>'
-        return DatastarResponse(SSE.patch_elements(res_html, selector="#res-media"))
+        return elements_response(res_html, selector="#res-media")
 
     @router.post("/checkdb")
     async def check_db():
         service = get_service()
-        report, ok = await service.run(lambda col: col.fix_integrity())
+        report, _ = await service.run(lambda col: col.fix_integrity())
         res_html = f'<div id="res-db">{_db_result_html(report)}</div>'
-        return DatastarResponse(SSE.patch_elements(res_html, selector="#res-db"))
+        return elements_response(res_html, selector="#res-db")
 
     @router.post("/checkmedia")
     async def check_media():
@@ -94,7 +97,7 @@ def make_tools_routes(get_service: Callable) -> APIRouter:
         res_html = (
             f'<div id="res-empty">{_emptycards_result_html(rep.report, cids)}</div>'
         )
-        return DatastarResponse(SSE.patch_elements(res_html, selector="#res-empty"))
+        return elements_response(res_html, selector="#res-empty")
 
     @router.post("/emptycards_delete")
     async def emptycards_delete():
@@ -107,6 +110,6 @@ def make_tools_routes(get_service: Callable) -> APIRouter:
         n = len(cids)
         state["empty"] = []
         res_html = f'<div id="res-empty">{_emptycards_deleted_html(n)}</div>'
-        return DatastarResponse(SSE.patch_elements(res_html, selector="#res-empty"))
+        return elements_response(res_html, selector="#res-empty")
 
     return router

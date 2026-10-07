@@ -1,22 +1,27 @@
 from __future__ import annotations
-import json
-import logging
-from typing import Any, Callable
 
-from fastapi import APIRouter, Request, Query
-from fastapi.responses import HTMLResponse, Response
+import logging
+from collections.abc import Callable
+from typing import Any, cast
+
+import anki.deck_config_pb2 as dc
+from datastar_py.attributes import SignalValue
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
+from fastapi.responses import HTMLResponse
 from google.protobuf.json_format import MessageToDict
 
-from ankiweb.core.i18n import tr
+from ankiweb.adapters.inbound.http_datastar.common import signals_response
+from ankiweb.adapters.inbound.http_pages.deck_options_help import HELP_MODALS
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
-from ankiweb.adapters.inbound.http_pages.deck_options_help import HELP_MODALS
-import anki.deck_config_pb2 as dc
+from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +100,7 @@ def _dict_to_cfg(d: dict[str, Any], config_pb: dc.DeckConfig.Config) -> None:
             if isinstance(val, dict):
                 # Datastar serialized array as object {"0": x, "1": y}
                 # Sort by numeric key
-                sorted_keys = sorted([k for k in val.keys() if str(k).isdigit()], key=lambda k: int(k))
+                sorted_keys = sorted([k for k in val if str(k).isdigit()], key=lambda k: int(k))
                 for k in sorted_keys:
                     item_val = val[k]
                     if item_val is not None and str(item_val).strip() != "":
@@ -318,6 +323,7 @@ def make_router(get_service: Callable) -> APIRouter:
     @router.post("/deck-options/change-preset")
     async def change_preset(payload: ReadSignals):
         service = get_service()
+        payload = cast(dict[str, Any], payload)
         target_preset_id = int(payload.get("presetId", 1))
         deck_id = int(payload.get("deckId", 1))
 
@@ -338,11 +344,12 @@ def make_router(get_service: Callable) -> APIRouter:
             "relearnStepsStr": relearn_steps_str,
             "dirty": True,
         }
-        return DatastarResponse(SSE.patch_signals(signals_update))
+        return signals_response(signals_update)
 
     @router.post("/deck-options/add-preset")
     async def add_preset(payload: ReadSignals):
         service = get_service()
+        payload = cast(dict[str, Any], payload)
         deck_id = int(payload.get("deckId", 1))
         preset_name = str(payload.get("newPresetName", "")).strip() or "New Preset"
 
@@ -399,6 +406,7 @@ def make_router(get_service: Callable) -> APIRouter:
     @router.post("/deck-options/clone-preset")
     async def clone_preset(payload: ReadSignals):
         service = get_service()
+        payload = cast(dict[str, Any], payload)
         deck_id = int(payload.get("deckId", 1))
         current_preset_id = int(payload.get("presetId", 1))
         clone_name = str(payload.get("clonePresetName", "")).strip() or "Cloned Preset"
@@ -458,6 +466,7 @@ def make_router(get_service: Callable) -> APIRouter:
     @router.post("/deck-options/rename-preset")
     async def rename_preset(payload: ReadSignals):
         service = get_service()
+        payload = cast(dict[str, Any], payload)
         deck_id = int(payload.get("deckId", 1))
         current_preset_id = int(payload.get("presetId", 1))
         rename_to = str(payload.get("renamePresetName", "")).strip()
@@ -495,17 +504,18 @@ def make_router(get_service: Callable) -> APIRouter:
         selector_html = render_preset_selector_html(all_configs, current_preset_id)
         return DatastarResponse([
             SSE.patch_elements(selector_html, selector="#presetSelectorWrap"),
-            SSE.patch_signals({
+            SSE.patch_signals(cast(dict[str, SignalValue], {
                 "allConfigs": all_configs,
                 "renamePresetName": "",
                 "statusMessage": f"Renamed preset to '{rename_to}'",
-            }),
+            })),
             SSE.execute_script("document.getElementById('renamePresetModal')?.close()"),
         ])
 
     @router.post("/deck-options/delete-preset")
     async def delete_preset(payload: ReadSignals):
         service = get_service()
+        payload = cast(dict[str, Any], payload)
         deck_id = int(payload.get("deckId", 1))
         current_preset_id = int(payload.get("presetId", 1))
 
@@ -550,6 +560,7 @@ def make_router(get_service: Callable) -> APIRouter:
     @router.post("/deck-options/save")
     async def save_options(payload: ReadSignals):
         service = get_service()
+        payload = cast(dict[str, Any], payload)
         deck_id = int(payload.get("deckId", 1))
         current_preset_id = int(payload.get("presetId", 1))
         apply_to_subdecks = bool(payload.get("applyToSubdecks", False))
@@ -583,8 +594,8 @@ def make_router(get_service: Callable) -> APIRouter:
                 if float(step) / 1440.0 >= grad_good:
                     warnings.append(tr.deck_config_learning_step_above_graduating_interval())
                     break
-        except Exception:
-            pass
+        except (ValueError, TypeError) as exc:
+            logger.debug("Failed to compute interval warnings: %s", exc)
 
         def do_save(col):
             res = col.decks.get_deck_configs_for_update(deck_id)
@@ -632,9 +643,9 @@ def make_router(get_service: Callable) -> APIRouter:
             state = await service.run_op(do_save, initiator="deck-options")
         except Exception as e:
             logger.exception("Failed to save deck options")
-            return DatastarResponse(SSE.patch_signals({
+            return signals_response({
                 "statusMessage": f"Error saving: {e}",
-            }))
+            })
 
         target_extra = next((c for c in state.all_config if c.config.id == current_preset_id), state.all_config[0])
         saved_cfg_dict = _cfg_to_dict(target_extra.config.config)
@@ -654,13 +665,12 @@ def make_router(get_service: Callable) -> APIRouter:
             "statusMessage": "Saved successfully!" if not apply_to_subdecks else "Saved to deck and all subdecks!",
         }
 
-        return DatastarResponse([
-            SSE.patch_signals(signals_update),
-        ])
+        return signals_response(signals_update)
 
     @router.post("/deck-options/revert")
     async def revert_options(payload: ReadSignals):
         service = get_service()
+        payload = cast(dict[str, Any], payload)
         deck_id = int(payload.get("deckId", 1))
         current_preset_id = int(payload.get("presetId", 1))
 
@@ -682,6 +692,6 @@ def make_router(get_service: Callable) -> APIRouter:
             "warnings": [],
             "statusMessage": "Changes reverted",
         }
-        return DatastarResponse(SSE.patch_signals(signals_update))
+        return signals_response(signals_update)
 
     return router

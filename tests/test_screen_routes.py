@@ -1,8 +1,11 @@
-import pytest
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
@@ -11,7 +14,8 @@ def client(tmp_path: Path):
     with TestClient(create_app(settings)) as c:
         assert c.portal is not None
         # seed a card so the deck browser has content
-        c.portal.call(c.app.state.service.run, _seed)
+        app = cast(Any, c.app)
+        c.portal.call(app.state.service.run, _seed)
         yield c
 
 
@@ -75,13 +79,6 @@ def test_overview_study_navigates_to_reviewer(client):
     assert any("window.location = '/reviewer'" in data for _, data in events)
 
 
-def test_overview_decks_navigates_home(client):
-    from conftest import parse_datastar_events
-
-    r = client.post("/overview/decks")
-    assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
 
 
 def test_reviewer_route_serves_real_page(client):
@@ -163,23 +160,3 @@ def test_reviewer_ans_before_show_does_not_crash_socket(client):
         assert got_question
 
 
-def test_reviewer_edit_navigates_to_editor(client):
-    assert client.portal is not None
-    did = client.portal.call(
-        client.app.state.service.run, lambda col: col.decks.id("Default")
-    )
-    client.portal.call(
-        client.app.state.service.run, lambda col: col.decks.set_current(did)
-    )
-    nid = client.portal.call(
-        client.app.state.service.run, lambda col: list(col.find_notes(""))[0]
-    )
-    with client.websocket_connect("/ws?context=reviewer") as ws:
-        ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "show"})
-        ws.receive_json()
-        ws.receive_json()
-        ws.send_json({"type": "cmd", "id": None, "ctx": "reviewer", "arg": "edit"})
-        m = ws.receive_json()
-        while m["type"] != "call" or m["fn"] != "ankiwebNavigate":
-            m = ws.receive_json()
-        assert m["args"] == [f"/edit?nid={nid}"]

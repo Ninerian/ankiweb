@@ -1,22 +1,30 @@
 from __future__ import annotations
+
 import json
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
-from fastapi import APIRouter, Request, Query
-from fastapi.responses import HTMLResponse
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter, Query, Request
+from fastapi.responses import HTMLResponse
 
-from ankiweb.core.i18n import tr
+from ankiweb.adapters.inbound.http_datastar.common import (
+    elements_response,
+    signals_response,
+)
+from ankiweb.adapters.inbound.http_screens.editor import _munge
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.core.ankiconnect_actions.actions._helpers import check_addable
+from ankiweb.core.i18n import tr
 from ankiweb.core.op_changes import op_changes_to_flags
-from ankiweb.adapters.inbound.http_screens.editor import _munge
 
 logger = logging.getLogger(__name__)
 
@@ -169,13 +177,12 @@ def make_router(get_service: Callable) -> APIRouter:
         if body_bytes:
             try:
                 payload = json.loads(body_bytes.decode("utf-8"))
-            except Exception:
-                pass
+            except ValueError:
+                payload = {}
         if not payload and payload_signals:
             payload = payload_signals
-        if payload_signals:
-            if not payload.get("nid") and payload_signals.get("nid"):
-                payload["nid"] = payload_signals.get("nid")
+        if payload_signals and not payload.get("nid") and payload_signals.get("nid"):
+            payload["nid"] = payload_signals.get("nid")
 
         idx = int(payload.get("index", 0))
         html_val = str(payload.get("html", payload.get(f"field_val_{idx}", "")))
@@ -191,13 +198,11 @@ def make_router(get_service: Callable) -> APIRouter:
         if nid is not None:
             await service.run(fn)
 
-        return DatastarResponse(
-            SSE.patch_signals({
-                f"field_val_{idx}": html_val,
-                f"field_saving_{idx}": False,
-                f"field_saved_{idx}": True,
-            })
-        )
+        return signals_response({
+            f"field_val_{idx}": html_val,
+            f"field_saving_{idx}": False,
+            f"field_saved_{idx}": True,
+        })
 
     @router.post("/editor/blur-field")
     async def blur_field(request: Request, payload_signals: ReadSignals = None):
@@ -207,14 +212,13 @@ def make_router(get_service: Callable) -> APIRouter:
         if body_bytes:
             try:
                 payload = json.loads(body_bytes.decode("utf-8"))
-            except Exception:
-                pass
+            except ValueError:
+                payload = {}
         logger.warning(f"BLUR_FIELD payload={payload}, payload_signals={payload_signals}")
         if not payload and payload_signals:
             payload = payload_signals
-        if payload_signals:
-            if not payload.get("nid") and payload_signals.get("nid"):
-                payload["nid"] = payload_signals.get("nid")
+        if payload_signals and not payload.get("nid") and payload_signals.get("nid"):
+            payload["nid"] = payload_signals.get("nid")
         idx = int(payload.get("index", 0))
         html_val = str(payload.get("html", payload.get(f"field_val_{idx}", "")))
         nid = payload.get("nid")
@@ -228,13 +232,11 @@ def make_router(get_service: Callable) -> APIRouter:
 
         if nid is not None:
             await service.run_op(fn, initiator="editor")
-        return DatastarResponse(
-            SSE.patch_signals({
-                f"field_val_{idx}": html_val,
-                f"field_saving_{idx}": False,
-                f"field_saved_{idx}": True,
-            })
-        )
+        return signals_response({
+            f"field_val_{idx}": html_val,
+            f"field_saving_{idx}": False,
+            f"field_saved_{idx}": True,
+        })
 
     @router.post("/editor/save-tags")
     async def save_tags(payload: ReadSignals):
@@ -260,9 +262,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
             await service.run_op(fn, initiator="editor")
 
-        return DatastarResponse(
-            SSE.patch_signals({"tags_str": " ".join(tags)})
-        )
+        return signals_response({"tags_str": " ".join(tags)})
 
     @router.post("/editor/toggle-collapse")
     async def toggle_collapse(payload: ReadSignals, idx: int = Query(...)):
@@ -282,9 +282,7 @@ def make_router(get_service: Callable) -> APIRouter:
                 return False
 
             new_collapsed = await service.run(fn)
-            return DatastarResponse(
-                SSE.patch_signals({f"field_collapsed_{idx}": new_collapsed})
-            )
+            return signals_response({f"field_collapsed_{idx}": new_collapsed})
         return DatastarResponse()
 
     @router.post("/editor/toggle-sticky")
@@ -305,9 +303,7 @@ def make_router(get_service: Callable) -> APIRouter:
                 return False
 
             new_sticky = await service.run(fn)
-            return DatastarResponse(
-                SSE.patch_signals({f"field_sticky_{idx}": new_sticky})
-            )
+            return signals_response({f"field_sticky_{idx}": new_sticky})
         return DatastarResponse()
 
     @router.post("/editor/change-notetype")
@@ -326,7 +322,7 @@ def make_router(get_service: Callable) -> APIRouter:
             return templating.render("pages/editor.html.jinja", **ctx)
 
         html = await service.run(render)
-        return DatastarResponse(SSE.patch_elements(html, selector="#editor-root"))
+        return elements_response(html, selector="#editor-root")
 
     @router.post("/editor/change-deck")
     async def change_deck(payload: ReadSignals):
@@ -341,7 +337,7 @@ def make_router(get_service: Callable) -> APIRouter:
             return True
 
         await service.run(fn)
-        return DatastarResponse(SSE.patch_signals({"deck_id": did}))
+        return signals_response({"deck_id": did})
 
     @router.post("/editor/undo")
     async def undo():
@@ -352,15 +348,13 @@ def make_router(get_service: Callable) -> APIRouter:
             if not col.undo_status().undo:
                 return False, "Nothing to undo"
             try:
-                op = col.undo()
+                col.undo()
                 return True, "Undone"
             except UndoEmpty:
                 return False, "Nothing to undo"
 
-        success, msg = await service.run(do_undo)
-        return DatastarResponse(
-            SSE.patch_signals({"toast_msg": msg})
-        )
+        _, msg = await service.run(do_undo)
+        return signals_response({"toast_msg": msg})
 
     @router.post("/editor/add-note")
     async def add_note(payload: ReadSignals):
@@ -390,7 +384,7 @@ def make_router(get_service: Callable) -> APIRouter:
             op = col.add_note(note, did)
             return (note.id, None), op
 
-        (note_id, err), op = await service.run(do_add)
+        (_, err), op = await service.run(do_add)
 
         if op:
             flags = op_changes_to_flags(getattr(op, "changes", op))
@@ -399,12 +393,10 @@ def make_router(get_service: Callable) -> APIRouter:
 
         if err:
             is_dup = "duplicate" in err.lower()
-            return DatastarResponse(
-                SSE.patch_signals({
-                    "toast_msg": err,
-                    "is_duplicate": is_dup,
-                })
-            )
+            return signals_response({
+                "toast_msg": err,
+                "is_duplicate": is_dup,
+            })
 
         # Successful addition! Record sticky field values
         def get_model_sticky(col):

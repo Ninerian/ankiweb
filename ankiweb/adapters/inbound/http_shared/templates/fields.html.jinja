@@ -1,15 +1,15 @@
-{% macro field_row(field, sortf) %}
-  <tr class="field-row row-hover" data-orig="{{ field.ord }}">
+{% macro field_row(field) %}
+  <tr class="field-row row-hover" data-field-key="{{ field.key }}">
     <td>
       <label class="block mb-0">
         <span class="sr-only">{{ tr.actions_name() }}</span>
-        <input type="text" class="fld-name input input-sm w-36" value="{{ field.name }}" size="16" placeholder="{{ tr.actions_name() }}">
+        <input type="text" class="fld-name input input-sm w-36" data-bind="fieldDraft.rows.{{ field.key }}.name" size="16" placeholder="{{ tr.actions_name() }}">
       </label>
     </td>
     <td>
       <label class="block mb-0">
         <span class="sr-only">{{ tr.fields_editing_font() }}</span>
-        <input type="text" class="fld-font input input-sm w-28" value="{{ field.font }}" size="10" placeholder="{{ tr.fields_editing_font() }}">
+        <input type="text" class="fld-font input input-sm w-28" data-bind="fieldDraft.rows.{{ field.key }}.font" size="10" placeholder="{{ tr.fields_editing_font() }}">
       </label>
     </td>
     <td>
@@ -18,7 +18,7 @@
         <input
           type="number"
           class="fld-size input input-sm w-20"
-          value="{{ field.size }}"
+          data-bind="fieldDraft.rows.{{ field.key }}.size"
           min="1"
           placeholder="{{ tr.fields_size() }}"
         >
@@ -29,10 +29,8 @@
         <input
           type="checkbox"
           class="fld-rtl checkbox checkbox-sm checkbox-primary"
-          id="rtl_{{ field.ord }}"
-          {% if field.rtl %}
-            checked
-          {% endif %}
+          id="rtl_{{ field.key }}"
+          data-bind="fieldDraft.rows.{{ field.key }}.rtl"
         >
         <span class="text-xs whitespace-nowrap">{{ tr.fields_reverse_text_direction_rtl() }}</span>
       </label>
@@ -43,7 +41,7 @@
         <input
           type="text"
           class="fld-desc input input-sm w-36"
-          value="{{ field.description }}"
+          data-bind="fieldDraft.rows.{{ field.key }}.description"
           size="16"
           placeholder="{{ tr.fields_description() }}"
         >
@@ -54,11 +52,10 @@
         <input
           type="radio"
           name="sortf"
-          id="sortf_{{ field.ord }}"
+          id="sortf_{{ field.key }}"
           class="fld-sort radio radio-sm radio-primary"
-          {% if field.ord == sortf %}
-            checked
-          {% endif %}
+          value="{{ field.key }}"
+          data-bind="fieldDraft.sortKey"
         >
         <span class="text-xs whitespace-nowrap">{{ tr.browsing_sort_field() }}</span>
       </label>
@@ -66,10 +63,10 @@
     <td>
       <div class="flex items-center gap-1">
         <div class="join">
-          <button class="btn btn-sm btn-outline join-item" type="button" onclick="moveUp(this)">↑</button>
-          <button class="btn btn-sm btn-outline join-item" type="button" onclick="moveDown(this)">↓</button>
+          <button class="btn btn-sm btn-outline join-item" type="button" data-on:click__prevent="moveFieldRow(el, $fieldDraft, '{{ field.key }}', -1)">↑</button>
+          <button class="btn btn-sm btn-outline join-item" type="button" data-on:click__prevent="moveFieldRow(el, $fieldDraft, '{{ field.key }}', 1)">↓</button>
         </div>
-        <button class="btn btn-sm btn-outline btn-error" type="button" onclick="deleteRow(this)">
+        <button class="btn btn-sm btn-outline btn-error" type="button" data-on:click__prevent="deleteFieldRow(el, $fieldDraft, '{{ field.key }}')">
           {{ tr.actions_delete() }}
         </button>
       </div>
@@ -78,79 +75,85 @@
 {% endmacro %}
 <div class="fields max-w-5xl mx-auto px-4 py-3">
   <h3 class="text-xl font-bold mb-3">Fields</h3>
-  <input type="hidden" id="ntid" value="{{ ntid }}">
-  <form id="ff" onsubmit="return false">
+  <form id="ff" onsubmit="return false" data-signals='{{ {"notetypeId": ntid, "error": "", "fieldDraft": field_draft} | tojson }}'>
     <div class="overflow-x-auto border border-base-300 rounded-box shadow-sm mb-3">
       <table id="fieldtbl" class="table table-sm">
         <tbody id="fieldrows">
-          {% for f in fields %}{{ field_row(f, sortf) }}{% endfor %}
+          {% for f in fields %}{{ field_row(f) }}{% endfor %}
         </tbody>
       </table>
     </div>
     <div class="mt-2">
-      <button class="btn btn-outline" type="button" id="addfield" onclick="addRow()">
+      <button class="btn btn-outline" type="button" id="addfield" data-on:click__prevent="addFieldRow($fieldDraft)">
         {{ add_label }}
       </button>
     </div>
     <div class="mt-4 flex flex-wrap gap-2">
-      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="const payload = buildFieldsPayload(); @post('/fields/savefields', {payload: payload})">
+      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="$error = ''; @post('/fields/savefields')">
         {{ save_label }}
       </button>
-      <button class="btn btn-neutral" type="button" data-on:click__prevent="@post('/fields/cancel')">
+      <a class="btn btn-neutral" href="/deckbrowser">
         {{ cancel_label }}
-      </button>
+      </a>
     </div>
-    <div id="err" class="text-error text-sm font-semibold mt-2"></div>
+    <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
   </form>
 </div>
-<template id="blankrow">{{
-  field_row({'ord': 'new', 'name': '', 'font': 'Arial', 'size': 20, 'rtl': False, 'description': ''}, -1)
-}}</template>
+<template id="blankrow">{{ field_row({'key': '__FIELD_KEY__'}) }}</template>
 <script>
-  function addRow() {
-      var tpl = document.getElementById('blankrow');
-      var tr = tpl.content.firstElementChild.cloneNode(true);
-      document.getElementById('fieldrows').appendChild(tr);
+  function replaceFieldRowKey(row, key) {
+    for (const element of [row, ...row.querySelectorAll('*')]) {
+      for (const attribute of Array.from(element.attributes)) {
+        if (attribute.value.includes('__FIELD_KEY__')) {
+          element.setAttribute(attribute.name, attribute.value.split('__FIELD_KEY__').join(key));
+        }
+      }
+    }
   }
 
-  function deleteRow(btn) {
-      var tr = btn.closest('tr');
-      tr.parentNode.removeChild(tr);
+  function addFieldRow(fieldDraft) {
+    const key = `f${fieldDraft.nextId}`;
+    fieldDraft.nextId += 1;
+    fieldDraft.rows[key] = {name: '', font: 'Arial', size: 20, rtl: false, description: ''};
+    fieldDraft.order = [...fieldDraft.order, key];
+    if (!fieldDraft.sortKey) {
+      fieldDraft.sortKey = key;
+    }
+
+    const template = document.getElementById('blankrow');
+    const row = template.content.firstElementChild.cloneNode(true);
+    replaceFieldRowKey(row, key);
+    document.getElementById('fieldrows').appendChild(row);
   }
 
-  function moveUp(btn) {
-      var tr = btn.closest('tr');
-      var prev = tr.previousElementSibling;
-      if (prev) tr.parentNode.insertBefore(tr, prev);
+  function deleteFieldRow(button, fieldDraft, key) {
+    fieldDraft.order = fieldDraft.order.filter(function(k) { return k !== key; });
+    delete fieldDraft.rows[key];
+    if (fieldDraft.sortKey === key) {
+      fieldDraft.sortKey = fieldDraft.order[0] || '';
+    }
+    const tr = button.closest('tr');
+    if (tr) tr.remove();
   }
 
-  function moveDown(btn) {
-      var tr = btn.closest('tr');
-      var next = tr.nextElementSibling;
-      if (next) tr.parentNode.insertBefore(next, tr);
-  }
+  function moveFieldRow(button, fieldDraft, key, direction) {
+    const order = [...fieldDraft.order];
+    const index = order.indexOf(key);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= order.length) return;
 
-  function buildFieldsPayload() {
-      document.getElementById('err').textContent = '';
-      var rows = Array.prototype.slice.call(
-          document.querySelectorAll('#fieldrows .field-row'));
-      var sortf = 0;
-      var fields = rows.map(function(tr, i) {
-          if (tr.querySelector('.fld-sort').checked) sortf = i;
-          var orig = tr.getAttribute('data-orig');
-          return {
-              orig: (orig === 'new') ? null : parseInt(orig),
-              name: tr.querySelector('.fld-name').value,
-              font: tr.querySelector('.fld-font').value,
-              size: parseInt(tr.querySelector('.fld-size').value || '20'),
-              rtl: tr.querySelector('.fld-rtl').checked,
-              description: tr.querySelector('.fld-desc').value
-          };
-      });
-      return {
-          notetypeId: parseInt(document.getElementById('ntid').value),
-          sortf: sortf,
-          fields: fields
-      };
+    const [moved] = order.splice(index, 1);
+    order.splice(targetIndex, 0, moved);
+    fieldDraft.order = order;
+
+    const row = button.closest('tr');
+    const tbody = row.parentElement;
+    const children = Array.from(tbody.children);
+    const target = children[targetIndex];
+    if (direction < 0) {
+      tbody.insertBefore(row, target);
+    } else {
+      tbody.insertBefore(row, target.nextSibling);
+    }
   }
 </script>

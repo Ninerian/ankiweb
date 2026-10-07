@@ -3,14 +3,15 @@ with ZERO shape changes. `ty check` is the real verifier here; pytest only guard
 module being deleted or the imports rotting."""
 
 from __future__ import annotations
-from ankiweb.core.ports import (
-    CollectionPort,
-    BridgeCommandPort,
-    AnkiConnectDispatchPort,
-)
+
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
-from ankiweb.core.bridge.hub import BridgeHub
 from ankiweb.ankiconnect.dispatch import dispatch_one
+from ankiweb.core.bridge.hub import BridgeHub
+from ankiweb.core.ports import (
+    AnkiConnectDispatchPort,
+    BridgeCommandPort,
+    CollectionPort,
+)
 
 
 def _proves_collection_port(svc: CollectionService) -> CollectionPort:

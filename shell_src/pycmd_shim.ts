@@ -11,7 +11,7 @@ export class Bridge {
 
   constructor(private ctx: string) {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    this.ws = new WebSocket(`${proto}://${location.host}/ws?context=${ctx}`);
+    this.ws = new WebSocket(`${proto}://${location.host}/ws?context=${encodeURIComponent(ctx)}`);
     this.ws.onmessage = (e) => this.onMessage(JSON.parse(e.data));
     // expose pycmd/bridgeCommand globally, identical functions (webview.py:92)
     const fn = (arg: string, cb?: Cb) => {

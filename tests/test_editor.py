@@ -1,15 +1,19 @@
-import pytest
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 
 @pytest.fixture
 def client(tmp_path: Path):
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
         assert c.portal is not None
-        c.portal.call(c.app.state.service.run, _seed)
+        app = cast(Any, c.app)
+        c.portal.call(app.state.service.run, _seed)
         yield c
 
 
@@ -24,9 +28,8 @@ def _seed(col):
 def _nid(client):
     assert client.portal is not None
     return client.portal.call(
-        client.app.state.service.run, lambda col: list(col.find_notes(""))[0]
+        client.app.state.service.run, lambda col: next(iter(col.find_notes("")))
     )
-
 
 def _drain_call(ws, fn, tries=6):
     for _ in range(tries):

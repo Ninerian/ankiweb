@@ -1,9 +1,11 @@
 import os
-import pytest
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 # a minimal valid 1x1 PNG
 PNG = bytes.fromhex(
@@ -33,8 +35,8 @@ def _img_in_tmp(client, name="pic.png"):
 
 
 def test_membership():
-    from ankiweb.core.rpc.passthrough import PASSTHROUGH
     from ankiweb.core.rpc.custom_handlers import CUSTOM
+    from ankiweb.core.rpc.passthrough import PASSTHROUGH
 
     assert "get_image_occlusion_note" in PASSTHROUGH
     assert "get_image_occlusion_fields" in PASSTHROUGH

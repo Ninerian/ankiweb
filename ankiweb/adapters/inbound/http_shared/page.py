@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import Sequence
+
+from collections.abc import Sequence
 
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
-
 
 # Callables, not strings: `tr` is bound to the language set when the collection opens
 # (ANKIWEB_LANG), which happens after import, so titles must resolve at request time.

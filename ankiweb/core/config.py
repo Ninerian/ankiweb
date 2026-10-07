@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,7 +48,7 @@ class Settings:
     dev: bool = False
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         default = Path.home() / ".local/share/ankiweb/collection.anki2"
         return cls(
             collection_path=Path(os.environ.get("ANKIWEB_COLLECTION", str(default))),

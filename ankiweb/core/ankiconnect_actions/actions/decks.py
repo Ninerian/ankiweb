@@ -1,20 +1,23 @@
 from __future__ import annotations
-from ankiweb.core.ankiconnect_actions.registry import action
+
+from anki.errors import NotFoundError
+
 from ankiweb.ankiconnect.schemas.decks import (
-    DeckNamesParams,
-    DeckNamesAndIdsParams,
-    GetDecksParams,
-    CreateDeckParams,
     ChangeDeckParams,
+    CloneDeckConfigIdParams,
+    CreateDeckParams,
+    DeckNameFromIdParams,
+    DeckNamesAndIdsParams,
+    DeckNamesParams,
     DeleteDecksParams,
     GetDeckConfigParams,
+    GetDecksParams,
+    GetDeckStatsParams,
+    RemoveDeckConfigIdParams,
     SaveDeckConfigParams,
     SetDeckConfigIdParams,
-    CloneDeckConfigIdParams,
-    RemoveDeckConfigIdParams,
-    GetDeckStatsParams,
-    DeckNameFromIdParams,
 )
+from ankiweb.core.ankiconnect_actions.registry import action
 
 
 def _config_exists(col, conf_id) -> bool:
@@ -22,10 +25,14 @@ def _config_exists(col, conf_id) -> bool:
     NOT None — so an `is None` guard is a dead branch. Check existence by matching the
     returned dict's id to the requested id."""
     try:
-        c = col.decks.get_config(int(conf_id))
-    except Exception:
+        conf_id = int(conf_id)
+    except (TypeError, ValueError, OverflowError):
         return False
-    return c is not None and int(c["id"]) == int(conf_id)
+    try:
+        c = col.decks.get_config(conf_id)
+    except NotFoundError:
+        return False
+    return c is not None and int(c["id"]) == conf_id
 
 
 @action(
@@ -82,7 +89,6 @@ async def change_deck(rt, cards=None, deck=None):
         return col.set_deck(cards, did)
 
     await rt.service.run_op(fn, initiator="ankiconnect")
-    return None
 
 
 @action(
@@ -90,7 +96,7 @@ async def change_deck(rt, cards=None, deck=None):
 )
 async def delete_decks(rt, decks=None, cardsToo=False):
     if not cardsToo:
-        raise Exception(
+        raise ValueError(
             "deleteDecks requires cardsToo=true (ankiweb won't keep orphan cards)"
         )
     decks = decks or []
@@ -101,7 +107,6 @@ async def delete_decks(rt, decks=None, cardsToo=False):
         return col.decks.remove(ids)
 
     await rt.service.run_op(fn, initiator="ankiconnect")
-    return None
 
 
 @action(

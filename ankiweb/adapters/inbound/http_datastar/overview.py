@@ -1,14 +1,24 @@
 from __future__ import annotations
-from typing import Callable
-from fastapi import APIRouter
+
+from collections.abc import Callable
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
+)
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter
+
+from ankiweb.adapters.inbound.http_datastar.common import (
+    redirect_response,
+    refresh_screen,
 )
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 from ankiweb.core.html_sanitize import sanitize_html
+
 
 def make_overview_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/overview")
@@ -17,11 +27,7 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
     async def study():
         service = get_service()
         await service.run(lambda col: col.startTimebox())
-        return DatastarResponse(SSE.redirect("/reviewer"))
-
-    @router.post("/decks")
-    async def decks():
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
+        return redirect_response("/reviewer")
 
     @router.post("/unbury")
     async def unbury():
@@ -35,7 +41,9 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             )
 
         await service.run_op(do_unbury, initiator="overview")
-        return DatastarResponse(SSE.execute_script("window.location.reload()"))
+        return await refresh_screen(
+            service, render_overview_html, selector="#overview-page"
+        )
 
     @router.post("/refresh")
     async def refresh():
@@ -46,7 +54,9 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             await service.run_op(
                 lambda col: col.sched.rebuild_filtered_deck(did), initiator="overview"
             )
-            return DatastarResponse(SSE.execute_script("window.location.reload()"))
+            return await refresh_screen(
+                service, render_overview_html, selector="#overview-page"
+            )
         return DatastarResponse()
 
     @router.post("/empty")
@@ -58,20 +68,11 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             await service.run_op(
                 lambda col: col.sched.empty_filtered_deck(did), initiator="overview"
             )
-            return DatastarResponse(SSE.execute_script("window.location.reload()"))
+            return await refresh_screen(
+                service, render_overview_html, selector="#overview-page"
+            )
         return DatastarResponse()
 
-    @router.post("/studymore")
-    async def studymore():
-        return DatastarResponse(SSE.redirect("/custom-study"))
-
-    @router.post("/opts")
-    async def opts():
-        service = get_service()
-        did = await service.run(lambda col: col.decks.get_current_id())
-        is_dyn = await service.run(lambda col: bool(col.decks.get(did).get("dyn")))
-        path = f"/filtered-deck/{did}" if is_dyn else f"/deck-options/{did}"
-        return DatastarResponse(SSE.redirect(path))
 
     @router.post("/setdesc")
     async def setdesc(payload: ReadSignals):
@@ -100,7 +101,7 @@ def render_overview_html(col) -> str:
     if new + learn + review == 0:
         # Nothing queued (counts already reflect limits/buried) → finished. Public-API
         # alternative to the private col.sched._is_finished().
-        return render_congrats_html(col)
+        return f'<div id="overview-page">{render_congrats_html(col)}</div>'
 
     raw = deck.get("desc", "")
     raw_rendered = col.render_markdown(raw) if (raw and deck.get("md")) else raw
@@ -109,6 +110,7 @@ def render_overview_html(col) -> str:
 
     return templating.render(
         "overview.html.jinja",
+        deck_id=deck["id"],
         name=deck["name"],
         desc=desc,
         desc_is_markdown=desc_is_markdown,

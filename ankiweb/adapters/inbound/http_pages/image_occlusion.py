@@ -7,27 +7,29 @@ Serves:
 """
 
 from __future__ import annotations
-import base64
+
 import logging
 import os
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
 
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, Response, PlainTextResponse
+import anki.errors
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
+from datastar_py.fastapi import (
+    ServerSentEventGenerator as SSE,
+)
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 
-import anki.image_occlusion_pb2 as iopb
-from anki.collection import OpChanges
+from ankiweb import import_tmp
+from ankiweb.adapters.inbound.http_datastar.common import signals_response
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.core.i18n import tr
-from ankiweb import import_tmp
 
 logger = logging.getLogger(__name__)
 
@@ -173,11 +175,14 @@ def make_router(get_service: Callable) -> APIRouter:
             tr=tr,
             **ctx,
         )
+        # Edit mode (numeric note id) is only reached through the Browser's detail
+        # iframe, like /edit: render the editor alone, without the global toolbar
+        # and its mobile bottom dock. Add mode is a standalone page and keeps it.
         return HTMLResponse(
             render_page(
                 context="image-occlusion",
                 body=body,
-                toolbar=True,
+                toolbar=not is_edit,
             )
         )
 
@@ -198,7 +203,7 @@ def make_router(get_service: Callable) -> APIRouter:
         occlusions = payload.get("occlusions", "")
         hide_all = bool(payload.get("hide_all", True))
         notetype_id = int(payload.get("selected_notetype_id", 0))
-        deck_id = int(payload.get("selected_deck_id", 1))
+        int(payload.get("selected_deck_id", 1))
 
         # Count non-text occlusions: c1, c2, ... (c0 is text)
         non_text_occlusions = re.findall(r"\{\{c([1-9]\d*)::image-occlusion:", occlusions or "")
@@ -208,13 +213,11 @@ def make_router(get_service: Callable) -> APIRouter:
 
         # Reject empty occlusion / 0 non-text shapes (legacy returns early without saving)
         if not occlusions or shapes_count <= 0 or len(non_text_occlusions) == 0:
-            return DatastarResponse(
-                SSE.patch_signals({
-                    "is_saving": False,
-                    "status_msg": "Cannot save: no occlusions drawn.",
-                    "status_type": "danger",
-                })
-            )
+            return signals_response({
+                "is_saving": False,
+                "status_msg": "Cannot save: no occlusions drawn.",
+                "status_type": "danger",
+            })
 
         # Adjust occlusions for hide_all (ensure :oi=1 is present on all shapes or removed)
         if hide_all:
@@ -244,7 +247,7 @@ def make_router(get_service: Callable) -> APIRouter:
                         if "Comments" in n and n["Comments"] != comments:
                             n["Comments"] = comments
                             col.update_note(n)
-                    except Exception as e:
+                    except (anki.errors.AnkiException, KeyError) as e:
                         logger.warning("Could not update Comments field: %s", e)
                 return op
             else:
@@ -272,14 +275,13 @@ def make_router(get_service: Callable) -> APIRouter:
                         if "Comments" in n:
                             n["Comments"] = comments
                             col.update_note(n)
-                    except Exception as e:
+                    except (anki.errors.AnkiException, KeyError) as e:
                         logger.warning("Could not set Comments field: %s", e)
 
                 return op
 
         try:
-            op = await service.run_op(do_save)
-            msg = tr.notetypes_io_card_count(count=1) if hasattr(tr, "notetypes_io_card_count") else "Cards created successfully"
+            await service.run_op(do_save)
             return DatastarResponse([
                 SSE.patch_signals({
                     "is_saving": False,
@@ -290,13 +292,11 @@ def make_router(get_service: Callable) -> APIRouter:
                 SSE.redirect("/deckbrowser"),
             ])
         except Exception as e:
-            logger.exception("Failed to save image occlusion note: %s", e)
-            return DatastarResponse(
-                SSE.patch_signals({
-                    "is_saving": False,
-                    "status_msg": f"Failed to save: {str(e)}",
-                    "status_type": "danger",
-                })
-            )
+            logger.exception("Failed to save image occlusion note")
+            return signals_response({
+                "is_saving": False,
+                "status_msg": f"Failed to save: {e!s}",
+                "status_type": "danger",
+            })
 
     return router

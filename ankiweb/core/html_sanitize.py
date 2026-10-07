@@ -31,9 +31,7 @@ def _is_safe_url(url: str, allowed_schemes: frozenset[str]) -> bool:
     # Reject javascript:, vbscript:, data:, etc.
     if re.match(r"^\s*([a-zA-Z0-9+.-]+)\s*:", clean_url):
         scheme = clean_url.split(":", 1)[0].strip().lower()
-        if scheme not in allowed_schemes:
-            return False
-        return True
+        return scheme in allowed_schemes
     # If no scheme (relative URL like /foo or foo.png), allow
     return True
 

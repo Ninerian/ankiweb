@@ -1,5 +1,10 @@
 from __future__ import annotations
+
+import logging
+
 from ankiweb.core.op_changes import op_changes_to_flags
+
+_logger = logging.getLogger(__name__)
 
 _EMPTY, _DUPLICATE = 1, 2  # note.fields_check() int states
 
@@ -23,7 +28,7 @@ def build_note(col, spec):
     spec = spec or {}
     model = col.models.by_name(spec.get("modelName", ""))
     if model is None:
-        raise Exception("model was not found: " + str(spec.get("modelName")))
+        raise ValueError("model was not found: " + str(spec.get("modelName")))
     note = col.new_note(model)
     by_lower = {f["name"].lower(): f["name"] for f in model["flds"]}
     for key, val in (spec.get("fields") or {}).items():
@@ -67,11 +72,17 @@ def card_to_info(col, card):
     fields = {}
     for name, (ord_, _f) in col.models.field_map(model).items():
         fields[name] = {"value": note.fields[ord_], "order": ord_}
+    next_reviews: list[str] = []
     try:
         states = col._backend.get_scheduling_states(card.id)
         next_reviews = list(col.sched.describe_next_states(states))
-    except Exception:
-        next_reviews = []
+    except Exception as exc:
+        _logger.debug(
+            "Could not describe next review states for card %s: %s",
+            card.id,
+            exc,
+            exc_info=True,
+        )
     return {
         "cardId": card.id,
         "note": note.id,

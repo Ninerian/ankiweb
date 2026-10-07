@@ -1,15 +1,23 @@
 from __future__ import annotations
-import html
-from typing import Callable
-from fastapi import APIRouter
+
+import logging
+from collections.abc import Callable
+from typing import cast
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
+from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+)
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 def render_filtered_deck_html(col, deck_id: int) -> str:
     g = col.sched.get_or_create_filtered_deck(deck_id)
@@ -32,10 +40,32 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
     allow_empty = bool(g.allow_empty)
     oklabel = tr.actions_rebuild() if is_edit else tr.decks_build()
     heading = f"{tr.studying_edit() if is_edit else 'Create'} Filtered Deck"
+    did = g.id
+    preview_again = cfg.preview_again_secs
+    preview_hard = cfg.preview_hard_secs
+    preview_good = cfg.preview_good_secs
+    initial_signals = {
+        "error": "",
+        "id": did,
+        "name": name,
+        "allow_empty": allow_empty,
+        "resched": resched,
+        "preview_again": preview_again,
+        "preview_hard": preview_hard,
+        "preview_good": preview_good,
+        "search1": search1,
+        "limit1": limit1,
+        "order1": order1,
+        "second": has2,
+        "search2": search2,
+        "limit2": limit2,
+        "order2": order2,
+    }
 
     return templating.render(
         "filtered_deck.html.jinja",
-        did=g.id,
+        did=did,
+        initial_signals=initial_signals,
         name=name,
         heading=heading,
         labels=labels,
@@ -48,19 +78,15 @@ def render_filtered_deck_html(col, deck_id: int) -> str:
         order2=order2,
         resched=resched,
         allow_empty=allow_empty,
-        preview_again=cfg.preview_again_secs,
-        preview_hard=cfg.preview_hard_secs,
-        preview_good=cfg.preview_good_secs,
+        preview_again=preview_again,
+        preview_hard=preview_hard,
+        preview_good=preview_good,
         oklabel=oklabel,
     )
 
 
 def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/filtered-deck")
-
-    @router.post("/cancel")
-    async def cancel():
-        return DatastarResponse(SSE.redirect("/overview"))
 
     @router.post("/submit")
     async def submit(payload: ReadSignals):
@@ -85,7 +111,7 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
                 dp.Deck.Filtered.SearchTerm(
                     search=p.get("search1", ""),
                     limit=int(p.get("limit1", 100)),
-                    order=int(p.get("order1", 0)),
+                    order=cast(dp.Deck.Filtered.SearchTerm.Order.ValueType, int(p.get("order1", 0))),
                 )
             ]
             if p.get("second"):
@@ -93,7 +119,7 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
                     dp.Deck.Filtered.SearchTerm(
                         search=p.get("search2", ""),
                         limit=int(p.get("limit2", 20)),
-                        order=int(p.get("order2", 5)),
+                        order=cast(dp.Deck.Filtered.SearchTerm.Order.ValueType, int(p.get("order2", 5))),
                     )
                 )
             del cfg.search_terms[:]
@@ -105,6 +131,7 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
         try:
             await service.run_op(build_and_run, initiator="filtereddeck")
         except Exception as e:
+            logger.exception("Failed to build filtered deck")
             from anki.errors import FilteredDeckError
 
             msg = (
@@ -112,9 +139,8 @@ def make_filtered_deck_routes(get_service: Callable) -> APIRouter:
                 if isinstance(e, FilteredDeckError)
                 else "Could not build the filtered deck."
             )
-            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(msg)}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            return error_response(msg)
 
-        return DatastarResponse(SSE.redirect("/overview"))
+        return redirect_response("/overview")
 
     return router

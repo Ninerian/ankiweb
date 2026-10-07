@@ -1,21 +1,23 @@
 from __future__ import annotations
+
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
-from ankiweb.core.config import Settings
-from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
-from ankiweb.ankiconnect.config import AnkiConnectConfig
-from ankiweb.core.bridge.hub import BridgeHub
-from ankiweb.core.ankiconnect_actions.runtime import Runtime
+
+import ankiweb.core.ankiconnect_actions.actions
+import ankiweb.core.ankiconnect_actions.extra_actions  # noqa: F401 — registers /extra_actions/<name>
 from ankiweb.adapters.inbound.http_ankiconnect.cors import allow_origin
-from ankiweb.ankiconnect.dispatch import dispatch_one
 from ankiweb.adapters.inbound.http_ankiconnect.rest import (
     build_actions_router,
     build_extra_actions_router,
 )
-import ankiweb.core.ankiconnect_actions.actions  # noqa: F401 — registers canonical actions
-import ankiweb.core.ankiconnect_actions.extra_actions  # noqa: F401 — registers /extra_actions/<name>
-
+from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
+from ankiweb.ankiconnect.config import AnkiConnectConfig
+from ankiweb.ankiconnect.dispatch import dispatch_one
+from ankiweb.core.ankiconnect_actions.runtime import Runtime
+from ankiweb.core.bridge.hub import BridgeHub
+from ankiweb.core.config import Settings
 
 # Group descriptions shown under each tag heading in Swagger (/docs).
 _OPENAPI_TAGS = [
@@ -98,7 +100,7 @@ def create_ankiconnect_app(
         allowed, headers = _cors_headers(origin)
         try:
             req = await request.json()
-        except Exception:
+        except ValueError:
             req = {}
         if not req:  # empty body → liveness probe
             return JSONResponse({"apiVersion": "AnkiConnect v.6"}, headers=headers)

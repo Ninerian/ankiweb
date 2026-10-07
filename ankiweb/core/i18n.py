@@ -14,7 +14,9 @@ Always import `tr` from here, never from `anki.lang` directly, so the guard runs
 """
 
 from __future__ import annotations
+
 import os
+
 import anki.lang
 
 
@@ -28,6 +30,6 @@ def _ensure_lang() -> None:
 
 _ensure_lang()
 
-from anki.lang import tr_legacyglobal as tr  # noqa: E402  (must follow _ensure_lang)
+from anki.lang import tr_legacyglobal as tr
 
 __all__ = ["tr"]

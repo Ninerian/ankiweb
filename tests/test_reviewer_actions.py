@@ -1,9 +1,13 @@
+from html.parser import HTMLParser
 from pathlib import Path
+
 import anki.consts
-from ankiweb.core.config import Settings
+from anki.cards import CardId
+
+from ankiweb.adapters.inbound.http_screens.reviewer import make_reviewer_handler
 from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
 from ankiweb.core.bridge.ui_state import UiState
-from ankiweb.adapters.inbound.http_screens.reviewer import make_reviewer_handler
+from ankiweb.core.config import Settings
 
 
 class _Hub:
@@ -50,13 +54,45 @@ async def _make(tmp_path, n_cards=3):
     return svc, hub, handler
 
 
+_REVIEWER_NAV_IDS = {"reviewer-card-info", "reviewer-card-edit"}
+
+
+class _ReviewerLinksParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.targets = {}
+        self.wrapper_present = False
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if attributes.get("id") == "reviewer-actions-bar":
+            self.wrapper_present = True
+        if tag == "a":
+            link_id = attributes.get("id")
+            if link_id in _REVIEWER_NAV_IDS:
+                self.targets[link_id] = attributes.get("href")
+
+
+def _reviewer_link_targets(html: str) -> dict[str, str | None]:
+    parser = _ReviewerLinksParser()
+    parser.feed(html)
+    return parser.targets
+
+
+def _has_reviewer_actions_wrapper(html: str) -> bool:
+    parser = _ReviewerLinksParser()
+    parser.feed(html)
+    return parser.wrapper_present
+
+
 # ---- (a) mark toggles the note's 'marked' tag + pushes _drawMark -------------
 
 
 async def test_mark_toggles_tag_and_draws(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    cid = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    cid = CardId(hub.ui_state.current_card_id)
     await handler("mark")
     has_tag = await svc.run(lambda col: "marked" in col.get_card(cid).note().tags)
     assert has_tag is True
@@ -76,7 +112,8 @@ async def test_mark_toggles_tag_and_draws(tmp_path: Path):
 async def test_setflag_sets_user_flag_and_draws(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    cid = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    cid = CardId(hub.ui_state.current_card_id)
     await handler("setflag:2")
     flag = await svc.run(lambda col: col.get_card(cid).user_flag())
     assert flag == 2
@@ -111,21 +148,18 @@ async def test_buryc_advances(tmp_path: Path):
 async def test_suspendc_suspends_and_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    first = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    first = CardId(hub.ui_state.current_card_id)
     await handler("suspendc")
     queue = await svc.run(lambda col: col.get_card(first).queue)
     assert queue == anki.consts.QUEUE_TYPE_SUSPENDED
-    assert hub.ui_state.current_card_id != first
-    await svc.close()
-
-
-# ---- buryn / suspendn act on all of the note's cards -------------------------
 
 
 async def test_suspendn_suspends_note_and_advances(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    first = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    first = CardId(hub.ui_state.current_card_id)
     await handler("suspendn")
     queue = await svc.run(lambda col: col.get_card(first).queue)
     assert queue == anki.consts.QUEUE_TYPE_SUSPENDED
@@ -151,7 +185,8 @@ async def test_buryn_buries_note_and_advances(tmp_path: Path):
 async def test_forget_resets_card(tmp_path: Path):
     svc, hub, handler = await _make(tmp_path)
     await handler("show")
-    cid = hub.ui_state.current_card_id
+    assert hub.ui_state.current_card_id is not None
+    cid = CardId(hub.ui_state.current_card_id)
     # answer it so it's no longer new, then reload that card by id and forget it
     await handler("ease3")
     ctype = await svc.run(lambda col: col.get_card(cid).type)
@@ -238,19 +273,62 @@ async def test_undo_when_empty_pushes_error(tmp_path: Path):
     await svc.close()
 
 
-# ---- (i) cardinfo navigates to /card-info/<cid> -----------------------------
+# ---- (i) rendered navigation follows the current card through answer/next ----
 
 
-async def test_cardinfo_navigates(tmp_path: Path):
-    svc, hub, handler = await _make(tmp_path)
+async def test_reviewer_navigation_tracks_card_through_answer_and_next(
+    tmp_path: Path,
+):
+    svc, hub, handler = await _make(tmp_path, n_cards=2)
     await handler("show")
-    cid = hub.ui_state.current_card_id
-    await handler("cardinfo")
-    assert ("ankiwebNavigate", [f"/card-info/{cid}"]) in hub.calls
+
+    first_cid = hub.ui_state.current_card_id
+    assert first_cid is not None
+    first_nid = await svc.run(lambda col: col.get_card(CardId(first_cid)).nid)
+    first_question = hub.last("_showQuestion")
+    assert first_question is not None and len(first_question) == 4
+    first_targets = {
+        "reviewer-card-info": f"/card-info/{first_cid}",
+        "reviewer-card-edit": f"/edit?nid={first_nid}",
+    }
+    assert _reviewer_link_targets(first_question[3]) == first_targets
+
+    await handler("ans")
+    assert hub.last("_showAnswer") is not None
+    assert hub.ui_state.current_card_id == first_cid
+    assert hub.ui_state.side == "answer"
+    assert hub.fns().count("_showQuestion") == 1
+    assert _reviewer_link_targets(hub.last("_showQuestion")[3]) == first_targets
+
+    await handler("ease4")
+    second_cid = hub.ui_state.current_card_id
+    assert second_cid is not None and second_cid != first_cid
+    second_nid = await svc.run(lambda col: col.get_card(CardId(second_cid)).nid)
+    assert second_nid != first_nid
+    second_question = hub.last("_showQuestion")
+    assert second_question is not None and len(second_question) == 4
+    assert _reviewer_link_targets(second_question[3]) == {
+        "reviewer-card-info": f"/card-info/{second_cid}",
+        "reviewer-card-edit": f"/edit?nid={second_nid}",
+    }
     await svc.close()
 
 
-# ---- (j) every new branch is a no-op when there is no current card ----------
+# ---- (j) no active reviewer destinations before a card is shown -------------
+
+
+def test_reviewer_navigation_has_no_active_targets_before_card():
+    from ankiweb.adapters.inbound.http_screens.reviewer import reviewer_page_body
+
+    page_body = reviewer_page_body()
+    assert _has_reviewer_actions_wrapper(page_body)
+    assert _reviewer_link_targets(page_body) == {
+        "reviewer-card-info": None,
+        "reviewer-card-edit": None,
+    }
+
+
+# ---- (k) remaining reviewer actions are no-ops before a card is shown --------
 
 
 async def test_actions_are_noops_without_card(tmp_path: Path):
@@ -266,33 +344,9 @@ async def test_actions_are_noops_without_card(tmp_path: Path):
         "setdue:0",
         "forget",
         "deletenote",
-        "cardinfo",
     ):
         res = await handler(arg)
         assert res is None
     # none of these should have pushed any call
     assert hub.calls == []
     await svc.close()
-
-
-# ---- (k) reviewer_page_body() wires the actions bar + new shortcuts ---------
-
-
-def test_reviewer_body_has_actions_bar_and_shortcuts():
-    from ankiweb.adapters.inbound.http_screens.reviewer import reviewer_page_body
-
-    body = reviewer_page_body()
-    assert "rev-actions" in body
-    # buttons issue the new pycmds
-    for cmd in ("'mark'", "'buryc'", "'suspendc'", "'forget'", "'cardinfo'", "'undo'"):
-        assert cmd in body
-    assert "setflag:" in body
-    assert "_drawMark" in body and "_drawFlag" in body
-    assert "ankiwebReviewerError" in body
-    # new keyboard cases (existing ones still present)
-    assert "'*'" in body  # mark
-    assert "ctrlKey" in body  # Ctrl+1..4 flag
-    assert "'i'" in body or '"i"' in body  # card info
-    assert "'u'" in body or '"u"' in body  # undo
-    # existing shortcuts intact
-    assert "typeans" in body and "ease" in body

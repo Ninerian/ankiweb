@@ -1,13 +1,15 @@
 import threading
 import time
+from pathlib import Path
+
 import pytest
 import uvicorn
-from pathlib import Path
 from anki.cards import CardId
 from anki.collection import Collection
 from anki.scheduler.v3 import Scheduler as V3Scheduler
-from ankiweb.core.config import Settings
+
 from ankiweb.app import create_app
+from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import sync_playwright

@@ -1,5 +1,5 @@
-import pytest
 from ankiweb.adapters.inbound.http_shared import templating
+
 
 def test_virtual_table_macro_renders_expected_markup():
     template = templating._env.from_string(

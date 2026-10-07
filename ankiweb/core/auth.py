@@ -7,6 +7,7 @@ hardened auth system. The AnkiConnect server (:8765) keeps its own `apiKey`, sep
 """
 
 from __future__ import annotations
+
 import hashlib
 import hmac
 

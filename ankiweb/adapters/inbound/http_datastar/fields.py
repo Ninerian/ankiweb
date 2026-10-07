@@ -1,47 +1,66 @@
 from __future__ import annotations
-import html
-from typing import Callable
-from fastapi import APIRouter
+
+import logging
+from collections.abc import Callable
+
 from datastar_py.fastapi import (
     DatastarResponse,
-    ServerSentEventGenerator as SSE,
     ReadSignals,
 )
-from ankiweb.core.i18n import tr
-from ankiweb.adapters.inbound.http_shared import templating
+from fastapi import APIRouter
 
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+)
+from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 def render_fields_html(col, ntid: int) -> str:
     m = col.models.get(ntid)
     sortf = m["sortf"]
-    fields = [
-        {
-            "ord": f["ord"],
+    rows = {}
+    order = []
+    fields_for_template = []
+    sort_key = ""
+    for idx, f in enumerate(m["flds"]):
+        key = f"f{idx}"
+        order.append(key)
+        row = {
+            "orig": f["ord"],
             "name": f.get("name", ""),
             "font": f.get("font", "Arial"),
             "size": int(f.get("size", 20)),
             "rtl": bool(f.get("rtl", False)),
             "description": f.get("description", ""),
         }
-        for f in m["flds"]
-    ]
+        rows[key] = row
+        fields_for_template.append({**row, "key": key})
+        if f["ord"] == sortf:
+            sort_key = key
+    if not sort_key and order:
+        sort_key = order[0]
+
+    field_draft = {
+        "rows": rows,
+        "order": order,
+        "nextId": len(order),
+        "sortKey": sort_key,
+    }
     return templating.render(
         "fields.html.jinja",
-        fields=fields,
-        sortf=sortf,
+        fields=fields_for_template,
+        field_draft=field_draft,
         ntid=int(ntid),
         add_label=tr.fields_add_field(),
         save_label=tr.actions_save(),
         cancel_label=tr.actions_cancel(),
     )
 
-
 def make_fields_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/fields")
-
-    @router.post("/cancel")
-    async def cancel():
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
 
     @router.post("/savefields")
     async def save_fields(payload: ReadSignals):
@@ -50,12 +69,33 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
             return DatastarResponse()
         p = payload
 
+        # Normalize canonical fieldDraft structure if present, with fallback for direct fields payloads
+        if "fieldDraft" in p and isinstance(p["fieldDraft"], dict):
+            draft = p["fieldDraft"]
+            rows = draft.get("rows", {}) or {}
+            order = draft.get("order", []) or []
+            sort_key = draft.get("sortKey")
+
+            payload_fields = []
+            for key in order:
+                if key in rows:
+                    payload_fields.append(dict(rows[key]))
+
+            if sort_key in order:
+                sortf = order.index(sort_key)
+            elif payload_fields:
+                sortf = 0
+            else:
+                sortf = 0
+        else:
+            payload_fields = p.get("fields", [])
+            sortf = int(p.get("sortf", 0))
+
         def apply(col):
             ntid = int(p["notetypeId"])
             m = col.models.get(ntid)
             cur = list(m["flds"])
             by_ord = {f["ord"]: f for f in cur}
-            payload_fields = p["fields"]
             kept = {f["orig"] for f in payload_fields if f.get("orig") is not None}
             deletes = [f for f in cur if f["ord"] not in kept]
             remaining = (
@@ -64,7 +104,7 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
                 + sum(1 for f in payload_fields if f.get("orig") is None)
             )
             if len(payload_fields) == 0 or remaining < 1:
-                raise Exception("a notetype needs at least one field")
+                raise ValueError("a notetype needs at least one field")
             for f in deletes:
                 col.models.remove_field(m, f)
             for fp in payload_fields:
@@ -86,15 +126,20 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
                 fd["rtl"] = bool(fp.get("rtl", False))
                 fd["description"] = fp.get("description", "")
                 col.models.reposition_field(m, fd, i)
-            col.models.set_sort_index(m, int(p.get("sortf", 0)))
-            return col.models.update_dict(m)
-
+            col.models.set_sort_index(m, sortf)
+            changes = col.models.update_dict(m)
+            # If Anki's backend remapped sortf during field addition/removal, re-apply desired sortf
+            m_reloaded = col.models.get(ntid)
+            if m_reloaded["sortf"] != sortf:
+                col.models.set_sort_index(m_reloaded, sortf)
+                col.models.update_dict(m_reloaded)
+            return changes
         try:
             await service.run_op(apply, initiator="fields")
         except Exception as exc:
-            err_html = f'<div id="err" class="text-error text-sm font-semibold mt-2">{html.escape(str(exc))}</div>'
-            return DatastarResponse(SSE.patch_elements(err_html, selector="#err"))
+            logger.exception("Failed to save note type fields")
+            return error_response(exc)
 
-        return DatastarResponse(SSE.redirect("/deckbrowser"))
+        return redirect_response("/deckbrowser")
 
     return router

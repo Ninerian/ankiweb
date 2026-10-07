@@ -31,7 +31,7 @@
       __publicField(this, "queue", []);
       __publicField(this, "calls", {});
       const proto = location.protocol === "https:" ? "wss" : "ws";
-      this.ws = new WebSocket(`${proto}://${location.host}/ws?context=${ctx2}`);
+      this.ws = new WebSocket(`${proto}://${location.host}/ws?context=${encodeURIComponent(ctx2)}`);
       this.ws.onmessage = (e) => this.onMessage(JSON.parse(e.data));
       const fn = (arg, cb) => {
         const id = cb ? this.nextId++ : null;
@@ -91,7 +91,8 @@
   }
   bridge.registerCalls({
     ankiwebNavigate: (url) => {
-      location.href = String(url);
+      const target = String(url);
+      location.assign(target);
     },
     ankiwebReload: () => {
       location.reload();

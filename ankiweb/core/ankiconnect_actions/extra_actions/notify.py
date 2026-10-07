@@ -4,12 +4,13 @@ These edit the same in-memory NotifierState the web form (/notify) and the runni
 task share, so changes take effect live (and a URL change re-syncs the receiver)."""
 
 from __future__ import annotations
-from ankiweb.core.ankiconnect_actions.registry import extra_action
-from ankiweb.core.notify.engine import NotifyConfig, header_safe
+
 from ankiweb.ankiconnect.schemas.extra import (
     GetNotifyConfigParams,
     SetNotifyConfigParams,
 )
+from ankiweb.core.ankiconnect_actions.registry import extra_action
+from ankiweb.core.notify.engine import NotifyConfig, header_safe
 
 
 def _view(state) -> dict:
@@ -36,7 +37,7 @@ def _view(state) -> dict:
 def _state(rt):
     state = getattr(rt, "notifier", None)
     if state is None:
-        raise Exception("push notifier is not available")
+        raise RuntimeError("push notifier is not available")
     return state
 
 
@@ -66,7 +67,7 @@ async def set_notify_config(
 ):
     state = _state(rt)
     if token is not None and not header_safe(token):
-        raise Exception("token must be ASCII / latin-1 (it is sent in an HTTP header)")
+        raise ValueError("token must be ASCII / latin-1 (it is sent in an HTTP header)")
     cur = state.config
     new = NotifyConfig(
         enabled=cur.enabled if enabled is None else bool(enabled),
