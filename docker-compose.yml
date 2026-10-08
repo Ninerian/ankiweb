@@ -5,8 +5,8 @@ services:
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"
     ports:
-      - "8000:8000"
-      - "8765:8765"
+      - "${ANKIWEB_HOST_PORT:-8000}:8000"
+      - "${ANKIWEB_AC_HOST_PORT:-8765}:8765"
     volumes:
       - "${DATA_DIRECTORY}:/data"
     environment:
