@@ -100,3 +100,54 @@ When transitioning this design into the live production templates in `ankiweb/`,
 - **Changes**:
   - Replace the desktop Bootstrap dropdown (`<div class="dropdown">...<ul class="dropdown-menu">`) with the mobile `.bottom-sheet` component and backdrop overlay.
   - Map each action in `buttons` (`Mark`, `Bury`, `Suspend`, `Delete`, etc.) into `.btn-action-tile` grid buttons with clear SVG icons.
+
+---
+
+## 5. Card Creation Flow ("Quick Add Stack")
+
+### A. Overview & High-School Persona
+Adding flashcards is traditionally the highest friction point in spaced repetition systems. Desktop Anki's standard Add Note modal confronts users with complex options: note-type select dropdowns, cloze syntax brackets, image occlusion editors, deck selectors, and multi-field grids. For high-school students, this cognitive load causes abandonment before they create their first deck.
+
+The **Card Creation Flow** (`editor-mockup.html`) provides a streamlined, tactile mobile wizard engineered specifically for rapid-fire creation of standard **Basic (Front / Back)** cards. It mimics building a physical stack of flashcards on a desk, giving students tangible visual momentum as they study and summarize their notes.
+
+### B. 3-Step Guided Wizard Mechanics
+The editor presents a focused single-purpose card interface divided into three distinct steps:
+1. **Step 1: Front (Prompt / Question)**:
+   - Oversized, high-contrast `<textarea>` styled with chunky 2.5px borders and tactile focus depression.
+   - Real-time character count and high-school helper chips (e.g. German articles `der`, `die`, `das` and umlauts `ä`, `ö`, `ü`, `ß`).
+   - Primary CTA: **Next: Back →** (`Enter` shortcut).
+2. **Step 2: Back (Answer / Definition)**:
+   - Focus transitions directly to the definition/answer field.
+   - Quick grammar and part-of-speech chips (`Noun`, `Verb`, `Adj`, `(Plural:)`).
+   - Primary CTA: **Preview Card →**.
+3. **Step 3: Quick Preview & Commit**:
+   - Renders a clean split view of the finished card showing both Prompt and Answer.
+   - Primary CTA: **Add to Stack 📥** (vibrant emerald green `#40c057`).
+   - Once tapped, the card commits and the editor instantly resets to Step 1 with clean fields, enabling friction-free continuous entry without leaving the view.
+
+### C. Card-Stack Physical Metaphor & Animation
+The core psychological hook of the creator is the **physical growing card pile**:
+- **Slide-to-Stack Keyframe Animation (`@keyframes slideToStack`)**:
+  - Upon tapping **Add to Stack**, the active card physically slides down and rotates (`transform: translate(x, y) rotate(deg)`), visibly joining the stack beneath the editing stage.
+  - A fresh blank card simultaneously drops into place from above (`@keyframes popInFreshCard`).
+- **Dealt Physical Stack Layers**:
+  - Completed cards accumulate beneath the editor at natural cascading offsets (`+32px`, `+64px`, `+96px`) and slight organic rotations (`-3.2°`, `+2.8°`, `-2.0°`), resembling an authentic pile of physical cards dealt onto a table.
+  - The top card displays a glowing cue badge: `TOP CARD ↩`.
+- **Top HUD Stack Counter (`🗂️ N CARDS ADDED`)**:
+  - Counter updates in real-time with an energetic pop-and-wobble animation (`@keyframes stackPillPop`) mirroring the reviewer streak counter.
+
+### D. Edit-Last-Card Affordance (Quick Mistake Correction)
+When rapidly typing cards on mobile, students inevitably make typos or notice mistakes right after submitting:
+- **One-Tap Reversal**: Tapping either the topmost card in the physical stack, the bottom **Top of stack** peek banner, or the top HUD stack pill immediately pops that card back into the editor (`@keyframes popCardUp`).
+- **State Reconstitution**: The Front and Back text are restored into the editor inputs, the wizard opens directly to Step 1, and the stack count decrements by 1.
+- **Safety Guard**: If the student has already started typing new uncommitted text in the current card, a confirmation alert guards against accidental text loss before popping.
+
+### E. Porting & Architecture Blueprint
+This flow is designed as a **new dedicated mobile route**, completely separate from Anki's existing complex `/add` route:
+- **New Route**: `/add/basic` or `/add/quick` (e.g. `quick_add_body.html.jinja`).
+- **Scope Separation**:
+  - The existing full-featured `/add` editor remains intact for desktop power-users, cloze deletion cards, media uploads, math formulas, and multi-field custom note types.
+  - The new quick-add view provides high-school students and mobile users with a distraction-free, zero-config card builder strictly for 2-field Basic notes.
+- **Design Token Continuity**:
+  - Uses identical `:root` and `[data-theme="dark"]` CSS variables, border widths (`2.5px`), drop shadows (`var(--shadow-card)`), and system font stack as `mockup.html`.
+  - Seamless visual transition from building cards in `editor-mockup.html` to reviewing them in `mockup.html`.

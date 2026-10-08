@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ankiweb</title>
+    <link rel="stylesheet" href="/shell/static/app.css">
+    <link rel="stylesheet" href="/shell/static/theme.css">
+    <link rel="stylesheet" href="/shell/static/components.css">
+    <script type="module" src="/shell/static/datastar.js"></script>
+  </head>
+  <body class="context-login min-h-screen flex items-center justify-center bg-base-200">
+    <form id="login" class="card bg-base-100 shadow-md p-8 w-80 flex flex-col gap-3 text-center"
+          method="post" action="/login"
+          data-signals='{{ {"password": "", "error": error_text} | tojson }}'
+          data-on:submit__prevent="$error = ''; @post('/login')">
+      <h1 class="text-lg font-semibold">ankiweb</h1>
+      <input type="password" name="password" class="input w-full" autofocus
+             aria-label="{{ tr.sync_password_label() | tr_clean }}"
+             placeholder="{{ tr.sync_password_label() | tr_clean }}" data-bind="password">
+      <div id="err" class="text-error text-sm font-semibold" role="alert" data-show="$error" data-text="$error">{{ error_text }}</div>
+      <button class="btn btn-primary" type="submit">{{ tr.sync_log_in_button() | tr_clean }}</button>
+    </form>
+  </body>
+</html>

@@ -1,3 +1,4 @@
+import anki.lang
 from pathlib import Path
 
 import pytest
@@ -53,6 +54,50 @@ def test_login_correct_unlocks(tmp_path: Path):
         # the client now carries the session cookie -> protected page loads
         assert c.get("/deckbrowser", follow_redirects=False).status_code == 200
 
+
+def test_login_datastar_wrong_password(tmp_path: Path):
+    with _client(tmp_path, "secret") as c:
+        r = c.post(
+            "/login",
+            json={"password": "bad"},
+            headers={"datastar-request": "true"},
+            follow_redirects=False,
+        )
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers.get("content-type", "")
+        assert "Email or password was incorrect" in r.text
+
+
+def test_login_localized_to_active_language(tmp_path: Path):
+    with _client(tmp_path, "secret") as c:
+        anki.lang.set_lang("de")
+        page = c.get("/login").text
+        assert "Passwort" in page and "Anmelden" in page
+        assert "Password" not in page
+        # the Datastar error signal and the no-JS 401 page share the same localized text
+        sse = c.post(
+            "/login",
+            json={"password": "bad"},
+            headers={"datastar-request": "true"},
+        ).text
+        form = c.post("/login", data={"password": "bad"})
+        assert form.status_code == 401
+        assert "falsch" in sse and "falsch" in form.text
+
+
+def test_login_datastar_correct_unlocks(tmp_path: Path):
+    with _client(tmp_path, "secret") as c:
+        r = c.post(
+            "/login",
+            json={"password": "secret"},
+            headers={"datastar-request": "true"},
+            follow_redirects=False,
+        )
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers.get("content-type", "")
+        assert "window.location" in r.text and "'/'" in r.text
+        assert r.cookies.get(COOKIE) == auth_token("secret")
+        assert c.get("/deckbrowser", follow_redirects=False).status_code == 200
 
 def test_bad_cookie_still_gated(tmp_path: Path):
     with _client(tmp_path, "secret") as c:

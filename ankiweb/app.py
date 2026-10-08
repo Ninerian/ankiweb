@@ -10,6 +10,12 @@ from starlette_compress import CompressMiddleware
 
 # Initialize Anki through the collection adapter before screens import its cyclic modules.
 import ankiweb.adapters.outbound.anki_collection_adapter as collection_adapter
+from datastar_py.fastapi import ReadSignals
+from ankiweb.adapters.inbound.http_datastar.common import (
+    error_response,
+    redirect_response,
+)
+from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.routes import (
     build_screen_router,
     register_screen_handlers,
@@ -28,31 +34,17 @@ from ankiweb.assets import (
 from ankiweb.core.auth import COOKIE, auth_token, cookie_ok, password_ok
 from ankiweb.core.bridge.hub import BridgeHub
 from ankiweb.core.config import Settings, host_allowed
+from ankiweb.core.i18n import tr
 from ankiweb.core.notify.engine import NotifierState
 
 
+def _wrong_password_text() -> str:
+    return templating.tr_clean(tr.sync_wrong_pass())
+
+
 def _login_html(error: bool = False) -> str:
-    """Self-contained login page (no /_anki assets, so it works before authentication)."""
-    err = (
-        "<p style='color:#c0392b;margin:0 0 12px'>Wrong password</p>"
-        if error
-        else ""
-    )
-    return (
-        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>ankiweb</title><style>"
-        "body{font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:flex;"
-        "align-items:center;justify-content:center;background:#f0f0f0}"
-        "form{background:#fff;padding:28px 34px;border-radius:10px;text-align:center;"
-        "box-shadow:0 2px 10px rgba(0,0,0,.12)}h1{font-size:18px;margin:0 0 18px}"
-        "input{font-size:16px;padding:9px 10px;width:220px;box-sizing:border-box}"
-        "button{font-size:16px;padding:9px 22px;margin-top:14px;cursor:pointer;"
-        "border:0;border-radius:6px;background:#2d7dd2;color:#fff}</style></head><body>"
-        "<form method='post' action='/login'><h1>ankiweb</h1>"
-        f"{err}"
-        "<input type='password' name='password' autofocus placeholder='Password'><br>"
-        "<button type='submit'>Enter</button></form></body></html>"
+    return templating.render(
+        "login.html.jinja", error_text=_wrong_password_text() if error else ""
     )
 
 
@@ -109,6 +101,7 @@ def create_app(
         if (
             settings.password
             and request.url.path not in ("/login", "/logout", "/healthz")
+            and not request.url.path.startswith("/shell/static/")
             and not cookie_ok(request.cookies.get(COOKIE), settings.password)
         ):
             return RedirectResponse("/login", status_code=303)
@@ -131,7 +124,38 @@ def create_app(
         return HTMLResponse(_login_html())
 
     @app.post("/login")
-    async def login_submit(request: Request):
+    async def login_submit(request: Request, payload: ReadSignals = None):
+        is_datastar = (
+            request.headers.get("datastar-request")
+            or "application/json" in request.headers.get("content-type", "")
+            or bool(payload)
+        )
+        if is_datastar:
+            pwd_str = ""
+            if payload and isinstance(payload, dict):
+                val = payload.get("password", "")
+                pwd_str = str(val) if val is not None else ""
+            if not pwd_str:
+                try:
+                    body = await request.json()
+                    if isinstance(body, dict):
+                        val = body.get("password", "")
+                        pwd_str = str(val) if val is not None else ""
+                except Exception:
+                    pass
+
+            if settings.password and password_ok(pwd_str, settings.password):
+                resp = redirect_response("/")
+                resp.set_cookie(
+                    COOKIE,
+                    auth_token(settings.password),
+                    httponly=True,
+                    samesite="lax",
+                    max_age=30 * 86400,
+                )
+                return resp
+            return error_response(_wrong_password_text())
+
         form = await request.form()
         pwd = form.get("password", "")
         pwd_str = pwd if isinstance(pwd, str) else ""
