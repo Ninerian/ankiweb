@@ -34,7 +34,7 @@ from ankiweb.core.notify.engine import NotifierState
 def _login_html(error: bool = False) -> str:
     """Self-contained login page (no /_anki assets, so it works before authentication)."""
     err = (
-        "<p style='color:#c0392b;margin:0 0 12px'>密码错误 / Wrong password</p>"
+        "<p style='color:#c0392b;margin:0 0 12px'>Wrong password</p>"
         if error
         else ""
     )
@@ -51,8 +51,8 @@ def _login_html(error: bool = False) -> str:
         "border:0;border-radius:6px;background:#2d7dd2;color:#fff}</style></head><body>"
         "<form method='post' action='/login'><h1>ankiweb</h1>"
         f"{err}"
-        "<input type='password' name='password' autofocus placeholder='密码 / Password'><br>"
-        "<button type='submit'>进入 / Enter</button></form></body></html>"
+        "<input type='password' name='password' autofocus placeholder='Password'><br>"
+        "<button type='submit'>Enter</button></form></body></html>"
     )
 
 
