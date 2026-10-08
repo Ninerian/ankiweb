@@ -1,21 +1,30 @@
 services:
   ankiweb:
     build: .
-    image: ankiweb
     container_name: ankiweb
     restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
     ports:
-      - "127.0.0.1:8000:8000"
-      - "127.0.0.1:8765:8765"
+      - "8000:8000"
+      - "8765:8765"
     volumes:
-      - ankiweb_data:/data
+      - "${DATA_DIRECTORY}:/data"
+    environment:
+      - "TZ=${TZ:-UTC}"
     env_file:
       - path: .env
         required: false
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
     security_opt:
       - "no-new-privileges:true"
     cap_drop:
       - "ALL"
-
-volumes:
-  ankiweb_data:

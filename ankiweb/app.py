@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from starlette_compress import CompressMiddleware
 
 # Initialize Anki through the collection adapter before screens import its cyclic modules.
 import ankiweb.adapters.outbound.anki_collection_adapter as collection_adapter
@@ -114,6 +115,10 @@ def create_app(
         return await call_next(request)
 
     app.add_middleware(BaseHTTPMiddleware, dispatch=auth_guard)
+
+    # Outermost: negotiates zstd/brotli/gzip from Accept-Encoding. text/event-stream (the
+    # Datastar SSE streams) is excluded by default, so streaming responses stay unbuffered.
+    app.add_middleware(CompressMiddleware)
 
     # --- specific routes FIRST, media catch-all LAST (Starlette matches in order) ---
     @app.get("/healthz")

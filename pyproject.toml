@@ -21,6 +21,7 @@ dependencies = [
   "python-multipart>=0.0.9", # FastAPI UploadFile (the /upload_media paste-image endpoint)
   "jinja2>=3.1",
   "datastar-py>=1.0.2",
+  "starlette-compress>=1.8.0",
 ]
 
 [project.optional-dependencies]
