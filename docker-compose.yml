@@ -1,3 +1,4 @@
+---
 services:
   ankiweb:
     build: .
@@ -9,8 +10,18 @@ services:
       - "${ANKIWEB_AC_HOST_PORT:-8765}:8765"
     volumes:
       - "${DATA_DIRECTORY}:/data"
+      - type: tmpfs
+        target: /tmp
     environment:
-      - "TZ=${TZ:-UTC}"
+      TZ: ${TZ:-UTC}
+      ANKIWEB_PASSWORD: ${ANKIWEB_PASSWORD:-}
+      ANKIWEB_AC_KEY: ${ANKIWEB_AC_KEY:-}
+      ANKIWEB_HOST: ${ANKIWEB_HOST:-0.0.0.0}
+      ANKIWEB_ALLOWED_HOSTS: ${ANKIWEB_ALLOWED_HOSTS:-}
+      ANKIWEB_LANG: ${ANKIWEB_LANG:-de}
+      ANKIWEB_SOURCE_URL: ${ANKIWEB_SOURCE_URL:-}
+      ANKIWEB_COLLECTION: ${ANKIWEB_COLLECTION:-/data}
+      ANKIWEB_IMPORT_TMP_DIR: ${ANKIWEB_IMPORT_TMP_DIR:-/tmp/anki}
     env_file:
       - path: .env
         required: false
