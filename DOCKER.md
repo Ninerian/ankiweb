@@ -144,6 +144,13 @@ about it:
 
 ## Troubleshooting
 
+- **Slow image builds or network timeouts in VMs (e.g. Colima/macOS):**
+  If `npm ci` or `uv sync` stalls or times out downloading packages during build, ensure `docker-compose.yml` uses `network: host` for the build context, or build directly with host networking:
+
+  ```bash
+  docker compose build --build-arg BUILDKIT_INLINE_CACHE=1
+  ```
+
 - **Check logs:**
 
   ```bash

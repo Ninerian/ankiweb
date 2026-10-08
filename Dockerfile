@@ -6,7 +6,7 @@
 FROM node:20-bookworm-slim AS frontend
 WORKDIR /src
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --fetch-timeout=600000
 COPY tools/build_shell.mjs tools/build_shell.mjs
 COPY shell_src/ shell_src/
 # Tailwind scans the templates and route modules for class names
@@ -19,7 +19,7 @@ RUN npm run build
 FROM python:3.12-slim-bookworm AS builder
 WORKDIR /src
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/opt/venv
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/opt/venv UV_HTTP_TIMEOUT=300 UV_HTTP_RETRIES=5
 COPY pyproject.toml uv.lock ./
 COPY ankiweb/ ankiweb/
 RUN uv sync --frozen --no-dev --no-editable
@@ -48,11 +48,10 @@ ENV PATH=/opt/venv/bin:$PATH \
   ANKIWEB_COLLECTION=/data/collection.anki2
 
 COPY --from=builder /opt/venv /opt/venv
+COPY ankiweb/ /app/ankiweb/
 COPY --from=builder /src/ankiweb/web_assets /app/ankiweb/web_assets
 COPY --from=builder /src/ankiweb/shell/static  /app/ankiweb/shell/static
 COPY --from=frontend /src/ankiweb/shell/static /app/ankiweb/shell/static
-COPY ankiweb/ /app/ankiweb/
-
 RUN mkdir -p /data && chown -R ankiweb:ankiweb /data /app
 
 USER ankiweb
