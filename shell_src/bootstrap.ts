@@ -163,4 +163,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }).observe(document.body, { childList: true, subtree: true });
 });
 
+// Tooltip CSS stays suppressed until the page has fully loaded (see route-editor-toolbar.css).
+window.addEventListener("load", () => {
+  setTimeout(() => document.documentElement.classList.add("tooltips-ready"), 150);
+});
+
 window.addEventListener("load", () => bridge.ready());

@@ -26,3 +26,24 @@
   width: 1.1em;
   height: 1.1em;
 }
+
+/* Tooltips are converted from `title` by bootstrap.ts after DOMContentLoaded. Keep their
+   pseudo-elements fully suppressed until `html.tooltips-ready` is set (after window load), so
+   no tooltip can flash while the editor (or the iframe in the Browser) is still initialising.
+   Touch screens have no real hover: a tap leaves :hover/:focus-visible stuck, so never show them. */
+html:not(.tooltips-ready) :is(.editor-toolbar, .field-action-btn).tooltip::before,
+html:not(.tooltips-ready) :is(.editor-toolbar, .field-action-btn).tooltip::after,
+html:not(.tooltips-ready) .editor-toolbar .tooltip::before,
+html:not(.tooltips-ready) .editor-toolbar .tooltip::after {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: none !important;
+}
+@media (hover: none) {
+  .editor-toolbar .tooltip::before,
+  .editor-toolbar .tooltip::after,
+  .field-action-btn.tooltip::before,
+  .field-action-btn.tooltip::after {
+    display: none !important;
+  }
+}

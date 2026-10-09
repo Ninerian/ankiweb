@@ -194,6 +194,14 @@
   }
   #detail-mobile-slot #detail { height: auto; }
   #detail-mobile-slot .editor-frame { height: 70dvh; }
+  /* Mobile editor modal: vertical scrolling only */
+  #detail-offcanvas .modal-box,
+  #detail-mobile-slot {
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+  }
+  .editor-frame { touch-action: pan-y; }
 </style>
 {% set raw_title = tr.browsing_window_title(total=987654, selected=123456) %}
 {% set clean_title = raw_title | replace('\u2068', '') | replace('\u2069', '') %}

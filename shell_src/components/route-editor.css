@@ -220,3 +220,13 @@
     z-index: 1080;
     pointer-events: none;
 }
+
+/* The editor scrolls vertically only: absolutely positioned menus (e.g. toolbar dropdowns) can be
+   wider than a narrow viewport, which made the page pan sideways on touch devices. */
+html:has(body.context-editor, body.context-add),
+body.context-editor,
+body.context-add {
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+}

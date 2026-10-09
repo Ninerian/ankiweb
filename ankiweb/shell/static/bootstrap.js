@@ -218,5 +218,8 @@
       }
     }).observe(document.body, { childList: true, subtree: true });
   });
+  window.addEventListener("load", () => {
+    setTimeout(() => document.documentElement.classList.add("tooltips-ready"), 150);
+  });
   window.addEventListener("load", () => bridge.ready());
 })();
