@@ -1,3 +1,27 @@
+{% macro editor_fields_url_helper() %}
+function ankiwebCurrentReturnTo() {
+    try {
+        var topLocation = window.top.location;
+        return topLocation.pathname + topLocation.search + topLocation.hash;
+    } catch (error) {
+        return window.location.pathname + window.location.search + window.location.hash;
+    }
+}
+
+function ankiwebFieldsUrl(notetypeId) {
+    var url = new URL('/fields/' + encodeURIComponent(notetypeId), window.location.href);
+    url.searchParams.set('return_to', ankiwebCurrentReturnTo());
+    return url.href;
+}
+
+function ankiwebCardLayoutUrl(notetypeId) {
+    var url = new URL('/card-layout/' + encodeURIComponent(notetypeId), window.location.href);
+    url.searchParams.set('return_to', ankiwebCurrentReturnTo());
+    return url.href;
+}
+{% endmacro %}
+{{ editor_fields_url_helper() }}
+
 var _awOrig = window.pycmd;
 
 function _awAttach() {
@@ -39,11 +63,13 @@ function _awCmd(c, cb) {
             return;
         }
         if (c === 'fields') {
-            if (window.__ankiwebNotetypeId) (window.top || window).location.href = '/fields/' + window.__ankiwebNotetypeId;
+            if (window.__ankiwebNotetypeId) {
+                (window.top || window).location.href = ankiwebFieldsUrl(window.__ankiwebNotetypeId);
+            }
             return;
         }
         if (c === 'cards') {
-            if (window.__ankiwebNotetypeId) (window.top || window).location.href = '/card-layout/' + window.__ankiwebNotetypeId;
+            if (window.__ankiwebNotetypeId) (window.top || window).location.href = ankiwebCardLayoutUrl(window.__ankiwebNotetypeId);
             return;
         }
     }

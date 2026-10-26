@@ -1,3 +1,4 @@
+{% from "editor_links.html.jinja" import editor_fields_url_helper %}
 {% from "components/icon.html.jinja" import icon %}
 
 <script src="/shell/static/bundles/editor-engine.js"></script>
@@ -56,7 +57,7 @@
         id="editor-fields-btn"
         class="btn btn-outline btn-sm"
         title="{{ tr.editing_fields() }}"
-        href="/fields/{{ notetype_id }}"
+        href="/fields/{{ notetype_id }}?return_to={% if nid is not none %}/edit?nid={{ nid }}{% else %}/add{% endif %}"
         target="_top"
       >
         {{ tr.editing_fields() }}
@@ -66,7 +67,7 @@
         id="editor-cards-btn"
         class="btn btn-outline btn-sm"
         title="{{ tr.editing_cards() }}"
-        href="/card-layout/{{ notetype_id }}"
+        href="/card-layout/{{ notetype_id }}?return_to={% if nid is not none %}/edit?nid={{ nid }}{% else %}/add{% endif %}"
         target="_top"
       >
         {{ tr.editing_cards() }}
@@ -269,6 +270,36 @@
   window.__ankiwebEditNid = {{ nid | tojson if nid is not none else 'null' }};
   window.__ankiwebNotetypeId = {{ notetype_id | tojson if notetype_id is not none else 'null' }};
 (function() {
+  {{ editor_fields_url_helper() }}
+  if (!window.__ankiwebFieldsLinkRefreshInstalled) {
+    window.__ankiwebFieldsLinkRefreshInstalled = true;
+    var refreshEditorNavHref = function(event) {
+      var target = event.target;
+      var fieldsLink = target && target.closest ? target.closest("#editor-fields-btn") : null;
+      if (fieldsLink) {
+        var path = new URL(fieldsLink.href, window.location.href).pathname;
+        if (path.startsWith("/fields/")) {
+          var notetypeId = path.slice("/fields/".length);
+          if (notetypeId && notetypeId.indexOf("/") === -1) {
+            fieldsLink.href = ankiwebFieldsUrl(notetypeId);
+          }
+        }
+      }
+      var cardsLink = target && target.closest ? target.closest("#editor-cards-btn") : null;
+      if (cardsLink) {
+        var cpath = new URL(cardsLink.href, window.location.href).pathname;
+        if (cpath.startsWith("/card-layout/")) {
+          var cntid = cpath.slice("/card-layout/".length);
+          if (cntid && cntid.indexOf("/") === -1) {
+            cardsLink.href = ankiwebCardLayoutUrl(cntid);
+          }
+        }
+      }
+    };
+    ["pointerdown", "pointerover", "focusin", "keydown", "click", "auxclick", "contextmenu"].forEach(function(eventName) {
+      document.addEventListener(eventName, refreshEditorNavHref, true);
+    });
+  }
   // Listen for AnkiwebEditor custom events if EditorEngine is active
   document.addEventListener('ankiweb:field-input', function(e) {
     if (!e.detail) return;

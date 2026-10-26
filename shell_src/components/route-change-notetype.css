@@ -1,12 +1,12 @@
 /* Scoped CSS for Change Notetype route */
+.route-change-notetype {
+  min-width: 0;
+}
+
 .route-change-notetype .arrow-container {
   margin: 0 0.5em;
   display: flex;
   align-items: center;
-}
-
-.route-change-notetype .save-btn-inner {
-  margin: 0.15rem 0.75rem;
 }
 
 .route-change-notetype .clickable-collapse {
@@ -15,8 +15,107 @@
 }
 
 .route-change-notetype .sticky-top-bar {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
   background: var(--canvas, var(--color-base-100));
   z-index: 100;
   padding: 0.5rem 0.25rem;
   border-bottom: 1px solid var(--color-base-300);
+}
+
+.route-change-notetype .notetype-selectors {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  flex-grow: 1;
+  min-width: 0;
+  margin-inline-end: 0.75rem;
+  gap: 0.5rem;
+}
+
+.route-change-notetype .notetype-select-group {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 250px;
+}
+
+.route-change-notetype .notetype-select-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.route-change-notetype .notetype-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.route-change-notetype .notetype-wrap-text,
+.route-change-notetype .alert,
+.route-change-notetype .notetype-mapping-grid > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.route-change-notetype .notetype-mapping-grid {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.route-change-notetype .notetype-mapping-name {
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 768px) {
+  .route-change-notetype .sticky-top-bar {
+    position: sticky;
+    top: 0;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .route-change-notetype .sticky-top-bar {
+    position: static;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .route-change-notetype .notetype-selectors {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    margin-inline-end: 0;
+    gap: 0.25rem;
+  }
+
+  .route-change-notetype .notetype-select-group {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+  }
+
+  .route-change-notetype .arrow-container {
+    margin: 0;
+    align-self: center;
+    transform: rotate(90deg);
+  }
+
+  .route-change-notetype .notetype-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .route-change-notetype .select,
+  .route-change-notetype .notetype-action {
+    min-height: 44px;
+  }
 }

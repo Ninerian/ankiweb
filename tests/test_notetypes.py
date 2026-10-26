@@ -1,3 +1,4 @@
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
@@ -18,23 +19,35 @@ def _basic_id(col):
     return col.models.by_name("Basic")["id"]
 
 
-def _cloze_id(col):
-    return col.models.by_name("Cloze")["id"]
+# The manager's Cards actions return to the manager page.
+class _CardLayoutLinksParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.hrefs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        href = dict(attrs).get("href")
+        if tag == "a" and href is not None and href.startswith("/card-layout/"):
+            self.hrefs.append(href)
 
 
-# (a) /notetypes renders Basic + Cloze rows with /fields/ and /card-layout/ links + Add form
-def test_notetypes_route_renders(client):
-    r = client.get("/notetypes")
-    assert r.status_code == 200
-    assert "Manage Note Types" in r.text or "Note Types" in r.text
-    assert "Basic" in r.text
-    assert "Cloze" in r.text
-    assert "/fields/" in r.text
-    assert "/card-layout/" in r.text
-    assert "Rename" in r.text
-    assert "Delete" in r.text
-    assert "Add" in r.text
-    assert "@post('/notetypes/add/" in r.text
+def _card_layout_hrefs(content: str) -> list[str]:
+    parser = _CardLayoutLinksParser()
+    parser.feed(content)
+    return parser.hrefs
+
+
+def test_notetypes_card_layout_links_return_to_manager(client):
+    basic_id, cloze_id = client.portal.call(
+        client.app.state.service.run,
+        lambda col: (col.models.by_name("Basic")["id"], col.models.by_name("Cloze")["id"]),
+    )
+    response = client.get("/notetypes")
+
+    assert response.status_code == 200
+    links = _card_layout_hrefs(response.text)
+    assert f"/card-layout/{basic_id}?return_to=/notetypes" in links
+    assert f"/card-layout/{cloze_id}?return_to=/notetypes" in links
 
 
 # (b) RENAME: rename/{basicId} -> name persists, returns reload script

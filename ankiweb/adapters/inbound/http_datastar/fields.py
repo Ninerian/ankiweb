@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-
 from datastar_py.fastapi import (
     DatastarResponse,
     ReadSignals,
@@ -12,13 +11,15 @@ from fastapi import APIRouter
 from ankiweb.adapters.inbound.http_datastar.common import (
     error_response,
     redirect_response,
+    safe_return_url,
 )
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
 
-def render_fields_html(col, ntid: int) -> str:
+
+def render_fields_html(col, ntid: int, *, return_url: str) -> str:
     m = col.models.get(ntid)
     sortf = m["sortf"]
     rows = {}
@@ -54,6 +55,7 @@ def render_fields_html(col, ntid: int) -> str:
         fields=fields_for_template,
         field_draft=field_draft,
         ntid=int(ntid),
+        return_url=return_url,
         add_label=tr.fields_add_field(),
         save_label=tr.actions_save(),
         cancel_label=tr.actions_cancel(),
@@ -69,7 +71,7 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
             return DatastarResponse()
         p = payload
 
-        # Normalize canonical fieldDraft structure if present, with fallback for direct fields payloads
+        return_url = safe_return_url(p.get("returnUrl")) or "/notetypes"
         if "fieldDraft" in p and isinstance(p["fieldDraft"], dict):
             draft = p["fieldDraft"]
             rows = draft.get("rows", {}) or {}
@@ -140,6 +142,6 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
             logger.exception("Failed to save note type fields")
             return error_response(exc)
 
-        return redirect_response("/deckbrowser")
+        return redirect_response(return_url)
 
     return router

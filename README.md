@@ -283,6 +283,9 @@ Stats** (Anki's main-window toolbar, minus Sync) plus the night-mode toggle.
 Navigation follows the Tao of Datastar:
 - Pure page navigation uses standard native links (`<a href="...">`), letting the browser handle keyboard activation, new tabs, URL history, and document lifecycles naturally. Cancel in Preferences, Fields, Card Layout, Custom Study, and Filtered Deck discards the local draft without submitting signals. Back to Decks, Custom Study (including the finished-deck page), and Create Filtered Deck likewise navigate directly by GET, without a preliminary navigation POST.
 - Browse's **Change Notetype** action is a native GET link to `/change-notetype?cids=<comma-separated positive card IDs>`, built from the current `$selectedCids` in selection order. The server resolves each requested card and derives its current note type; no `nids` query or old/new-notetype path is used. With no selected cards, the link is disabled and has no usable destination, and navigation does not depend on the shared hub selection mirror.
+- **Change Notetype** stacks its Current/New controls on mobile and keeps mapping controls within the viewport. **Cancel** is a native `/browse` link, including on an invalid-selection page. Target and field/template mapping changes are previews; only **Save** converts notes.
+- **Fields** uses labeled groups on mobile, keeps controls within the viewport, and clears the bottom navigation. Fields links carry a local `return_to` target: **Cancel** discards the local draft, while **Save** persists it before returning there. An embedded editor returns to the current top-level view, preserving its query and fragment rather than navigating back to the iframe URL. Without a usable return context, Fields falls back to `/notetypes`.
+- **Card Layout** keeps a validated same-app return target (including query and fragment) for native Cancel and Save; editor, Add, and embedded Browse capture the top-level URL, while manager links return to `/notetypes`. Mobile form clearance keeps the footer actions reachable above the fixed dock.
 - Deckbrowser and Overview options links resolve the normal or filtered options destination while rendering, using the displayed deck's ID and type. They do not re-resolve the globally current deck when clicked.
 - Deck Options **Close** is a native `/deckbrowser` link. An unmodified primary click with unsaved changes opens an accessible native `<dialog>` styled with DaisyUI. **Keep editing**, Escape, or a backdrop click closes the dialog without changing the draft; **Discard changes and close** navigates by GET without saving. Modified and middle clicks retain native link behavior, leaving the original tab and its draft intact. No close-confirmation request or `window.location` navigation is needed.
 - Package import keeps the native dialog, modal box, title, and header **Close**
@@ -357,9 +360,33 @@ native links described above.
 ### Browser selection and actions
 
 The card Browser keeps its selection in the numeric `selectedCids` signal array.
-Single clicks, Ctrl/Cmd toggles, Shift ranges, highlighting, selection counts, and
-action availability share that state. Shift-click without an anchor selects one
-card. Searches and successful mutations reset the selection and stale details.
+Clicking a row selects that card and opens its note in the editor. Row checkboxes
+add or remove cards without replacing the remaining selection; the header checkbox
+selects or clears all currently rendered result rows. Checkboxes, highlighting,
+selection counts, and action availability stay synchronized. Card Info is available
+only when exactly one card is selected; bulk actions use all selected cards.
+Ctrl/Cmd toggles and Shift ranges remain available. Shift-click without an anchor
+selects one card. Searches and successful mutations reset the selection and stale
+details.
+
+On mobile, row and select-all checkboxes stay visible with 44×44-pixel tap targets.
+Checkbox taps change the selection without opening the editor; tapping the card's
+text still opens its note in the mobile editor dialog.
+
+On desktop, the selected-card count has its own reserved row below the action menus, so the
+toolbar and results keep their positions when the selection changes or clears. On mobile (<768px),
+the selection count renders as a compact badge (e.g. `2/38`) directly in the table header beside
+“Alle auswählen”, avoiding vertical layout shifting in the action bar.
+Actions use three dropdowns at every screen width: **Learning** (suspend, restore,
+reset progress, and due date), **Manage** (deck and tags), and **Cards** (Card Info,
+note type, and deletion). Each trigger has a chevron that rotates when open.
+Menus remain openable without a selection; unavailable entries stay visible but
+disabled, including all actions while a mutation is pending. Only one menu opens
+at a time. Outside clicks close it; Escape closes it and returns focus to its trigger.
+
+The **Decks** and **Tags** sidebar sections expand and collapse independently via
+their keyboard-accessible headings. Both start expanded. Folding a section also
+works inside the mobile sidebar dialog without closing the dialog itself.
 
 Deck and tag sidebar entries have real `/browse?q=...` links. Anki's search builder
 escapes literal names, and the server URL-encodes the query, including quotes,

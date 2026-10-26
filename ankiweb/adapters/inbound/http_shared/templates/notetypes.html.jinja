@@ -20,8 +20,8 @@
               </svg>
             </summary>
             <ul class="dropdown-content menu bg-base-100 rounded-box border border-base-300 shadow-lg p-2 z-20 w-48">
-              <li><a class="py-2" href="/fields/{{ r.id }}" onclick="this.closest('details')?.removeAttribute('open')">{{ L_fields | tr_clean }}</a></li>
-              <li><a class="py-2" href="/card-layout/{{ r.id }}" onclick="this.closest('details')?.removeAttribute('open')">{{ L_cards | tr_clean }}</a></li>
+              <li><a class="py-2" href="/fields/{{ r.id }}?return_to=/notetypes" onclick="this.closest('details')?.removeAttribute('open')">{{ L_fields | tr_clean }}</a></li>
+              <li><a class="py-2" href="/card-layout/{{ r.id }}?return_to=/notetypes" onclick="this.closest('details')?.removeAttribute('open')">{{ L_cards | tr_clean }}</a></li>
               <div class="divider my-1"></div>
               <li>
                 <button
@@ -56,8 +56,8 @@
           <tr class="nt-row row-hover" data-id="{{ r.id }}" data-name="{{ r.name }}">
             <td class="nt-name font-medium">{{ r.name }}</td>
             <td class="nt-count text-base-content/60">{{ tr.browsing_note_count(count=r.count) | tr_clean }}</td>
-            <td><a class="link link-primary" href="/fields/{{ r.id }}">{{ L_fields | tr_clean }}</a></td>
-            <td><a class="link link-primary" href="/card-layout/{{ r.id }}">{{ L_cards | tr_clean }}</a></td>
+            <td><a class="link link-primary" href="/fields/{{ r.id }}?return_to=/notetypes">{{ L_fields | tr_clean }}</a></td>
+            <td><a class="link link-primary" href="/card-layout/{{ r.id }}?return_to=/notetypes">{{ L_cards | tr_clean }}</a></td>
             <td>
               <button class="btn btn-sm btn-outline" type="button" data-on:click__prevent="$error = ''; const cur = el.closest('.nt-row').getAttribute('data-name'); ankiwebPrompt('{{ tr.actions_new_name() | tr_clean }}', cur).then(function(name) { if (name) @post('/notetypes/rename/{{ r.id }}', {payload: {name: name}}); })">
                 {{ L_rename | tr_clean }}

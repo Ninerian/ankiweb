@@ -5,7 +5,7 @@ import os
 import tempfile
 
 from anki.errors import AnkiException
-from fastapi import APIRouter, Form, UploadFile
+from fastapi import APIRouter, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from starlette.background import BackgroundTask
 
@@ -28,6 +28,7 @@ from ankiweb.adapters.inbound.http_datastar.deckbrowser import (
 from ankiweb.adapters.inbound.http_datastar.dev_progress import (
     router as dev_progress_router,
 )
+from ankiweb.adapters.inbound.http_datastar.common import safe_return_url
 from ankiweb.adapters.inbound.http_datastar.fields import (
     make_fields_routes,
     render_fields_html,
@@ -84,6 +85,17 @@ _MIME_EXT = {
     "image/svg+xml": ".svg",
     "image/bmp": ".bmp",
 }
+
+
+def _return_url(request: Request) -> str:
+    explicit = safe_return_url(request.query_params.get("return_to"))
+    if explicit is not None:
+        return explicit
+
+    referer = safe_return_url(
+        request.headers.get("referer"), request_url=str(request.url)
+    )
+    return referer or "/notetypes"
 
 
 def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=None) -> APIRouter:
@@ -169,15 +181,21 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=N
         return HTMLResponse(render_page("notetypes", body))
 
     @router.get("/fields/{ntid}", response_class=HTMLResponse)
-    async def fields_page(ntid: int):
+    async def fields_page(ntid: int, request: Request):
         service = get_service()
-        body = await service.run(lambda col: render_fields_html(col, ntid))
+        return_url = _return_url(request)
+        body = await service.run(
+            lambda col: render_fields_html(col, ntid, return_url=return_url)
+        )
         return HTMLResponse(render_page("fields", body))
 
     @router.get("/card-layout/{ntid}", response_class=HTMLResponse)
-    async def card_layout_page(ntid: int):
+    async def card_layout_page(ntid: int, request: Request):
         service = get_service()
-        body = await service.run(lambda col: render_card_layout_html(col, ntid))
+        return_url = _return_url(request)
+        body = await service.run(
+            lambda col: render_card_layout_html(col, ntid, return_url=return_url)
+        )
         return HTMLResponse(render_page("cardlayout", body))
 
     @router.get("/tools", response_class=HTMLResponse)

@@ -4,11 +4,11 @@
     data-layout-key="{{ tmpl.key }}"
   >
     <div class="flex items-center flex-wrap gap-2 mb-3">
-      <label class="flex items-center gap-2 mb-0">
+      <label class="tmpl-name-label flex items-center gap-2 mb-0">
         <span class="text-sm font-semibold">{{ tr.actions_name() }}</span>
         <input
           type="text"
-          class="tmpl-name input input-sm inline-block w-auto"
+          class="tmpl-name input input-sm"
           data-bind="layoutDraft.rows.{{ tmpl.key }}.name"
           value="{{ tmpl.name }}"
           size="24"
@@ -54,7 +54,7 @@
 {% endmacro %}
 <div class="card-layout max-w-4xl mx-auto px-4 py-3">
   <h3 class="text-xl font-bold mb-3">Card Types</h3>
-  <form id="clf" onsubmit="return false" data-signals='{{ {"notetypeId": ntid, "error": "", "layoutDraft": layout_draft} | tojson }}'>
+  <form id="clf" onsubmit="return false" data-signals='{{ {"notetypeId": ntid, "error": "", "layoutDraft": layout_draft, "returnUrl": return_url} | tojson }}'>
     <div id="tmplblocks">
       {% for t in templates %}{{ tmpl_block(t) }}{% endfor %}
     </div>
@@ -71,7 +71,7 @@
       <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="$error = ''; @post('/card-layout/savelayout')">
         {{ tr.actions_save() }}
       </button>
-      <a class="btn btn-neutral" href="/deckbrowser">
+      <a class="btn btn-neutral" id="layout-cancel-btn" href="{{ return_url }}">
         {{ tr.actions_cancel() }}
       </a>
       {% if preview_nid is not none %}

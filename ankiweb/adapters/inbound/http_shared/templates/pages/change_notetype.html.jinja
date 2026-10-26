@@ -1,6 +1,11 @@
 {% if fatal_error %}
 <div id="change-notetype-content" class="route-change-notetype p-3">
-  {{ fatal_error }}
+  <div class="alert alert-error py-2 px-3 mb-3 notetype-wrap-text" role="alert">
+    {{ fatal_error }}
+  </div>
+  <a id="change-notetype-cancel-btn" class="btn btn-ghost btn-sm notetype-action" href="/browse">
+    {{ tr.actions_cancel() }}
+  </a>
 </div>
 {% else %}
 {% macro alert_box(unused, is_field) %}
@@ -49,19 +54,25 @@
 
 <div id="change-notetype-content" class="route-change-notetype" data-signals="{{ initial_signals_json }}">
   <!-- Sticky Top Bar -->
-  <div class="sticky top-0 sticky-top-bar flex justify-between items-center mb-3">
-    <div class="flex flex-row items-center flex-grow me-3">
-      <div style="min-width: 180px; max-width: 250px;">
-        <select class="select select-sm w-full" disabled>
+  <div class="sticky-top-bar mb-3">
+    <div class="notetype-selectors">
+      <div class="notetype-select-group">
+        <label for="source-notetype-select" class="notetype-select-label">
+          {{ tr.change_notetype_current() }}
+        </label>
+        <select id="source-notetype-select" class="select select-sm w-full" disabled>
           <option selected>{{ old_notetype_name }}</option>
         </select>
       </div>
-      <div class="arrow-container">
+      <div class="arrow-container" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-right" viewBox="0 0 16 16">
           <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8"/>
         </svg>
       </div>
-      <div style="min-width: 180px; max-width: 250px;">
+      <div class="notetype-select-group">
+        <label for="target-notetype-select" class="notetype-select-label">
+          {{ tr.change_notetype_new() }}
+        </label>
         <select
           id="target-notetype-select"
           class="select select-sm w-full"
@@ -76,53 +87,59 @@
         </select>
       </div>
     </div>
-    <div>
-      <div class="join">
-        <button
-          id="change-notetype-save-btn"
-          type="button"
-          class="btn btn-primary btn-sm save-btn-inner join-item"
-          title="Ctrl+Enter"
-          data-on:click="@post('/change-notetype/save')"
-        >
-          {{ tr.actions_save() }}
-        </button>
-      </div>
+    <div class="notetype-actions">
+      <a
+        id="change-notetype-cancel-btn"
+        class="btn btn-ghost btn-sm notetype-action"
+        href="/browse"
+      >
+        {{ tr.actions_cancel() }}
+      </a>
+      <button
+        id="change-notetype-save-btn"
+        type="button"
+        class="btn btn-primary btn-sm notetype-action"
+        title="Ctrl+Enter"
+        data-on:click="@post('/change-notetype/save')"
+      >
+        {{ tr.actions_save() }}
+      </button>
     </div>
   </div>
 
   <div id="change-notetype-alert-area">
     <!-- Feedback / Flash messages -->
     {% if error_msg %}
-      <div class="alert alert-error py-2 px-3 mb-3">{{ error_msg }}</div>
+      <div class="alert alert-error py-2 px-3 mb-3 notetype-wrap-text">{{ error_msg }}</div>
     {% endif %}
     {% if info_msg %}
-      <div class="alert alert-info py-2 px-3 mb-3">{{ info_msg }}</div>
+      <div class="alert alert-info py-2 px-3 mb-3 notetype-wrap-text">{{ info_msg }}</div>
     {% endif %}
   </div>
 
+
   <!-- Main Containers -->
-  <div class="w-full px-1">
+  <div class="w-full min-w-0 px-1">
     <!-- Fields Container -->
     <div class="card bg-base-100 border border-base-300 rounded-box mb-3 shadow-xs">
       <div class="bg-base-200 px-4 py-2 border-b border-base-300 rounded-t-box">
         <h5 class="card-title text-sm font-semibold mb-0">{{ tr.change_notetype_fields() }}</h5>
       </div>
-      <div class="card-body p-3">
+      <div class="card-body p-3 min-w-0">
         {% if unused_fields %}
           {{ alert_box(unused_fields, true) }}
         {% endif %}
 
-        <div class="grid grid-cols-2 gap-2 mb-2 font-bold text-base-content/60 text-sm border-b border-base-300 pb-1">
-          <div>{{ tr.change_notetype_current() }}</div>
-          <div>{{ tr.change_notetype_new() }}</div>
+        <div class="notetype-mapping-grid grid grid-cols-2 gap-2 mb-2 font-bold text-base-content/60 text-sm border-b border-base-300 pb-1">
+          <div class="min-w-0 break-words">{{ tr.change_notetype_current() }}</div>
+          <div class="min-w-0 break-words">{{ tr.change_notetype_new() }}</div>
         </div>
 
         {% for row in field_rows %}
-          <div class="grid grid-cols-2 gap-2 items-center mb-2">
-            <div>
+          <div class="notetype-mapping-grid notetype-mapping-row grid grid-cols-2 gap-2 items-center mb-2">
+            <div class="min-w-0">
               <select
-                class="select select-sm w-full"
+                class="select select-sm w-full min-w-0"
                 data-bind="field_map_{{ row.new_index }}"
                 data-on:change="@post('/change-notetype/remap-field?new_index={{ row.new_index }}')"
               >
@@ -133,7 +150,7 @@
                 {% endfor %}
               </select>
             </div>
-            <div>
+            <div class="min-w-0 break-words notetype-mapping-name">
               <span class="text-sm">{{ row.new_name }}</span>
             </div>
           </div>
@@ -146,22 +163,22 @@
       <div class="bg-base-200 px-4 py-2 border-b border-base-300 rounded-t-box">
         <h5 class="card-title text-sm font-semibold mb-0">{{ tr.change_notetype_templates() }}</h5>
       </div>
-      <div class="card-body p-3">
+      <div class="card-body p-3 min-w-0">
         {% if has_templates %}
           {% if unused_templates %}
             {{ alert_box(unused_templates, false) }}
           {% endif %}
 
-          <div class="grid grid-cols-2 gap-2 mb-2 font-bold text-base-content/60 text-sm border-b border-base-300 pb-1">
-            <div>{{ tr.change_notetype_current() }}</div>
-            <div>{{ tr.change_notetype_new() }}</div>
+          <div class="notetype-mapping-grid grid grid-cols-2 gap-2 mb-2 font-bold text-base-content/60 text-sm border-b border-base-300 pb-1">
+            <div class="min-w-0 break-words">{{ tr.change_notetype_current() }}</div>
+            <div class="min-w-0 break-words">{{ tr.change_notetype_new() }}</div>
           </div>
 
           {% for row in template_rows %}
-            <div class="grid grid-cols-2 gap-2 items-center mb-2">
-              <div>
+            <div class="notetype-mapping-grid notetype-mapping-row grid grid-cols-2 gap-2 items-center mb-2">
+              <div class="min-w-0">
                 <select
-                  class="select select-sm w-full"
+                  class="select select-sm w-full min-w-0"
                   data-bind="template_map_{{ row.new_index }}"
                   data-on:change="@post('/change-notetype/remap-template?new_index={{ row.new_index }}')"
                 >
@@ -172,7 +189,7 @@
                   {% endfor %}
                 </select>
               </div>
-              <div>
+              <div class="min-w-0 break-words notetype-mapping-name">
                 <span class="text-sm">{{ row.new_name }}</span>
               </div>
             </div>

@@ -1,20 +1,24 @@
 {% macro sidebar(decks, tags) %}
-  <div class="side-section">{{ tr.browsing_sidebar_decks() }}</div>
-  {% for item in decks %}
-    <a
-      class="side-item"
-      title="{{ item.name }}"
-      href="/browse?{{ {'q': item.query} | urlencode }}"
-    >{{ item.name }}</a>
-  {% endfor %}
-  <div class="side-section">{{ tr.browsing_sidebar_tags() }}</div>
-  {% for item in tags %}
-    <a
-      class="side-item"
-      title="{{ item.name }}"
-      href="/browse?{{ {'q': item.query} | urlencode }}"
-    >{{ item.name }}</a>
-  {% endfor %}
+  <details id="sidebar-decks-section" open>
+    <summary class="side-section">{{ tr.browsing_sidebar_decks() }}</summary>
+    {% for item in decks %}
+      <a
+        class="side-item"
+        title="{{ item.name }}"
+        href="/browse?{{ {'q': item.query} | urlencode }}"
+      >{{ item.name }}</a>
+    {% endfor %}
+  </details>
+  <details id="sidebar-tags-section" open>
+    <summary class="side-section">{{ tr.browsing_sidebar_tags() }}</summary>
+    {% for item in tags %}
+      <a
+        class="side-item"
+        title="{{ item.name }}"
+        href="/browse?{{ {'q': item.query} | urlencode }}"
+      >{{ item.name }}</a>
+    {% endfor %}
+  </details>
 {% endmacro %}
 <style>
   #browser {
@@ -70,9 +74,39 @@
   }
 
   #sidebar .side-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 4px;
     font-weight: bold;
     margin-top: 8px;
     color: var(--color-base-content);
+    list-style: none;
+    cursor: pointer;
+  }
+  #sidebar .side-section:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-selector, 0.25rem);
+  }
+
+  #sidebar .side-section::-webkit-details-marker {
+    display: none;
+  }
+
+  #sidebar .side-section::after {
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+  }
+
+  #sidebar details[open] > .side-section::after {
+    transform: rotate(45deg);
   }
 
   #sidebar .side-item {
@@ -114,12 +148,28 @@
   .browser-row {
     cursor: pointer;
   }
+  .browser-checkbox-target {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+  }
   @media (max-width: 767.98px) {
     .browser-row {
       min-height: 56px;
     }
     .browser-row td.cell-mobile {
       min-height: 56px;
+    }
+    #results .cell-select {
+      width: 44px;
+      min-width: 44px;
+      max-width: 44px;
+      padding: 0;
+    }
+    .browser-checkbox-target {
+      width: 44px;
+      height: 44px;
     }
   }
 
@@ -141,6 +191,14 @@
   }
 
   /* Desktop column widths */
+  .cell-select {
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    text-align: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
   .cell-sortfield {
     width: 35%;
     max-width: 0;
@@ -162,6 +220,52 @@
     .cell-deck { width: 20%; }
     .cell-due { width: 15%; }
     .cell-tags { width: 20%; max-width: 0; }
+  }
+  /* Scoped action dropdown styling: right-aligned dropdown panels with viewport safety */
+  #browser-selection-status-row {
+    display: flex;
+    flex: 0 0 100%;
+    align-items: center;
+    min-width: 0;
+    min-height: 1.5rem;
+  }
+  @media (max-width: 767.98px) {
+    #browser-selection-status-row {
+      display: none;
+    }
+  }
+  #browser-selected-status {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 1.5rem;
+    height: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  #browser-actions {
+    position: relative;
+  }
+  #browser-actions details.dropdown {
+    position: static;
+  }
+  #browser-actions .browser-action-panel {
+    right: 0;
+    left: auto;
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100vh - 5rem);
+    overflow-y: auto;
+  }
+  #browser-actions details.dropdown summary svg {
+    transition: transform 0.2s ease;
+  }
+  #browser-actions details.dropdown[open] summary svg {
+    transform: rotate(180deg);
+  }
+  @media (min-width: 640px) {
+    #browser-actions details.dropdown {
+      position: relative;
+    }
   }
   /* Desktop detail pane (mobile uses the bottom modal) */
   #detail-desktop {
@@ -252,8 +356,195 @@
         value="{{ query }}"
       >
     </form>
-    <div class="inline-flex items-center gap-2">
-      <span id="browser-status" class="text-base-content/60">{{ count_label }}</span>
+    <span id="browser-status" class="text-base-content/60">{{ count_label }}</span>
+    <div id="browser-actions" class="flex flex-wrap items-center gap-1 ms-auto">
+      <!-- Category 1: Learning -->
+      <details
+        id="browser-actions-learning"
+        class="dropdown dropdown-end"
+        name="browser-actions"
+      >
+        <summary
+          id="btn-actions-learning"
+          class="btn btn-sm btn-outline inline-flex items-center gap-1"
+          role="button"
+        >
+          <span>{{ tr.scheduling_learning() }}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </summary>
+        <ul class="dropdown-content menu bg-base-100 rounded-box border border-base-300 shadow-sm z-50 p-1 w-52 text-sm browser-action-panel">
+          <li>
+            <button
+              id="btn-suspend"
+              type="button"
+              data-indicator="_busy"
+              data-attr:disabled="!$selectedCids.length || $_busy"
+              disabled
+              data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/suspend')"
+            >
+              {{ tr.studying_suspend() }}
+            </button>
+          </li>
+          <li>
+            <button
+              id="btn-unsuspend"
+              type="button"
+              data-indicator="_busy"
+              data-attr:disabled="!$selectedCids.length || $_busy"
+              disabled
+              data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/unsuspend')"
+            >
+              {{ tr.actions_unbury_unsuspend() }}
+            </button>
+          </li>
+          <li>
+            <button
+              id="btn-forget"
+              type="button"
+              data-indicator="_busy"
+              data-attr:disabled="!$selectedCids.length || $_busy"
+              disabled
+              data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/forget')"
+            >
+              {{ tr.actions_forget_card() }}
+            </button>
+          </li>
+          <li>
+            <button
+              id="btn-setdue"
+              type="button"
+              data-attr:disabled="!$selectedCids.length || $_busy"
+              disabled
+              data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $value = ''; $_browserAction = 'setdue'"
+            >
+              {{ tr.actions_set_due_date() }}
+            </button>
+          </li>
+        </ul>
+      </details>
+
+      <!-- Category 2: Organize -->
+      <details
+        id="browser-actions-organize"
+        class="dropdown dropdown-end"
+        name="browser-actions"
+      >
+        <summary
+          id="btn-actions-organize"
+          class="btn btn-sm btn-outline inline-flex items-center gap-1"
+          role="button"
+        >
+          <span>{{ (tr.actions_manage() | tr_clean).replace('…', '').replace('...', '').strip() }}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </summary>
+        <ul class="dropdown-content menu bg-base-100 rounded-box border border-base-300 shadow-sm z-50 p-1 w-52 text-sm browser-action-panel">
+          <li>
+            <button
+              id="btn-changedeck"
+              type="button"
+              data-attr:disabled="!$selectedCids.length || $_busy"
+              disabled
+              data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $deck = ''; $_browserAction = 'changedeck'"
+            >
+              {{ tr.browsing_change_deck() }}
+            </button>
+          </li>
+          <li>
+            <button
+              id="btn-addtag"
+              type="button"
+              data-attr:disabled="!$selectedCids.length || $_busy"
+              disabled
+              data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $tag = ''; $_browserAction = 'addtag'"
+            >
+              {{ tr.editing_tags_add() }}
+            </button>
+          </li>
+          <li>
+            <button
+              id="btn-removetag"
+              type="button"
+              data-attr:disabled="!$selectedCids.length || $_busy"
+              disabled
+              data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $tag = ''; $_browserAction = 'removetag'"
+            >
+              {{ tr.actions_remove_tag() }}
+            </button>
+          </li>
+        </ul>
+      </details>
+
+      <!-- Category 3: Cards -->
+      <details
+        id="browser-actions-cards"
+        class="dropdown dropdown-end"
+        name="browser-actions"
+      >
+        <summary
+          id="btn-actions-cards"
+          class="btn btn-sm btn-outline inline-flex items-center gap-1"
+          role="button"
+        >
+          <span>{{ tr.browsing_cards() }}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </summary>
+        <ul class="dropdown-content menu bg-base-100 rounded-box border border-base-300 shadow-sm z-50 p-1 w-52 text-sm browser-action-panel">
+          <li>
+            <a
+              id="btn-cardinfo"
+              class="btn-disabled menu-disabled pointer-events-none opacity-50"
+              role="button"
+              tabindex="-1"
+              aria-disabled="true"
+              data-attr:href="($selectedCids.length === 1 && !$_busy) ? ('/card-info/' + $selectedCids[0]) : null"
+              data-attr:aria-disabled="($selectedCids.length === 1 && !$_busy) ? 'false' : 'true'"
+              data-attr:tabindex="($selectedCids.length === 1 && !$_busy) ? '0' : '-1'"
+              data-class="{'btn-disabled menu-disabled pointer-events-none opacity-50': $selectedCids.length !== 1 || $_busy}"
+              data-on:click="if ($selectedCids.length !== 1 || $_busy) { evt.preventDefault(); } else { el.closest('details')?.removeAttribute('open'); }"
+            >
+              {{ tr.actions_card_info() }}
+            </a>
+          </li>
+          <li>
+            <a
+              id="btn-changenotetype"
+              class="btn-disabled menu-disabled pointer-events-none opacity-50"
+              role="button"
+              tabindex="-1"
+              aria-disabled="true"
+              data-attr:href="($selectedCids.length && !$_busy) ? ('/change-notetype?cids=' + $selectedCids.join(',')) : null"
+              data-attr:aria-disabled="($selectedCids.length && !$_busy) ? 'false' : 'true'"
+              data-attr:tabindex="($selectedCids.length && !$_busy) ? '0' : '-1'"
+              data-class="{'btn-disabled menu-disabled pointer-events-none opacity-50': !$selectedCids.length || $_busy}"
+              data-on:click="if (!$selectedCids.length || $_busy) { evt.preventDefault(); } else { el.closest('details')?.removeAttribute('open'); }"
+            >
+              {{ tr.browsing_change_notetype() }}
+            </a>
+          </li>
+          <li><hr class="border-base-300 my-1"></li>
+          <li>
+            <button
+              id="btn-delete"
+              class="menu-disabled disabled:opacity-50 disabled:text-base-content/40 disabled:pointer-events-none"
+              type="button"
+              data-attr:disabled="!$selectedCids.length || $_busy"
+              disabled
+              data-class="{'text-error hover:bg-error/10': $selectedCids.length && !$_busy, 'menu-disabled': !$selectedCids.length || $_busy}"
+              data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $_browserAction = 'delete'"
+            >
+              {{ tr.actions_delete() }}
+            </button>
+          </li>
+        </ul>
+      </details>
+    </div>
+    <div id="browser-selection-status-row">
       <span
         id="browser-selected-status"
         class="badge badge-neutral"
@@ -262,258 +553,7 @@
         style="display: none;"
       ></span>
     </div>
-    <div id="browser-actions" class="flex flex-wrap items-center gap-1 ms-auto">
-      <div class="join" role="group">
-        <button
-          id="btn-suspend"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
-          type="button"
-          data-indicator="_busy"
-          data-attr:disabled="!$selectedCids.length || $_busy"
-          disabled
-          data-on:click__prevent="@post('/browse/suspend')"
-        >
-          {{ tr.studying_suspend() }}
-        </button>
-        <button
-          id="btn-unsuspend"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
-          type="button"
-          data-indicator="_busy"
-          data-attr:disabled="!$selectedCids.length || $_busy"
-          disabled
-          data-on:click__prevent="@post('/browse/unsuspend')"
-        >
-          {{ tr.actions_unbury_unsuspend() }}
-        </button>
-        <button
-          id="btn-forget"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
-          type="button"
-          data-indicator="_busy"
-          data-attr:disabled="!$selectedCids.length || $_busy"
-          disabled
-          data-on:click__prevent="@post('/browse/forget')"
-        >
-          {{ tr.actions_forget_card() }}
-        </button>
-        <button
-          id="btn-setdue"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
-          type="button"
-          data-attr:disabled="!$selectedCids.length || $_busy"
-          disabled
-          data-on:click__prevent="$error = ''; $value = ''; $_browserAction = 'setdue'"
-        >
-          {{ tr.actions_set_due_date() }}
-        </button>
-        <button
-          id="btn-changedeck"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
-          type="button"
-          data-attr:disabled="!$selectedCids.length || $_busy"
-          disabled
-          data-on:click__prevent="$error = ''; $deck = ''; $_browserAction = 'changedeck'"
-        >
-          {{ tr.browsing_change_deck() }}
-        </button>
-        <button
-          id="btn-addtag"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
-          type="button"
-          data-attr:disabled="!$selectedCids.length || $_busy"
-          disabled
-          data-on:click__prevent="$error = ''; $tag = ''; $_browserAction = 'addtag'"
-        >
-          {{ tr.editing_tags_add() }}
-        </button>
-        <button
-          id="btn-removetag"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex"
-          type="button"
-          data-attr:disabled="!$selectedCids.length || $_busy"
-          disabled
-          data-on:click__prevent="$error = ''; $tag = ''; $_browserAction = 'removetag'"
-        >
-          {{ tr.actions_remove_tag() }}
-        </button>
-        <button
-          id="btn-delete"
-          class="btn btn-sm btn-outline btn-error join-item hidden md:inline-flex"
-          type="button"
-          data-attr:disabled="!$selectedCids.length || $_busy"
-          disabled
-          data-on:click__prevent="$error = ''; $_browserAction = 'delete'"
-        >
-          {{ tr.actions_delete() }}
-        </button>
-        <a
-          id="btn-cardinfo"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex btn-disabled pointer-events-none"
-          role="button"
-          href="#"
-          aria-disabled="true"
-          data-attr:href="$selectedCids.length ? ('/card-info/' + $selectedCids[0]) : '#'"
-          data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
-          data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
-        >
-          {{ tr.actions_card_info() }}
-        </a>
-        <a
-          id="btn-changenotetype"
-          class="btn btn-sm btn-outline join-item hidden md:inline-flex btn-disabled pointer-events-none"
-          role="button"
-          tabindex="-1"
-          href="#"
-          data-attr:tabindex="$selectedCids.length ? '0' : '-1'"
-          aria-disabled="true"
-          data-attr:href="$selectedCids.length ? ('/change-notetype?cids=' + $selectedCids.join(',')) : '#'"
-          data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
-          data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
-        >
-          {{ tr.browsing_change_notetype() }}
-        </a>
-
-        <!-- Mobile dropdown collapsible -->
-        <details
-          id="mobile-actions-dropdown"
-          class="dropdown dropdown-end md:hidden"
-          data-effect="if (!$selectedCids.length && el.hasAttribute('open')) el.removeAttribute('open')"
-        >
-          <summary
-            id="btn-actions-dropdown"
-            class="btn btn-sm btn-outline btn-disabled"
-            role="button"
-            aria-disabled="true"
-            data-class="{'btn-disabled': !$selectedCids.length || $_busy}"
-            data-attr:aria-disabled="(!$selectedCids.length || $_busy) ? 'true' : 'false'"
-          >
-            {{ tr.studying_more() }}
-          </summary>
-          <ul class="dropdown-content menu bg-base-100 rounded-box shadow-sm z-50 p-2 w-48 text-sm">
-            <li>
-              <button
-                type="button"
-                data-indicator="_busy"
-                data-attr:disabled="!$selectedCids.length || $_busy"
-                disabled
-                data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/suspend')"
-              >
-                {{ tr.studying_suspend() }}
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                data-indicator="_busy"
-                data-attr:disabled="!$selectedCids.length || $_busy"
-                disabled
-                data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/unsuspend')"
-              >
-                {{ tr.actions_unbury_unsuspend() }}
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                data-indicator="_busy"
-                data-attr:disabled="!$selectedCids.length || $_busy"
-                disabled
-                data-on:click="el.closest('details')?.removeAttribute('open'); @post('/browse/forget')"
-              >
-                {{ tr.actions_forget_card() }}
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                data-attr:disabled="!$selectedCids.length || $_busy"
-                disabled
-                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $value = ''; $_browserAction = 'setdue'"
-              >
-                {{ tr.actions_set_due_date() }}
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                data-attr:disabled="!$selectedCids.length || $_busy"
-                disabled
-                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $deck = ''; $_browserAction = 'changedeck'"
-              >
-                {{ tr.browsing_change_deck() }}
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                data-attr:disabled="!$selectedCids.length || $_busy"
-                disabled
-                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $tag = ''; $_browserAction = 'addtag'"
-              >
-                {{ tr.editing_tags_add() }}
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                data-attr:disabled="!$selectedCids.length || $_busy"
-                disabled
-                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $tag = ''; $_browserAction = 'removetag'"
-              >
-                {{ tr.actions_remove_tag() }}
-              </button>
-            </li>
-            <li><hr class="border-base-300 my-1"></li>
-            <li>
-              <button
-                class="text-error"
-                type="button"
-                data-attr:disabled="!$selectedCids.length || $_busy"
-                disabled
-                data-on:click="el.closest('details')?.removeAttribute('open'); $error = ''; $_browserAction = 'delete'"
-              >
-                {{ tr.actions_delete() }}
-              </button>
-            </li>
-            <li>
-              <a
-                id="btn-cardinfo-mobile"
-                class="btn-disabled pointer-events-none"
-                role="button"
-                href="#"
-                aria-disabled="true"
-                data-attr:href="$selectedCids.length ? ('/card-info/' + $selectedCids[0]) : '#'"
-                data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
-                data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
-                data-on:click="el.closest('details')?.removeAttribute('open')"
-              >
-                {{ tr.actions_card_info() }}
-              </a>
-            </li>
-            <li>
-              <a
-                id="btn-changenotetype-mobile"
-                class="btn-disabled pointer-events-none"
-                role="button"
-                tabindex="-1"
-                href="#"
-                data-attr:tabindex="$selectedCids.length ? '0' : '-1'"
-                aria-disabled="true"
-                data-attr:href="$selectedCids.length ? ('/change-notetype?cids=' + $selectedCids.join(',')) : '#'"
-                data-attr:aria-disabled="!$selectedCids.length ? 'true' : 'false'"
-                data-class="{'btn-disabled pointer-events-none': !$selectedCids.length}"
-                data-on:click="el.closest('details')?.removeAttribute('open')"
-              >
-                {{ tr.browsing_change_notetype() }}
-              </a>
-            </li>
-          </ul>
-        </details>
-      </div>
-    </div>
   </div>
-
   <div id="browser-main">
     <!-- Sidebar in modal dialog on mobile, static pane on md+ -->
     <dialog
@@ -539,11 +579,34 @@
     <div id="results-wrap">
       <table id="results" class="table table-sm mb-0">
         <thead class="sticky top-0 bg-base-100 z-10">
-          <tr class="hidden md:table-row">
-            <th class="cell-sortfield">{{ tr.browsing_sort_field() }}</th>
-            <th class="cell-card">{{ tr.browsing_card() }}</th>
-            <th class="cell-deck">{{ tr.decks_deck() }}</th>
-            <th class="cell-due">{{ tr.statistics_due_date() }}</th>
+          <tr>
+            <th class="cell-select">
+              <label class="browser-checkbox-target">
+                <input
+                  id="select-all-cards"
+                  type="checkbox"
+                  class="checkbox checkbox-xs"
+                  aria-label="{{ tr.qt_accel_select_all() | replace('&', '') }}"
+                  data-effect="if (el) { const vis = $_visibleCids || []; const sel = $selectedCids || []; el.checked = Boolean(vis.length && sel.length >= vis.length); el.indeterminate = sel.length > 0 && sel.length < vis.length; }"
+                  data-on:change="(() => { const vis = $_visibleCids || []; if (el.checked) { $selectedCids = vis.slice(); $_selectionAnchor = $selectedCids[0] || null; } else { $selectedCids = []; $_selectionAnchor = null; } @post('/browse/select'); })()"
+                >
+              </label>
+            </th>
+            <th class="md:hidden">
+              {{ tr.qt_accel_select_all() | replace('&', '') }}
+              <span
+                id="browser-selected-status-compact"
+                class="badge badge-neutral ml-2 whitespace-nowrap"
+                data-show="$selectedCids.length > 0"
+                data-text="$selectedCids.length + '/' + ($_matchedCount || $selectedCids.length)"
+                data-attr:aria-label="{{ (sel_pattern | tojson | forceescape) }}.replace('123456', $selectedCids.length).replace('987654', $_matchedCount || $selectedCids.length)"
+                style="display: none;"
+              ></span>
+            </th>
+            <th class="hidden md:table-cell cell-sortfield">{{ tr.browsing_sort_field() }}</th>
+            <th class="hidden md:table-cell cell-card">{{ tr.browsing_card() }}</th>
+            <th class="hidden md:table-cell cell-deck">{{ tr.decks_deck() }}</th>
+            <th class="hidden md:table-cell cell-due">{{ tr.statistics_due_date() }}</th>
             <th class="cell-tags hidden xl:table-cell">{{ tr.editing_tags() }}</th>
           </tr>
         </thead>
@@ -711,6 +774,28 @@
               placeDetail();
           });
           placeDetail();
+      }
+
+      // Close browser action dropdowns on outside click or Escape
+      var actionGroup = document.getElementById('browser-actions');
+      if (actionGroup) {
+          document.addEventListener('click', function(evt) {
+              var openDetails = actionGroup.querySelectorAll('details[open]');
+              openDetails.forEach(function(d) {
+                  if (!d.contains(evt.target)) {
+                      d.removeAttribute('open');
+                  }
+              });
+          }, true);
+          document.addEventListener('keydown', function(evt) {
+              if (evt.key === 'Escape') {
+                  var openDetails = actionGroup.querySelectorAll('details[open]');
+                  openDetails.forEach(function(d) {
+                      d.removeAttribute('open');
+                      d.querySelector('summary')?.focus();
+                  });
+              }
+          });
       }
   })();
 </script>

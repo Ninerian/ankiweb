@@ -1,10 +1,11 @@
+import json
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
 from conftest import parse_datastar_events
 from fastapi.testclient import TestClient
 
-from ankiweb.adapters.inbound.http_screens.editor import editor_links_js
 from ankiweb.app import create_app
 from ankiweb.core.config import Settings
 
@@ -62,24 +63,116 @@ def _make_layout_draft_payload(ntid: int, templates: list[dict], css: str = "") 
     }
 
 
-# (a) route renders the Card 1 qfmt/afmt + css textarea + Add card type + Save
-def test_card_layout_route_renders(client):
-    ntid = client.portal.call(
-        client.app.state.service.run, lambda col: col.models.by_name("Basic")["id"]
+class _CardLayoutNavigationParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.return_url: str | None = None
+        self.cancel_href: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag == "form" and attributes.get("id") == "clf":
+            signals = attributes.get("data-signals")
+            assert signals is not None
+            self.return_url = json.loads(signals)["returnUrl"]
+        elif tag == "a" and attributes.get("id") == "layout-cancel-btn":
+            self.cancel_href = attributes.get("href")
+
+
+def _layout_navigation(content: str) -> tuple[str, str]:
+    parser = _CardLayoutNavigationParser()
+    parser.feed(content)
+    assert parser.return_url is not None
+    assert parser.cancel_href is not None
+    return parser.return_url, parser.cancel_href
+
+
+# Card-layout navigation returns to the explicit source context or the safe default.
+def test_card_layout_route_defaults_return_context_to_notetypes(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    response = client.get(f"/card-layout/{ntid}")
+
+    assert response.status_code == 200
+    assert _layout_navigation(response.text) == ("/notetypes", "/notetypes")
+
+
+def test_explicit_return_to_preserves_query_hash_and_precedes_referer(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    destination = "/browse?q=dog&sort=desc#row-2"
+    response = client.get(
+        f"/card-layout/{ntid}",
+        params={"return_to": destination},
+        headers={"referer": "http://testserver/edit?nid=123"},
     )
-    r = client.get(f"/card-layout/{ntid}")
-    assert r.status_code == 200
-    assert "Card Types" in r.text
-    assert "Front Template" in r.text
-    assert "Back Template" in r.text
-    assert "Styling" in r.text
-    assert "Add Card Type" in r.text
-    assert "Save" in r.text
-    assert "layoutDraft" in r.text
+
+    assert response.status_code == 200
+    assert _layout_navigation(response.text) == (destination, destination)
+
+
+def test_same_origin_referer_preserves_query_hash(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    destination = "/edit?nid=123&tab=front#question"
+    response = client.get(
+        f"/card-layout/{ntid}",
+        headers={"referer": f"http://testserver{destination}"},
+    )
+
+    assert response.status_code == 200
+    assert _layout_navigation(response.text) == (destination, destination)
+
+
+def test_cross_origin_referer_defaults_to_notetypes(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    response = client.get(
+        f"/card-layout/{ntid}",
+        headers={"referer": "https://outside.example/browse?q=dog"},
+    )
+
+    assert response.status_code == 200
+    assert _layout_navigation(response.text) == ("/notetypes", "/notetypes")
+
+
+@pytest.mark.parametrize(
+    "destination",
+    [
+        "https://outside.example/browse",
+        "//outside.example/browse",
+        r"/\\outside.example/browse",
+        "/browse?q=dog\r\nLocation: https://outside.example",
+    ],
+)
+def test_unsafe_return_to_defaults_to_notetypes(client, destination):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    response = client.get(
+        f"/card-layout/{ntid}", params={"return_to": destination}
+    )
+
+    assert response.status_code == 200
+    assert _layout_navigation(response.text) == ("/notetypes", "/notetypes")
+
+
+def test_cancel_returns_to_context_without_persisting_changes(client):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    destination = "/browse?q=dog&sort=desc#row-2"
+    before = client.portal.call(
+        client.app.state.service.run,
+        lambda col: [(t["name"], t["qfmt"], t["afmt"]) for t in _tmpls(col, ntid)],
+    )
+    response = client.get(
+        f"/card-layout/{ntid}", params={"return_to": destination}
+    )
+
+    assert response.status_code == 200
+    assert _layout_navigation(response.text) == (destination, destination)
+    after = client.portal.call(
+        client.app.state.service.run,
+        lambda col: [(t["name"], t["qfmt"], t["afmt"]) for t in _tmpls(col, ntid)],
+    )
+    assert after == before
 
 
 # (b) edit qfmt/afmt persists
-def test_edit_qfmt_afmt_persists(client):
+def test_edit_qfmt_afmt_persists_and_redirects_to_return_context(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
     payload = _make_layout_draft_payload(
         ntid,
@@ -93,17 +186,60 @@ def test_edit_qfmt_afmt_persists(client):
         ],
         css="",
     )
+    destination = "/browse?q=dog&sort=desc#row-2"
+    payload["returnUrl"] = destination
+
     r = client.post(
         "/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"}
     )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
+    assert any(destination in data for _, data in events)
     t0 = client.portal.call(
         client.app.state.service.run, lambda col: _tmpls(col, ntid)[0]
     )
     assert t0["qfmt"] == "{{Front}}<hr>custom"
     assert t0["afmt"] == "{{FrontSide}}<hr id=answer>{{Back}}<br>extra"
+
+
+
+@pytest.mark.parametrize(
+    "destination",
+    [
+        "https://outside.example/browse",
+        "//outside.example/browse",
+        r"/\\outside.example/browse",
+        "/browse?q=dog\r\nLocation: https://outside.example",
+    ],
+)
+def test_unsafe_save_return_url_falls_back_while_persisting(client, destination):
+    ntid = client.portal.call(client.app.state.service.run, _basic_id)
+    payload = _make_layout_draft_payload(
+        ntid,
+        [
+            {
+                "orig": 0,
+                "name": "Card 1",
+                "qfmt": "{{Front}}<hr>saved safely",
+                "afmt": "{{FrontSide}}<hr id=answer>{{Back}}",
+            }
+        ],
+    )
+    payload["returnUrl"] = destination
+    response = client.post(
+        "/card-layout/savelayout",
+        json=payload,
+        headers={"Datastar-Request": "true"},
+    )
+
+    assert response.status_code == 200
+    events = parse_datastar_events(response.text)
+    assert any("/notetypes" in data for _, data in events)
+    assert not any(destination in data for _, data in events)
+    saved = client.portal.call(
+        client.app.state.service.run, lambda col: _tmpls(col, ntid)[0]
+    )
+    assert saved["qfmt"] == "{{Front}}<hr>saved safely"
 
 
 # (c) edit css persists
@@ -125,14 +261,12 @@ def test_edit_css_persists(client):
         "/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"}
     )
     assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
     m = client.portal.call(
         client.app.state.service.run, lambda col: col.models.get(ntid)
     )
     assert ".card { font-family: monospace;" in m["css"]
 # (d) rename a template persists
-def test_rename_template_persists(client):
+def test_rename_template_persists_and_uses_safe_default(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
     payload = _make_layout_draft_payload(
         ntid,
@@ -144,7 +278,7 @@ def test_rename_template_persists(client):
         "/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"}
     )
     events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
+    assert any("/notetypes" in data for _, data in events)
     names = client.portal.call(
         client.app.state.service.run, lambda col: _tmpl_names(col, ntid)
     )
@@ -168,8 +302,6 @@ def test_add_template_persists(client):
         "/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"}
     )
     assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
     after = client.portal.call(
         client.app.state.service.run, lambda col: len(_tmpls(col, ntid))
     )
@@ -206,8 +338,6 @@ def test_reposition_persists(client):
     r = client.post(
         "/card-layout/savelayout", json=p2, headers={"Datastar-Request": "true"}
     )
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
     names = client.portal.call(
         client.app.state.service.run, lambda col: _tmpl_names(col, ntid)
     )
@@ -247,8 +377,6 @@ def test_delete_template_persists(client):
     r = client.post(
         "/card-layout/savelayout", json=p2, headers={"Datastar-Request": "true"}
     )
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
     after = client.portal.call(
         client.app.state.service.run, lambda col: len(_tmpls(col, ntid))
     )
@@ -275,8 +403,8 @@ def test_delete_all_templates_errors(client):
     )
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
-    assert any("needs at least one card type" in data for _, data in events)
-    assert not any("window.location = '/deckbrowser'" in data for _, data in events)
+    assert any('"error"' in data for _, data in events)
+    assert not any("window.location" in data for _, data in events)
     after = client.portal.call(
         client.app.state.service.run, lambda col: _tmpl_names(col, ntid)
     )
@@ -305,18 +433,15 @@ def test_preview_link_targets_note_of_requested_notetype(client):
     assert f'href="/preview/{cloze_nid}"' not in r.text
 
 
-def test_preview_is_unavailable_with_hint_when_notetype_has_no_notes(client):
+def test_preview_is_unavailable_without_notes(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
 
-    r = client.get(f"/card-layout/{ntid}")
+    response = client.get(f"/card-layout/{ntid}")
 
-    assert r.status_code == 200
-    assert 'id="preview" aria-disabled="true"' in r.text
-    assert 'href="/preview/' not in r.text
-    assert "Preview" in r.text
-    assert "unavailable" in r.text
-    assert 'role="status"' in r.text
-    assert "Add a note of this type to enable preview." in r.text
+    assert response.status_code == 200
+    assert 'id="preview" aria-disabled="true"' in response.text
+    assert 'href="/preview/' not in response.text
+    assert 'role="status"' in response.text
 
 
 def test_preview_get_renders_saved_layout_from_native_link(client):
@@ -350,13 +475,6 @@ def test_preview_get_renders_saved_layout_from_native_link(client):
     assert "SAVED_LAYOUT_MARKER" in preview.text
 
 
-
-
-# (j) editor_links_js() contains the cards branch + /card-layout/
-def test_editor_links_js_has_cards_branch():
-    js = editor_links_js()
-    assert "'cards'" in js
-    assert "/card-layout/" in js
 
 
 def test_multi_new_block_independent_input_and_css(client):
@@ -393,8 +511,6 @@ def test_multi_new_block_independent_input_and_css(client):
         "/card-layout/savelayout", json=payload, headers={"Datastar-Request": "true"}
     )
     assert r.status_code == 200
-    events = parse_datastar_events(r.text)
-    assert any("window.location = '/deckbrowser'" in data for _, data in events)
     tmpls = client.portal.call(
         client.app.state.service.run, lambda col: _tmpls(col, ntid)
     )

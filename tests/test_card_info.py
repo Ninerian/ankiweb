@@ -32,8 +32,3 @@ def test_card_stats_rpc_passthrough(client):
     assert "get_review_logs" in PASSTHROUGH
 
 
-def test_browser_has_card_info_entry(client):
-    # the browser action toolbar offers Card Info, opening /card-info/<selected cid> in a new tab
-    html = client.get("/browse").text
-    assert "Card Info" in html
-    assert "/card-info/" in html

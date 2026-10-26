@@ -1,4 +1,6 @@
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
@@ -6,6 +8,27 @@ from fastapi.testclient import TestClient
 from ankiweb.adapters.inbound.http_shared.preview import render_preview_html
 from ankiweb.app import create_app
 from ankiweb.core.config import Settings
+
+
+class _EditorCardLayoutLinkParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.href: str | None = None
+        self.target: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag == "a" and attributes.get("id") == "editor-cards-btn":
+            self.href = attributes.get("href")
+            self.target = attributes.get("target")
+
+
+def _editor_card_layout_link(content: str) -> tuple[str, str]:
+    parser = _EditorCardLayoutLinkParser()
+    parser.feed(content)
+    assert parser.href is not None
+    assert parser.target is not None
+    return parser.href, parser.target
 
 
 @pytest.fixture
@@ -64,8 +87,9 @@ def test_editor_links_and_navigation(client):
     assert r.status_code == 200
     html = r.text
     # Edit screen has links to Fields, Cards, and Preview
-    assert "/fields/" in html and 'id="editor-fields-btn"' in html
-    assert "/card-layout/" in html and 'id="editor-cards-btn"' in html
+    href, target = _editor_card_layout_link(html)
+    assert urlsplit(href).path.startswith("/card-layout/")
+    assert target == "_top"
     assert f"/preview/{nid}" in html and 'id="editor-preview-btn"' in html
     assert 'data-editor-command="attach"' in html
 
@@ -75,6 +99,7 @@ def test_add_links_and_navigation(client):
     assert r.status_code == 200
     html = r.text
     # Add screen has links to Fields and Cards and media attach button
-    assert "/fields/" in html and 'id="editor-fields-btn"' in html
-    assert "/card-layout/" in html and 'id="editor-cards-btn"' in html
+    href, target = _editor_card_layout_link(html)
+    assert urlsplit(href).path.startswith("/card-layout/")
+    assert target == "_top"
     assert 'data-editor-command="attach"' in html

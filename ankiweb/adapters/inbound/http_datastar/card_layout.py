@@ -12,12 +12,13 @@ from fastapi import APIRouter
 from ankiweb.adapters.inbound.http_datastar.common import (
     error_response,
     redirect_response,
+    safe_return_url,
 )
 from ankiweb.adapters.inbound.http_shared import templating
 
 logger = logging.getLogger(__name__)
 
-def render_card_layout_html(col, ntid: int) -> str:
+def render_card_layout_html(col, ntid: int, *, return_url: str) -> str:
     m = col.models.get(ntid)
     nids = col.models.nids(ntid)
     preview_nid = nids[0] if nids else None
@@ -50,8 +51,8 @@ def render_card_layout_html(col, ntid: int) -> str:
         css=css,
         ntid=int(ntid),
         preview_nid=preview_nid,
+        return_url=return_url,
     )
-
 
 def make_card_layout_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/card-layout")
@@ -62,8 +63,7 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
         if not payload or not isinstance(payload, dict):
             return DatastarResponse()
         p = payload
-
-        # Canonical layoutDraft structure strictly (no legacy payload fallback)
+        return_url = safe_return_url(p.get("returnUrl")) or "/notetypes"
         draft = p.get("layoutDraft")
         if not isinstance(draft, dict):
             return DatastarResponse()
@@ -116,7 +116,5 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
         except Exception as exc:
             logger.exception("Failed to save card layout")
             return error_response(exc)
-
-        return redirect_response("/deckbrowser")
-
+        return redirect_response(return_url)
     return router

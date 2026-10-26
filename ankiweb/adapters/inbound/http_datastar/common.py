@@ -15,8 +15,11 @@ transitions use whole-document redirects per the Tao of Datastar.
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from datastar_py.attributes import SignalValue
 from datastar_py.fastapi import DatastarResponse
@@ -25,6 +28,67 @@ from datastar_py.fastapi import ServerSentEventGenerator as SSE
 if TYPE_CHECKING:
     from ankiweb.core.ports import CollectionPort
 
+
+def _url_origin(url: str) -> tuple[str, str, int] | None:
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+
+    scheme = parsed.scheme.lower()
+    hostname = parsed.hostname
+    if (
+        scheme not in ("http", "https")
+        or not hostname
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        return None
+
+    if port is None:
+        port = 443 if scheme == "https" else 80
+    return scheme, hostname.casefold(), port
+
+
+def _normalize_return_url(target: str) -> str:
+    encoded = quote(target, safe="/:?#[]@!$&()*+,;=-._~%")
+    return re.sub(r"%(?![0-9A-Fa-f]{2})", "%25", encoded)
+
+
+def safe_return_url(
+    target: object, *, request_url: str | None = None
+) -> str | None:
+    """Return a safe same-app path, optionally reducing a same-origin Referer."""
+    if (
+        not isinstance(target, str)
+        or not target
+        or "\\" in target
+        or any(unicodedata.category(char) == "Cc" for char in target)
+        or target.startswith("//")
+    ):
+        return None
+
+    try:
+        parsed = urlsplit(target)
+    except ValueError:
+        return None
+
+    has_origin = bool(parsed.scheme or parsed.netloc)
+    if request_url is not None and not has_origin:
+        return None
+    if has_origin:
+        if request_url is None:
+            return None
+        target_origin = _url_origin(target)
+        if target_origin is None or target_origin != _url_origin(request_url):
+            return None
+        path = urlunsplit(("", "", parsed.path or "/", parsed.query, parsed.fragment))
+        return safe_return_url(path)
+
+    if not parsed.path.startswith("/") or parsed.path.startswith("//"):
+        return None
+    return _normalize_return_url(target)
 def elements_response(
     elements: str, selector: str | None = None
 ) -> DatastarResponse:
@@ -65,5 +129,6 @@ __all__ = [
     "error_response",
     "redirect_response",
     "refresh_screen",
+    "safe_return_url",
     "signals_response",
 ]

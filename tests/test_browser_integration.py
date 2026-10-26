@@ -188,11 +188,330 @@ def test_select_all_and_suspend(live_server_browse):
             "document.querySelectorAll('#results-body tr.selected').length===2",
             timeout=6000,
         )
-        page.click("#browser-actions >> text=Suspend")
+        page.locator("#btn-actions-learning").click()
+        page.locator("#btn-suspend").click()
         page.wait_for_function(
             "document.querySelectorAll('#results-body tr.selected').length===0",
             timeout=6000,
         )
+        browser.close()
+
+
+def test_browser_row_and_checkbox_selection_regression(live_server_browse):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1101, "height": 803})
+        page_errors = []
+        page.on("pageerror", lambda err: page_errors.append(str(err)))
+
+        page.goto(f"{live_server_browse}/browse")
+        page.wait_for_function(
+            "document.getElementById('results-body').children.length >= 2",
+            timeout=6000,
+        )
+        assert not page_errors, f"Unexpected page startup errors: {page_errors}"
+
+        rows = page.locator("#results-body tr.browser-row")
+        header_chk = page.locator("#select-all-cards")
+        second_row = rows.nth(1)
+        first_row = rows.nth(0)
+
+        # 1. Plain click on second row: exactly 1 row selected and 1 row checkbox checked
+        second_row.click()
+        page.wait_for_function(
+            "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 1",
+            timeout=6000,
+        )
+        assert "selected" in (second_row.get_attribute("class") or "")
+        assert second_row.locator("input[type='checkbox']").is_checked()
+        assert not first_row.locator("input[type='checkbox']").is_checked()
+        assert not ("selected" in (first_row.get_attribute("class") or ""))
+
+        # Action buttons are enabled for single selection
+        assert not page.locator("#btn-suspend").is_disabled()
+        assert page.locator("#btn-cardinfo").get_attribute("aria-disabled") == "false"
+
+        # Embedded editor mounts and displays the second row note ('catword')
+        page.wait_for_selector("#detail iframe.editor-frame", timeout=6000)
+        page.wait_for_function(
+            "() => { const f = document.querySelector('#detail iframe.editor-frame'); "
+            "return f && f.contentDocument && f.contentDocument.querySelector('[data-ankiweb-rich]') "
+            "&& f.contentDocument.querySelector('[data-ankiweb-rich]').textContent.includes('catword'); }",
+            timeout=8000,
+        )
+
+        # 2. Checkbox multi-select: toggle first row checkbox additively
+        first_row.locator("input[type='checkbox']").click()
+        page.wait_for_function(
+            "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 2",
+            timeout=6000,
+        )
+        assert first_row.locator("input[type='checkbox']").is_checked()
+        assert second_row.locator("input[type='checkbox']").is_checked()
+        # With 2 rows total, 2 selected means header is checked
+        assert header_chk.is_checked()
+
+        # Remove second row via checkbox: 1 remains selected, header becomes indeterminate
+        second_row.locator("input[type='checkbox']").click()
+        page.wait_for_function(
+            "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 1",
+            timeout=6000,
+        )
+        assert not second_row.locator("input[type='checkbox']").is_checked()
+        assert first_row.locator("input[type='checkbox']").is_checked()
+        assert header_chk.evaluate("el => el.indeterminate === true")
+        assert not header_chk.is_checked()
+
+        # 3. Select-all checks all rendered row checkboxes
+        header_chk.check()
+        page.wait_for_function(
+            "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 2",
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "() => { const boxes = document.querySelectorAll('#results-body tr.browser-row input[type=\"checkbox\"]'); "
+            "return boxes.length === 2 && Array.from(boxes).every(b => b.checked); }",
+            timeout=6000,
+        )
+        assert header_chk.is_checked()
+        assert not header_chk.evaluate("el => el.indeterminate === true")
+
+        # 4. Selecting none clears all row checkboxes and disables actions
+        header_chk.uncheck()
+        page.wait_for_function(
+            "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 0",
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "() => { const boxes = document.querySelectorAll('#results-body tr.browser-row input[type=\"checkbox\"]'); "
+            "return boxes.length === 2 && Array.from(boxes).every(b => !b.checked); }",
+            timeout=6000,
+        )
+        assert not header_chk.is_checked()
+        assert not header_chk.evaluate("el => el.indeterminate === true")
+        assert page.locator("#btn-suspend").is_disabled()
+        cardinfo = page.locator("#btn-cardinfo")
+        assert cardinfo.get_attribute("aria-disabled") == "true"
+        assert cardinfo.get_attribute("tabindex") == "-1"
+        assert cardinfo.get_attribute("href") is None
+
+        assert not page_errors, f"Page errors encountered: {page_errors}"
+        browser.close()
+
+
+def test_categorized_browser_actions_menu_states_and_links(live_server_browse):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1101, "height": 803})
+        page_errors = []
+        page.on("pageerror", lambda err: page_errors.append(str(err)))
+
+        # Intercept any mutation or action navigation requests
+        action_requests = []
+        page.on(
+            "request",
+            lambda req: action_requests.append(req.url)
+            if any(
+                x in req.url
+                for x in (
+                    "/browse/suspend",
+                    "/browse/unsuspend",
+                    "/browse/forget",
+                    "/browse/setdue",
+                    "/browse/changedeck",
+                    "/browse/addtag",
+                    "/browse/removetag",
+                    "/browse/delete",
+                    "/card-info",
+                    "/change-notetype",
+                )
+            )
+            else None,
+        )
+
+        page.goto(f"{live_server_browse}/browse")
+        page.wait_for_function(
+            "document.getElementById('results-body').children.length >= 2",
+            timeout=6000,
+        )
+        assert not page_errors, f"Unexpected page startup errors: {page_errors}"
+
+        # 1. Zero selection: All three menus can open; entries are visible and disabled
+        learning_menu = page.locator("#browser-actions-learning")
+        organize_menu = page.locator("#browser-actions-organize")
+        cards_menu = page.locator("#browser-actions-cards")
+
+        # Open Learning menu, assert mutual exclusion (others closed)
+        page.locator("#btn-actions-learning").click()
+        assert learning_menu.get_attribute("open") is not None
+        assert organize_menu.get_attribute("open") is None
+        assert cards_menu.get_attribute("open") is None
+        for btn_id in ("#btn-suspend", "#btn-unsuspend", "#btn-forget", "#btn-setdue"):
+            btn = page.locator(btn_id)
+            assert btn.is_visible()
+            assert btn.is_disabled()
+
+        # Attempting to click disabled button must not emit network request
+        initial_req_count = len(action_requests)
+        page.locator("#btn-suspend").click(force=True)
+        assert len(action_requests) == initial_req_count
+
+        # Open Organize menu, assert Learning closed
+        page.locator("#btn-actions-organize").click()
+        assert organize_menu.get_attribute("open") is not None
+        assert learning_menu.get_attribute("open") is None
+        assert cards_menu.get_attribute("open") is None
+        for btn_id in ("#btn-changedeck", "#btn-addtag", "#btn-removetag"):
+            btn = page.locator(btn_id)
+            assert btn.is_visible()
+            assert btn.is_disabled()
+
+        # Open Cards menu, assert Organize closed
+        page.locator("#btn-actions-cards").click()
+        assert cards_menu.get_attribute("open") is not None
+        assert organize_menu.get_attribute("open") is None
+        assert learning_menu.get_attribute("open") is None
+        btn_delete = page.locator("#btn-delete")
+        assert btn_delete.is_visible()
+        assert btn_delete.is_disabled()
+
+        link_cardinfo = page.locator("#btn-cardinfo")
+        link_changenotetype = page.locator("#btn-changenotetype")
+
+        assert link_cardinfo.is_visible()
+        assert link_cardinfo.get_attribute("aria-disabled") == "true"
+        assert link_cardinfo.get_attribute("tabindex") == "-1"
+        assert link_cardinfo.get_attribute("href") in (None, "#", "")
+
+        assert link_changenotetype.is_visible()
+        assert link_changenotetype.get_attribute("aria-disabled") == "true"
+        assert link_changenotetype.get_attribute("tabindex") == "-1"
+        assert link_changenotetype.get_attribute("href") in (None, "#", "")
+
+        # Attempting click or keyboard navigation on disabled links does not trigger navigation
+        initial_url = page.url
+        # Evaluate native click to trigger actual onclick guard event
+        link_cardinfo.evaluate("(el) => el.click()")
+        link_changenotetype.evaluate("(el) => el.click()")
+        assert page.url == initial_url
+        assert len(action_requests) == initial_req_count
+
+        # Verify keyboard activation fails while menu is open and link is focused
+        if cards_menu.get_attribute("open") is None:
+            page.locator("#btn-actions-cards").click()
+        link_cardinfo.focus()
+        page.keyboard.press("Enter")
+        assert page.url == initial_url
+        assert len(action_requests) == initial_req_count
+
+        # 2. Single selection: row selected, editor mounted, appropriate actions enabled
+        rows = page.locator("#results-body tr.browser-row")
+        first_row = rows.nth(0)
+        first_cid = first_row.get_attribute("data-cid")
+        assert first_cid is not None
+
+        first_row.click()
+        page.wait_for_function(
+            "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 1",
+            timeout=6000,
+        )
+
+        # Editor mounts for the selected row
+        page.wait_for_selector("#detail iframe.editor-frame", timeout=6000)
+
+        # All actions enabled for single selection
+        assert not page.locator("#btn-suspend").is_disabled()
+        assert not page.locator("#btn-changedeck").is_disabled()
+        assert not page.locator("#btn-delete").is_disabled()
+
+        # Ensure Cards menu is open to inspect enabled links
+        page.locator("#btn-actions-cards").click()
+        assert cards_menu.get_attribute("open") is not None
+        assert link_cardinfo.get_attribute("aria-disabled") == "false"
+        assert link_cardinfo.get_attribute("tabindex") == "0"
+        assert link_cardinfo.get_attribute("href") == f"/card-info/{first_cid}"
+
+        assert link_changenotetype.get_attribute("aria-disabled") == "false"
+        assert link_changenotetype.get_attribute("tabindex") == "0"
+        assert link_changenotetype.get_attribute("href") == f"/change-notetype?cids={first_cid}"
+
+        # 3. Multi-selection: Card Info disabled & safe from keyboard, Change Note Type enabled
+        second_row = rows.nth(1)
+        second_cid = second_row.get_attribute("data-cid")
+        assert second_cid is not None
+        second_row.locator("input[type='checkbox']").click()
+        page.wait_for_function(
+            "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 2",
+            timeout=6000,
+        )
+
+        assert not page.locator("#btn-suspend").is_disabled()
+        assert not page.locator("#btn-delete").is_disabled()
+
+        # Card Info disabled for multi-select
+        assert link_cardinfo.get_attribute("aria-disabled") == "true"
+        assert link_cardinfo.get_attribute("tabindex") == "-1"
+        assert link_cardinfo.get_attribute("href") in (None, "#", "")
+
+        # Change Note Type enabled with multiple cids
+        assert link_changenotetype.get_attribute("aria-disabled") == "false"
+        assert link_changenotetype.get_attribute("tabindex") == "0"
+        href_cnt = link_changenotetype.get_attribute("href")
+        assert href_cnt is not None
+        assert first_cid in href_cnt and second_cid in href_cnt
+
+        # Ensure Cards menu is open to test multi-select disabled link keyboard/click
+        page.locator("#btn-actions-cards").click()
+        assert cards_menu.get_attribute("open") is not None
+        link_cardinfo.focus()
+        page.keyboard.press("Enter")
+        link_cardinfo.evaluate("(el) => el.click()")
+        assert page.url == initial_url
+        assert len(action_requests) == initial_req_count
+
+        # 4. Bulk action execution via category menu & genuine pending-request busy state
+        # Intercept /browse/suspend so we can freeze it in flight and verify $_busy disables all actions
+        paused_route = []
+
+        def handle_suspend_route(route):
+            paused_route.append(route)
+
+        page.route("**/browse/suspend", handle_suspend_route)
+
+        page.locator("#btn-actions-learning").click()
+        page.wait_for_selector("#btn-suspend", state="visible")
+        page.locator("#btn-suspend").click()
+
+        # Wait until the POST request is in flight
+        page.wait_for_function("() => true")
+        for _ in range(50):
+            if paused_route:
+                break
+            page.wait_for_timeout(50)
+        assert len(paused_route) == 1, "Expected pending /browse/suspend route"
+
+        # While request is in flight, all action controls must be disabled due to $_busy
+        page.wait_for_function("() => document.querySelector('#btn-suspend')?.disabled === true", timeout=6000)
+        assert page.locator("#btn-suspend").is_disabled()
+        assert page.locator("#btn-changedeck").is_disabled()
+        assert page.locator("#btn-delete").is_disabled()
+        assert page.locator("#btn-cardinfo").get_attribute("aria-disabled") == "true"
+        assert page.locator("#btn-changenotetype").get_attribute("aria-disabled") == "true"
+
+        # Release route and unroute handler
+        paused_route[0].continue_()
+        page.unroute("**/browse/suspend")
+
+        # After response completes, selection resets to 0 and actions remain disabled
+        page.wait_for_function(
+            "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 0",
+            timeout=6000,
+        )
+        assert page.locator("#btn-suspend").is_disabled()
+        assert link_cardinfo.get_attribute("aria-disabled") == "true"
+        assert link_cardinfo.get_attribute("href") in (None, "#", "")
+
+        assert not page_errors, f"Page errors encountered: {page_errors}"
         browser.close()
 
 
@@ -486,5 +805,431 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sideb
         assert "special tag front" in forward_results
         assert "special deck front" not in forward_results
         assert "decoy tag front" not in forward_results
+
+        browser.close()
+
+def test_browse_sidebar_sections_fold_independently_and_filter(
+    live_server_sidebar_search,
+):
+    from urllib.parse import parse_qs, urlparse
+
+    base, special_deck, special_tag = live_server_sidebar_search
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1101, "height": 803})
+        page.goto(f"{base}/browse")
+        page.wait_for_function(
+            "document.getElementById('results-body').children.length===3", timeout=6000
+        )
+
+        decks = page.locator("#sidebar-decks-section")
+        tags = page.locator("#sidebar-tags-section")
+        deck_link = page.get_by_role("link", name=special_deck, exact=True)
+        tag_link = page.get_by_role("link", name=special_tag, exact=True)
+        assert decks.get_attribute("open") is not None
+        assert tags.get_attribute("open") is not None
+        assert deck_link.is_visible() and tag_link.is_visible()
+
+        decks.locator("summary").click()
+        assert decks.get_attribute("open") is None
+        assert tags.get_attribute("open") is not None
+        assert not deck_link.is_visible() and tag_link.is_visible()
+        tag_href = tag_link.get_attribute("href")
+        assert tag_href is not None
+        tag_query = parse_qs(urlparse(tag_href).query)["q"][0]
+        tag_link.click()
+        page.wait_for_function(
+            "(q) => new URL(location.href).searchParams.get('q') === q",
+            arg=tag_query,
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "(text) => document.getElementById('results-body')?.textContent.includes(text)",
+            arg="special tag front",
+            timeout=6000,
+        )
+        assert page.locator("#results-body tr.browser-row").count() == 1
+
+        decks.locator("summary").press("Enter")
+        assert decks.get_attribute("open") is not None
+        assert tags.get_attribute("open") is not None
+        tags.locator("summary").click()
+        assert decks.get_attribute("open") is not None
+        assert tags.get_attribute("open") is None
+        assert deck_link.is_visible() and not tag_link.is_visible()
+        tags.locator("summary").press("Enter")
+        assert tags.get_attribute("open") is not None
+
+        deck_href = deck_link.get_attribute("href")
+        assert deck_href is not None
+        deck_query = parse_qs(urlparse(deck_href).query)["q"][0]
+        deck_link.click()
+        page.wait_for_function(
+            "(q) => new URL(location.href).searchParams.get('q') === q",
+            arg=deck_query,
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "(text) => document.getElementById('results-body')?.textContent.includes(text)",
+            arg="special deck front",
+            timeout=6000,
+        )
+        assert page.locator("#results-body tr.browser-row").count() == 1
+
+        browser.close()
+
+
+def test_browse_mobile_sidebar_folding_keeps_dialog_open(live_server_sidebar_search):
+    from urllib.parse import parse_qs, urlparse
+
+    base, special_deck, _ = live_server_sidebar_search
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context(
+            viewport={"width": 375, "height": 812}, is_mobile=True, has_touch=True
+        )
+        page = context.new_page()
+        page.goto(f"{base}/browse")
+        page.wait_for_function(
+            "document.getElementById('results-body').children.length===3", timeout=6000
+        )
+
+        dialog = page.locator("#sidebar-offcanvas")
+        label = page.locator("#sidebar-offcanvas-label").text_content()
+        assert label
+        page.get_by_role("button", name=label.strip(), exact=True).tap()
+        page.wait_for_function(
+            "document.getElementById('sidebar-offcanvas')?.open === true", timeout=6000
+        )
+
+        decks = page.locator("#sidebar-decks-section")
+        tags = page.locator("#sidebar-tags-section")
+        assert decks.get_attribute("open") is not None
+        assert tags.get_attribute("open") is not None
+        decks.locator("summary").tap()
+        assert decks.get_attribute("open") is None
+        assert tags.get_attribute("open") is not None
+        assert dialog.get_attribute("open") is not None
+
+        decks.locator("summary").tap()
+        deck_link = page.get_by_role("link", name=special_deck, exact=True)
+        href = deck_link.get_attribute("href")
+        assert href is not None
+        query = parse_qs(urlparse(href).query)["q"][0]
+        deck_link.tap()
+        page.wait_for_function(
+            "(q) => new URL(location.href).searchParams.get('q') === q",
+            arg=query,
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "(text) => document.getElementById('results-body')?.textContent.includes(text)",
+            arg="special deck front",
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "document.getElementById('sidebar-offcanvas')?.open === false", timeout=6000
+        )
+        dialog.wait_for(state="hidden", timeout=6000)
+
+        browser.close()
+
+
+def test_browse_mobile_touch_checkbox_selection_and_remorphed_row(live_server_browse):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context(
+            viewport={"width": 375, "height": 812}, is_mobile=True, has_touch=True
+        )
+        page = context.new_page()
+        page.goto(f"{live_server_browse}/browse")
+        page.wait_for_function(
+            "document.getElementById('results-body').children.length===2", timeout=6000
+        )
+
+        rows = page.locator("#results-body tr.browser-row")
+        first_box = rows.nth(0).locator("input[type='checkbox']")
+        second_box = rows.nth(1).locator("input[type='checkbox']")
+        header = page.locator("#select-all-cards")
+        first_target = rows.nth(0).locator(".browser-checkbox-target")
+        second_target = rows.nth(1).locator(".browser-checkbox-target")
+        header_target = page.locator(".browser-checkbox-target").filter(has=header)
+        status = page.locator("#browser-selected-status-compact")
+        suspend = page.locator("#btn-suspend")
+        detail_dialog = page.locator("#detail-offcanvas")
+
+        def wait_for_badge_counts(expected):
+            page.wait_for_function(
+                (
+                    "(expected) => {"
+                    " const text = document.getElementById("
+                    "'browser-selected-status-compact')?.textContent || '';"
+                    " const counts = (text.match(/\\d+/g) || []).map(Number);"
+                    " return counts.length === expected.length &&"
+                    " counts.every((count, index) => count === expected[index]);"
+                    " }"
+                ),
+                arg=expected,
+                timeout=6000,
+            )
+
+        assert first_box.is_visible() and second_box.is_visible() and header.is_visible()
+        assert first_target.is_visible() and second_target.is_visible() and header_target.is_visible()
+        header_label = header.get_attribute("aria-label")
+        row_label = first_box.get_attribute("aria-label")
+        assert header_label and row_label and header_label != row_label
+
+        first_target.tap()
+        page.wait_for_function(
+            "document.querySelector('#results-body input[type=checkbox]')?.checked === true",
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "document.getElementById('select-all-cards')?.indeterminate === true",
+            timeout=6000,
+        )
+        assert first_box.is_checked() and not second_box.is_checked()
+        assert rows.nth(0).get_attribute("aria-selected") == "true"
+        assert rows.nth(1).get_attribute("aria-selected") == "false"
+        assert status.is_visible()
+        wait_for_badge_counts([1, 2])
+        assert not suspend.is_disabled()
+        assert detail_dialog.get_attribute("open") is None
+
+        second_target.tap()
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body input[type=checkbox]:checked').length===2",
+            timeout=6000,
+        )
+        assert header.is_checked()
+        assert rows.nth(0).get_attribute("aria-selected") == "true"
+        assert rows.nth(1).get_attribute("aria-selected") == "true"
+        assert status.is_visible()
+        wait_for_badge_counts([2, 2])
+        assert not suspend.is_disabled()
+        assert detail_dialog.get_attribute("open") is None
+        header_target.tap()
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body input[type=checkbox]:checked').length===0",
+            timeout=6000,
+        )
+        assert not header.is_checked()
+        assert not header.evaluate("el => el.indeterminate")
+        status.wait_for(state="hidden", timeout=6000)
+        assert suspend.is_disabled()
+
+        header_target.tap()
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body input[type=checkbox]:checked').length===2",
+            timeout=6000,
+        )
+        assert header.is_checked() and status.is_visible()
+        assert rows.nth(0).get_attribute("aria-selected") == "true"
+        assert rows.nth(1).get_attribute("aria-selected") == "true"
+        assert not suspend.is_disabled()
+        assert detail_dialog.get_attribute("open") is None
+
+
+        second_target.tap()
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body input[type=checkbox]:checked').length===1",
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "document.getElementById('select-all-cards')?.indeterminate === true",
+            timeout=6000,
+        )
+        assert first_box.is_checked() and not second_box.is_checked()
+        assert rows.nth(0).get_attribute("aria-selected") == "true"
+        assert rows.nth(1).get_attribute("aria-selected") == "false"
+        assert status.is_visible()
+        wait_for_badge_counts([1, 2])
+        assert not suspend.is_disabled()
+        assert detail_dialog.get_attribute("open") is None
+
+
+        page.locator("#search").fill("dogword")
+        page.locator("#search").press("Enter")
+        page.wait_for_function(
+            "() => { const body = document.getElementById('results-body');"
+            "return body?.children.length === 1 && body.textContent.includes('dogword'); }",
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "() => { const header = document.getElementById('select-all-cards');"
+            "return header && !header.checked && !header.indeterminate; }",
+            timeout=6000,
+        )
+        assert not header.is_checked()
+        assert not header.evaluate("el => el.indeterminate")
+        status.wait_for(state="hidden", timeout=6000)
+        assert suspend.is_disabled()
+
+        remorphed_row = page.locator("#results-body tr.browser-row")
+        remorphed_box = remorphed_row.locator("input[type='checkbox']")
+        remorphed_target = remorphed_row.locator(".browser-checkbox-target")
+        assert remorphed_box.is_visible() and remorphed_target.is_visible()
+        assert not remorphed_box.is_checked()
+        remorphed_target.tap()
+        page.wait_for_function(
+            "document.querySelector('#results-body input[type=checkbox]')?.checked === true",
+            timeout=6000,
+        )
+        assert header.is_checked() and status.is_visible()
+        assert remorphed_row.get_attribute("aria-selected") == "true"
+        wait_for_badge_counts([1, 1])
+        assert not suspend.is_disabled()
+        assert detail_dialog.get_attribute("open") is None
+
+        remorphed_row.locator(".row-line1 span.truncate").tap(
+            position={"x": 8, "y": 12}
+        )
+        page.wait_for_function(
+            "document.getElementById('detail-offcanvas')?.open === true", timeout=6000
+        )
+        page.wait_for_function(
+            "() => { const f = document.querySelector('#detail iframe.editor-frame'); "
+            "return f && /[/]edit[?]nid=/.test(f.getAttribute('src') || '') && f.contentDocument "
+            "&& f.contentDocument.querySelector('[data-ankiweb-rich]')"
+            "?.textContent.includes('dogword'); }",
+            timeout=8000,
+        )
+
+        browser.close()
+
+
+def test_browser_selected_status_reserves_layout_across_selection(live_server_browse):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        # Reserved status row is desktop-only; mobile renders compact badge in the table header.
+        viewports = (
+            ({"width": 1440, "height": 900}, False, False, "desktop"),
+        )
+        for viewport, is_mobile, has_touch, label in viewports:
+            context = browser.new_context(
+                viewport=viewport, is_mobile=is_mobile, has_touch=has_touch
+            )
+            page = context.new_page()
+            page.goto(f"{live_server_browse}/browse")
+            page.wait_for_function(
+                "document.querySelectorAll('#results-body tr.browser-row').length === 2",
+                timeout=6000,
+            )
+
+            rows = page.locator("#results-body tr.browser-row")
+            first_box = rows.nth(0).locator("input[type='checkbox']")
+            second_box = rows.nth(1).locator("input[type='checkbox']")
+            first_target = rows.nth(0).locator(".browser-checkbox-target")
+            second_target = rows.nth(1).locator(".browser-checkbox-target")
+            header = page.locator("#select-all-cards")
+            header_target = page.locator(".browser-checkbox-target").filter(has=header)
+            status = page.locator("#browser-selected-status")
+            start_url = page.url
+
+            def selected_count():
+                return page.locator(
+                    "#results-body input[type='checkbox']:checked"
+                ).count()
+
+            def wait_for_count(expected):
+                page.wait_for_function(
+                    "(expected) => document.querySelectorAll(" 
+                    "'#results-body input[type=checkbox]:checked').length === expected",
+                    arg=expected,
+                    timeout=6000,
+                )
+                status.wait_for(
+                    state="visible" if expected else "hidden", timeout=6000
+                )
+
+            def geometry():
+                return page.evaluate(
+                    """() => {
+                      const rect = (selector) => {
+                        const {top, bottom, left, right, width, height} =
+                          document.querySelector(selector).getBoundingClientRect();
+                        return {top, bottom, left, right, width, height};
+                      };
+                      return {
+                        actions: rect('#browser-actions'),
+                        statusRow: rect('#browser-selection-status-row'),
+                        badge: rect('#browser-selected-status'),
+                        resultsWrap: rect('#results-wrap'),
+                        results: rect('#results'),
+                        browserTop: rect('#browser-top'),
+                        browserTopClientWidth:
+                          document.getElementById('browser-top').clientWidth,
+                        viewportWidth: window.innerWidth,
+                        scrollY: window.scrollY
+                      };
+                    }"""
+                )
+
+            baseline = None
+
+            def capture(state, expected):
+                nonlocal baseline
+                assert selected_count() == expected
+                current = geometry()
+                row = current["statusRow"]
+                assert row["height"] >= 24
+                assert row["top"] >= current["actions"]["bottom"] - 1
+                assert current["resultsWrap"]["top"] >= row["bottom"] - 1
+                assert row["width"] >= current["browserTopClientWidth"] - 18
+                assert row["left"] >= -1
+                assert row["right"] <= current["viewportWidth"] + 1
+                assert current["scrollY"] == 0
+                assert page.url == start_url
+                assert page.locator("#detail-offcanvas").get_attribute("open") is None
+
+                if expected:
+                    assert status.is_visible()
+                    assert current["badge"]["top"] >= current["actions"]["bottom"] - 1
+                    assert current["badge"]["left"] >= -1
+                    assert current["badge"]["right"] <= current["viewportWidth"] + 1
+                    assert current["badge"]["width"] <= row["width"] + 1
+                else:
+                    assert not status.is_visible()
+
+                if baseline is None:
+                    baseline = current
+                else:
+                    for key in (
+                        "actions",
+                        "statusRow",
+                        "resultsWrap",
+                        "results",
+                    ):
+                        for edge in ("top", "bottom"):
+                            assert abs(current[key][edge] - baseline[key][edge]) <= 2, (
+                                f"{label} {state} moved {key}.{edge}: "
+                                f"{baseline[key][edge]} -> {current[key][edge]}"
+                            )
+
+            def toggle(target):
+                if has_touch:
+                    target.tap()
+                else:
+                    target.click()
+
+            wait_for_count(0)
+            capture("none", 0)
+
+            toggle(first_target)
+            wait_for_count(1)
+            assert first_box.is_checked() and not second_box.is_checked()
+            capture("one", 1)
+
+            toggle(second_target)
+            wait_for_count(2)
+            assert first_box.is_checked() and second_box.is_checked()
+            capture("two", 2)
+
+            toggle(header_target)
+            wait_for_count(0)
+            assert not header.is_checked()
+            capture("clear", 0)
+
+            context.close()
 
         browser.close()
