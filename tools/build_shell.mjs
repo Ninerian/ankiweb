@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep } from "node:path";
 
 const staticDir = "ankiweb/shell/static";
+const devStaticDir = "ankiweb/shell/dev-static";
 const cssOnly = process.argv.includes("--css-only");
+const dev = process.argv.includes("--dev");
+if (!dev) rmSync(devStaticDir, { recursive: true, force: true });
 mkdirSync(staticDir, { recursive: true });
 
 if (!cssOnly) {
@@ -32,6 +35,11 @@ const compileCss = (input, output) =>
 compileCss("shell_src/app.css", `${staticDir}/app.css`);
 // theme.css imports the unlayered Anki compatibility shim before owned styles.
 compileCss("shell_src/theme.css", `${staticDir}/theme.css`);
+
+if (dev) {
+  mkdirSync(devStaticDir, { recursive: true });
+  compileCss("shell_src/dev/gallery.css", `${devStaticDir}/gallery.css`);
+}
 
 // Keep sorted auto-discovery while giving Tailwind real CSS imports to compile.
 // Manual imports may be added to shell_src/components.css; component files

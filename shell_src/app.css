@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @plugin "daisyui" {
   themes: light --default, dark;
 }
@@ -8,6 +8,12 @@
 @source "../shell_src";
 @source not "../ankiweb/web_assets";
 @source not "../ankiweb/shell/static";
+@source not "../ankiweb/shell/dev-static";
+@source not "../ankiweb/adapters/inbound/http_shared/component_gallery.py";
+@source not "../ankiweb/adapters/inbound/http_datastar/dev_progress.py";
+@source not "../ankiweb/adapters/inbound/http_shared/templates/component_gallery.html.jinja";
+@source not "../ankiweb/adapters/inbound/http_shared/templates/components/_demo_*.html.jinja";
+@source not "../shell_src/dev";
 
 /* Global override so daisyUI .label wraps in option/setting lists */
 .label {

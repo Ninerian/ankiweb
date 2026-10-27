@@ -1,0 +1,26 @@
+/* Only the gallery needs these utilities and daisyUI components. The app supplies
+   the active daisyUI theme; this entry emits no preflight or duplicate themes. */
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities) source(none);
+@plugin "daisyui" {
+  themes: false;
+}
+
+@source "../../ankiweb/adapters/inbound/http_shared/templates/component_gallery.html.jinja";
+@source "../../ankiweb/adapters/inbound/http_shared/templates/components/_demo_*.html.jinja";
+@source "./";
+
+@layer components {
+  .component-gallery {
+    @apply mx-auto my-0 max-w-[960px] p-6;
+  }
+  .component-gallery .component-demo {
+    @apply mb-5 rounded-box border border-base-300 px-5 py-4;
+  }
+  .component-gallery .component-demo h3 {
+    @apply mb-3 text-[1rem] font-semibold;
+  }
+  .component-gallery .component-demo-empty {
+    @apply text-base-content/60 italic;
+  }
+}
