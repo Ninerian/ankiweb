@@ -20,3 +20,4 @@ data/
 .env
 ankiweb/web_assets/
 ankiweb/shell/static/
+ankiweb/shell/dev-static/

@@ -32,7 +32,7 @@
     {% endif %}
     {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
 >
-    <div class="modal-box modal-content{% if dialog_class %} {{ dialog_class }}{% endif %}">
+    <div class="modal-box bg-base-100 text-base-content border border-base-300{% if dialog_class %} {{ dialog_class }}{% endif %}">
         {{ caller() if caller else '' }}
     </div>
     {% if backdrop and backdrop != 'static' %}

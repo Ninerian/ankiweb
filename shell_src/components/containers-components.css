@@ -1,42 +1,41 @@
 /* Collapsible */
 .collapsible {
-    display: block;
+    @apply block;
 }
 
 .collapsible.animated {
-    display: grid;
-    grid-template-rows: 1fr;
+    @apply grid grid-rows-[1fr];
     transition: grid-template-rows 250ms cubic-bezier(0, 0, 0.2, 1);
 }
 
 .collapsible.animated > .collapsible-inner {
-    overflow: hidden;
+    @apply overflow-hidden;
 }
 
 .collapsible.animated.collapsed {
-    grid-template-rows: 0fr;
+    @apply grid-rows-[0fr];
 }
 
 .collapsible.animated.expanded {
-    grid-template-rows: 1fr;
+    @apply grid-rows-[1fr];
 }
 
 .collapsible.animated.expanded > .collapsible-inner {
-    overflow: visible;
+    @apply overflow-visible;
 }
 
 .collapsible.full-hide.hidden {
-    display: none !important;
+    @apply hidden!;
 }
 
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
     .collapsible.animated {
-        transition: none !important;
+        @apply transition-none!;
     }
 }
 body.reduce-motion .collapsible.animated {
-    transition: none !important;
+    @apply transition-none!;
 }
 
 /* TitledContainer - styles handled via daisyUI card */

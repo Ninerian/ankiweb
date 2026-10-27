@@ -2,18 +2,13 @@
 
 /* BackendProgressIndicator styles ported from ts/lib/components/BackendProgressIndicator.svelte */
 .anki-backend-progress-container {
-    position: relative;
-    min-height: 180px;
-    width: 100%;
+    @apply relative min-h-[180px] w-full;
 }
 
 
 .anki-backend-progress-container #label,
 .anki-backend-progress-container .progress-label {
-    text-align: center;
-    margin-top: 8px;
-    font-size: 0.95rem;
-    color: var(--color-base-content);
+    @apply mt-2 text-center text-[0.95rem] text-base-content;
 }
 
 /* Shortcut indicator styling */

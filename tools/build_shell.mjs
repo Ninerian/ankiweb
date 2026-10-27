@@ -1,45 +1,75 @@
 import { build } from "esbuild";
-import { mkdirSync, copyFileSync, readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
-mkdirSync("ankiweb/shell/static", { recursive: true });
-await build({
-  entryPoints: ["shell_src/bootstrap.ts"],
-  bundle: true,
-  format: "iife",
-  target: "es2020",
-  outfile: "ankiweb/shell/static/bootstrap.js",
-});
-console.log("built ankiweb/shell/static/bootstrap.js");
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, join, relative, sep } from "node:path";
 
-// Plain (non-bundled) shell assets: tracked in shell_src/, served from the gitignored
-// static dir like bootstrap.js so the Docker frontend stage ships them too.
-// theme.css stays unlayered on purpose: it re-maps Anki's design tokens onto daisyUI colors and
-// must out-rank the unlayered :root palettes of the vendored Anki stylesheets.
-for (const f of ["theme.css", "dialogs.js"]) {
-  copyFileSync(`shell_src/${f}`, `ankiweb/shell/static/${f}`);
-  console.log(`copied ${f} -> ankiweb/shell/static/${f}`);
+const staticDir = "ankiweb/shell/static";
+const devStaticDir = "ankiweb/shell/dev-static";
+const cssOnly = process.argv.includes("--css-only");
+const dev = process.argv.includes("--dev");
+if (!dev) rmSync(devStaticDir, { recursive: true, force: true });
+mkdirSync(staticDir, { recursive: true });
+
+if (!cssOnly) {
+  await build({
+    entryPoints: ["shell_src/bootstrap.ts"],
+    bundle: true,
+    format: "iife",
+    target: "es2020",
+    outfile: `${staticDir}/bootstrap.js`,
+  });
+  console.log(`built ${staticDir}/bootstrap.js`);
+
+  copyFileSync("shell_src/dialogs.js", `${staticDir}/dialogs.js`);
+  console.log(`copied dialogs.js -> ${staticDir}/dialogs.js`);
 }
 
-// Component CSS is emitted inside the Tailwind `components` cascade layer (declared by app.css)
-// so Tailwind utilities on the markup (px-4, flex-1, hidden, ...) can override it, the way
-// Bootstrap's !important utilities used to. Unlayered CSS would always beat them.
-const inComponentsLayer = (css) => `@layer components {\n${css}\n}\n`;
+// Compile each public stylesheet separately. @reference shares the app's Tailwind
+// and daisyUI definitions without emitting a second copy of the framework.
+const cliPackage = fileURLToPath(import.meta.resolve("@tailwindcss/cli/package.json"));
+const tailwindCli = join(dirname(cliPackage), JSON.parse(readFileSync(cliPackage, "utf8")).bin.tailwindcss);
+const compileCss = (input, output) =>
+  execFileSync(process.execPath, [tailwindCli, "-i", input, "-o", output, "--minify"], { stdio: "inherit" });
 
-// Bundle any scoped component CSS files from shell_src/components/
+compileCss("shell_src/app.css", `${staticDir}/app.css`);
+// theme.css imports the unlayered Anki compatibility shim before owned styles.
+compileCss("shell_src/theme.css", `${staticDir}/theme.css`);
 
-if (existsSync("shell_src/components")) {
-  const files = readdirSync("shell_src/components").filter(f => f.endsWith(".css")).sort();
-  let combined = "/* Generated from shell_src/components/*.css */\n";
-  for (const f of files) {
-    combined += readFileSync(`shell_src/components/${f}`, "utf8") + "\n";
-  }
-  writeFileSync("ankiweb/shell/static/components.css", inComponentsLayer(combined));
-  console.log(`built ankiweb/shell/static/components.css from ${files.length} css files`);
+if (dev) {
+  mkdirSync(devStaticDir, { recursive: true });
+  compileCss("shell_src/dev/gallery.css", `${devStaticDir}/gallery.css`);
+}
+
+// Keep sorted auto-discovery while giving Tailwind real CSS imports to compile.
+// Manual imports may be added to shell_src/components.css; component files
+// themselves are wrapped in the existing components layer.
+const entryDir = mkdtempSync(join(staticDir, ".components-entry-"));
+try {
+  const cssImport = (file) => {
+    let path = relative(entryDir, file).split(sep).join("/");
+    if (!path.startsWith(".")) path = `./${path}`;
+    return JSON.stringify(path);
+  };
+  const files = existsSync("shell_src/components")
+    ? readdirSync("shell_src/components").filter(f => f.endsWith(".css")).sort()
+    : [];
+  const imports = [
+    `@import ${cssImport("shell_src/components.css")};`,
+    ...files.map(f => `@import ${cssImport(join("shell_src/components", f))} layer(components);`),
+  ];
+  const entry = join(entryDir, "components.css");
+  writeFileSync(entry, `${imports.join("\n")}\n`);
+  compileCss(entry, `${staticDir}/components.css`);
+  console.log(`built ${staticDir}/components.css from ${files.length} css files`);
+} finally {
+  rmSync(entryDir, { recursive: true, force: true });
 }
 
 // Page bundles: every top-level shell_src/bundles/*.ts|js is an esbuild entry point and
 // becomes ankiweb/shell/static/bundles/<name>.js (IIFE). Helper modules live in subfolders
 // and are only imported, never entries. No build-script edit is needed to add a bundle.
-if (existsSync("shell_src/bundles")) {
+if (!cssOnly && existsSync("shell_src/bundles")) {
   const entries = readdirSync("shell_src/bundles")
     .filter(f => /\.(ts|js)$/.test(f))
     .sort()

@@ -8,30 +8,25 @@
    ========================================================================== */
 
 span.floating-reference {
+    @apply inline-block;
     line-height: 1;
-    display: inline-block;
 }
 
 div.floating-reference {
-    display: block;
+    @apply block;
 }
 
 .floating {
-    position: absolute;
-    border-radius: var(--border-radius, 5px);
-    z-index: 890;
-    visibility: hidden;
-    pointer-events: none;
+    @apply pointer-events-none invisible absolute z-[890];
+    border-radius: var(--radius-field, 0.375rem);
 }
 
 .floating.show {
-    visibility: visible;
-    pointer-events: auto;
+    @apply pointer-events-auto visible;
 }
 
 .floating-arrow {
-    position: absolute;
-    pointer-events: none;
+    @apply pointer-events-none absolute;
 }
 
 /* ==========================================================================
@@ -39,50 +34,33 @@ div.floating-reference {
    ========================================================================== */
 
 .select-container {
-    width: 100%;
+    @apply relative box-border flex h-full w-full cursor-pointer select-none flex-row items-center justify-between border border-solid border-base-300 bg-base-200 text-base-content;
     pointer-events: all;
-    cursor: pointer;
     -webkit-appearance: none;
-    border-radius: var(--border-radius, 4px);
+    border-radius: var(--radius-field, 0.375rem);
     line-height: 1.5;
-    height: 100%;
     min-height: var(--buttons-size, 26px);
-    position: relative;
-    display: flex;
-    flex-flow: row;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--color-base-200);
-    border: 1px solid var(--color-base-300);
-    border-bottom-color: var(--shadow, rgba(0, 0, 0, 0.2));
-    color: var(--color-base-content);
-    user-select: none;
-    box-sizing: border-box;
+    border-bottom-color: var(--ankiweb-shadow, rgba(0, 0, 0, 0.2));
 }
 
 .select-container:hover,
 .select-container.hover {
-    background: var(--color-base-100);
-    border: 1px solid var(--shadow, rgba(0, 0, 0, 0.2));
+    @apply bg-base-100;
+    border: 1px solid var(--ankiweb-shadow, rgba(0, 0, 0, 0.2));
 }
 
 .select-container:active,
 .select-container:focus-visible {
-    outline: none;
+    @apply outline-none;
     box-shadow: inset 0 calc(var(--buttons-size, 10px) / 15)
         calc(var(--buttons-size, 10px) / 5) rgba(0, 0, 0, 0.35);
-    border-color: var(--color-primary);
+    @apply border-primary;
 }
 
 .select-container.disabled,
 .select-container[disabled] {
-    pointer-events: none;
-    opacity: 0.5;
-    cursor: not-allowed;
-    color: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+    @apply pointer-events-none cursor-not-allowed border-b-base-300 bg-base-200 text-base-content/40 opacity-50;
     box-shadow: none !important;
-    background: var(--color-base-200);
-    border-bottom-color: var(--color-base-300);
 }
 
 .select-container.rtl {
@@ -90,47 +68,28 @@ div.floating-reference {
 }
 
 .select-container .inner {
-    flex-grow: 1;
-    position: relative;
-    min-height: 1.5rem;
-    overflow: hidden;
+    @apply relative min-h-[1.5rem] grow overflow-hidden;
 }
 
 .select-container .inner .label {
-    display: block;
-    color: inherit;
-    position: absolute;
-    top: 50%;
+    @apply absolute inset-x-2 top-1/2 block overflow-hidden text-ellipsis whitespace-nowrap text-left text-inherit;
     transform: translateY(-50%);
-    right: 0.5rem;
-    left: 0.5rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: left;
 }
 
 .select-container.rtl .inner .label {
-    text-align: right;
+    @apply text-right;
 }
 
 .select-container .chevron {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    @apply flex h-full items-center justify-center border-l border-l-base-300;
     padding: 0 0.35rem;
-    border-left: 1px solid var(--color-base-300);
 }
 
 .select-container.rtl .chevron {
-    border-left: none;
-    border-right: 1px solid var(--color-base-300);
+    @apply border-l-0 border-r border-r-base-300;
 }
 
 /* Focused option in listbox (via Arrow keys / APG combobox) */
 .select-option-item.focus {
-    background: var(--color-base-200);
-    color: var(--color-base-content);
-    outline: none;
+    @apply bg-base-200 text-base-content outline-none;
 }

@@ -63,11 +63,13 @@ export class VirtualTable {
         // Create top and bottom spacer rows
         this.topSpacer = document.createElement("tr");
         this.topSpacerCell = document.createElement("td");
+        this.topSpacerCell.className = "p-0! border-0! border-none!";
         this.topSpacer.className = "vt-top-spacer";
         this.topSpacer.appendChild(this.topSpacerCell);
 
         this.bottomSpacer = document.createElement("tr");
         this.bottomSpacerCell = document.createElement("td");
+        this.bottomSpacerCell.className = "p-0! border-0! border-none!";
         this.bottomSpacer.className = "vt-bottom-spacer";
         this.bottomSpacer.appendChild(this.bottomSpacerCell);
 
@@ -169,8 +171,6 @@ export class VirtualTable {
 
         if (topHeight > 0) {
             this.topSpacerCell.style.height = `${topHeight}px`;
-            this.topSpacerCell.style.padding = "0";
-            this.topSpacerCell.style.border = "none";
             this.tbody.appendChild(this.topSpacer);
         }
 
@@ -200,8 +200,6 @@ export class VirtualTable {
 
         if (bottomHeight > 0) {
             this.bottomSpacerCell.style.height = `${bottomHeight}px`;
-            this.bottomSpacerCell.style.padding = "0";
-            this.bottomSpacerCell.style.border = "none";
             this.tbody.appendChild(this.bottomSpacer);
         }
 

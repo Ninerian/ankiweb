@@ -1,29 +1,18 @@
 /* Route Deck Options FSRS styles */
 .route-deck-options-fsrs {
-    margin-top: 1rem;
+    @apply mt-4;
 }
 
 .route-deck-options-fsrs .fsrs-weights-box {
+    /* Keep the browser's generic monospace family, not Tailwind's font stack. */
     font-family: monospace;
-    font-size: 0.85rem;
-    white-space: pre-wrap;
-    word-break: break-all;
-    max-height: 120px;
-    overflow-y: auto;
-    background-color: var(--color-base-200);
-    padding: 0.5rem;
-    border-radius: var(--radius-selector, 0.25rem);
-    border: 1px solid var(--color-base-300);
+    @apply max-h-[120px] overflow-y-auto rounded-selector border border-base-300 bg-base-200 p-2 text-[0.85rem] whitespace-pre-wrap break-all;
 }
 
 .route-deck-options-fsrs .workload-badge {
-    font-size: 0.85rem;
-    padding: 0.35em 0.65em;
+    @apply px-[0.65em] py-[0.35em] text-[0.85rem];
 }
 
 .route-deck-options-fsrs .fsrs-actions-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
+    @apply flex flex-wrap items-center gap-2;
 }

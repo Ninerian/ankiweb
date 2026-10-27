@@ -158,8 +158,7 @@ export class TagEditorController {
         } else {
             const ta = document.createElement("textarea");
             ta.value = selectedTags;
-            ta.style.position = "fixed";
-            ta.style.opacity = "0";
+            ta.className = "fixed opacity-0";
             document.body.appendChild(ta);
             ta.select();
             document.execCommand("copy");

@@ -3,58 +3,43 @@
  */
 
 .route-card-info .card-info-placeholder {
-    margin: 0;
-    position: absolute;
-    top: 50%;
-    left: 50%;
+    @apply absolute top-1/2 left-1/2 m-0 text-base-content/60;
+    /* Keep a single transform so existing transform composition is unchanged. */
     transform: translate(-50%, -50%);
-    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
 }
 
 .route-card-info .stats-table {
-    width: 100%;
+    @apply w-full border-collapse;
+    /* Spacing follows the table's font size. */
     border-spacing: 1em 0;
-    border-collapse: collapse;
 }
 
 .route-card-info .align-start {
-    text-align: start;
+    @apply text-start;
 }
 
 .route-card-info .revlog-table {
-    width: 100%;
-    max-width: 50em;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    white-space: nowrap;
+    @apply flex w-full max-w-[50em] flex-row items-center justify-between whitespace-nowrap;
 }
 
 .route-card-info .column {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    @apply flex flex-col items-center justify-center;
 }
 
 .route-card-info .column:not(:last-child) {
-    margin-right: 0.5em;
+    @apply mr-[0.5em];
 }
 
 .route-card-info .column-head {
-    font-weight: 700;
+    @apply font-bold;
 }
 
 .route-card-info .column-content {
-    display: inline-flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    @apply inline-flex flex-col items-center justify-center;
 }
 
 .route-card-info .column-content.right {
-    align-items: flex-end;
+    @apply items-end;
 }
 
 .route-card-info .column-content > div:empty:after {
@@ -62,43 +47,36 @@
 }
 
 .route-card-info .revlog-learn {
-    color: var(--color-info);
+    @apply text-info;
 }
 
 .route-card-info .revlog-review {
-    color: var(--color-success);
+    @apply text-success;
 }
 
 .route-card-info .revlog-relearn,
 .route-card-info .revlog-ease1 {
-    color: var(--color-error);
+    @apply text-error;
 }
 
 @media only screen and (max-device-width: 480px) and (orientation: portrait) {
     .route-card-info .hidden-xs {
-        display: none;
+        @apply hidden;
     }
 }
 
 .route-card-info .forgetting-curve {
-    width: 100%;
-    max-width: 50em;
-    margin-bottom: 10em;
+    @apply mb-[10em] w-full max-w-[50em];
 }
 
 .route-card-info .time-range-selector {
-    display: flex;
-    justify-content: space-around;
-    margin-bottom: 1em;
-    width: 100%;
-    max-width: 50em;
+    @apply mb-[1em] flex w-full max-w-[50em] justify-around;
 }
 
 .route-card-info .time-range-selector label {
-    display: flex;
-    align-items: center;
+    @apply flex items-center;
 }
 
 .route-card-info .time-range-selector input {
-    margin-right: 0.5em;
+    @apply mr-[0.5em];
 }

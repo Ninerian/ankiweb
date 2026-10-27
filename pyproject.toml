@@ -76,6 +76,8 @@ select = [
 "tests/test_auth.py" = ["S105"]
 # A fixed interpreter and fixed code verify initialization in a fresh process.
 "tests/test_i18n.py" = ["S404", "S603"]
+# Resolved npm runs fixed repository build scripts in an isolated temporary tree.
+"tests/test_shell_build.py" = ["S404", "S603"]
 # Synthetic webhook token exercises notifier configuration and transport.
 "tests/test_notifier.py" = ["S106"]
 # Synthetic webhook token exercises the notification settings form.

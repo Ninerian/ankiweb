@@ -1,109 +1,81 @@
 /* Scoped styling for rewritten statistics & graphs route */
 
 .graphs-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 1rem 0.75rem 4rem;
+    @apply mx-auto my-0 max-w-[900px] px-3 pt-4 pb-16;
 }
 
 .range-box {
-    position: sticky;
+    @apply sticky;
     top: 49px; /* AnkiWeb desktop navbar height */
-    z-index: 1020;
+    @apply z-[1020] border-b border-b-base-300 px-3 py-2 text-base-content;
+    /* Keep shorthand resets for the range and tooltip surfaces. */
     background: var(--color-base-100);
-    color: var(--color-base-content);
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid var(--color-base-300);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
 .range-box .range-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
+    @apply flex flex-wrap items-center gap-3;
 }
 
 /* .graph-card styling handled via daisyUI card card-bordered bg-base-100 shadow-sm */
 
 .graph-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
+    @apply mb-2 flex items-center justify-between;
 }
 
 .graph-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
+    @apply mb-1 text-[1.25rem] font-semibold;
 }
 
 .graph-subtitle {
-    font-size: 0.875rem;
-    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
-    margin-bottom: 0.75rem;
+    @apply mb-3 text-[0.875rem] text-base-content/60;
 }
 
 .graph-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    @apply mb-3 flex flex-wrap gap-2;
 }
 
 .graph-svg-wrap {
-    width: 100%;
-    overflow-x: auto;
-    display: flex;
-    justify-content: center;
+    @apply flex w-full justify-center overflow-x-auto;
 }
 
 .graph-svg-wrap svg {
-    max-width: 100%;
-    height: auto;
+    @apply h-auto max-w-full;
 }
 
 .graph-svg-wrap svg text {
-    fill: currentColor;
+    @apply fill-current;
 }
 
 .graph-svg-wrap svg line,
 .graph-svg-wrap svg path.domain {
-    stroke: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+    @apply stroke-base-content/40;
 }
 
 /* .graph-summary-table styling handled via daisyUI table table-xs table-zebra */
 
 .graph-element-clickable {
-    cursor: pointer;
+    @apply cursor-pointer;
 }
 
 .graph-element-clickable:hover {
-    opacity: 0.85;
+    @apply opacity-[0.85];
 }
 
 /* Tooltip floating box */
 #graphs-tooltip {
-    position: fixed;
-    pointer-events: none;
-    z-index: 1090;
-    background: var(--color-neutral, #1f2937);
+    @apply pointer-events-none fixed z-[1090] rounded-field px-[0.65rem] py-[0.35rem] text-[0.8rem] leading-[1.3] whitespace-pre-line opacity-0;
     color: var(--color-neutral-content, #ffffff);
-    padding: 0.35rem 0.65rem;
-    border-radius: var(--radius-field, 0.25rem);
-    font-size: 0.8rem;
-    line-height: 1.3;
-    opacity: 0;
+    background: var(--color-neutral, #1f2937);
+    /* CSS ease-in-out differs from Tailwind's default easing curve. */
     transition: opacity 0.15s ease-in-out;
-    white-space: pre-line;
 }
 
 #graphs-tooltip.show {
-    opacity: 1;
+    @apply opacity-100;
 }
 
 /* Calendar Heatmap styles */
 .days rect[fill="#ddd"] {
-    fill: var(--color-base-300);
+    @apply fill-base-300;
 }

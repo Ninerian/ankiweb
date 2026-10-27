@@ -1,33 +1,16 @@
 .io-editor-container {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  position: relative;
-  user-select: none;
+  @apply flex flex-col w-full h-full relative select-none bg-base-200 overflow-hidden;
   -webkit-user-select: none;
-  background-color: var(--canvas-subtle, var(--color-base-200));
-  overflow: hidden;
 }
 
 .io-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  background: var(--canvas-elevated, var(--color-base-100));
-  border-bottom: 1px solid var(--color-base-300);
-  z-index: 10;
-  flex-wrap: wrap;
+  @apply flex flex-wrap items-center gap-[4px] px-[10px] py-[6px] bg-base-100 bg-none border-b border-b-base-300 z-10;
+  border-bottom-style: solid;
 }
 
 .io-toolbar-group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  border-right: 1px solid var(--color-base-300);
-  padding-right: 6px;
-  margin-right: 4px;
+  @apply flex items-center gap-[2px] border-r border-r-base-300 pr-[6px] mr-[4px];
+  border-right-style: solid;
 }
 
 .io-toolbar-group:last-child {
@@ -35,86 +18,53 @@
 }
 
 .io-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 32px;
-  padding: 4px 8px;
-  font-size: 13px;
-  font-weight: 500;
-  border: 1px solid transparent;
-  border-radius: var(--radius-field, 4px);
-  background: transparent;
-  color: var(--fg-default, var(--color-base-content));
-  cursor: pointer;
+  @apply inline-flex items-center justify-center min-w-[32px] h-[32px] px-[8px] py-[4px] text-[13px] font-medium border border-solid border-transparent rounded-field bg-transparent bg-none text-base-content cursor-pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .io-btn:hover {
-  background-color: var(--color-base-200);
+  @apply bg-base-200;
 }
 
 .io-btn.active {
-  background-color: var(--color-primary);
-  color: var(--color-primary-content);
+  @apply bg-primary text-primary-content;
 }
 
 .io-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  @apply opacity-40 cursor-not-allowed;
 }
 
 .io-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
+  @apply w-[16px] h-[16px] fill-current;
 }
 
 .io-color-picker {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-field, 4px);
-  cursor: pointer;
-  vertical-align: middle;
+  @apply w-[24px] h-[24px] p-0 border border-solid border-base-300 rounded-field cursor-pointer align-middle;
 }
 
 .io-canvas-viewport {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
+  @apply flex-1 relative overflow-hidden;
   touch-action: none;
-  cursor: default;
+  @apply cursor-default;
 }
 
 .io-canvas-stage {
-  position: absolute;
-  top: 0;
-  left: 0;
+  @apply absolute top-0 left-0;
   transform-origin: 0 0;
 }
 
 .io-img-bg {
-  display: block;
-  pointer-events: none;
-  user-select: none;
+  @apply block pointer-events-none select-none;
   -webkit-user-select: none;
 }
 
 .io-svg-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: auto;
+  @apply absolute top-0 left-0 w-full h-full pointer-events-auto;
 }
 
 /* Shapes styling */
 .io-shape {
-  cursor: move;
+  @apply cursor-move;
   transition: opacity 0.1s;
 }
 
@@ -128,11 +78,12 @@
 
 /* Control handles */
 .io-handle {
-  fill: var(--color-base-100);
-  stroke: var(--color-primary);
+  @apply fill-base-100 stroke-primary;
   stroke-width: 1.5;
-  cursor: pointer;
+  @apply cursor-pointer;
 }
+
+.io-handle-rot { @apply cursor-grab; }
 
 .io-handle-nw, .io-handle-se { cursor: nwse-resize; }
 .io-handle-ne, .io-handle-sw { cursor: nesw-resize; }
@@ -140,21 +91,15 @@
 .io-handle-w, .io-handle-e { cursor: ew-resize; }
 
 .io-selection-box {
-  fill: color-mix(in oklab, var(--color-primary) 10%, transparent);
-  stroke: var(--color-primary);
+  @apply fill-primary/10 stroke-primary;
   stroke-width: 1;
   stroke-dasharray: 4 2;
-  pointer-events: none;
+  @apply pointer-events-none;
 }
 
 .io-text-editor-input {
-  position: absolute;
-  border: 1px dashed var(--color-primary);
+  @apply absolute border border-dashed border-primary bg-base-100 bg-none text-base-content px-[4px] py-[2px] z-[1000];
   outline: none;
-  background: var(--color-base-100);
-  color: var(--color-base-content);
-  padding: 2px 4px;
   font-family: Arial, sans-serif;
   font-size: 16px;
-  z-index: 20;
 }

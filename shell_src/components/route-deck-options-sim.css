@@ -1,42 +1,27 @@
 /* CSS for FSRS Simulator & Workload Charts in Deck Options */
 
 .route-deck-options-sim {
-    margin-top: 1rem;
+    @apply mt-4;
 }
 
+/* The chart height depends on the viewport and its SVG aspect ratio. */
 .route-deck-options-sim .sim-svg-container {
-    width: 100%;
+    @apply flex w-full items-center justify-center rounded-selector border border-base-300 bg-base-100 p-2;
     max-height: max(calc(100vh - 400px), 250px);
     aspect-ratio: 600 / 250;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--color-base-100);
-    border: 1px solid var(--color-base-300);
-    border-radius: var(--radius-selector, 0.25rem);
-    padding: 0.5rem;
 }
 
 .route-deck-options-sim .sim-svg-container svg {
-    width: 100%;
-    height: 100%;
-    overflow: visible;
+    @apply h-full w-full overflow-visible;
 }
 
 
 .route-deck-options-sim .sim-radio-group {
-    margin: 0.5rem 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+    @apply mx-0 my-2 flex flex-wrap gap-4;
 }
 
 .route-deck-options-sim .sim-radio-group label {
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.875rem;
+    @apply inline-flex cursor-pointer items-center gap-1 text-[0.875rem];
 }
 
 

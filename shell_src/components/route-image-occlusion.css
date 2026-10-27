@@ -1,81 +1,46 @@
 /* route-image-occlusion.css - Styles for Image Occlusion Page */
 
 .route-image-occlusion {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  @apply h-full flex flex-col overflow-hidden;
 }
 
 .io-layout {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  @apply flex flex-col h-full min-h-0;
 }
 
 .io-header-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 1rem;
-  background: var(--canvas-elevated, var(--color-base-100));
-  border-bottom: 1px solid var(--color-base-300);
-  flex-shrink: 0;
-  gap: 1rem;
+  @apply flex items-center justify-between px-4 py-2 bg-base-100 bg-none border-b border-b-base-300 shrink-0 gap-4;
+  border-bottom-style: solid;
 }
 
 .io-header-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  @apply flex items-center gap-3;
 }
 
 .io-header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  @apply flex items-center gap-3;
 }
 
 .io-tabs {
-  display: flex;
-  background: var(--color-base-200);
-  border-radius: var(--radius-field, 6px);
-  padding: 2px;
+  @apply flex bg-base-200 bg-none rounded-field p-[2px];
 }
 
 .io-tab-btn {
-  border: none;
-  background: transparent;
-  padding: 0.35rem 0.85rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: var(--radius-field, 4px);
-  color: var(--color-base-content);
-  cursor: pointer;
+  @apply border-0 border-none bg-transparent bg-none px-[0.85rem] py-[0.35rem] text-[0.875rem] font-medium rounded-field text-base-content cursor-pointer;
   transition: all 0.15s ease-in-out;
 }
 
 .io-tab-btn.active {
-  background: var(--color-primary);
-  color: var(--color-primary-content);
+  @apply bg-primary text-primary-content;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .io-main-body {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
+  @apply flex-1 flex min-h-0 relative overflow-hidden;
 }
 
 .io-tab-pane {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
+  @apply flex-1 flex flex-col min-h-0 h-full;
 }
 
 .io-tab-pane[hidden] {
@@ -84,117 +49,67 @@
 
 /* Mask Editor Tab */
 .io-canvas-wrapper {
-  flex: 1;
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: var(--color-base-200);
-  overflow: hidden;
+  @apply flex-1 relative w-full h-full bg-base-200 bg-none overflow-hidden;
 }
 
 #ankiweb-io-editor {
-  width: 100%;
-  height: 100%;
-  position: relative;
+  @apply w-full h-full relative;
 }
 
 /* Notes & Fields Tab */
 .io-fields-container {
-  max-width: 800px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 1.5rem 1rem;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+  @apply max-w-[800px] w-full mx-auto px-4 py-6 overflow-y-auto flex flex-col gap-5;
 }
 
 .io-field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  @apply flex flex-col gap-[0.35rem];
 }
 
 .io-field-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  @apply text-[0.85rem] font-semibold text-base-content/60 uppercase tracking-[0.03em];
 }
 
 .io-field-textarea {
-  min-height: 80px;
+  @apply min-h-[80px] resize-y;
   font-family: inherit;
-  resize: vertical;
 }
 
 /* Bottom Bar / Sticky Footer */
 .io-sticky-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1.25rem;
-  background: var(--canvas-elevated, var(--color-base-100));
-  border-top: 1px solid var(--color-base-300);
-  flex-shrink: 0;
-  gap: 1rem;
+  @apply flex items-center justify-between px-5 py-3 bg-base-100 bg-none border-t border-t-base-300 shrink-0 gap-4;
+  border-top-style: solid;
 }
 
 .io-footer-left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  @apply flex items-center gap-2;
 }
 
 .io-footer-center {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  @apply flex items-center gap-2;
 }
 
 .io-footer-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  @apply flex items-center gap-3;
 }
 
 .io-mode-toggles {
-  display: flex;
-  background: var(--color-base-200);
-  border-radius: var(--radius-field, 6px);
-  padding: 2px;
+  @apply flex bg-base-200 bg-none rounded-field p-[2px];
 }
 
 .io-mode-btn {
-  border: none;
-  background: transparent;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  border-radius: var(--radius-field, 4px);
-  color: var(--color-base-content);
-  cursor: pointer;
+  @apply border-0 border-none bg-transparent bg-none px-3 py-[0.35rem] text-[0.8rem] font-medium rounded-field text-base-content cursor-pointer;
   transition: all 0.15s ease-in-out;
 }
 
 .io-mode-btn.active {
-  background: var(--color-primary);
-  color: var(--color-primary-content);
+  @apply bg-primary text-primary-content;
 }
 
 /* Toast message container */
 .io-toast {
-  position: fixed;
-  bottom: 4rem;
-  left: 50%;
+  @apply fixed bottom-16 left-1/2 z-[1050] px-6 py-3 rounded-box font-medium;
   transform: translateX(-50%);
-  z-index: 1050;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-box, 8px);
-  font-weight: 500;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  pointer-events: none;
+  @apply pointer-events-none;
   transition: opacity 0.2s ease-in-out;
 }
