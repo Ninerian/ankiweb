@@ -52,6 +52,15 @@ Belegt im Repo: Tailwind 4.3.3 + daisyUI 5.7.47 (`package.json`); `shell_src/app
 | Tests | `tests/test_shell_build.py`-Muster: Datei existiert, enthält `aw-light` und `aw-dark`; Template-Klassen-Test: jede in `http_app`-Templates verwendete Utility/daisyUI-Klasse ist im gebauten CSS vorhanden (fängt vergessene `@source` und String-Konkatenation) |
 | Verifikation | Pro Seite Screenshot hell/dunkel bei 375x812 (`page.emulate_media(color_scheme=…)`), Vergleich mit Mockup-Screenshots; Kontrastmessung der Ease-Kacheln |
 
+**Dunkelmodus (Entscheidung, bewusst abweichend vom alten Client):** Der alte Client setzt `data-theme` auf `<html>` immer selbst (`shell_src/bootstrap.ts:101-106`, `localStorage "ankiweb-night"`, Umschalter in der Toolbar). `/app/*` folgt **nur dem Betriebssystem** (`prefers-color-scheme`), ohne `bootstrap.js` und ohne Toggle (DESIGN §6). Folge: Wer im alten Client Nacht-Modus per Toggle gewählt hat, sieht in `/app/` das Theme des Betriebssystems, nicht seine Wahl. Das ist gewollt (Isolation aus Plan 1) und wird in `docs/pwa-deployment.md` und `README.md` vermerkt. Es gibt keine gemischte Quelle: `/app/*` setzt nie `data-theme`.
+
+**Gemessen (Probe-Build, danach gelöscht):** Die `aw-*`-Themes stehen nur in `app-client.css`; das alte `app.css` enthält sie nicht, `app-client.css` wird in alten Seiten nie geladen. Der Fallback `@media (prefers-color-scheme: dark) { :root:not([data-theme]) }` kann dort ohnehin nicht greifen, weil der alte Client immer `data-theme` setzt. Eigene Komponenten-Klassen landen in `@layer components` (belegt im Build), also schlagen Utilities sie, wie es `tools/build_shell.mjs` für `shell_src/components/` vorsieht. `theme.css` bleibt für den alten Client unlayered und wird von `/app/*` nicht geladen.
+
+**Repo-Randbedingungen, die der Plan bewusst ändert:**
+- `README.md` sagt, Theming komme "only from daisyUI's built-in `light`/`dark` themes". Für `/app/*` gilt das nicht mehr (eigene Themes `aw-light`/`aw-dark`); die README-Zeile wird in Plan 5 (Aufgabe 5.5) angepasst, der alte Client behält `light`/`dark`.
+- `ankiweb/shell/static/app-client.css` ist wie `app.css` gitignoriertes Build-Artefakt. Tests, die es brauchen, laufen nach `npm run build` (CI-Schritt); fehlt die Datei, schlägt der Build-Test mit dem Hinweis `run: npm run build` fehl, wie `tests/test_shell_build.py`. Kein stiller Test gegen ein altes Stylesheet.
+- `Dockerfile` (geprüft): Die Frontend-Stage kopiert `package.json`, `tools/build_shell.mjs`, `shell_src/`, `ankiweb/` und ruft `npm run build`. Sobald `build:css:app` in `build` steht, landet `app-client.css` im Image ohne Dockerfile-Änderung. Neue JS-Dateien unter `shell_src/app/` sind durch `COPY shell_src/` abgedeckt. Ein Docker-Build-Test (Datei im Image vorhanden) ist Teil von 1.0.
+
 Offene Abweichung vom Mockup: daisyUI-Komponenten haben eigene Geometrie. Pixelgleichheit ist **kein** Ziel; Ziel ist gleiche Wirkung (Farben, Rundungen, Hard-Shadow, Press). Abweichungen im Screenshot-Vergleich werden benannt, nicht versteckt.
 
 ## Abhängigkeitsgraph

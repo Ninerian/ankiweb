@@ -54,7 +54,8 @@
 ### 1.0 Tailwind/daisyUI-Theme und Build (kein Code-Risiko)
 - [ ] `shell_src/app-client.css` nach Styling-Vertrag anlegen. Mockup-Palette (`mockup.html` `:root` und Dark-Block) auf daisyUI-Variablen abbilden; Mapping-Tabelle als Kommentar im CSS. Dunkel per `prefersdark: true` (Compile belegt `@media (prefers-color-scheme: dark) { :root:not([data-theme]) … }`), kein JS, kein Toggle.
 - [ ] `package.json`: `build:css:app`, in `build` einbinden; `tools/build_shell.mjs` kopiert `shell_src/app/*.js`.
-- [ ] `.gitignore` braucht keine Änderung (`ankiweb/shell/static/*` ignoriert Artefakte, Quellen liegen in `shell_src/`). Docker-Frontend-Stage prüfen: ruft sie `npm run build`? Falls sie `build:css` einzeln aufruft, `build:css:app` ergänzen (`Dockerfile` lesen, nicht raten).
+- [ ] `.gitignore` braucht keine Änderung (`ankiweb/shell/static/*` ignoriert Artefakte, Quellen liegen in `shell_src/`). **Dockerfile geprüft:** Frontend-Stage ruft `npm run build` (Zeile 14) und kopiert `shell_src/`; `build:css:app` muss deshalb nur in `build` stehen, der Dockerfile bleibt unverändert. Verifikation: `docker build` (oder lokal `npm ci && npm run build` im sauberen Checkout) und Datei `ankiweb/shell/static/app-client.css` prüfen.
+- [ ] Eigene Komponenten-CSS nur in `@layer components`; keine ungelayerten Regeln, die Utilities überstimmen.
 - [ ] **Kontrast messen**, nicht annehmen: WCAG-Verhältnis für Ease-Text auf Ease-Fläche in beiden Themes ≥ 4.5:1 (kleines Skript im Test, sRGB-Luminanz). Mockup-Werte wurden in `REFERENCE.md` §3 nach zwei QA-Runden korrigiert; beim Mapping auf `--color-*` und `--color-*-content` können sie wieder abweichen.
 - [ ] Verifikation: `/app/ping` lädt nur `app-client.css`; `npm run build` läuft sauber; Datei enthält `aw-light` und `aw-dark`.
 

@@ -99,7 +99,7 @@ Tests (`test_app_pwa.py`), nur Verhalten:
 - [ ] `REFERENCE.md`: neue Routen, Persistenz pro Karte, Verifikationsstatus ehrlich aktualisieren (was wirklich gelaufen ist, was nicht: Gerätetest, HTTPS, Maskable).
 - [ ] `DESIGN.md` §4/§5/§6: Porting-Abschnitt ersetzen (Mockups sind jetzt umgesetzt unter `/app/*`, nicht mehr "Jinja-Templates des alten Reviewers anpassen"), Finish-Semantik, Queue-Filter-Ergebnis aus Plan 3.
 - [ ] Screenshots neu erzeugen (aktuell veraltet, REFERENCE §8).
-- [ ] `README.md`: Abschnitt "Mobile PWA (`/app/`)".
+- [ ] `README.md`: Abschnitt "Mobile PWA (`/app/`)"; die Zeile "theming comes only from daisyUI's built-in light/dark themes" auf den Altclient einschränken und `/app/*` (eigene Themes `aw-light`/`aw-dark`, Dunkel nur per Betriebssystem) ergänzen. Vermerk: Nacht-Toggle des alten Clients wirkt nicht auf `/app/`.
 
 ## Akzeptanz
 - Chromium meldet für `/app/` keine Installierbarkeits- und Manifestfehler.
