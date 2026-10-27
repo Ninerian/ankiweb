@@ -10,6 +10,7 @@ Dieses Dokument = Index, Entscheidungen, Abhängigkeiten. Details je Schritt in 
 | 3 | [03-review-flow](2026-10-27-reviewer-redesign-03-review-flow.md) | `/app/review` Queue, Reveal, Rating, Streak, Actions-Sheet |
 | 4 | [04-add-cards](2026-10-27-reviewer-redesign-04-add-cards.md) | `/app/add` Wizard, Stapel, Note-Type `AnkiWeb Vocab`, Edit-last |
 | 5 | [05-pwa-bootstrap](2026-10-27-reviewer-redesign-05-pwa-bootstrap.md) | Einbindung aller Views, Manifest/SW auf `/app/`, Navigation, Doku |
+| 6 | [06-i18n](2026-10-27-reviewer-redesign-06-i18n.md) | Mehrsprachigkeit: Anki-Katalog plus kleiner eigener Katalog, `<html lang/dir>`, RTL, lokalisiertes Manifest |
 
 ## Festgelegte Entscheidungen
 
@@ -73,7 +74,14 @@ flowchart LR
   P2 --> P5[5 PWA + Einbindung]
   P3 --> P5
   P4 --> P5
+  P1 --> P6[6 i18n: Katalog, lang/dir]
+  P6 -.-> P2
+  P6 -.-> P3
+  P6 -.-> P4
+  P6 --> P5
 ```
+
+Plan 6 legt `s()`, `<html lang/dir>` und die Test-Gates früh fest (nach Plan 1). Pläne 2 bis 4 verwenden von Anfang an `{{ tr.… }}`/`{{ s("…") }}` statt Klartext; nachträglich umstellen kostet einen Durchlauf pro Template. Plan 5 schließt Manifest, Offline-Seite und Cache-Hash ab.
 
 Schritte 2, 3, 4 sind nach 1 unabhängig voneinander. Gemeinsame Dateien: `http_app/__init__.py` (Router-Aggregation), `templates/app/`, `app.css`-Tokens. Konflikte klein halten: jeder Schritt hängt **nur eine Zeile** an die Aggregation.
 
