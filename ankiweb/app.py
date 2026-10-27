@@ -17,6 +17,11 @@ from ankiweb.adapters.inbound.http_datastar.common import (
     redirect_response,
 )
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.adapters.inbound.http_shared.pwa import (
+    MANIFEST_PATH,
+    SERVICE_WORKER_PATH,
+    build_pwa_router,
+)
 from ankiweb.adapters.inbound.http_shared.routes import (
     build_screen_router,
     register_screen_handlers,
@@ -39,6 +44,9 @@ from ankiweb.core.i18n import tr
 from ankiweb.core.notify.engine import NotifierState
 
 logger = logging.getLogger(__name__)
+
+# Fetched by the browser without credentials (manifest) / before login (worker install).
+PWA_PUBLIC_PATHS = (MANIFEST_PATH, SERVICE_WORKER_PATH)
 
 
 def _wrong_password_text() -> str:
@@ -96,6 +104,7 @@ async def _auth_guard(request, call_next, settings):
     if (
         settings.password
         and request.url.path not in ("/login", "/logout", "/healthz")
+        and request.url.path not in PWA_PUBLIC_PATHS
         and not request.url.path.startswith("/shell/static/")
         and not cookie_ok(request.cookies.get(COOKIE), settings.password)
     ):
@@ -210,6 +219,9 @@ def create_app(
         StaticFiles(directory=str(static_dir), check_dir=False),
         name="shell",
     )
+    app.include_router(
+        build_pwa_router()
+    )  # GET /manifest.webmanifest, /service-worker.js
 
     app.include_router(build_assets_router(settings.assets_dir))  # GET  /_anki/{path}
     app.include_router(

@@ -6,6 +6,11 @@
     <link rel="stylesheet" href="/shell/static/components.css">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#ffd43b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="/shell/static/icons/icon-192.png">
     <title>{{ title }}</title>
     <style>
       /* Anki's vendored SvelteKit editor bundle (editor.css/editor.js, untouched) sizes its
@@ -29,6 +34,11 @@
     <script src="/shell/static/bootstrap.js"></script>
     <script src="/shell/static/dialogs.js"></script>
     <script type="module" src="/shell/static/datastar.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/service-worker.js", { scope: "/" }).catch(() => {})
+      }
+    </script>
   </head>
   <body class="context-{{ context }}">
     {% if toolbar %}{% include "_toolbar.html.jinja" %}{% endif %}
