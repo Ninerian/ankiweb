@@ -122,6 +122,9 @@ Browser (Playwright):
 | Enrichment (Hint/Example-Vorschläge) | **Out of Scope** (RESEARCH-enrichment: Lizenz Attribution ungeklärt) |
 
 ## Commits
+
+> `DESIGN.md` §5.D/§6 beschreibt bis Commit 8 noch "Finish and Save All" und Pop-aus-Speicher. Bis dahin gilt dieser Plan. Commit 8 darf nicht entfallen.
+
 1. `Add vocab note type, escaping and note add/update core`
 2. `Add /app/add page with wizard steps`
 3. `Add add-commit route and stack fragment`

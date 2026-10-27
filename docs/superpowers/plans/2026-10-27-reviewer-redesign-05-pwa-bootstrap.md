@@ -19,6 +19,7 @@
 
 | Thema | Wahl | Begründung |
 |---|---|---|
+| Manifest-`id` | Das Manifest `/` behält `id: "/"` unverändert (sonst zweite installierte App für Bestandsnutzer). Das neue Manifest `/app/` erhält `id: "/app/"` und ist bewusst eine **eigene** App | Stabile Identität des bestehenden PWA-Installs |
 | Manifest-Trennung | **Zweites Manifest** `/app/manifest.webmanifest` mit `id`/`scope`/`start_url` = `/app/`; Manifest `/` bleibt für den alten Client | Zwei Apps, zwei Identitäten; Scope-Trennung verhindert, dass beide sich überlagern |
 | Service Worker | **Eigener Worker** `/app/service-worker.js` mit `Service-Worker-Allowed: /app/`, Scope `/app/` | Eigener Cache-Namespace und eigene Eviction; alter Worker bleibt unberührt. Max-Scope = Pfad (REFERENCE §4) |
 | Cache-Strategie | Wie gehabt: nur `GET /shell/static/app/` cache-first. **Plus** Offline-Fallback-Seite für Navigationen (`/app/offline`): bei Netzfehler statt Browserfehler (RESEARCH-pwa Szenario 2) | Kleine Verbesserung ohne Offline-Lernen. Authentifiziertes HTML wird **nie** gecacht |
@@ -106,6 +107,10 @@ Tests (`test_app_pwa.py`), nur Verhalten:
 - Offline zeigt Offline-Seite; kein authentifiziertes HTML im Cache (Worker-Test).
 - Link-Matrix vollständig, Gesamtfluss grün.
 - Dokumentation benennt offen: Gerätetest Android/iOS, HTTPS-Praxis, Maskable-Beschnitt.
+
+## Synchronität Worker-Pfad und Registrierung
+
+Worker-Pfad und Scope stehen an drei Stellen: Route in `pwa.py`/`http_app/pwa.py`, `register(...)` in `base.html.jinja` (neu) und `shell.html.jinja` (alt, bleibt `/service-worker.js`, Scope `/`). Ein Test liest die Registrierung aus dem gerenderten HTML und prüft, dass Pfad und Scope zur Route und zum `Service-Worker-Allowed`-Header passen.
 
 ## Risiken
 | Risiko | Gegenmaßnahme |

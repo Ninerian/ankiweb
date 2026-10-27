@@ -39,6 +39,8 @@ sequenceDiagram
 
 ## Task 0: Spike vor Implementierung (Queue-Filter, offen aus RESEARCH §3a.3)
 
+> **Gate:** Task 0 läuft **vor** den Aufgaben 3.1 bis 3.4. Sein Ergebnis entscheidet, ob fremde Note-Types angezeigt oder gefiltert werden und prägt Template (Badge), Zähler und Tests. Nicht mit 3.1 beginnen, bevor das Ergebnis im Plan steht.
+
 Offen und **ungeprüft** laut Recherche: Verhalten der Queue bei Decks mit gemischten Note-Types.
 - [ ] Wegwerf-Collection: ein Deck mit 3 `AnkiWeb Vocab`-Noten und 3 `Basic`-Noten. `get_queued_cards` zeigt gemischte Karten? (erwartet: ja, Queue ist pro Deck).
 - [ ] Prüfen, ob `col.sched` einen Such-Filter erlaubt (Custom-Study/Filtered-Deck mit `note:"AnkiWeb Vocab"` wäre ein Umweg, ändert aber Collection-State).
@@ -76,7 +78,7 @@ Alle POST: `cardId`-Check → `StaleCard` → 409 und Client lädt per `@get` di
 ### 3.1 Kern-Aktionen (TDD, `temp_collection`)
 Spiegeln `_ReviewerHandler` (belegt, `reviewer.py:330-440`), aber **ohne** Hub/WS und ohne Import aus `http_screens`:
 - [ ] `toggle_mark` (Tag `marked`), `set_flag` (0..4), `bury` (Karte), `suspend` (Karte), `forget`, `set_due` (`col.sched.set_due_date([cid], spec)`), `delete_note`, `undo` (`col.undo()`, `UndoEmpty` → eigener `NothingToUndo`).
-- [ ] Jede Aktion läuft über `service.run_op(..., initiator="app")` damit `OpChanges` an Subscriber gehen (wie alter Client; belegt `reviewer.py`). `initiator` wird nur durchgereicht; `BridgeHub.broadcast_opchanges` sendet an offene `/ws`-Kontexte (belegt `core/bridge/hub.py:41`), der neue Client öffnet keine, also wirkungslos. Alte Tabs im Browser bekommen die Änderung (gewollt).
+- [ ] Jede Aktion läuft über `service.run_op(..., initiator="app")` damit `OpChanges` an Subscriber gehen (wie alter Client; belegt `reviewer.py`). `initiator` wird nur durchgereicht; `BridgeHub.broadcast_opchanges` sendet an offene `/ws`-Kontexte (belegt `core/bridge/hub.py:41`), der neue Client öffnet keine, also wirkungslos. `/app/*` empfängt keine Hub-Events (`_send_all` sendet nur an registrierte `/ws`-Verbindungen, `hub.py:31`) und rendert daher nie auf eigene Schreibvorgänge neu; ein Initiator-Filter ist nicht nötig. Alte Tabs bekommen die Änderung (gewollt).
 - [ ] Nach Bury/Suspend/Delete/Undo: `fetch_next` (wie alt: `_show_next`).
 - Tests: je Aktion Zustand der Collection prüfen (Tag gesetzt, `queue == -1` bei suspend, usw.); `NothingToUndo` bei leerem Undo-Stack; ungültige `set_due`-Spec → `ValueError` mit Meldung.
 - [ ] **Undo-Verhalten ungeprüft** (RESEARCH §8): Test, dass Undo nach Rating die Karte zurückbringt und Zähler wieder steigen. Schlägt er fehl → Aktion im Sheet ausblenden und im Plan vermerken, nicht stillschweigend lassen.

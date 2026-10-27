@@ -78,6 +78,7 @@ def answer(col, session, card_id: int, ease: int) -> None   # raises StaleCard, 
 ```
 
 Regeln (alle aus RESEARCH §11 belegt):
+- **Feldnamen-Zuordnung (eine Stelle, mit Test):** Queue-Antwort `get_queued_cards` nutzt `new_count`, `learning_count`, `review_count`; `deck_due_tree`-Knoten nutzen `new_count`, `learn_count`, `review_count` (beide belegt per Probe). Das Mapping steht ausschließlich in `QueueCounts.from_queue(...)` (Plan 1) und `DeckRow` (Plan 2). Ein Test legt je eine Karte in New und Learning an und prüft beide Wege auf konkrete Werte ungleich 0, weil ein falscher Feldname sonst still 0 liefert.
 - `fetch_next`: `col.decks.set_current(deck_id)`, `queued = col.sched.get_queued_cards(fetch_limit=1)`; Zähler **aus `queued.new_count/learning_count/review_count`** (gleiche Antwort, kein zweiter Call). `card.start_timer()` **vor** Render. Labels via `col.sched.describe_next_states(top.states)`.
 - Unicode-Isolate (U+2068/U+2069) aus Labels entfernen, NBSP durch Leerzeichen (RESEARCH §11 letzter Punkt). `tr_clean`-Logik aus `templating.tr_clean` **nicht** importieren (Adapter); kleine eigene Funktion im Kern.
 - `answer`: `StaleCard` wenn `session.card is None or session.card.id != card_id`; `ValueError` bei `ease` ∉ 1..4. Mapping auf `CardAnswer.Rating` wie `answer_current`.
