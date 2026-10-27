@@ -131,8 +131,7 @@ class _HTMLSanitizer(HTMLParser):
             return
 
         if is_link:
-            cleaned_attrs.append(("target", "_blank"))
-            cleaned_attrs.append(("rel", "noopener noreferrer"))
+            cleaned_attrs.extend([("target", "_blank"), ("rel", "noopener noreferrer")])
 
         if tag_lower not in VOID_TAGS:
             self.tag_stack.append(tag_lower)

@@ -4,7 +4,7 @@ import html
 import json
 import logging
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 import anki.errors
 import anki.notetypes_pb2 as nt
@@ -319,7 +319,7 @@ def make_router(get_service: Callable) -> APIRouter:
     router = APIRouter()
 
     @router.get("/change-notetype")
-    async def page(cids: str | None = Query(default=None)):
+    async def page(cids: Annotated[str | None, Query()] = None):
         try:
             card_ids = _parse_card_ids(cids)
         except _SelectionError as exc:
@@ -404,7 +404,7 @@ def make_router(get_service: Callable) -> APIRouter:
     @router.post("/change-notetype/remap-field")
     async def remap_field(
         payload: ReadSignals,
-        new_index: int = Query(...),
+        new_index: Annotated[int, Query()],
     ):
         service = get_service()
         if not payload or not isinstance(payload, dict):
@@ -478,7 +478,7 @@ def make_router(get_service: Callable) -> APIRouter:
     @router.post("/change-notetype/remap-template")
     async def remap_template(
         payload: ReadSignals,
-        new_index: int = Query(...),
+        new_index: Annotated[int, Query()],
     ):
         service = get_service()
         if not payload or not isinstance(payload, dict):

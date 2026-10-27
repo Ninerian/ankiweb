@@ -348,9 +348,9 @@ def make_router(get_service: Callable) -> APIRouter:
         payload_data: dict[str, Any] = payload
 
         package_path = payload_data.get("package_path", "")
-        with_scheduling = bool(payload_data.get("with_scheduling", False))
-        with_deck_configs = bool(payload_data.get("with_deck_configs", False))
-        merge_notetypes = bool(payload_data.get("merge_notetypes", False))
+        with_scheduling = bool(payload_data.get("with_scheduling"))
+        with_deck_configs = bool(payload_data.get("with_deck_configs"))
+        merge_notetypes = bool(payload_data.get("merge_notetypes"))
         update_notes = int(payload_data.get("update_notes", 0))
         update_notetypes = int(payload_data.get("update_notetypes", 0))
 

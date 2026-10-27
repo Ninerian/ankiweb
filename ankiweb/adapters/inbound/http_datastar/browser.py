@@ -590,8 +590,12 @@ def make_browser_routes(
             detail_shell_html = templating.render(
                 "browser_detail_shell.html.jinja", **ctx
             )
-            events.append(SSE.patch_elements(detail_shell_html, selector="#detail"))
-            events.append(SSE.execute_script("window.ankiwebCloseMobileDetail?.()"))
+            events.extend(
+                [
+                    SSE.patch_elements(detail_shell_html, selector="#detail"),
+                    SSE.execute_script("window.ankiwebCloseMobileDetail?.()"),
+                ]
+            )
         return events
 
     def _mirror_hub(

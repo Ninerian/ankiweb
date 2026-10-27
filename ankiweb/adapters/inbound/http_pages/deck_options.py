@@ -111,9 +111,7 @@ def _dict_to_cfg(d: dict[str, Any], config_pb: dc.DeckConfig.Config) -> None:
             if isinstance(val, dict):
                 # Datastar serialized array as object {"0": x, "1": y}
                 # Sort by numeric key
-                sorted_keys = sorted(
-                    [k for k in val if str(k).isdigit()], key=lambda k: int(k)
-                )
+                sorted_keys = sorted([k for k in val if str(k).isdigit()], key=int)
                 for k in sorted_keys:
                     item_val = val[k]
                     if item_val is not None and str(item_val).strip() != "":

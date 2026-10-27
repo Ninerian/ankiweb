@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
+from datastar_py.fastapi import ReadSignals
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -10,7 +12,6 @@ from starlette_compress import CompressMiddleware
 
 # Initialize Anki through the collection adapter before screens import its cyclic modules.
 import ankiweb.adapters.outbound.anki_collection_adapter as collection_adapter
-from datastar_py.fastapi import ReadSignals
 from ankiweb.adapters.inbound.http_datastar.common import (
     error_response,
     redirect_response,
@@ -36,6 +37,8 @@ from ankiweb.core.bridge.hub import BridgeHub
 from ankiweb.core.config import Settings, host_allowed
 from ankiweb.core.i18n import tr
 from ankiweb.core.notify.engine import NotifierState
+
+logger = logging.getLogger(__name__)
 
 
 def _wrong_password_text() -> str:
@@ -65,9 +68,7 @@ def create_app(
             await svc.open()
         h = hub if hub is not None else BridgeHub()
         if svc is not None:
-            svc.subscribe(
-                lambda flags, initiator: h.broadcast_opchanges(flags, initiator)
-            )
+            svc.subscribe(h.broadcast_opchanges)
         app.state.settings = settings
         app.state.service = svc
         app.state.hub = h
@@ -141,8 +142,10 @@ def create_app(
                     if isinstance(body, dict):
                         val = body.get("password", "")
                         pwd_str = str(val) if val is not None else ""
-                except Exception:
-                    pass
+                except (ValueError, RecursionError):
+                    logger.warning(
+                        "Failed to decode JSON body in Datastar login request"
+                    )
 
             if settings.password and password_ok(pwd_str, settings.password):
                 resp = redirect_response("/")

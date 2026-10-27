@@ -535,7 +535,7 @@ def make_router(get_service: Callable) -> APIRouter:
             csv_path = "/" + csv_path
 
         delimiter = int(payload_data.get("delimiter", 0))
-        is_html = bool(payload_data.get("is_html", False))
+        is_html = bool(payload_data.get("is_html"))
         notetype_id = int(payload_data.get("notetype_id", 0))
         deck_id = int(payload_data.get("deck_id", 0))
         dupe_resolution = int(payload_data.get("dupe_resolution", 0))
@@ -595,7 +595,7 @@ def make_router(get_service: Callable) -> APIRouter:
             )
 
         delimiter = int(payload_data.get("delimiter", 0))
-        is_html = bool(payload_data.get("is_html", False))
+        is_html = bool(payload_data.get("is_html"))
         notetype_id = int(payload_data.get("notetype_id", 0))
         deck_id = int(payload_data.get("deck_id", 0))
         dupe_resolution = int(payload_data.get("dupe_resolution", 0))

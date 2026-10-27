@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from collections.abc import Callable
 from typing import cast
 
@@ -387,7 +388,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
             factor = round(cur_cost / prev_cost, 2) if prev_cost else 1.0
 
-            if round(cur_dr, 2) == round(prev_dr, 2) or factor == 1.0:
+            if round(cur_dr, 2) == round(prev_dr, 2) or math.isclose(factor, 1.0):
                 workload_msg = (
                     tr.deck_config_workload_factor_unchanged()
                     if hasattr(tr, "deck_config_workload_factor_unchanged")

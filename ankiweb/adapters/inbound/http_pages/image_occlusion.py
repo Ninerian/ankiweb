@@ -8,6 +8,7 @@ Serves:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
@@ -41,29 +42,45 @@ def make_router(get_service: Callable) -> APIRouter:
     async def serve_io_image(path: str):
         """Serve an image from import_tmp or col.media."""
         service = get_service()
+
+        def _find_import_tmp(candidate: str, settings) -> Path | None:
+            resolved = Path(candidate).resolve()
+            if import_tmp.is_within(settings, str(resolved)) and resolved.is_file():
+                try:
+                    os.utime(resolved, None)
+                except OSError:
+                    pass
+                return resolved
+            return None
+
         # Check if it's within import_tmp
-        resolved_path = Path(path).resolve()
-        if (
-            import_tmp.is_within(service.settings, str(resolved_path))
-            and resolved_path.is_file()
-        ):
-            # touch on read
-            try:
-                os.utime(resolved_path, None)
-            except OSError:
-                pass
-            return FileResponse(resolved_path)
+        resolved_tmp = await asyncio.to_thread(_find_import_tmp, path, service.settings)
+        if resolved_tmp is not None:
+            return FileResponse(resolved_tmp)
 
         # Fallback to col.media.dir()
-        media_dir = Path(await service.run(lambda col: col.media.dir())).resolve()
-        target = (media_dir / path).resolve()
-        try:
-            target.relative_to(media_dir)
-        except ValueError:
-            return PlainTextResponse("forbidden", status_code=403)
-        if target.is_file():
-            return FileResponse(target)
+        raw_media_dir = await service.run(lambda col: col.media.dir())
 
+        def _resolve_media(
+            media_raw: str, rel_path: str
+        ) -> tuple[Path | None, int | None]:
+            base = Path(media_raw).resolve()
+            target = (base / rel_path).resolve()
+            try:
+                target.relative_to(base)
+            except ValueError:
+                return None, 403
+            if target.is_file():
+                return target, 200
+            return None, 404
+
+        target_path, status = await asyncio.to_thread(
+            _resolve_media, raw_media_dir, path
+        )
+        if status == 403:
+            return PlainTextResponse("forbidden", status_code=403)
+        if status == 200 and target_path is not None:
+            return FileResponse(target_path)
         return PlainTextResponse("not found", status_code=404)
 
     @router.get("/image-occlusion/{path:path}", response_class=HTMLResponse)
@@ -243,7 +260,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
             occlusions = re.sub(r"\{\{([^}]+)\}\}", add_oi, occlusions)
         else:
-            occlusions = re.sub(r":oi=1", "", occlusions)
+            occlusions = occlusions.replace(r":oi=1", "")
         saved_nid = note_id
 
         def do_save(col):

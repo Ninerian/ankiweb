@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 
 from datastar_py.fastapi import (
     DatastarResponse,
@@ -138,7 +138,7 @@ def make_router(get_service: Callable) -> APIRouter:
     sticky_storage: dict[int, dict[int, str]] = {}  # notetype_id -> {field_idx: val}
 
     @router.get("/edit")
-    async def get_edit(nid: int = Query(...)):
+    async def get_edit(nid: Annotated[int, Query()]):
         service = get_service()
 
         def build(col):
@@ -278,7 +278,7 @@ def make_router(get_service: Callable) -> APIRouter:
         return signals_response({"tags_str": " ".join(tags)})
 
     @router.post("/editor/toggle-collapse")
-    async def toggle_collapse(payload: ReadSignals, idx: int = Query(...)):
+    async def toggle_collapse(payload: ReadSignals, idx: Annotated[int, Query()]):
         service = get_service()
         if not payload or not isinstance(payload, dict):
             return DatastarResponse()
@@ -300,7 +300,7 @@ def make_router(get_service: Callable) -> APIRouter:
         return DatastarResponse()
 
     @router.post("/editor/toggle-sticky")
-    async def toggle_sticky(payload: ReadSignals, idx: int = Query(...)):
+    async def toggle_sticky(payload: ReadSignals, idx: Annotated[int, Query()]):
         service = get_service()
         if not payload or not isinstance(payload, dict):
             return DatastarResponse()

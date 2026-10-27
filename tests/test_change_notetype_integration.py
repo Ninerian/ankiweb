@@ -1,10 +1,10 @@
-from collections.abc import Iterator
-from typing import TypedDict
 import asyncio
 import threading
 import time
+from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import TypedDict
 from urllib.parse import urlsplit
 
 import pytest
@@ -14,7 +14,6 @@ from anki.collection import Collection
 from anki.dbproxy import Row
 from anki.models import NotetypeId
 from anki.notes import NoteId
-
 from fastapi import FastAPI
 
 from ankiweb.app import create_app

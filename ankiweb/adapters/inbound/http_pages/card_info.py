@@ -265,41 +265,49 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
             )
 
     # 8. Reviews & Lapses
-    rows.append({"label": tr.card_stats_review_count(), "value": stats_proto.reviews})
-    rows.append({"label": tr.card_stats_lapse_count(), "value": stats_proto.lapses})
+    rows.extend(
+        [
+            {"label": tr.card_stats_review_count(), "value": stats_proto.reviews},
+            {"label": tr.card_stats_lapse_count(), "value": stats_proto.lapses},
+        ]
+    )
 
     # 9. Times
     if stats_proto.total_secs:
-        rows.append(
-            {
-                "label": tr.card_stats_average_time(),
-                "value": format_timespan(stats_proto.average_secs),
-            }
-        )
-        rows.append(
-            {
-                "label": tr.card_stats_total_time(),
-                "value": format_timespan(stats_proto.total_secs),
-            }
+        rows.extend(
+            [
+                {
+                    "label": tr.card_stats_average_time(),
+                    "value": format_timespan(stats_proto.average_secs),
+                },
+                {
+                    "label": tr.card_stats_total_time(),
+                    "value": format_timespan(stats_proto.total_secs),
+                },
+            ]
         )
 
     # 10. Card type & Notetype
-    rows.append(
-        {"label": tr.card_stats_card_template(), "value": stats_proto.card_type}
+    rows.extend(
+        [
+            {"label": tr.card_stats_card_template(), "value": stats_proto.card_type},
+            {"label": tr.card_stats_note_type(), "value": stats_proto.notetype},
+        ]
     )
-    rows.append({"label": tr.card_stats_note_type(), "value": stats_proto.notetype})
 
     # 11. Deck
     if stats_proto.HasField("original_deck") and stats_proto.original_deck:
         deck_str = f"{stats_proto.deck} ({stats_proto.original_deck})"
     else:
         deck_str = stats_proto.deck
-    rows.append({"label": tr.card_stats_deck_name(), "value": deck_str})
-
-    # 12. Preset, Card ID, Note ID
-    rows.append({"label": tr.card_stats_preset(), "value": stats_proto.preset})
-    rows.append({"label": tr.card_stats_card_id(), "value": stats_proto.card_id})
-    rows.append({"label": tr.card_stats_note_id(), "value": stats_proto.note_id})
+    rows.extend(
+        [
+            {"label": tr.card_stats_deck_name(), "value": deck_str},
+            {"label": tr.card_stats_preset(), "value": stats_proto.preset},
+            {"label": tr.card_stats_card_id(), "value": stats_proto.card_id},
+            {"label": tr.card_stats_note_id(), "value": stats_proto.note_id},
+        ]
+    )
 
     # 13. Custom data
     if stats_proto.custom_data:

@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
-import ankiweb.core.ankiconnect_actions.actions
 import ankiweb.core.ankiconnect_actions.extra_actions  # noqa: F401 — registers /extra_actions/<name>
 from ankiweb.adapters.inbound.http_ankiconnect.cors import allow_origin
 from ankiweb.adapters.inbound.http_ankiconnect.rest import (

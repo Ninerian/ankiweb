@@ -68,7 +68,7 @@ class CollectionService:
             return
         col, self._col = self._col, None
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(self._executor, lambda: col.close())
+        await loop.run_in_executor(self._executor, col.close)
         await loop.run_in_executor(None, self._executor.shutdown)
         await loop.run_in_executor(None, self._aux_executor.shutdown)
 

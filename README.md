@@ -490,6 +490,7 @@ mypy or Pyright](https://docs.astral.sh/ty/coming-from-mypy-or-pyright/).
 
 Apply Python formatting with `uv run ruff format .`. Before committing Python changes, run
 the lint, formatting, and type checks above against the whole repository.
+Re-run the complete block after changing Ruff's rule categories or preview settings.
 
 For VS Code, install the `astral-sh.ty` and `charliermarsh.ruff` extensions. Workspace settings
 use ty instead of Pylance, with Ruff formatting and lint fixes on explicit save.

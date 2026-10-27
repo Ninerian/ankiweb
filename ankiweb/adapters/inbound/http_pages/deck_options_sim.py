@@ -162,7 +162,7 @@ def render_simulation_svg(
     y_axis_svg = render_y_axis(
         scale_y,
         x=margin_left,
-        tick_format=(lambda v: format_time_span(v))
+        tick_format=format_time_span
         if subgraph == "time"
         else (lambda v: f"{round(v)}"),
     )
@@ -253,7 +253,7 @@ def render_workload_svg(
     y_axis_svg = render_y_axis(
         scale_y,
         x=margin_left,
-        tick_format=(lambda v: format_time_span(v))
+        tick_format=format_time_span
         if (subgraph == "time" or subgraph == "ratio")
         else (lambda v: f"{round(v)}"),
     )

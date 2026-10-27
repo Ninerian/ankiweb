@@ -249,9 +249,7 @@ def test_change_notetype_mapping_posts_reject_invalid_note_ids(
         payload["note_ids"] = invalid_values[invalid_case]
 
     path = f"/change-notetype/{endpoint}"
-    if endpoint == "remap-field":
-        path += "?new_index=0"
-    elif endpoint == "remap-template":
+    if endpoint == "remap-field" or endpoint == "remap-template":
         path += "?new_index=0"
     response = client.post(path, headers={"Datastar-Request": "true"}, json=payload)
 

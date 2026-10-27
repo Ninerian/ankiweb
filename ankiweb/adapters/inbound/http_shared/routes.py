@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
+from typing import Annotated
 
 from anki.errors import AnkiException
 from fastapi import APIRouter, Form, Request, UploadFile
@@ -17,6 +18,7 @@ from ankiweb.adapters.inbound.http_datastar.card_layout import (
     make_card_layout_routes,
     render_card_layout_html,
 )
+from ankiweb.adapters.inbound.http_datastar.common import safe_return_url
 from ankiweb.adapters.inbound.http_datastar.custom_study import (
     make_custom_study_routes,
     render_custom_study_html,
@@ -28,7 +30,6 @@ from ankiweb.adapters.inbound.http_datastar.deckbrowser import (
 from ankiweb.adapters.inbound.http_datastar.dev_progress import (
     router as dev_progress_router,
 )
-from ankiweb.adapters.inbound.http_datastar.common import safe_return_url
 from ankiweb.adapters.inbound.http_datastar.fields import (
     make_fields_routes,
     render_fields_html,
@@ -220,13 +221,13 @@ def build_screen_router(
 
     @router.post("/notify")
     async def notify_post(
-        action: str = Form("save"),
-        enabled: bool = Form(False),
-        url: str = Form(""),
-        token: str = Form(""),
-        poll_sec: float = Form(60.0),
-        retry_sec: float = Form(30.0),
-        scope: str = Form("leaf"),
+        action: Annotated[str, Form()] = "save",
+        enabled: Annotated[bool, Form()] = False,
+        url: Annotated[str, Form()] = "",
+        token: Annotated[str, Form()] = "",
+        poll_sec: Annotated[float, Form()] = 60.0,
+        retry_sec: Annotated[float, Form()] = 30.0,
+        scope: Annotated[str, Form()] = "leaf",
     ):
         state = get_notifier() if get_notifier is not None else None
         if not header_safe(token):
@@ -302,17 +303,17 @@ def build_screen_router(
 
     @router.post("/export")
     async def export_post(
-        target: str = Form("all"),
-        fmt: str = Form("apkg"),
-        with_scheduling: bool = Form(False),
-        with_media: bool = Form(False),
-        with_deck_configs: bool = Form(False),
-        legacy: bool = Form(False),
-        with_html: bool = Form(False),
-        with_tags: bool = Form(False),
-        with_deck: bool = Form(False),
-        with_notetype: bool = Form(False),
-        with_guid: bool = Form(False),
+        target: Annotated[str, Form()] = "all",
+        fmt: Annotated[str, Form()] = "apkg",
+        with_scheduling: Annotated[bool, Form()] = False,
+        with_media: Annotated[bool, Form()] = False,
+        with_deck_configs: Annotated[bool, Form()] = False,
+        legacy: Annotated[bool, Form()] = False,
+        with_html: Annotated[bool, Form()] = False,
+        with_tags: Annotated[bool, Form()] = False,
+        with_deck: Annotated[bool, Form()] = False,
+        with_notetype: Annotated[bool, Form()] = False,
+        with_guid: Annotated[bool, Form()] = False,
     ):
         import anki.import_export_pb2 as ie
 

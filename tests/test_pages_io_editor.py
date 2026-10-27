@@ -12,7 +12,7 @@ PNG_BYTES = bytes.fromhex(
 
 
 def float_to_display(num: float) -> str:
-    if num == 0.0:
+    if not num:
         return ".0000"
     s = f"{num:.4f}"
     # strip leading zeroes before decimal and trailing zeroes
@@ -20,7 +20,7 @@ def float_to_display(num: float) -> str:
     integer_part = parts[0].lstrip("0")
     fraction_part = parts[1].rstrip("0")
     if not fraction_part:
-        return integer_part if integer_part else ".0000"
+        return integer_part or ".0000"
     return f"{integer_part}.{fraction_part}"
 
 

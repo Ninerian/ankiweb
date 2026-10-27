@@ -38,7 +38,7 @@ async def remove_duplicate_notes(rt, deck=None, deckId=None, dryRun=False):
             if d is not None:
                 did, name = d["id"], d["name"]
         if name is None:
-            raise ValueError("deck was not found: " + str(deck if deck else deckId))
+            raise ValueError("deck was not found: " + str(deck or deckId))
 
         nids = col.find_notes(col.build_search_string(SearchNode(deck=name)))
         # order by id: makes the group list order (and each group's members) deterministic

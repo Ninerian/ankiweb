@@ -218,41 +218,45 @@ def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
         assert saved_editor.status == 200
         assert second_value in saved_editor.text()
         tag_add_button = frame.locator(".tag-add-button")
-        with page.expect_response(
-            lambda response: (
-                response.request.method == "POST"
-                and response.url.endswith("/editor/blur-field")
-            ),
-            timeout=10000,
-        ) as tag_button_blur:
-            with page.expect_response(
+        with (
+            page.expect_response(
+                lambda response: (
+                    response.request.method == "POST"
+                    and response.url.endswith("/editor/blur-field")
+                ),
+                timeout=10000,
+            ) as tag_button_blur,
+            page.expect_response(
                 lambda response: (
                     response.request.method == "POST"
                     and response.url.endswith("/browse/refresh")
                 ),
                 timeout=10000,
-            ) as tag_button_refresh:
-                tag_add_button.click()
+            ) as tag_button_refresh,
+        ):
+            tag_add_button.click()
         assert tag_button_blur.value.status == 200
         assert tag_button_refresh.value.status == 200
 
         tag_input = frame.locator(".tag-input")
         tag_input.fill("same-tab-editor-tag")
-        with page.expect_response(
-            lambda response: (
-                response.request.method == "POST"
-                and response.url.endswith("/editor/save-tags")
-            ),
-            timeout=10000,
-        ) as tag_save_info:
-            with page.expect_response(
+        with (
+            page.expect_response(
+                lambda response: (
+                    response.request.method == "POST"
+                    and response.url.endswith("/editor/save-tags")
+                ),
+                timeout=10000,
+            ) as tag_save_info,
+            page.expect_response(
                 lambda response: (
                     response.request.method == "POST"
                     and response.url.endswith("/browse/refresh")
                 ),
                 timeout=10000,
-            ) as tag_refresh_info:
-                tag_input.press("Enter")
+            ) as tag_refresh_info,
+        ):
+            tag_input.press("Enter")
         assert tag_save_info.value.status == 200
         assert tag_refresh_info.value.status == 200
         page.wait_for_function(
@@ -478,25 +482,25 @@ def test_selection_request_finishes_before_pending_browser_refresh(live_server_b
         ):
             row.click()
 
-        with page.expect_response(
-            lambda response: (
-                response.request.method == "POST"
-                and response.url.split("?", 1)[0].endswith("/browse/refresh")
-            ),
-            timeout=6000,
-        ) as refresh_info:
-            with page.expect_request(
+        with (
+            page.expect_response(
+                lambda response: (
+                    response.request.method == "POST"
+                    and response.url.split("?", 1)[0].endswith("/browse/refresh")
+                ),
+                timeout=6000,
+            ) as refresh_info,
+            page.expect_request(
                 lambda request: (
                     request.method == "POST"
                     and request.url.split("?", 1)[0].endswith("/browse/refresh")
                 ),
                 timeout=6000,
-            ) as refresh_request_info:
-                page.evaluate(
-                    "window.dispatchEvent(new Event('ankiweb:browser-refresh'))"
-                )
-                assert paused_select
-                paused_select[0].continue_()
+            ) as refresh_request_info,
+        ):
+            page.evaluate("window.dispatchEvent(new Event('ankiweb:browser-refresh'))")
+            assert paused_select
+            paused_select[0].continue_()
 
         refresh_fields = parse_qs(refresh_request_info.value.post_data or "")
         assert refresh_fields.get("selectedCids") == [cid]
@@ -1481,22 +1485,20 @@ def test_browser_selected_status_reserves_layout_across_selection(live_server_br
             status = page.locator("#browser-selected-status")
             start_url = page.url
 
-            def selected_count():
-                return page.locator(
-                    "#results-body input[type='checkbox']:checked"
-                ).count()
+            def selected_count(p=page):
+                return p.locator("#results-body input[type='checkbox']:checked").count()
 
-            def wait_for_count(expected):
-                page.wait_for_function(
+            def wait_for_count(expected, p=page, s=status):
+                p.wait_for_function(
                     "(expected) => document.querySelectorAll("
                     "'#results-body input[type=checkbox]:checked').length === expected",
                     arg=expected,
                     timeout=6000,
                 )
-                status.wait_for(state="visible" if expected else "hidden", timeout=6000)
+                s.wait_for(state="visible" if expected else "hidden", timeout=6000)
 
-            def geometry():
-                return page.evaluate(
+            def geometry(p=page):
+                return p.evaluate(
                     """() => {
                       const rect = (selector) => {
                         const {top, bottom, left, right, width, height} =
@@ -1520,7 +1522,14 @@ def test_browser_selected_status_reserves_layout_across_selection(live_server_br
 
             baseline = None
 
-            def capture(state, expected):
+            def capture(
+                state,
+                expected,
+                p=page,
+                url=start_url,
+                s=status,
+                lbl=label,
+            ):
                 nonlocal baseline
                 assert selected_count() == expected
                 current = geometry()
@@ -1532,17 +1541,17 @@ def test_browser_selected_status_reserves_layout_across_selection(live_server_br
                 assert row["left"] >= -1
                 assert row["right"] <= current["viewportWidth"] + 1
                 assert current["scrollY"] == 0
-                assert page.url == start_url
-                assert page.locator("#detail-offcanvas").get_attribute("open") is None
+                assert p.url == url
+                assert p.locator("#detail-offcanvas").get_attribute("open") is None
 
                 if expected:
-                    assert status.is_visible()
+                    assert s.is_visible()
                     assert current["badge"]["top"] >= current["actions"]["bottom"] - 1
                     assert current["badge"]["left"] >= -1
                     assert current["badge"]["right"] <= current["viewportWidth"] + 1
                     assert current["badge"]["width"] <= row["width"] + 1
                 else:
-                    assert not status.is_visible()
+                    assert not s.is_visible()
 
                 if baseline is None:
                     baseline = current
@@ -1555,12 +1564,12 @@ def test_browser_selected_status_reserves_layout_across_selection(live_server_br
                     ):
                         for edge in ("top", "bottom"):
                             assert abs(current[key][edge] - baseline[key][edge]) <= 2, (
-                                f"{label} {state} moved {key}.{edge}: "
+                                f"{lbl} {state} moved {key}.{edge}: "
                                 f"{baseline[key][edge]} -> {current[key][edge]}"
                             )
 
-            def toggle(target):
-                if has_touch:
+            def toggle(target, touch=has_touch):
+                if touch:
                     target.tap()
                 else:
                     target.click()

@@ -214,7 +214,7 @@ def generate_future_due_chart(
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
 
     svg_parts.append('<g class="bars">')
-    for idx, item in enumerate(data):
+    for item in data:
         bx = x_scale(item["day"])
         by = y_scale(item["count"])
         bh = (height - margin_bottom) - by
@@ -227,29 +227,27 @@ def generate_future_due_chart(
         svg_parts.append(
             f'  <rect rx="1" x="{bx:.2f}" y="{by:.2f}" width="{bar_w:.2f}" height="{bh:.2f}" fill="{fill}" data-tooltip="{tt}"></rect>'
         )
-    svg_parts.append("</g>")
-
-    svg_parts.append('<g class="hover-columns">')
+    svg_parts.extend(["</g>", '<g class="hover-columns">'])
     for item in data:
         bx = x_scale(item["day"])
         tt = item["tooltip"]
         svg_parts.append(
             f'  <rect x="{bx:.2f}" y="{margin_top}" width="{bar_w:.2f}" height="{chart_h}" fill="transparent" data-tooltip="{tt}" class="graph-element-clickable"></rect>'
         )
-    svg_parts.append("</g>")
-
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y_scale,
-            width - margin_right,
-            right=True,
-            tick_count=5,
-            css_class="y2-ticks",
-        )
+    svg_parts.extend(
+        [
+            "</g>",
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
     )
-
     if not has_any:
         svg_parts.append(render_no_data_overlay(width, height))
 
@@ -438,33 +436,34 @@ def generate_reviews_chart(
     bar_w = chart_w / max(len(items), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(
-        render_stacked_bars(
-            items, "day", series_keys, colors, x_scale, y_scale, bar_width=bar_w
-        )
+    svg_parts.extend(
+        [
+            render_stacked_bars(
+                items, "day", series_keys, colors, x_scale, y_scale, bar_width=bar_w
+            ),
+            '<g class="hover-columns">',
+        ]
     )
-
-    svg_parts.append('<g class="hover-columns">')
     for item in items:
         bx = x_scale(item["day"])
         tt = item["tooltip"]
         svg_parts.append(
             f'  <rect x="{bx:.2f}" y="{margin_top}" width="{bar_w:.2f}" height="{chart_h}" fill="transparent" data-tooltip="{tt}" class="graph-element-clickable"></rect>'
         )
-    svg_parts.append("</g>")
-
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y_scale,
-            width - margin_right,
-            right=True,
-            tick_count=5,
-            css_class="y2-ticks",
-        )
+    svg_parts.extend(
+        [
+            "</g>",
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
     )
-
     if total_val == 0:
         svg_parts.append(render_no_data_overlay(width, height))
 
@@ -678,22 +677,21 @@ def generate_intervals_chart(
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(
-        render_bars(
-            data, "interval", "count", x_scale, y_scale, width=bar_w, fill="#6baed6"
-        )
-    )
-
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y_scale,
-            width - margin_right,
-            right=True,
-            tick_count=5,
-            css_class="y2-ticks",
-        )
+    svg_parts.extend(
+        [
+            render_bars(
+                data, "interval", "count", x_scale, y_scale, width=bar_w, fill="#6baed6"
+            ),
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
     )
 
     if total_cards == 0:
@@ -754,30 +752,27 @@ def generate_ease_chart(eases: stats_pb2.GraphsResponse.Eases) -> dict[str, Any]
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(
-        render_bars(
-            data, "ease", "count", x_scale, y_scale, width=bar_w, fill="#74c476"
-        )
+    svg_parts.extend(
+        [
+            render_bars(
+                data, "ease", "count", x_scale, y_scale, width=bar_w, fill="#74c476"
+            ),
+            render_x_axis(
+                x_scale,
+                height - margin_bottom,
+                tick_count=6,
+                tick_format=lambda x: f"{round(x)}%",
+            ),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
     )
-    svg_parts.append(
-        render_x_axis(
-            x_scale,
-            height - margin_bottom,
-            tick_count=6,
-            tick_format=lambda x: f"{round(x)}%",
-        )
-    )
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y_scale,
-            width - margin_right,
-            right=True,
-            tick_count=5,
-            css_class="y2-ticks",
-        )
-    )
-
     if total_cards == 0:
         svg_parts.append(render_no_data_overlay(width, height))
     svg_parts.append("</svg>")
@@ -786,13 +781,12 @@ def generate_ease_chart(eases: stats_pb2.GraphsResponse.Eases) -> dict[str, Any]
     if total_cards > 0:
         # eases.average is already in percentage units (e.g. 250.0)
         avg_val = eases.average if eases.average > 1.0 else eases.average * 100.0
-        summary.append(
-            {"label": tr.statistics_average_ease(), "value": f"{avg_val:.0f}%"}
+        summary.extend(
+            [
+                {"label": tr.statistics_average_ease(), "value": f"{avg_val:.0f}%"},
+                {"label": tr.statistics_median_ease(), "value": f"{round(median_e)}%"},
+            ]
         )
-        summary.append(
-            {"label": tr.statistics_median_ease(), "value": f"{round(median_e)}%"}
-        )
-
     return {
         "title": tr.statistics_card_ease_title(),
         "subtitle": tr.statistics_card_ease_subtitle(),
@@ -836,34 +830,32 @@ def generate_difficulty_chart(
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(
-        render_bars(
-            data,
-            "pct",
-            "count",
-            x_scale,
-            y_scale,
-            width=bar_w,
-            fill="rgb(251, 106, 74)",
-        )
-    )
-    svg_parts.append(
-        render_x_axis(
-            x_scale,
-            height - margin_bottom,
-            tick_count=6,
-            tick_format=lambda x: f"{round(x)}%",
-        )
-    )
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y_scale,
-            width - margin_right,
-            right=True,
-            tick_count=5,
-            css_class="y2-ticks",
-        )
+    svg_parts.extend(
+        [
+            render_bars(
+                data,
+                "pct",
+                "count",
+                x_scale,
+                y_scale,
+                width=bar_w,
+                fill="rgb(251, 106, 74)",
+            ),
+            render_x_axis(
+                x_scale,
+                height - margin_bottom,
+                tick_count=6,
+                tick_format=lambda x: f"{round(x)}%",
+            ),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
     )
 
     if total_cards == 0:
@@ -877,11 +869,17 @@ def generate_difficulty_chart(
             if difficulty.average > 1.0
             else difficulty.average * 100.0
         )
-        summary.append(
-            {"label": tr.statistics_average_difficulty(), "value": f"{avg_val:.0f}%"}
-        )
-        summary.append(
-            {"label": tr.statistics_median_difficulty(), "value": f"{round(median_d)}%"}
+        summary.extend(
+            [
+                {
+                    "label": tr.statistics_average_difficulty(),
+                    "value": f"{avg_val:.0f}%",
+                },
+                {
+                    "label": tr.statistics_median_difficulty(),
+                    "value": f"{round(median_d)}%",
+                },
+            ]
         )
 
     return {
@@ -922,28 +920,32 @@ def generate_retrievability_chart(
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(
-        render_bars(
-            data, "pct", "count", x_scale, y_scale, width=bar_w, fill="rgb(49, 163, 84)"
-        )
-    )
-    svg_parts.append(
-        render_x_axis(
-            x_scale,
-            height - margin_bottom,
-            tick_count=6,
-            tick_format=lambda x: f"{round(x)}%",
-        )
-    )
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y_scale,
-            width - margin_right,
-            right=True,
-            tick_count=5,
-            css_class="y2-ticks",
-        )
+    svg_parts.extend(
+        [
+            render_bars(
+                data,
+                "pct",
+                "count",
+                x_scale,
+                y_scale,
+                width=bar_w,
+                fill="rgb(49, 163, 84)",
+            ),
+            render_x_axis(
+                x_scale,
+                height - margin_bottom,
+                tick_count=6,
+                tick_format=lambda x: f"{round(x)}%",
+            ),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
     )
 
     if total_cards == 0:
@@ -957,17 +959,17 @@ def generate_retrievability_chart(
             if retrievability.average > 1.0
             else retrievability.average * 100.0
         )
-        summary.append(
-            {
-                "label": tr.statistics_average_retrievability(),
-                "value": f"{avg_val:.0f}%",
-            }
-        )
-        summary.append(
-            {
-                "label": tr.statistics_estimated_total_knowledge(),
-                "value": f"{round(retrievability.sum_by_card)} cards / {round(retrievability.sum_by_note)} notes",
-            }
+        summary.extend(
+            [
+                {
+                    "label": tr.statistics_average_retrievability(),
+                    "value": f"{avg_val:.0f}%",
+                },
+                {
+                    "label": tr.statistics_estimated_total_knowledge(),
+                    "value": f"{round(retrievability.sum_by_card)} cards / {round(retrievability.sum_by_note)} notes",
+                },
+            ]
         )
 
     return {
@@ -1024,27 +1026,27 @@ def generate_stability_chart(
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(
-        render_bars(
-            data,
-            "days",
-            "count",
-            x_scale,
-            y_scale,
-            width=bar_w,
-            fill="rgb(107, 174, 214)",
-        )
-    )
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y_scale,
-            width - margin_right,
-            right=True,
-            tick_count=5,
-            css_class="y2-ticks",
-        )
+    svg_parts.extend(
+        [
+            render_bars(
+                data,
+                "days",
+                "count",
+                x_scale,
+                y_scale,
+                width=bar_w,
+                fill="rgb(107, 174, 214)",
+            ),
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
     )
 
     if total_cards == 0:
@@ -1126,19 +1128,19 @@ def generate_hours_chart(
             render_line(line_points, stroke="rgb(24, 100, 170)", stroke_width=2.0)
         )
 
-    svg_parts.append(
-        render_x_axis(x_scale, height - margin_bottom, ticks=list(range(24)))
-    )
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y2_scale,
-            width - margin_right,
-            right=True,
-            tick_format=lambda y: f"{round(y)}%",
-            ticks=[0, 20, 40, 60, 80, 100],
-            css_class="y2-ticks",
-        )
+    svg_parts.extend(
+        [
+            render_x_axis(x_scale, height - margin_bottom, ticks=list(range(24))),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y2_scale,
+                width - margin_right,
+                right=True,
+                tick_format=lambda y: f"{round(y)}%",
+                ticks=[0, 20, 40, 60, 80, 100],
+                css_class="y2-ticks",
+            ),
+        ]
     )
 
     if max_tot == 0:
@@ -1217,16 +1219,18 @@ def generate_buttons_chart(
             )
             cur_y = top_y
 
-    svg_parts.append(render_x_axis(b_scale, height - margin_bottom))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y_scale,
-            width - margin_right,
-            right=True,
-            tick_count=5,
-            css_class="y2-ticks",
-        )
+    svg_parts.extend(
+        [
+            render_x_axis(b_scale, height - margin_bottom),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
     )
 
     if total_clicks == 0:
@@ -1294,16 +1298,18 @@ def generate_added_chart(
         )
     svg_parts.append("</g>")
 
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(
-        render_y_axis(
-            y_scale,
-            width - margin_right,
-            right=True,
-            tick_count=5,
-            css_class="y2-ticks",
-        )
+    svg_parts.extend(
+        [
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
     )
 
     if total_added == 0:

@@ -40,7 +40,7 @@ async def extend_card_limits(rt, deck=None, deckId=None, new=0, review=0):
             d = col.decks.by_name(deck)
             did = d["id"] if d is not None else None
         if did is None:
-            raise ValueError("deck was not found: " + str(deck if deck else deckId))
+            raise ValueError("deck was not found: " + str(deck or deckId))
         last_op = None
         if new:
             last_op = col.sched.custom_study(

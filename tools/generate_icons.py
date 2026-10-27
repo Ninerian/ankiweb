@@ -84,27 +84,25 @@ def build_jinja(icons: dict[str, str]) -> str:
         val = icons[k].replace("\\", "\\\\").replace("'", "\\'")
         lines.append(f"  '{k}': '{val}',")
 
-    lines.append("} %}")
-    lines.append("")
-    lines.append('{% macro icon(name, size=none, class_="") %}')
-    lines.append("  {% set svg = icon_data.get(name, '') %}")
-    lines.append("  {% if svg %}")
-    lines.append("    {% set extra_attrs = '' %}")
-    lines.append(
-        "    {% if size %}{% set extra_attrs = extra_attrs ~ ' width=\"' ~ size ~ '\" height=\"' ~ size ~ '\"' %}{% endif %}"
+    lines.extend(
+        [
+            "} %}",
+            "",
+            '{% macro icon(name, size=none, class_="") %}',
+            "  {% set svg = icon_data.get(name, '') %}",
+            "  {% if svg %}",
+            "    {% set extra_attrs = '' %}",
+            "    {% if size %}{% set extra_attrs = extra_attrs ~ ' width=\"' ~ size ~ '\" height=\"' ~ size ~ '\"' %}{% endif %}",
+            "    {% if class_ %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon ' ~ class_ ~ '\"' %}{% else %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon\"' %}{% endif %}",
+            "    {% for k, v in kwargs.items() %}",
+            "      {% set extra_attrs = extra_attrs ~ ' ' ~ k ~ '=\"' ~ v ~ '\"' %}",
+            "    {% endfor %}",
+            "    {# Inject extra_attrs into the first <svg tag #}",
+            "    {{ svg | replace('<svg', '<svg ' ~ extra_attrs, 1) | safe }}",
+            "  {% endif %}",
+            "{% endmacro %}",
+        ]
     )
-    lines.append(
-        "    {% if class_ %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon ' ~ class_ ~ '\"' %}{% else %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon\"' %}{% endif %}"
-    )
-    lines.append("    {% for k, v in kwargs.items() %}")
-    lines.append(
-        "      {% set extra_attrs = extra_attrs ~ ' ' ~ k ~ '=\"' ~ v ~ '\"' %}"
-    )
-    lines.append("    {% endfor %}")
-    lines.append("    {# Inject extra_attrs into the first <svg tag #}")
-    lines.append("    {{ svg | replace('<svg', '<svg ' ~ extra_attrs, 1) | safe }}")
-    lines.append("  {% endif %}")
-    lines.append("{% endmacro %}")
     return "\n".join(lines)
 
 

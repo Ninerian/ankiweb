@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from pathlib import Path
 
@@ -119,14 +120,26 @@ def build_media_router(get_service: Callable) -> APIRouter:
     @router.get("/{path:path}")
     async def serve_media(path: str) -> Response:
         service = get_service()  # lazy: service is created in lifespan, not import time
-        media_dir = Path(await service.run(lambda col: col.media.dir())).resolve()
-        target = (media_dir / path).resolve()
-        try:
-            target.relative_to(media_dir)
-        except ValueError:
+        raw_media_dir = await service.run(lambda col: col.media.dir())
+
+        def _resolve_media(media_raw: str, rel_path: str) -> tuple[Path | None, int]:
+            base = Path(media_raw).resolve()
+            target = (base / rel_path).resolve()
+            try:
+                target.relative_to(base)
+            except ValueError:
+                return None, 403
+            if not target.is_file():
+                return None, 404
+            return target, 200
+
+        target_path, status = await asyncio.to_thread(
+            _resolve_media, raw_media_dir, path
+        )
+        if status == 403:
             return PlainTextResponse("forbidden", status_code=403)
-        if not target.is_file():
+        if status == 404 or target_path is None:
             return PlainTextResponse("not found", status_code=404)
-        return FileResponse(target, media_type=_mime(path))
+        return FileResponse(target_path, media_type=_mime(path))
 
     return router
