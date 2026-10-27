@@ -7,8 +7,9 @@ behind the visual design see [DESIGN.md](DESIGN.md); for the research behind the
 
 **Audience:** developers porting the prototype into ankiweb or operating the PWA.
 
-**Legend:** *Verified* = observed in a run. *Read* = taken from source, not executed.
-*Not verified* = no evidence.
+**Legend:** *Verified* = observed by the author in a run. *QA-verified* = reported by a browser
+subagent; its transcript is the only evidence, the author did not re-run it. *Read* = taken from
+source, not executed. *Not verified* = no evidence.
 
 ---
 
@@ -59,7 +60,7 @@ The same five ids are hard-coded in all three pages.
 Due and new counts exist only in `decks-mockup.html`. *Read.*
 
 **Fallback:** a missing, empty or unknown `?deck=` resolves to `german-b1` in `mockup.html` and
-`editor-mockup.html`. *Verified* in a browser for missing, empty, unknown and `__proto__` values.
+`editor-mockup.html`. *QA-verified* for missing, empty, unknown and `__proto__` values on all three pages in both themes.
 `decks-mockup.html` does not read `?deck=`.
 
 ### 2.2 `decks-mockup.html`
@@ -113,8 +114,7 @@ Used for leaving, editing a stacked card and finishing. *Read.*
 | Editor | Editor | Switch: Add | yes |
 | Editor | Reviewer | Finish (after the discard guard) | yes |
 
-*Verified* in a browser: all five deck ids across the three pages with both themes, no console
-errors, no horizontal overflow at 375 px.
+*QA-verified*, not observed by the author: a browser subagent opened all three pages at 375 x 812 in light and dark, ran 110 navigation clicks over the five deck ids, and reported no console errors, no uncaught exceptions and a scroll width of 375 px on every page. Its transcript is the only evidence; no screenshots from that run are kept in this folder.
 
 ---
 
@@ -125,7 +125,7 @@ errors, no horizontal overflow at 375 px.
 | No toggle | `#btn-theme`, `#theme-icon` and `toggleTheme()` are removed from every page. Searching the three mockups for these names returns nothing. *Verified* |
 | Source of truth | Each page reads `matchMedia('(prefers-color-scheme: dark)')` at load and sets `data-theme` on the document |
 | Dark palette | `[data-theme="dark"]` CSS variables |
-| Contrast target | WCAG AA, 4.5:1 for text. Re-measured after fixes in both themes. *Verified* |
+| Contrast target | WCAG AA, 4.5:1 for text. First QA pass found Again/Easy shortcut numbers and intervals below 4.5:1 (light 2.75 to 3.75, dark down to 3.70); they were fixed and a second QA pass re-measured at 4.5:1 or above. *QA-verified* |
 
 ---
 
@@ -260,7 +260,7 @@ verified** on a device. The icon is a **placeholder** and has no approved design
 
 | Area | Status |
 |---|---|
-| Prototype pages: layout, links, `?deck=` fallback, theme, contrast | *Verified* in a browser |
+| Prototype pages: layout, links, `?deck=` fallback, theme, contrast | *QA-verified* by a browser subagent (see 2.5); not re-run by the author of this document |
 | PWA routes, auth exemption, tags, worker activation, cache contents, offline behaviour | *Verified* in headless Chromium on `127.0.0.1` |
 | Chromium installability errors | None reported |
 | Existing test suite | 736 passed after the PWA change |
@@ -269,4 +269,4 @@ verified** on a device. The icon is a **placeholder** and has no approved design
 | Maskable icon cropping on a launcher | *Not verified* |
 | Permanent tests for the manifest, worker or auth exemption | None written |
 | Screenshots in this folder | Pre-date the deck list and mode switch |
-| Unsaved-text guard under a real typed-in state | Reported by the editor agent, **not reproduced** by me |
+| Unsaved-text guard under a real typed-in state | Reported by the editor agent, **not reproduced** by the QA agent or by me |
