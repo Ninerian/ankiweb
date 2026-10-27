@@ -9,6 +9,7 @@ def test_media_upload_mime_types():
 
 def test_html_filter_rules_presence():
     import os
+
     bundle_path = "ankiweb/shell/static/bundles/editor-overlays.js"
     assert os.path.exists(bundle_path)
     with open(bundle_path, "r", encoding="utf-8") as f:
@@ -21,6 +22,7 @@ def test_html_filter_rules_presence():
 
 def test_editor_plain_codemirror_bundle():
     import os
+
     bundle_path = "ankiweb/shell/static/bundles/editor-plain.js"
     assert os.path.exists(bundle_path)
     with open(bundle_path, "r", encoding="utf-8") as f:

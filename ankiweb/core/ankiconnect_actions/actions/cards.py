@@ -282,8 +282,9 @@ async def relearn_cards(rt, cards=None):
         if not cards:  # avoid invalid "where id in ()"
             return
         placeholders = ",".join("?" * len(cards))
+        # Only generated placeholders are interpolated; card IDs are bound below.
         col.db.execute(
-            f"update cards set type=3, queue=1 where id in ({placeholders})",
+            f"update cards set type=3, queue=1 where id in ({placeholders})",  # noqa: S608
             *cards,
         )
         return

@@ -3,21 +3,65 @@ import re
 from html.parser import HTMLParser
 
 # Allowed HTML tags
-ALLOWED_TAGS = frozenset({
-    "a", "b", "i", "u", "em", "strong", "br", "p", "div", "span",
-    "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6",
-    "code", "pre", "blockquote", "img",
-    "table", "thead", "tbody", "tfoot", "tr", "th", "td",
-})
+ALLOWED_TAGS = frozenset(
+    {
+        "a",
+        "b",
+        "i",
+        "u",
+        "em",
+        "strong",
+        "br",
+        "p",
+        "div",
+        "span",
+        "ul",
+        "ol",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "code",
+        "pre",
+        "blockquote",
+        "img",
+        "table",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "th",
+        "td",
+    }
+)
 
 # Void tags (self-closing in HTML)
-VOID_TAGS = frozenset({
-    "area", "base", "br", "col", "embed", "hr", "img", "input",
-    "link", "meta", "param", "source", "track", "wbr",
-})
+VOID_TAGS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+)
 
 # Tags whose content should be dropped completely when stripped
-DROP_CONTENT_TAGS = frozenset({"script", "style", "iframe", "noscript", "template", "object", "embed"})
+DROP_CONTENT_TAGS = frozenset(
+    {"script", "style", "iframe", "noscript", "template", "object", "embed"}
+)
 
 # Allowed URL schemes for links and images
 ALLOWED_LINK_SCHEMES = frozenset({"http", "https", "mailto"})
@@ -34,6 +78,47 @@ def _is_safe_url(url: str, allowed_schemes: frozenset[str]) -> bool:
         return scheme in allowed_schemes
     # If no scheme (relative URL like /foo or foo.png), allow
     return True
+
+
+def _clean_attr(
+    tag: str, name: str, val: str | None, cleaned_attrs: list[tuple[str, str]]
+) -> bool:
+    if val is None:
+        return False
+    name_lower = name.lower()
+    val_str = str(val)
+
+    # Never allow inline events or style or class
+    if name_lower.startswith("on") or name_lower in ("style", "class"):
+        return False
+
+    if tag == "a" and name_lower == "href":
+        if _is_safe_url(val_str, ALLOWED_LINK_SCHEMES):
+            cleaned_attrs.append(("href", val_str))
+            return True
+    elif tag == "img" and name_lower == "src":
+        if _is_safe_url(val_str, ALLOWED_IMG_SCHEMES):
+            cleaned_attrs.append(("src", val_str))
+    elif name_lower in ("title", "alt"):
+        cleaned_attrs.append((name_lower, val_str))
+    return False
+
+
+def _clean_attrs(
+    tag: str, attrs: list[tuple[str, str | None]]
+) -> list[tuple[str, str]] | None:
+    cleaned_attrs: list[tuple[str, str]] = []
+    is_link = tag == "a"
+    has_safe_href = False
+    for name, val in attrs:
+        if _clean_attr(tag, name, val, cleaned_attrs):
+            has_safe_href = True
+
+    if is_link and not has_safe_href:
+        return None  # Disallowed link, do not emit <a> tag
+    if is_link:
+        cleaned_attrs.extend([("target", "_blank"), ("rel", "noopener noreferrer")])
+    return cleaned_attrs
 
 
 class _HTMLSanitizer(HTMLParser):
@@ -56,45 +141,17 @@ class _HTMLSanitizer(HTMLParser):
             # Drop tag, keep content
             return
 
-        # Sanitize attributes
-        cleaned_attrs: list[tuple[str, str]] = []
-        is_link = tag_lower == "a"
-        is_img = tag_lower == "img"
-        has_safe_href = False
-
-        for name, val in attrs:
-            if val is None:
-                continue
-            name_lower = name.lower()
-            val_str = str(val)
-
-            # Never allow inline events or style or class
-            if name_lower.startswith("on") or name_lower in ("style", "class"):
-                continue
-
-            if is_link and name_lower == "href":
-                if _is_safe_url(val_str, ALLOWED_LINK_SCHEMES):
-                    cleaned_attrs.append(("href", val_str))
-                    has_safe_href = True
-            elif is_img and name_lower == "src":
-                if _is_safe_url(val_str, ALLOWED_IMG_SCHEMES):
-                    cleaned_attrs.append(("src", val_str))
-            elif name_lower in ("title", "alt"):
-                cleaned_attrs.append((name_lower, val_str))
-
-        if is_link and not has_safe_href:
-            # Disallowed link (e.g. javascript:), do not emit <a> tag
+        cleaned_attrs = _clean_attrs(tag_lower, attrs)
+        if cleaned_attrs is None:
             return
-
-        if is_link:
-            cleaned_attrs.append(("target", "_blank"))
-            cleaned_attrs.append(("rel", "noopener noreferrer"))
 
         if tag_lower not in VOID_TAGS:
             self.tag_stack.append(tag_lower)
 
         # Build start tag
-        attr_str = "".join(f' {k}="{html.escape(v, quote=True)}"' for k, v in cleaned_attrs)
+        attr_str = "".join(
+            f' {k}="{html.escape(v, quote=True)}"' for k, v in cleaned_attrs
+        )
         self.result.append(f"<{tag_lower}{attr_str}>")
 
     def handle_endtag(self, tag: str):
@@ -104,16 +161,17 @@ class _HTMLSanitizer(HTMLParser):
                 self.drop_stack.pop()
             return
 
-        if tag_lower in ALLOWED_TAGS and tag_lower not in VOID_TAGS:
-            if self.tag_stack and self.tag_stack[-1] == tag_lower:
-                self.tag_stack.pop()
-                self.result.append(f"</{tag_lower}>")
-            elif tag_lower in self.tag_stack:
-                while self.tag_stack:
-                    popped = self.tag_stack.pop()
-                    self.result.append(f"</{popped}>")
-                    if popped == tag_lower:
-                        break
+        if tag_lower not in ALLOWED_TAGS or tag_lower in VOID_TAGS:
+            return
+        if self.tag_stack and self.tag_stack[-1] == tag_lower:
+            self.tag_stack.pop()
+            self.result.append(f"</{tag_lower}>")
+        elif tag_lower in self.tag_stack:
+            while self.tag_stack:
+                popped = self.tag_stack.pop()
+                self.result.append(f"</{popped}>")
+                if popped == tag_lower:
+                    break
 
     def handle_data(self, data: str):
         if not self.drop_stack:

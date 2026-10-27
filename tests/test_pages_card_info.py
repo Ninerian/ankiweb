@@ -40,6 +40,7 @@ def _add_fsrs_reviewed_card(client):
         card = n.cards()[0]
 
         from anki.scheduler.v3 import CardAnswer
+
         queued = col.sched.get_queued_cards(fetch_limit=1)
         top = queued.cards[0]
         c = col.get_card(top.card.id)

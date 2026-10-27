@@ -44,6 +44,14 @@ async def dispatch_one(rt, req: dict, actions: dict = ACTIONS) -> Any:
         else:
             raise ValueError(f"unsupported action: {action_name}")
         return _envelope(version, result)
-    except (AnkiException, AttributeError, LookupError, OSError, RuntimeError, TypeError, ValueError) as exc:  # errors are ALWAYS enveloped, regardless of version
+    except (
+        AnkiException,
+        AttributeError,
+        LookupError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ) as exc:  # errors are ALWAYS enveloped, regardless of version
         logger.warning("AnkiConnect action %s failed: %s", req.get("action"), exc)
         return {"result": None, "error": str(exc)}

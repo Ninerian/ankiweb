@@ -7,6 +7,7 @@ Transport boundary:
   `ankiweb/adapters/inbound/http_pages/editor.py` (`POST /editor/save-field`, etc.).
   Field saves in the modern editor do not require WebSocket traffic.
 """
+
 from __future__ import annotations
 
 import json

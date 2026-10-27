@@ -1,3 +1,5 @@
+import math
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,7 @@ from ankiweb.adapters.inbound.http_pages.graph_svg import (
     LinearScale,
     render_pie_slice,
 )
+from ankiweb.adapters.inbound.http_pages.graphs import generate_reviews_chart
 from ankiweb.app import create_app
 from ankiweb.core.config import Settings
 
@@ -40,7 +43,9 @@ def test_col(tmp_path: Path):
         for qc in queued.cards:
             card = col.get_card(CardId(qc.card.id))
             card.start_timer()
-            ans = col.sched.build_answer(card=card, states=qc.states, rating=CardAnswer.Rating.GOOD)
+            ans = col.sched.build_answer(
+                card=card, states=qc.states, rating=CardAnswer.Rating.GOOD
+            )
             col.sched.answer_card(ans)
     finally:
         col.close()
@@ -72,7 +77,7 @@ def test_svg_band_scale():
 
 
 def test_svg_pie_slice():
-    d = render_pie_slice(0, 3.14159, 100)
+    d = render_pie_slice(0, math.pi, 100)
     assert d.startswith("M0.00,0.00")
     assert "A100.00,100.00" in d
 
@@ -108,7 +113,12 @@ def test_graphs_update_endpoint_datastar_sse(client):
     r = client.post(
         "/graphs/update",
         headers={"Datastar-Request": "true"},
-        json={"search": "deck:current", "scope": "deck", "days": 30, "separate_inactive": True},
+        json={
+            "search": "deck:current",
+            "scope": "deck",
+            "days": 30,
+            "separate_inactive": True,
+        },
     )
     assert r.status_code == 200
     assert "text/event-stream" in r.headers["content-type"]
@@ -124,7 +134,12 @@ def test_graphs_preferences_persistence(client):
     r1 = client.post(
         "/graphs/update",
         headers={"Datastar-Request": "true"},
-        json={"search": "deck:current", "scope": "deck", "days": 30, "separate_inactive": False},
+        json={
+            "search": "deck:current",
+            "scope": "deck",
+            "days": 30,
+            "separate_inactive": False,
+        },
     )
     assert r1.status_code == 200
 
@@ -133,3 +148,27 @@ def test_graphs_preferences_persistence(client):
     assert r2.status_code == 200
     # The JSON signals should reflect separate_inactive: false
     assert '"separate_inactive": false' in r2.text
+
+
+def test_generate_reviews_chart_svg_structure_and_group_balance(test_col: Path):
+    col = Collection(str(test_col))
+    try:
+        g_resp = col._backend.graphs(search="", days=365)
+        chart = generate_reviews_chart(g_resp.reviews, days_range=30, show_time=False)
+    finally:
+        col.close()
+
+    svg_text = chart["svg"]
+    root = ET.fromstring(svg_text)
+    assert root.tag == "svg"
+
+    # Verify well-formed XML and balanced group tags
+    assert svg_text.count("<g") == svg_text.count("</g>")
+
+    # Hover columns group should be parsed cleanly as a direct or descendant child
+    hover_groups = [
+        elem for elem in root.iter("g") if elem.attrib.get("class") == "hover-columns"
+    ]
+    assert len(hover_groups) == 1
+    # Hover group should not contain nested axis groups from an unclosed or misplaced tag
+    assert all(child.tag == "rect" for child in hover_groups[0])

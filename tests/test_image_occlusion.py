@@ -33,7 +33,6 @@ def _img_in_tmp(client, name="pic.png"):
     return str(p)
 
 
-
 def test_membership():
     from ankiweb.core.rpc.custom_handlers import CUSTOM
     from ankiweb.core.rpc.passthrough import PASSTHROUGH

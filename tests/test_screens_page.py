@@ -21,6 +21,8 @@ def test_render_page_injects_js_files_before_bootstrap():
     )
     assert "/_anki/js/reviewer.js" in html
     # vendored js must load before the shell bootstrap so window._showQuestion exists
-    assert html.index("/_anki/js/reviewer.js") < html.index("/shell/static/bootstrap.js")
+    assert html.index("/_anki/js/reviewer.js") < html.index(
+        "/shell/static/bootstrap.js"
+    )
     # and after the context var
     assert html.index("__ankiwebContext") < html.index("/_anki/js/reviewer.js")

@@ -34,7 +34,6 @@ def test_serves_vendor_min_remap(client):
     assert r.headers["content-type"].startswith("application/javascript")
 
 
-
 def test_mathjax_font_has_long_cache(client):
     # MathJax CHTML glyph fonts must be cached hard, else they re-download every card render
     r = client.get(

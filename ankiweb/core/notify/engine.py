@@ -228,13 +228,25 @@ class DeckNotifier:
                     self.state.resync_pending = False
                 try:
                     delay = await self._tick(cfg)
-                except (OSError, RuntimeError, TypeError, ValueError) as exc:  # a fetch/backend error must NOT kill the task
+                except (
+                    OSError,
+                    RuntimeError,
+                    TypeError,
+                    ValueError,
+                ) as exc:  # a fetch/backend error must NOT kill the task
                     logger.warning("DeckNotifier tick failed: %s", exc)
                     self.state.status.last_error = str(exc)
                     delay = cfg.retry_sec
                 await self._wait(delay)
         except asyncio.CancelledError:
             pass
+
+    def _acknowledge_changes(self, changes: list, gone: set) -> None:
+        for ch in changes:
+            if ch["deck"] in gone:
+                self.last_notified.pop(ch["deck"], None)  # zero-out acked -> forget
+            else:
+                self.last_notified[ch["deck"]] = counts_sig(ch)
 
     async def _tick(self, cfg: NotifyConfig) -> float:
         """One observe-diff-send cycle. Returns how long to wait before the next cycle."""
@@ -279,11 +291,7 @@ class DeckNotifier:
         st.last_attempt_ts = self._now()
         ok, err = await self._safe_post(cfg, build_payload(changes, self._now()))
         if ok:
-            for ch in changes:
-                if ch["deck"] in gone:
-                    self.last_notified.pop(ch["deck"], None)  # zero-out acked -> forget
-                else:
-                    self.last_notified[ch["deck"]] = counts_sig(ch)
+            self._acknowledge_changes(changes, gone)
             st.last_success_ts = self._now()
             st.last_error = ""
             st.pending = 0
@@ -295,7 +303,12 @@ class DeckNotifier:
     async def _safe_post(self, cfg: NotifyConfig, payload: dict) -> tuple:
         try:
             return await self._post(cfg, payload)
-        except (OSError, RuntimeError, TypeError, ValueError) as exc:  # connection error, timeout, etc. -> retry
+        except (
+            OSError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ) as exc:  # connection error, timeout, etc. -> retry
             logger.warning("DeckNotifier POST failed: %s", exc)
             return False, str(exc)
 

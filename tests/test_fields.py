@@ -23,6 +23,7 @@ def _basic_id(col):
 def _field_names(col, ntid):
     return [f["name"] for f in col.models.get(ntid)["flds"]]
 
+
 class _FieldsNavigationParser(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -52,7 +53,9 @@ def _assert_redirected_to(response, destination: str) -> None:
     assert any(destination in data for _, data in events)
 
 
-def _make_field_draft_payload(ntid: int, fields: list[dict], sort_key: str | None = None) -> dict:
+def _make_field_draft_payload(
+    ntid: int, fields: list[dict], sort_key: str | None = None
+) -> dict:
     rows = {}
     order = []
     for idx, field in enumerate(fields):
@@ -68,7 +71,9 @@ def _make_field_draft_payload(ntid: int, fields: list[dict], sort_key: str | Non
         if field.get("orig") is not None:
             row["orig"] = field["orig"]
         rows[key] = row
-    resolved_sort_key = sort_key if sort_key is not None else (order[0] if order else "")
+    resolved_sort_key = (
+        sort_key if sort_key is not None else (order[0] if order else "")
+    )
     return {
         "notetypeId": ntid,
         "fieldDraft": {
@@ -141,12 +146,11 @@ def test_cross_origin_referer_falls_back_to_notetypes(client):
 )
 def test_unsafe_return_to_falls_back_to_notetypes(client, destination):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
-    response = client.get(
-        f"/fields/{ntid}", params={"return_to": destination}
-    )
+    response = client.get(f"/fields/{ntid}", params={"return_to": destination})
 
     assert response.status_code == 200
     assert _field_navigation(response.text) == ("/notetypes", "/notetypes")
+
 
 @pytest.mark.parametrize(
     "destination",
@@ -213,6 +217,7 @@ def test_rename_field_persists(client):
     )
     assert names == ["Q", "Back"]
 
+
 def test_save_uses_return_url_and_persists_changes(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
     payload = _make_field_draft_payload(
@@ -236,6 +241,7 @@ def test_save_uses_return_url_and_persists_changes(client):
     )
     assert names == ["ReturnContextFront", "Back"]
 
+
 def test_return_context_normalizes_unsafe_url_characters(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
     destination = "/browse?q=O'Brien&html=</script>&escaped=%2F&broken=%G1"
@@ -243,9 +249,7 @@ def test_return_context_normalizes_unsafe_url_characters(client):
         "/browse?q=O%27Brien&html=%3C/script%3E&escaped=%2F&broken=%25G1"
     )
 
-    fields_page = client.get(
-        f"/fields/{ntid}", params={"return_to": destination}
-    )
+    fields_page = client.get(f"/fields/{ntid}", params={"return_to": destination})
     assert fields_page.status_code == 200
     assert _field_navigation(fields_page.text) == (
         normalized_destination,
@@ -271,7 +275,9 @@ def test_return_context_normalizes_unsafe_url_characters(client):
     )
     assert names == ["EscapedReturnFront", "Back"]
 
+
 # (c) add a field persists
+
 
 def test_add_field_persists(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
@@ -381,6 +387,8 @@ def test_reposition_persists(client):
         client.app.state.service.run, lambda col: _field_names(col, ntid)
     )
     assert names == ["Back", "Front"]
+
+
 # (f) sortf change persists
 def test_sortf_persists(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
@@ -512,7 +520,9 @@ def test_save_reordered_edited_added_row_with_sort_selection(client):
     assert r.status_code == 200
     _assert_redirected_to(r, "/notetypes")
 
-    m = client.portal.call(client.app.state.service.run, lambda col: col.models.get(ntid))
+    m = client.portal.call(
+        client.app.state.service.run, lambda col: col.models.get(ntid)
+    )
     names = [f["name"] for f in m["flds"]]
     assert names == ["CustomSort", "FrontRenamed"]
     assert m["sortf"] == 0

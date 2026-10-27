@@ -23,9 +23,7 @@ async def delete_model(rt, modelName=None, modelId=None):
         if m is None and modelName:
             m = col.models.by_name(modelName)
         if m is None:
-            raise ValueError(
-                "model was not found: " + str(modelName if modelName else modelId)
-            )
+            raise ValueError("model was not found: " + str(modelName or modelId))
         used = col.models.use_count(m)
         if used:
             raise ValueError(

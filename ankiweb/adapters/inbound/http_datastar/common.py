@@ -19,7 +19,7 @@ import re
 import unicodedata
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
-from urllib.parse import quote, urlsplit, urlunsplit
+from urllib.parse import SplitResult, quote, urlsplit, urlunsplit
 
 from datastar_py.attributes import SignalValue
 from datastar_py.fastapi import DatastarResponse
@@ -56,9 +56,19 @@ def _normalize_return_url(target: str) -> str:
     return re.sub(r"%(?![0-9A-Fa-f]{2})", "%25", encoded)
 
 
-def safe_return_url(
-    target: object, *, request_url: str | None = None
+def _same_origin_return_url(
+    target: str, request_url: str | None, parsed: SplitResult
 ) -> str | None:
+    if request_url is None:
+        return None
+    target_origin = _url_origin(target)
+    if target_origin is None or target_origin != _url_origin(request_url):
+        return None
+    path = urlunsplit(("", "", parsed.path or "/", parsed.query, parsed.fragment))
+    return safe_return_url(path)
+
+
+def safe_return_url(target: object, *, request_url: str | None = None) -> str | None:
     """Return a safe same-app path, optionally reducing a same-origin Referer."""
     if (
         not isinstance(target, str)
@@ -78,20 +88,14 @@ def safe_return_url(
     if request_url is not None and not has_origin:
         return None
     if has_origin:
-        if request_url is None:
-            return None
-        target_origin = _url_origin(target)
-        if target_origin is None or target_origin != _url_origin(request_url):
-            return None
-        path = urlunsplit(("", "", parsed.path or "/", parsed.query, parsed.fragment))
-        return safe_return_url(path)
+        return _same_origin_return_url(target, request_url, parsed)
 
     if not parsed.path.startswith("/") or parsed.path.startswith("//"):
         return None
     return _normalize_return_url(target)
-def elements_response(
-    elements: str, selector: str | None = None
-) -> DatastarResponse:
+
+
+def elements_response(elements: str, selector: str | None = None) -> DatastarResponse:
     """Patch HTML elements into the DOM, preserving default SDK outer patch mode."""
     if selector is not None:
         return DatastarResponse(SSE.patch_elements(elements, selector=selector))
@@ -123,6 +127,7 @@ async def refresh_screen(
 def error_response(message: object) -> DatastarResponse:
     """Patch the ``error`` signal with the unified error message."""
     return signals_response({"error": str(message)})
+
 
 __all__ = [
     "elements_response",

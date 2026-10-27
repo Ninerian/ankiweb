@@ -134,6 +134,7 @@ class BackendRpcPort(Protocol):
 """Static-typing proof that today's classes already satisfy ankiweb.core.ports Protocols,
 with ZERO shape changes. `ty check` is the real verifier here; pytest only guards against the
 module being deleted or the imports rotting."""
+
 from __future__ import annotations
 from ankiweb.core.ports import (
     CollectionPort,
@@ -162,10 +163,10 @@ def test_ports_module_importable():
 ```
 
 - [ ] **Step 3 — verify:**
-  - `uvx ty check ankiweb tests/test_ports_contract.py` → 0 diagnostics (this is the load-bearing
+  - `uv run ty check ankiweb tests/test_ports_contract.py` → 0 diagnostics (this is the load-bearing
     check for this task — if `CollectionService`/`BridgeHub`/`dispatch_one` don't structurally
     satisfy their Protocols, `ty` reports exactly where).
-  - `ruff check ankiweb tests` → 0 diagnostics; `ruff format --check ankiweb tests` → clean.
+  - `uv run ruff check ankiweb tests` → 0 diagnostics; `uv run ruff format --check ankiweb tests` → clean.
   - `uv run pytest tests/test_ports_contract.py -v` → 1 passed.
   - `uv run pytest -q` → 537 passed (no existing test touched — this task is purely additive).
 - [ ] **Step 4 — commit:** `git add ankiweb/core tests/test_ports_contract.py && git commit -m
@@ -212,6 +213,7 @@ def test_state_update_persists_via_injected_store(tmp_path):
 ```python
 # ankiweb/adapters/outbound/httpx_notification_adapter.py
 """httpx implementation of ankiweb.core.ports.NotificationTransportPort."""
+
 from __future__ import annotations
 from typing import Any
 import httpx
@@ -232,10 +234,13 @@ async def post(url: str, headers: dict[str, str], json: dict) -> tuple[int, Any]
 """Filesystem-JSON implementation of ankiweb.core.ports.ConfigStorePort, for NotifyConfig.
 Module-level `load`/`save` functions structurally satisfy ConfigStorePort (a module is a valid
 Protocol instance) — no wrapper class needed."""
+
 from __future__ import annotations
 import json
 from pathlib import Path
-from ankiweb.notifier import NotifyConfig  # moves to ankiweb.core.notify.engine in Task 7
+from ankiweb.notifier import (
+    NotifyConfig,
+)  # moves to ankiweb.core.notify.engine in Task 7
 
 
 def load(path: Path) -> NotifyConfig:
@@ -292,6 +297,7 @@ def save(value: NotifyConfig, path: Path) -> None:
       self.changed = asyncio.Event()
       self.resync_pending = False
 
+
   def update(self, config: NotifyConfig) -> None:
       self.config = config
       if self._store is not None:
@@ -305,6 +311,7 @@ def save(value: NotifyConfig, path: Path) -> None:
   ```python
   from ankiweb.adapters.outbound import json_config_store
   from ankiweb.adapters.outbound.httpx_notification_adapter import post as http_post
+
   ...
   notifier_state = NotifierState(
       settings.collection_path.parent / "notify.json", store=json_config_store
@@ -321,7 +328,7 @@ def save(value: NotifyConfig, path: Path) -> None:
   `uv run pytest tests/test_notifier.py -v` (all notifier tests, including the new one) → PASS.
   Regression: `uv run pytest tests/test_notifier.py tests/ankiconnect/test_extra_actions.py -q`
   (the extra_actions test also constructs `NotifierState` — confirm unaffected).
-  `ruff check ankiweb tests && ruff format --check ankiweb tests && uvx ty check ankiweb` → clean.
+  `uv run ruff check ankiweb tests && uv run ruff format --check ankiweb tests && uv run ty check ankiweb` → clean.
   Full suite: `uv run pytest -q` → 537 passed (net one new test → 538).
 - [ ] **Step 7 — commit:** `git add -A && git commit -m
   "refactor(notifier): extract httpx + JSON-config outbound adapters behind ports"`.
@@ -343,7 +350,7 @@ during request handling — forcing it through `ConfigStorePort` would be ceremo
   anki_rpc/*, app.py, ankiconnect/app.py, __main__.py, tests/*).
 - [ ] **Step 2 —** `lsp rename_file` `ankiweb/collection_service.py` →
   `ankiweb/adapters/outbound/anki_collection_adapter.py` (rewrites every import automatically).
-- [ ] **Step 3 — verify:** `ruff check ankiweb tests && uvx ty check ankiweb` → clean (catches any
+- [ ] **Step 3 — verify:** `uv run ruff check ankiweb tests && uv run ty check ankiweb` → clean (catches any
   import the rename tool couldn't resolve, e.g. a string-based import). `uv run pytest -q` → full
   suite green, same count as Task 2's end state.
 - [ ] **Step 4 — commit:** `git add -A && git commit -m
@@ -370,12 +377,12 @@ first would mean touching `routes.py`'s imports for them twice.
   composition-root call sites (`app.py`) that need to keep working unchanged.
 - [ ] **Step 2 — move the smallest adapter first:** `lsp rename_file`
   `ankiweb/bridge/ws.py` → `ankiweb/adapters/inbound/ws_bridge/ws.py`.
-  Verify: `ruff check ankiweb tests && uvx ty check ankiweb` clean; regression
+  Verify: `uv run ruff check ankiweb tests && uv run ty check ankiweb` clean; regression
   `uv run pytest tests/test_ws_roundtrip.py tests/test_ws_hardening.py -q` → PASS.
 - [ ] **Step 3 — move the AnkiConnect REST adapter:** `lsp rename_file`
   `ankiweb/ankiconnect/rest.py` → `ankiweb/adapters/inbound/http_ankiconnect/rest.py`, then
   `ankiweb/ankiconnect/cors.py` → `ankiweb/adapters/inbound/http_ankiconnect/cors.py`.
-  Verify: `uvx ty check ankiweb`; regression
+  Verify: `uv run ty check ankiweb`; regression
   `uv run pytest tests/ankiconnect/test_app.py tests/ankiconnect/test_cors.py -q` → PASS.
 - [ ] **Step 4 — move the remaining 12 screen files (largest, do last within this task):** for
   each of `routes.py`, `templating.py`, `page.py`, `reviewer.py`, `editor.py`, `add.py`,
@@ -386,8 +393,8 @@ first would mean touching `routes.py`'s imports for them twice.
   still at their original path — update `routes.py`'s imports for those 10 to stay pointed at
   `ankiweb.screens.<name>` for now; Task 5 repoints them); run the verification only after every
   file has moved.
-- [ ] **Step 5 — verify:** `ruff check ankiweb tests && ruff format --check ankiweb tests &&
-  uvx ty check ankiweb` → clean. Full suite: `uv run pytest -q` → all passing, same count.
+- [ ] **Step 5 — verify:** `uv run ruff check ankiweb tests && uv run ruff format --check ankiweb tests &&
+  uv run ty check ankiweb` → clean. Full suite: `uv run pytest -q` → all passing, same count.
 - [ ] **Step 6 — commit:** `git add -A && git commit -m
   "refactor(architecture): move screens/ws/rest inbound adapters under adapters/inbound"`.
 
@@ -422,8 +429,8 @@ changes) → `ankiweb/adapters/inbound/http_datastar/<same-name>.py`.
   `ankiweb/adapters/inbound/http_datastar/`. Do this as one batch (like Task 4's screen move) —
   `routes.py` imports all 10, so a half-moved state would leave broken imports mid-task; run
   verification only after every file has moved.
-- [ ] **Step 3 — verify:** `ruff check ankiweb tests && ruff format --check ankiweb tests &&
-  uvx ty check ankiweb` → clean. Full regression: `uv run pytest -q` → 538 passed (same count as
+- [ ] **Step 3 — verify:** `uv run ruff check ankiweb tests && uv run ruff format --check ankiweb tests &&
+  uv run ty check ankiweb` → clean. Full regression: `uv run pytest -q` → 538 passed (same count as
   Task 4's end state — this task is a pure move, no new tests, no behavior change).
 - [ ] **Step 4 — commit:** `git add -A && git commit -m
   "refactor(architecture): move Datastar screens to adapters/inbound/http_datastar"`.
@@ -448,7 +455,9 @@ routing logic with no framework dependency once extracted.
       from ankiweb.core.rpc.dispatch import dispatch_backend_rpc
 
       with pytest.raises(LookupError):
-          await dispatch_backend_rpc("totallyUnknownMethod", b"", hub=None, service=service)
+          await dispatch_backend_rpc(
+              "totallyUnknownMethod", b"", hub=None, service=service
+          )
   ```
 - [ ] **Step 2 — run** → FAIL (`ModuleNotFoundError: ankiweb.core.rpc`).
 - [ ] **Step 3 — implement** `ankiweb/core/rpc/dispatch.py` (the branch logic extracted verbatim
@@ -514,7 +523,7 @@ routing logic with no framework dependency once extracted.
   Delete `ankiweb/anki_rpc/__init__.py`; `lsp references` on `ankiweb.anki_rpc.build_router`
   first to confirm `ankiweb/app.py` is the only importer, then update that one import to
   `ankiweb.adapters.inbound.rpc_passthrough.route`.
-- [ ] **Step 6 — verify:** `ruff check ankiweb tests && uvx ty check ankiweb` → clean.
+- [ ] **Step 6 — verify:** `uv run ruff check ankiweb tests && uv run ty check ankiweb` → clean.
   `uv run pytest tests/test_anki_rpc.py -v` → PASS (including the new LookupError test).
   Full regression: `uv run pytest -q` → all green.
 - [ ] **Step 7 — commit:** `git add -A && git commit -m
@@ -534,17 +543,17 @@ splits into `core/notify/engine.py` + `core/notify/config.py` per the spec's tar
 
 - [ ] **Step 1 — move the bridge package:** `lsp rename_file` each of `ankiweb/bridge/hub.py`,
   `ankiweb/bridge/ui_state.py`, `ankiweb/bridge/protocol.py` into `ankiweb/core/bridge/`.
-  Verify: `uvx ty check ankiweb`; regression `uv run pytest tests/test_bridge_hub.py
+  Verify: `uv run ty check ankiweb`; regression `uv run pytest tests/test_bridge_hub.py
   tests/test_ui_state.py tests/test_ws_roundtrip.py -q` → PASS.
 - [ ] **Step 2 — move the AnkiConnect use-case layer:** `lsp rename_file` every file under
   `ankiweb/ankiconnect/actions/` and `ankiweb/ankiconnect/extra_actions/`, plus `registry.py` and
   `runtime.py`, into `ankiweb/core/ankiconnect_actions/actions/` and
   `ankiweb/core/ankiconnect_actions/extra_actions/` (registry.py/runtime.py at the
-  `ankiconnect_actions/` level). Verify: `uvx ty check ankiweb`; regression
+  `ankiconnect_actions/` level). Verify: `uv run ty check ankiweb`; regression
   `uv run pytest tests/ankiconnect -q` → PASS (the largest single regression slice — ~180 tests).
 - [ ] **Step 3 — move the small pure modules:** `lsp rename_file` `ankiweb/auth.py` →
   `ankiweb/core/auth.py`, `ankiweb/i18n.py` → `ankiweb/core/i18n.py`, `ankiweb/config.py` →
-  `ankiweb/core/config.py`. Verify: `uvx ty check ankiweb`; `uv run pytest -q` → full suite green
+  `ankiweb/core/config.py`. Verify: `uv run ty check ankiweb`; `uv run pytest -q` → full suite green
   (these are imported nearly everywhere, so this is the highest-import-count single move — lean
   on `ty`'s import-resolution check before running pytest).
 - [ ] **Step 4 — split and move the notifier:** `lsp rename_file` `ankiweb/notifier.py` →
@@ -560,6 +569,7 @@ splits into `core/notify/engine.py` + `core/notify/config.py` per the spec's tar
   """Architecture fitness test: ankiweb.core must never import ankiweb.adapters. This is the
   automated enforcement of the hexagonal dependency rule from
   docs/superpowers/specs/2026-09-12-ankiweb-hexagonal-architecture-design.md."""
+
   from __future__ import annotations
   import ast
   from pathlib import Path
@@ -583,7 +593,9 @@ splits into `core/notify/engine.py` + `core/notify/config.py` per the spec's tar
       for py_file in CORE.rglob("*.py"):
           for mod in _imported_top_level_modules(py_file):
               if mod.startswith("ankiweb.adapters") or mod == "ankiweb.adapters":
-                  violations.append(f"{py_file.relative_to(CORE.parent.parent)} imports {mod}")
+                  violations.append(
+                      f"{py_file.relative_to(CORE.parent.parent)} imports {mod}"
+                  )
       assert not violations, "core -> adapters import(s) found:\n" + "\n".join(violations)
   ```
   Run: `uv run pytest tests/test_architecture_boundaries.py -v` → PASS (proves Tasks 1–7 actually
@@ -591,8 +603,8 @@ splits into `core/notify/engine.py` + `core/notify/config.py` per the spec's tar
 - [ ] **Step 6 — update `README.md`'s Architecture section** to describe the new layout (replace
   the current flat bullet list with the ports/adapters/core breakdown), linking the new spec.
 - [ ] **Step 7 — full regression + all tools:**
-  `ruff check ankiweb tests && ruff format --check ankiweb tests` → clean.
-  `uvx ty check ankiweb` → clean.
+  `uv run ruff check ankiweb tests && uv run ruff format --check ankiweb tests` → clean.
+  `uv run ty check ankiweb` → clean.
   `uv run pytest -q` → full suite green (540: the 537 original + one new test each from Task 2
   and Task 6, plus this task's boundary fitness test).
   `uvx wily build ankiweb && uvx wily rank ankiweb cyclomatic.complexity` → confirm
@@ -610,7 +622,7 @@ splits into `core/notify/engine.py` + `core/notify/config.py` per the spec's tar
 - Every one of the original 537 tests still passes, unmodified in assertions (only the one
   `NotifierState`/`DeckNotifier` signature-driven test edit from Task 2, plus one new test each
   added in Tasks 2 and 6, plus the Task 7 boundary fitness test).
-- `ruff check`, `ruff format --check`, and `uvx ty check ankiweb` are clean after every task, not
+- `uv run ruff check`, `uv run ruff format --check`, and `uv run ty check ankiweb` are clean after every task, not
   just at the end.
 - `tests/test_architecture_boundaries.py` passes, mechanically enforcing "core never imports
   adapters" for all future changes, not just the state at the end of this migration.

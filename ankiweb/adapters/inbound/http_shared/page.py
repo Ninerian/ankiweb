@@ -5,42 +5,49 @@ from collections.abc import Sequence
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
-# Callables, not strings: `tr` is bound to the language set when the collection opens
-# (ANKIWEB_LANG), which happens after import, so titles must resolve at request time.
-_TITLES = {
-    "deckbrowser": lambda: tr.actions_decks(),
-    "overview": lambda: tr.actions_decks(),
-    "customstudy": lambda: tr.actions_custom_study(),
-    "filtereddeck": lambda: tr.qt_misc_create_filtered_deck(),
-    "reviewer": lambda: tr.studying_study_now(),
-    "browser": lambda: tr.qt_misc_browse(),
-    "add": lambda: tr.actions_add(),
-    "preferences": lambda: tr.preferences_preferences(),
-    "notetypes": lambda: tr.notetypes_note_types(),
-    "tools": lambda: tr.qt_accel_tools(),
-    "notify": lambda: "Push notifications",
-    "about": lambda: "Source",
-    "export": lambda: tr.actions_export(),
-    "graphs": lambda: tr.qt_misc_stats(),
-    "deckoptions": lambda: tr.deck_config_title(),
-    "card-info": lambda: tr.actions_card_info(),
-    "changenotetype": lambda: tr.browsing_change_notetype(),
-    "image-occlusion": lambda: tr.editing_image_occlusion_mode(),
-    "importcsv": lambda: tr.actions_import(),
-    "import_package": lambda: tr.actions_import(),
-    "import_page": lambda: tr.actions_import(),
-    "editor": lambda: tr.editing_edit_current(),
+# Store translation method names so `_page_title` resolves them after the active
+# collection language is selected, rather than capturing translations at import.
+_TITLE_TRANSLATIONS = {
+    "deckbrowser": "actions_decks",
+    "overview": "actions_decks",
+    "customstudy": "actions_custom_study",
+    "filtereddeck": "qt_misc_create_filtered_deck",
+    "reviewer": "studying_study_now",
+    "browser": "qt_misc_browse",
+    "add": "actions_add",
+    "preferences": "preferences_preferences",
+    "notetypes": "notetypes_note_types",
+    "tools": "qt_accel_tools",
+    "export": "actions_export",
+    "graphs": "qt_misc_stats",
+    "deckoptions": "deck_config_title",
+    "card-info": "actions_card_info",
+    "changenotetype": "browsing_change_notetype",
+    "image-occlusion": "editing_image_occlusion_mode",
+    "importcsv": "actions_import",
+    "import_package": "actions_import",
+    "import_page": "actions_import",
+    "editor": "editing_edit_current",
+}
+
+_STATIC_TITLES = {
+    "notify": "Push notifications",
+    "about": "Source",
 }
 
 
 def _page_title(context: str) -> str:
     """Human title for the browser tab/history; unknown contexts fall back to the app name."""
-    make = _TITLES.get(context)
-    if not make:
-        return "AnkiWeb"
-    raw_title = make()
+    translation = _TITLE_TRANSLATIONS.get(context)
+    if translation is not None:
+        raw_title = getattr(tr, translation)()
+    else:
+        raw_title = _STATIC_TITLES.get(context)
+        if raw_title is None:
+            return "AnkiWeb"
     clean_title = templating.tr_clean(raw_title)
     return f"{clean_title} \u2013 AnkiWeb" if clean_title else "AnkiWeb"
+
 
 def render_page(
     context: str,

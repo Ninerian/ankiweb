@@ -53,5 +53,7 @@ def wait_for_body_text_length(page, min_len: int, timeout: float = 10.0) -> None
         if len(page.inner_text("body")) > min_len:
             return
         if time.monotonic() > deadline:
-            raise TimeoutError(f"body text did not exceed {min_len} chars within {timeout}s")
+            raise TimeoutError(
+                f"body text did not exceed {min_len} chars within {timeout}s"
+            )
         time.sleep(0.1)

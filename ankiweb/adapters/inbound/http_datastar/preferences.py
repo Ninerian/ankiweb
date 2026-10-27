@@ -18,6 +18,7 @@ from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
 
+
 def render_preferences_html(col) -> str:
     """Server-rendered Preferences form over col.get_preferences()/set_preferences()
     and col.get_config("experimentalFeatures")."""

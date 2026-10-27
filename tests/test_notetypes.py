@@ -40,7 +40,10 @@ def _card_layout_hrefs(content: str) -> list[str]:
 def test_notetypes_card_layout_links_return_to_manager(client):
     basic_id, cloze_id = client.portal.call(
         client.app.state.service.run,
-        lambda col: (col.models.by_name("Basic")["id"], col.models.by_name("Cloze")["id"]),
+        lambda col: (
+            col.models.by_name("Basic")["id"],
+            col.models.by_name("Cloze")["id"],
+        ),
     )
     response = client.get("/notetypes")
 

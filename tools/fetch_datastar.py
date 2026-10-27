@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import urllib.request
 from pathlib import Path
+
+import httpx
 
 DATASTAR_VERSION = "1.0.4"
 DEST = Path(__file__).resolve().parent.parent / "ankiweb" / "shell" / "static"
@@ -13,9 +14,14 @@ BUNDLE_URL = f"https://raw.githubusercontent.com/starfederation/datastar/v{DATAS
 def main() -> None:
     DEST.mkdir(parents=True, exist_ok=True)
     out_file = DEST / "datastar.js"
-    req = urllib.request.Request(BUNDLE_URL, headers={"User-Agent": "ankiweb-fetcher"})
-    with urllib.request.urlopen(req) as resp:
-        content = resp.read()
+    response = httpx.get(
+        BUNDLE_URL,
+        headers={"User-Agent": "ankiweb-fetcher"},
+        follow_redirects=True,
+        timeout=30.0,
+    )
+    response.raise_for_status()
+    content = response.content
     if not content or b"Datastar" not in content:
         raise SystemExit(
             "downloaded Datastar bundle is empty or does not contain 'Datastar'"

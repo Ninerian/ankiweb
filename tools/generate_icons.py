@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Generate icon data and Jinja templates from Anki's upstream icons.ts.
 
 Fetches SVG icons referenced in anki's `ts/lib/components/icons.ts` and `ts/icons/`,
@@ -9,54 +9,69 @@ normalizes them, and outputs:
 
 import json
 import re
-import urllib.error
-import urllib.request
 from pathlib import Path
 
-ICONS_TS_URL = "https://raw.githubusercontent.com/ankitects/anki/main/ts/lib/components/icons.ts"
+import httpx
+
+ICONS_TS_URL = (
+    "https://raw.githubusercontent.com/ankitects/anki/main/ts/lib/components/icons.ts"
+)
 MDI_RAW = "https://raw.githubusercontent.com/Templarian/MaterialDesign-SVG/master/svg/"
 BS_RAW = "https://raw.githubusercontent.com/twbs/icons/main/icons/"
 TS_ICONS_RAW = "https://raw.githubusercontent.com/ankitects/anki/main/ts/icons/"
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC_ICONS_DIR = ROOT / "ankiweb" / "shell" / "static" / "icons"
-COMPONENTS_DIR = ROOT / "ankiweb" / "adapters" / "inbound" / "http_shared" / "templates" / "components"
+COMPONENTS_DIR = (
+    ROOT
+    / "ankiweb"
+    / "adapters"
+    / "inbound"
+    / "http_shared"
+    / "templates"
+    / "components"
+)
 
 
 def fetch_icons():
-    req = urllib.request.Request(ICONS_TS_URL, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req) as resp:
-        icons_ts = resp.read().decode()
+    with httpx.Client(
+        headers={"User-Agent": "Mozilla/5.0"}, follow_redirects=True, timeout=30.0
+    ) as client:
+        response = client.get(ICONS_TS_URL)
+        response.raise_for_status()
+        icons_ts = response.content.decode("utf-8")
 
-    imports = dict(re.findall(r'import (\w+) from "([^"]+)";', icons_ts))
-    exports = re.findall(r'export const (\w+) = \{ url: (\w+), component: (\w+) \};', icons_ts)
+        imports = dict(re.findall(r'import (\w+) from "([^"]+)";', icons_ts))
+        exports = re.findall(
+            r"export const (\w+) = \{ url: (\w+), component: (\w+) \};", icons_ts
+        )
 
-    icons = {}
-    for exp, url_name, comp_name in exports:
-        import_path = imports.get(comp_name, imports.get(url_name, ""))
-        clean_path = import_path.split("?")[0]
-        if clean_path.startswith("@mdi/svg/svg/"):
-            svg_file = clean_path.replace("@mdi/svg/svg/", "")
-            fetch_url = MDI_RAW + svg_file
-        elif clean_path.startswith("bootstrap-icons/icons/"):
-            svg_file = clean_path.replace("bootstrap-icons/icons/", "")
-            fetch_url = BS_RAW + svg_file
-        elif clean_path.startswith("../../icons/"):
-            svg_file = clean_path.replace("../../icons/", "")
-            fetch_url = TS_ICONS_RAW + svg_file
-        else:
-            continue
+        icons = {}
+        for exp, url_name, comp_name in exports:
+            import_path = imports.get(comp_name, imports.get(url_name, ""))
+            clean_path = import_path.split("?")[0]
+            if clean_path.startswith("@mdi/svg/svg/"):
+                svg_file = clean_path.replace("@mdi/svg/svg/", "")
+                fetch_url = MDI_RAW + svg_file
+            elif clean_path.startswith("bootstrap-icons/icons/"):
+                svg_file = clean_path.replace("bootstrap-icons/icons/", "")
+                fetch_url = BS_RAW + svg_file
+            elif clean_path.startswith("../../icons/"):
+                svg_file = clean_path.replace("../../icons/", "")
+                fetch_url = TS_ICONS_RAW + svg_file
+            else:
+                continue
 
-        try:
-            req = urllib.request.Request(fetch_url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req) as resp:
-                raw_svg = resp.read().decode()
+            try:
+                response = client.get(fetch_url)
+                response.raise_for_status()
+                raw_svg = response.content.decode("utf-8")
                 s = re.sub(r"<\?xml[^>]*\?>", "", raw_svg)
                 s = re.sub(r"<!DOCTYPE[^>]*>", "", s)
                 s = re.sub(r"<!--.*?-->", "", s, flags=re.DOTALL)
                 icons[exp] = s.strip()
-        except (urllib.error.URLError, TimeoutError, OSError, UnicodeDecodeError) as e:
-            print(f"Warning: could not fetch {exp} from {fetch_url}: {e}")
+            except (httpx.HTTPError, TimeoutError, OSError, UnicodeDecodeError) as e:
+                print(f"Warning: could not fetch {exp} from {fetch_url}: {e}")
     return icons
 
 
@@ -70,21 +85,25 @@ def build_jinja(icons: dict[str, str]) -> str:
         val = icons[k].replace("\\", "\\\\").replace("'", "\\'")
         lines.append(f"  '{k}': '{val}',")
 
-    lines.append("} %}")
-    lines.append("")
-    lines.append("{% macro icon(name, size=none, class_=\"\") %}")
-    lines.append("  {% set svg = icon_data.get(name, '') %}")
-    lines.append("  {% if svg %}")
-    lines.append("    {% set extra_attrs = '' %}")
-    lines.append("    {% if size %}{% set extra_attrs = extra_attrs ~ ' width=\"' ~ size ~ '\" height=\"' ~ size ~ '\"' %}{% endif %}")
-    lines.append("    {% if class_ %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon ' ~ class_ ~ '\"' %}{% else %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon\"' %}{% endif %}")
-    lines.append("    {% for k, v in kwargs.items() %}")
-    lines.append("      {% set extra_attrs = extra_attrs ~ ' ' ~ k ~ '=\"' ~ v ~ '\"' %}")
-    lines.append("    {% endfor %}")
-    lines.append("    {# Inject extra_attrs into the first <svg tag #}")
-    lines.append("    {{ svg | replace('<svg', '<svg ' ~ extra_attrs, 1) | safe }}")
-    lines.append("  {% endif %}")
-    lines.append("{% endmacro %}")
+    lines.extend(
+        [
+            "} %}",
+            "",
+            '{% macro icon(name, size=none, class_="") %}',
+            "  {% set svg = icon_data.get(name, '') %}",
+            "  {% if svg %}",
+            "    {% set extra_attrs = '' %}",
+            "    {% if size %}{% set extra_attrs = extra_attrs ~ ' width=\"' ~ size ~ '\" height=\"' ~ size ~ '\"' %}{% endif %}",
+            "    {% if class_ %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon ' ~ class_ ~ '\"' %}{% else %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon\"' %}{% endif %}",
+            "    {% for k, v in kwargs.items() %}",
+            "      {% set extra_attrs = extra_attrs ~ ' ' ~ k ~ '=\"' ~ v ~ '\"' %}",
+            "    {% endfor %}",
+            "    {# Inject extra_attrs into the first <svg tag #}",
+            "    {{ svg | replace('<svg', '<svg ' ~ extra_attrs, 1) | safe }}",
+            "  {% endif %}",
+            "{% endmacro %}",
+        ]
+    )
     return "\n".join(lines)
 
 

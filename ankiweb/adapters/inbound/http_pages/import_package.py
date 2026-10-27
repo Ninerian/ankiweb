@@ -5,7 +5,7 @@ import logging
 import os
 import urllib.parse
 from collections.abc import AsyncGenerator, Callable
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, NotRequired, TypedDict, cast
 
 import anki.collection_pb2 as col_pb
 import anki.errors
@@ -27,10 +27,17 @@ from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.page import render_page
 from ankiweb.core.i18n import tr
 
+if TYPE_CHECKING:
+    from anki.collection import Collection
+
+    from ankiweb.core.ports import CollectionPort
+
 logger = logging.getLogger(__name__)
 
 HELP_URL_ROOT = "https://docs.ankiweb.net/importing/packaged-decks.html"
-HELP_URL_SCHEDULING = "https://docs.ankiweb.net/importing/packaged-decks.html#scheduling"
+HELP_URL_SCHEDULING = (
+    "https://docs.ankiweb.net/importing/packaged-decks.html#scheduling"
+)
 HELP_URL_UPDATING = "https://docs.ankiweb.net/importing/packaged-decks.html#updating"
 
 
@@ -72,7 +79,80 @@ def _update_choices() -> list[dict[str, Any]]:
     ]
 
 
-def _build_log_summary_and_rows(log: ie.ImportResponse.Log) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+class _SummaryQueue(TypedDict):
+    notes: list[ie.ImportResponse.Note]
+    reason: str
+
+
+class _SummaryItem(TypedDict):
+    action: str
+    summary_text: str
+    count: int
+    can_browse: bool
+    icon: str
+    queues: list[_SummaryQueue]
+    browse_query: NotRequired[str]
+
+
+class _DetailRow(TypedDict):
+    action: str
+    reason: str
+    can_browse: bool
+    nid: int
+    fields: list[str]
+    fields_joined: str
+
+
+def _merge_first_field_summary(
+    summaries: list[_SummaryItem],
+    notes: list[ie.ImportResponse.Note],
+    action: str,
+    reason: str,
+) -> None:
+    if notes:
+        for summary in summaries:
+            if summary["action"] == action:
+                summary["queues"].append({"notes": notes, "reason": reason})
+                summary["count"] += len(notes)
+                break
+
+
+def _set_browse_queries(summaries: list[_SummaryItem]) -> None:
+    for summary in summaries:
+        if not summary["can_browse"]:
+            summary["browse_query"] = ""
+            continue
+        all_nids = [
+            str(note.id.nid)
+            for queue in summary["queues"]
+            for note in queue["notes"]
+            if note.id.nid
+        ]
+        summary["browse_query"] = "nid:" + ",".join(all_nids) if all_nids else ""
+
+
+def _summary_detail_rows(summaries: list[_SummaryItem]) -> list[_DetailRow]:
+    rows: list[_DetailRow] = []
+    for summary in summaries:
+        for queue in summary["queues"]:
+            for note in queue["notes"]:
+                fields = list(note.fields)
+                rows.append(
+                    {
+                        "action": summary["action"],
+                        "reason": queue["reason"],
+                        "can_browse": summary["can_browse"],
+                        "nid": note.id.nid,
+                        "fields": fields,
+                        "fields_joined": ", ".join(fields),
+                    }
+                )
+    return rows
+
+
+def _build_log_summary_and_rows(
+    log: ie.ImportResponse.Log,
+) -> tuple[list[_SummaryItem], list[_DetailRow]]:
     """Build the summaries and details table rows from protobuf ImportResponse.Log.
     Matches upstream ts/routes/import-page/ logic exactly:
     - new notes: action = tr.adding_added(), reason = tr.importing_added_new_note(), can_browse = True
@@ -100,22 +180,31 @@ def _build_log_summary_and_rows(log: ie.ImportResponse.Log) -> tuple[list[dict[s
         ff_action = tr.importing_updated()
         ff_reason = tr.importing_note_updated_as_file_had_newer()
 
-    summaries = [
+    summaries: list[_SummaryItem] = [
         {
             "action": tr.adding_added(),
             "summary_text": tr.importing_notes_added(count=len(log.new)),
             "count": len(log.new),
             "can_browse": True,
             "icon": "newBox",
-            "queues": [{"notes": list(log.new), "reason": tr.importing_added_new_note()}],
+            "queues": [
+                {"notes": list(log.new), "reason": tr.importing_added_new_note()}
+            ],
         },
         {
             "action": tr.importing_skipped(),
-            "summary_text": tr.importing_existing_notes_skipped(count=len(log.duplicate)),
+            "summary_text": tr.importing_existing_notes_skipped(
+                count=len(log.duplicate)
+            ),
             "count": len(log.duplicate),
             "can_browse": True,
             "icon": "checkCircle",
-            "queues": [{"notes": list(log.duplicate), "reason": tr.importing_existing_note_skipped()}],
+            "queues": [
+                {
+                    "notes": list(log.duplicate),
+                    "reason": tr.importing_existing_note_skipped(),
+                }
+            ],
         },
         {
             "action": tr.importing_updated(),
@@ -123,66 +212,55 @@ def _build_log_summary_and_rows(log: ie.ImportResponse.Log) -> tuple[list[dict[s
             "count": len(log.updated),
             "can_browse": True,
             "icon": "updateIcon",
-            "queues": [{"notes": list(log.updated), "reason": tr.importing_note_updated_as_file_had_newer()}],
+            "queues": [
+                {
+                    "notes": list(log.updated),
+                    "reason": tr.importing_note_updated_as_file_had_newer(),
+                }
+            ],
         },
         {
             "action": tr.importing_skipped(),
-            "summary_text": tr.importing_notes_failed(count=(
-                len(log.conflicting) + len(log.missing_notetype) + len(log.missing_deck) + len(log.empty_first_field)
-            )),
+            "summary_text": tr.importing_notes_failed(
+                count=(
+                    len(log.conflicting)
+                    + len(log.missing_notetype)
+                    + len(log.missing_deck)
+                    + len(log.empty_first_field)
+                )
+            ),
             "count": (
-                len(log.conflicting) + len(log.missing_notetype) + len(log.missing_deck) + len(log.empty_first_field)
+                len(log.conflicting)
+                + len(log.missing_notetype)
+                + len(log.missing_deck)
+                + len(log.empty_first_field)
             ),
             "can_browse": False,
             "icon": "closeBox",
             "queues": [
-                {"notes": list(log.conflicting), "reason": tr.importing_note_skipped_update_due_to_notetype2()},
-                {"notes": list(log.missing_notetype), "reason": tr.importing_note_skipped_due_to_missing_notetype()},
-                {"notes": list(log.missing_deck), "reason": tr.importing_note_skipped_due_to_missing_deck()},
-                {"notes": list(log.empty_first_field), "reason": tr.importing_note_skipped_due_to_empty_first_field()},
+                {
+                    "notes": list(log.conflicting),
+                    "reason": tr.importing_note_skipped_update_due_to_notetype2(),
+                },
+                {
+                    "notes": list(log.missing_notetype),
+                    "reason": tr.importing_note_skipped_due_to_missing_notetype(),
+                },
+                {
+                    "notes": list(log.missing_deck),
+                    "reason": tr.importing_note_skipped_due_to_missing_deck(),
+                },
+                {
+                    "notes": list(log.empty_first_field),
+                    "reason": tr.importing_note_skipped_due_to_empty_first_field(),
+                },
             ],
         },
     ]
 
-    # Merge first_field_match into the matching summary
-    if first_field_notes:
-        for s in summaries:
-            if s["action"] == ff_action:
-                s["queues"].append({"notes": first_field_notes, "reason": ff_reason})
-                s["count"] += len(first_field_notes)
-                break
-    # Compute browse_query for each summary
-    for s in summaries:
-        if s["can_browse"]:
-            all_nids = [
-                str(note.id.nid)
-                for q in s["queues"]
-                for note in q.get("notes", [])
-                if note.id.nid
-            ]
-            if all_nids:
-                s["browse_query"] = "nid:" + ",".join(all_nids)
-            else:
-                s["browse_query"] = ""
-        else:
-            s["browse_query"] = ""
-
-    # Build details table rows: flat list of notes
-    rows: list[dict[str, Any]] = []
-    for s in summaries:
-        for q in s["queues"]:
-            for note in q.get("notes", []):
-                fields = list(note.fields)
-                rows.append({
-                    "action": s["action"],
-                    "reason": q.get("reason", ""),
-                    "can_browse": s["can_browse"],
-                    "nid": note.id.nid,
-                    "fields": fields,
-                    "fields_joined": ", ".join(fields),
-                })
-
-    return summaries, rows
+    _merge_first_field_summary(summaries, first_field_notes, ff_action, ff_reason)
+    _set_browse_queries(summaries)
+    return summaries, _summary_detail_rows(summaries)
 
 
 def render_import_anki_package_html(
@@ -207,12 +285,20 @@ def render_import_anki_package_html(
         "help_url": HELP_URL_ROOT,
         "help_sections": _help_sections(),
     }
-    tmpl = "pages/import_anki_package_modal.html.jinja" if as_modal else "pages/import_anki_package.html.jinja"
+    tmpl = (
+        "pages/import_anki_package_modal.html.jinja"
+        if as_modal
+        else "pages/import_anki_package.html.jinja"
+    )
     return templating.render(tmpl, **ctx)
 
 
-def render_import_package_modal(package_path: str, options: ie.ImportAnkiPackageOptions) -> str:
+def render_import_package_modal(
+    package_path: str, options: ie.ImportAnkiPackageOptions
+) -> str:
     return render_import_anki_package_html(package_path, options, as_modal=True)
+
+
 def render_import_page_html(
     log: ie.ImportResponse.Log | None = None,
     error: str | None = None,
@@ -235,145 +321,174 @@ def render_import_page_html(
     return templating.render("pages/import_page.html.jinja", **ctx)
 
 
+def _package_presets(col) -> ie.ImportAnkiPackageOptions:
+    try:
+        return col._backend.get_import_anki_package_presets()
+    except anki.errors.AnkiException:
+        return ie.ImportAnkiPackageOptions()
+
+
+async def _package_modal(get_service: Callable, path: str) -> HTMLResponse:
+    service = get_service()
+    package_path = urllib.parse.unquote(path)
+    options = await service.run(_package_presets)
+    modal_html = render_import_package_modal(package_path, options)
+    return HTMLResponse(modal_html)
+
+
+async def _package_page(get_service: Callable, path: str) -> HTMLResponse:
+    service = get_service()
+    package_path = urllib.parse.unquote(path)
+    options = await service.run(_package_presets)
+    body = render_import_anki_package_html(package_path, options)
+    return HTMLResponse(render_page("import_package", body))
+
+
+def _import_progress_label(raw_progress: bytes, last_label: str) -> str | None:
+    progress = col_pb.Progress()
+    progress.ParseFromString(raw_progress)
+    if progress.WhichOneof("value") == "importing":
+        label = progress.importing
+        if label and label != last_label:
+            return label
+    return None
+
+
+async def _import_package_stream(
+    service: CollectionPort, execute_import: Callable[[Collection], ie.ImportResponse]
+) -> AsyncGenerator[DatastarEvent, None]:
+    initial_label = tr.actions_import()
+    last_label = initial_label
+    yield SSE.patch_signals({"importProgressLabel": initial_label})
+
+    worker_task = asyncio.create_task(service.run(execute_import))
+    worker_result_read = False
+    try:
+        while not worker_task.done():
+            done, _ = await asyncio.wait([worker_task], timeout=0.1)
+            if done:
+                break
+            try:
+                raw_progress = await service.backend_raw_concurrent(
+                    "latest_progress", b""
+                )
+                label = _import_progress_label(raw_progress, last_label)
+                if label:
+                    last_label = label
+                    yield SSE.patch_signals({"importProgressLabel": label})
+            except Exception:
+                logger.warning("Failed to poll latest_progress", exc_info=True)
+
+        try:
+            resp = await asyncio.shield(worker_task)
+            worker_result_read = True
+            html = render_import_page_html(log=resp.log)
+        except Exception as e:
+            worker_result_read = True
+            logger.exception("Import package failed")
+            html = render_import_page_html(error=str(e))
+
+        yield SSE.patch_elements(html, selector="#import-package-container")
+    finally:
+        with anyio.CancelScope(shield=True):
+            if not worker_result_read:
+                try:
+                    await asyncio.shield(worker_task)
+                except Exception:
+                    logger.exception("Background import failed after client disconnect")
+
+
+async def _do_package_import(
+    get_service: Callable, payload: ReadSignals
+) -> DatastarResponse:
+    service = get_service()
+    if not payload or not isinstance(payload, dict):
+        return DatastarResponse()
+    payload_data: dict[str, Any] = payload
+
+    package_path = payload_data.get("package_path", "")
+    with_scheduling = bool(payload_data.get("with_scheduling"))
+    with_deck_configs = bool(payload_data.get("with_deck_configs"))
+    merge_notetypes = bool(payload_data.get("merge_notetypes"))
+    update_notes = int(payload_data.get("update_notes", 0))
+    update_notetypes = int(payload_data.get("update_notetypes", 0))
+
+    if not import_tmp.is_within(service.settings, package_path):
+        error_html = render_import_page_html(error="Import path not allowed")
+        return DatastarResponse(
+            SSE.patch_elements(error_html, selector="#import-package-container")
+        )
+
+    req = ie.ImportAnkiPackageRequest(
+        package_path=package_path,
+        options=ie.ImportAnkiPackageOptions(
+            with_scheduling=with_scheduling,
+            with_deck_configs=with_deck_configs,
+            merge_notetypes=merge_notetypes,
+            update_notes=cast(
+                ie.ImportAnkiPackageUpdateCondition.ValueType, update_notes
+            ),
+            update_notetypes=cast(
+                ie.ImportAnkiPackageUpdateCondition.ValueType, update_notetypes
+            ),
+        ),
+    )
+
+    def execute_import(col):
+        out_raw = col._backend.import_anki_package_raw(req.SerializeToString())
+        resp = ie.ImportResponse()
+        resp.ParseFromString(out_raw)
+        return resp
+
+    return DatastarResponse(_import_package_stream(service, execute_import))
+
+
+async def _direct_package_import(get_service: Callable, path: str) -> HTMLResponse:
+    service = get_service()
+    package_path = urllib.parse.unquote(path)
+
+    if not import_tmp.is_within(service.settings, package_path):
+        body = render_import_page_html(error="Import path not allowed")
+        return HTMLResponse(render_page("import_page", body))
+
+    def execute_direct_import(col):
+        opts = col._backend.get_import_anki_package_presets()
+        req = ie.ImportAnkiPackageRequest(
+            package_path=package_path,
+            options=opts,
+        )
+        out_raw = col._backend.import_anki_package_raw(req.SerializeToString())
+        resp = ie.ImportResponse()
+        resp.ParseFromString(out_raw)
+        return resp
+
+    try:
+        resp = await service.run(execute_direct_import)
+        body = render_import_page_html(log=resp.log)
+    except Exception as e:
+        logger.exception("Direct import failed")
+        body = render_import_page_html(error=str(e))
+
+    return HTMLResponse(render_page("import_page", body))
+
+
 def make_router(get_service: Callable) -> APIRouter:
     router = APIRouter()
 
     @router.get("/import-anki-package/modal/{path:path}")
     async def import_anki_package_modal_content(path: str):
-        service = get_service()
-        package_path = urllib.parse.unquote(path)
+        return await _package_modal(get_service, path)
 
-        def get_options(col):
-            try:
-                return col._backend.get_import_anki_package_presets()
-            except anki.errors.AnkiException:
-                return ie.ImportAnkiPackageOptions()
-
-        options = await service.run(get_options)
-        modal_html = render_import_package_modal(package_path, options)
-        return HTMLResponse(modal_html)
     @router.get("/import-anki-package/{path:path}")
     async def import_anki_package_page(path: str):
-        service = get_service()
-        package_path = urllib.parse.unquote(path)
-
-        def get_options(col):
-            try:
-                return col._backend.get_import_anki_package_presets()
-            except anki.errors.AnkiException:
-                return ie.ImportAnkiPackageOptions()
-
-        options = await service.run(get_options)
-        body = render_import_anki_package_html(package_path, options)
-        return HTMLResponse(render_page("import_package", body))
-
+        return await _package_page(get_service, path)
 
     @router.post("/import-anki-package/do-import")
     async def do_import(payload: ReadSignals):
-        service = get_service()
-        if not payload or not isinstance(payload, dict):
-            return DatastarResponse()
+        return await _do_package_import(get_service, payload)
 
-        package_path = payload.get("package_path", "")
-        with_scheduling = bool(payload.get("with_scheduling", False))
-        with_deck_configs = bool(payload.get("with_deck_configs", False))
-        merge_notetypes = bool(payload.get("merge_notetypes", False))
-        update_notes = int(payload.get("update_notes", 0))
-        update_notetypes = int(payload.get("update_notetypes", 0))
-
-        # Check path security
-        if not import_tmp.is_within(service.settings, package_path):
-            error_html = render_import_page_html(error="Import path not allowed")
-            return DatastarResponse(SSE.patch_elements(error_html, selector="#import-package-container"))
-
-        req = ie.ImportAnkiPackageRequest(
-            package_path=package_path,
-            options=ie.ImportAnkiPackageOptions(
-                with_scheduling=with_scheduling,
-                with_deck_configs=with_deck_configs,
-                merge_notetypes=merge_notetypes,
-                update_notes=cast(ie.ImportAnkiPackageUpdateCondition.ValueType, update_notes),
-                update_notetypes=cast(ie.ImportAnkiPackageUpdateCondition.ValueType, update_notetypes),
-            ),
-        )
-
-        def execute_import(col):
-            out_raw = col._backend.import_anki_package_raw(req.SerializeToString())
-            resp = ie.ImportResponse()
-            resp.ParseFromString(out_raw)
-            return resp
-
-        async def _import_stream() -> AsyncGenerator[DatastarEvent, None]:
-            initial_label = tr.actions_import()
-            last_label = initial_label
-            yield SSE.patch_signals({"importProgressLabel": initial_label})
-
-            worker_task = asyncio.create_task(service.run(execute_import))
-            worker_result_read = False
-            try:
-                while not worker_task.done():
-                    done, _ = await asyncio.wait([worker_task], timeout=0.1)
-                    if done:
-                        break
-                    try:
-                        raw_progress = await service.backend_raw_concurrent("latest_progress", b"")
-                        progress = col_pb.Progress()
-                        progress.ParseFromString(raw_progress)
-                        if progress.WhichOneof("value") == "importing":
-                            label = progress.importing
-                            if label and label != last_label:
-                                last_label = label
-                                yield SSE.patch_signals({"importProgressLabel": label})
-                    except Exception:
-                        logger.warning("Failed to poll latest_progress", exc_info=True)
-
-                try:
-                    resp = await asyncio.shield(worker_task)
-                    worker_result_read = True
-                    html = render_import_page_html(log=resp.log)
-                except Exception as e:
-                    worker_result_read = True
-                    logger.exception("Import package failed")
-                    html = render_import_page_html(error=str(e))
-
-                yield SSE.patch_elements(html, selector="#import-package-container")
-            finally:
-                with anyio.CancelScope(shield=True):
-                    if not worker_result_read:
-                        try:
-                            await asyncio.shield(worker_task)
-                        except Exception:
-                            logger.exception("Background import failed after client disconnect")
-
-        return DatastarResponse(_import_stream())
     @router.get("/import-page/{path:path}")
     async def import_page_route(path: str):
-        service = get_service()
-        package_path = urllib.parse.unquote(path)
-
-        # Directly run import with default presets, matching SvelteKit import-page behaviour
-        if not import_tmp.is_within(service.settings, package_path):
-            body = render_import_page_html(error="Import path not allowed")
-            return HTMLResponse(render_page("import_page", body))
-
-        def execute_direct_import(col):
-            opts = col._backend.get_import_anki_package_presets()
-            req = ie.ImportAnkiPackageRequest(
-                package_path=package_path,
-                options=opts,
-            )
-            out_raw = col._backend.import_anki_package_raw(req.SerializeToString())
-            resp = ie.ImportResponse()
-            resp.ParseFromString(out_raw)
-            return resp
-
-        try:
-            resp = await service.run(execute_direct_import)
-            body = render_import_page_html(log=resp.log)
-        except Exception as e:
-            logger.exception("Direct import failed")
-            body = render_import_page_html(error=str(e))
-
-        return HTMLResponse(render_page("import_page", body))
+        return await _direct_package_import(get_service, path)
 
     return router

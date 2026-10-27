@@ -117,16 +117,14 @@ def test_change_notetype_get_uses_requested_cards_not_shared_selection(client):
             note["Back"] = "answer"
             col.add_note(note, col.decks.id("Default"))
             cid = next(
-                cid
-                for cid in col.find_cards("")
-                if col.get_card(cid).nid == note.id
+                cid for cid in col.find_cards("") if col.get_card(cid).nid == note.id
             )
             return note.id, cid
 
         return add_note("selected"), add_note("unselected")
 
-    (selected_nid, selected_cid), (unselected_nid, unselected_cid) = (
-        client.portal.call(svc.run, seed)
+    (selected_nid, selected_cid), (unselected_nid, unselected_cid) = client.portal.call(
+        svc.run, seed
     )
     client.app.state.hub.ui_state.selected_card_ids = [unselected_cid]
     client.app.state.hub.ui_state.selected_note_ids = [unselected_nid]

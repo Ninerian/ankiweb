@@ -44,4 +44,7 @@ def test_sanitize_plain_text_unchanged():
 def test_sanitize_allowed_formatting_tags():
     raw = "<p>Paragraph with <b>bold</b>, <i>italic</i>, and <code>code</code>.</p>"
     sanitized = sanitize_html(raw)
-    assert sanitized == "<p>Paragraph with <b>bold</b>, <i>italic</i>, and <code>code</code>.</p>"
+    assert (
+        sanitized
+        == "<p>Paragraph with <b>bold</b>, <i>italic</i>, and <code>code</code>.</p>"
+    )

@@ -4,7 +4,8 @@ import html
 import json
 import logging
 from collections.abc import Callable
-from typing import Any, cast
+from functools import partial
+from typing import Annotated, Any, cast
 
 import anki.errors
 import anki.notetypes_pb2 as nt
@@ -47,6 +48,31 @@ def _is_unchanged(
     )
 
 
+def _context_mapping(defaults, current: list[int | None] | None, count: int):
+    default_mapping = [None if val == -1 else val for val in defaults]
+    if current is not None and len(current) == count:
+        return current
+    return default_mapping
+
+
+def _mapping_rows(names: list[str], mapping: list[int | None]):
+    return [
+        {
+            "new_index": idx,
+            "new_name": name,
+            "selected_value": -1 if mapping[idx] is None else mapping[idx],
+        }
+        for idx, name in enumerate(names)
+    ]
+
+
+def _add_mapping_signals(
+    signals: dict[str, Any], prefix: str, mapping: list[int | None]
+) -> None:
+    for idx, val in enumerate(mapping):
+        signals[f"{prefix}_map_{idx}"] = -1 if val is None else val
+
+
 def _prepare_template_context(
     col,
     old_ntid: int,
@@ -70,25 +96,17 @@ def _prepare_template_context(
     old_template_names = list(info.old_template_names)
     new_template_names = list(info.new_template_names)
 
-    default_fields = [
-        None if val == -1 else val for val in info.input.new_fields
-    ]
-    if current_fields_map is not None and len(current_fields_map) == len(new_field_names):
-        fields_map = current_fields_map
-    else:
-        fields_map = default_fields
-
+    fields_map = _context_mapping(
+        info.input.new_fields, current_fields_map, len(new_field_names)
+    )
     has_templates = len(info.input.new_templates) > 0 and not info.input.is_cloze
-    if has_templates:
-        default_templates = [
-            None if val == -1 else val for val in info.input.new_templates
-        ]
-        if current_templates_map is not None and len(current_templates_map) == len(new_template_names):
-            templates_map = current_templates_map
-        else:
-            templates_map = default_templates
-    else:
-        templates_map = []
+    templates_map = (
+        _context_mapping(
+            info.input.new_templates, current_templates_map, len(new_template_names)
+        )
+        if has_templates
+        else []
+    )
 
     # Options for old fields dropdown: indices 0..len-1, plus -1 for Nothing
     nothing_label = tr.change_notetype_nothing()
@@ -100,26 +118,15 @@ def _prepare_template_context(
         {"value": idx, "label": name} for idx, name in enumerate(old_template_names)
     ] + [{"value": -1, "label": nothing_label}]
 
-    field_rows = [
-        {
-            "new_index": idx,
-            "new_name": name,
-            "selected_value": -1 if fields_map[idx] is None else fields_map[idx],
-        }
-        for idx, name in enumerate(new_field_names)
-    ]
-
-    template_rows = [
-        {
-            "new_index": idx,
-            "new_name": name,
-            "selected_value": -1 if templates_map[idx] is None else templates_map[idx],
-        }
-        for idx, name in enumerate(new_template_names)
-    ] if has_templates else []
+    field_rows = _mapping_rows(new_field_names, fields_map)
+    template_rows = (
+        _mapping_rows(new_template_names, templates_map) if has_templates else []
+    )
 
     unused_fields = _compute_unused(old_field_names, fields_map)
-    unused_templates = _compute_unused(old_template_names, templates_map) if has_templates else []
+    unused_templates = (
+        _compute_unused(old_template_names, templates_map) if has_templates else []
+    )
 
     initial_signals = {
         "old_notetype_id": old_ntid,
@@ -131,11 +138,9 @@ def _prepare_template_context(
         "old_notetype_name": info.input.old_notetype_name,
         "is_cloze": bool(info.input.is_cloze),
     }
-    for idx, val in enumerate(fields_map):
-        initial_signals[f"field_map_{idx}"] = -1 if val is None else val
+    _add_mapping_signals(initial_signals, "field", fields_map)
     if has_templates:
-        for idx, val in enumerate(templates_map):
-            initial_signals[f"template_map_{idx}"] = -1 if val is None else val
+        _add_mapping_signals(initial_signals, "template", templates_map)
 
     return {
         "old_notetype_id": old_ntid,
@@ -242,17 +247,25 @@ def _resolve_card_selection(col, card_ids: list[int]) -> tuple[int, list[int]]:
 
 def _parse_note_ids(raw_note_ids: Any) -> list[int]:
     if not isinstance(raw_note_ids, list):
-        raise _SelectionError("Invalid note selection: note IDs must be provided as a list.")
+        raise _SelectionError(
+            "Invalid note selection: note IDs must be provided as a list."
+        )
     if not raw_note_ids:
         raise _SelectionError("Invalid note selection: select at least one note.")
 
     note_ids: list[int] = []
     for raw_note_id in raw_note_ids:
         if isinstance(raw_note_id, bool):
-            raise _SelectionError("Invalid note selection: note IDs must be positive integers.")
+            raise _SelectionError(
+                "Invalid note selection: note IDs must be positive integers."
+            )
         if isinstance(raw_note_id, int):
             note_id = raw_note_id
-        elif isinstance(raw_note_id, str) and raw_note_id.isascii() and raw_note_id.isdigit():
+        elif (
+            isinstance(raw_note_id, str)
+            and raw_note_id.isascii()
+            and raw_note_id.isdigit()
+        ):
             try:
                 note_id = int(raw_note_id)
             except ValueError as exc:
@@ -260,10 +273,14 @@ def _parse_note_ids(raw_note_ids: Any) -> list[int]:
                     "Invalid note selection: note IDs must be positive integers."
                 ) from exc
         else:
-            raise _SelectionError("Invalid note selection: note IDs must be positive integers.")
+            raise _SelectionError(
+                "Invalid note selection: note IDs must be positive integers."
+            )
 
         if note_id <= 0:
-            raise _SelectionError("Invalid note selection: note IDs must be positive integers.")
+            raise _SelectionError(
+                "Invalid note selection: note IDs must be positive integers."
+            )
         note_ids.append(note_id)
     return note_ids
 
@@ -283,10 +300,7 @@ def _validate_note_ids(col, note_ids: list[int], old_ntid: int) -> None:
 
 
 def _selection_error_html(message: str) -> str:
-    return (
-        '<div class="alert alert-error py-2 px-3 mb-3">'
-        f"{html.escape(message)}</div>"
-    )
+    return f'<div class="alert alert-error py-2 px-3 mb-3">{html.escape(message)}</div>'
 
 
 def _selection_error_response(message: str):
@@ -296,344 +310,283 @@ def _selection_error_response(message: str):
     )
 
 
+def _render_initial_selection(col, card_ids: list[int]) -> tuple[str, bool]:
+    try:
+        old_id, note_ids = _resolve_card_selection(col, card_ids)
+    except _SelectionError as exc:
+        return render_fatal_error_html(str(exc)), True
+
+    try:
+        col.models.change_notetype_info(old_notetype_id=old_id, new_notetype_id=old_id)
+    except anki.errors.BackendError as exc:
+        return render_fatal_error_html(str(exc)), False
+
+    return render_change_notetype_html(col, old_id, old_id, note_ids), False
+
+
+async def _change_notetype_page(get_service: Callable, cids: str | None):
+    try:
+        card_ids = _parse_card_ids(cids)
+    except _SelectionError as exc:
+        body = render_fatal_error_html(str(exc))
+        return HTMLResponse(render_page("changenotetype", body), status_code=400)
+
+    service = get_service()
+    body, invalid_selection = await service.run(
+        partial(_render_initial_selection, card_ids=card_ids)
+    )
+    return HTMLResponse(
+        render_page("changenotetype", body),
+        status_code=400 if invalid_selection else 200,
+    )
+
+
+def _payload_selection(payload) -> tuple[int, int, list[int]]:
+    if not payload or not isinstance(payload, dict):
+        raise _SelectionError("Invalid payload")
+    try:
+        old_id = int(cast(Any, payload.get("old_notetype_id")))
+        new_id = int(cast(Any, payload.get("target_notetype_id")))
+    except (ValueError, TypeError) as exc:
+        raise _SelectionError("Malformed notetype IDs") from exc
+    return old_id, new_id, _parse_note_ids(payload.get("note_ids"))
+
+
+def _backend_error_html(exc: Exception) -> str:
+    return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
+
+
+def _render_response(body: str):
+    if body.startswith('<div class="alert alert-error'):
+        return elements_response(body, selector="#change-notetype-alert-area")
+    return elements_response(body, selector="#change-notetype-content")
+
+
+def _render_target(col, old_id: int, new_id: int, note_ids: list[int]) -> str:
+    try:
+        _validate_note_ids(col, note_ids, old_id)
+        return render_change_notetype_html(col, old_id, new_id, note_ids)
+    except _SelectionError as exc:
+        return _selection_error_html(str(exc))
+    except anki.errors.BackendError as exc:
+        return _backend_error_html(exc)
+
+
+async def _select_target(service, payload):
+    try:
+        old_id, new_id, note_ids = _payload_selection(payload)
+    except _SelectionError as exc:
+        return _selection_error_response(str(exc))
+    body = await service.run(
+        partial(_render_target, old_id=old_id, new_id=new_id, note_ids=note_ids)
+    )
+    return _render_response(body)
+
+
+def _change_info(col, old_id: int, new_id: int, note_ids: list[int]):
+    _validate_note_ids(col, note_ids, old_id)
+    return col.models.change_notetype_info(
+        old_notetype_id=old_id, new_notetype_id=new_id
+    )
+
+
+def _mapping_counts(col, old_id: int, new_id: int, note_ids: list[int]):
+    info = _change_info(col, old_id, new_id, note_ids)
+    return len(info.new_field_names), len(info.new_template_names)
+
+
+def _mapping_value(payload, prefix: str, index: int) -> int | None:
+    try:
+        val = int(payload.get(f"{prefix}_map_{index}", -1))
+    except (ValueError, TypeError):
+        val = -1
+    return None if val == -1 else val
+
+
+def _payload_mapping(payload, prefix: str, count: int) -> list[int | None]:
+    mapping: list[int | None] = []
+    for index in range(count):
+        mapping.append(_mapping_value(payload, prefix, index))
+    return mapping
+
+
+def _template_mapping(payload, count: int, new_index: int) -> list[int | None]:
+    # Upstream enforces that template mappings cannot have duplicates.
+    target = _mapping_value(payload, "template", new_index)
+    mapping: list[int | None] = []
+    for index in range(count):
+        if index == new_index:
+            mapping.append(target)
+        else:
+            current = _mapping_value(payload, "template", index)
+            if target is not None and current == target:
+                mapping.append(None)
+            else:
+                mapping.append(current)
+    return mapping
+
+
+def _render_remapping(
+    col,
+    old_id: int,
+    new_id: int,
+    note_ids: list[int],
+    fields_map: list[int | None],
+    templates_map: list[int | None],
+) -> str:
+    try:
+        return render_change_notetype_html(
+            col,
+            old_ntid=old_id,
+            new_ntid=new_id,
+            note_ids=note_ids,
+            current_fields_map=fields_map,
+            current_templates_map=templates_map,
+        )
+    except anki.errors.BackendError as exc:
+        return _backend_error_html(exc)
+
+
+async def _remap(service, payload, template_index: int | None):
+    try:
+        old_id, new_id, note_ids = _payload_selection(payload)
+        num_fields, num_templates = await service.run(
+            partial(_mapping_counts, old_id=old_id, new_id=new_id, note_ids=note_ids)
+        )
+    except _SelectionError as exc:
+        return _selection_error_response(str(exc))
+    except anki.errors.BackendError as exc:
+        return elements_response(
+            _backend_error_html(exc), selector="#change-notetype-alert-area"
+        )
+
+    fields_map = _payload_mapping(payload, "field", num_fields)
+    templates_map = (
+        _payload_mapping(payload, "template", num_templates)
+        if template_index is None
+        else _template_mapping(payload, num_templates, template_index)
+    )
+    body = await service.run(
+        partial(
+            _render_remapping,
+            old_id=old_id,
+            new_id=new_id,
+            note_ids=note_ids,
+            fields_map=fields_map,
+            templates_map=templates_map,
+        )
+    )
+    return _render_response(body)
+
+
+def _change_request(
+    payload,
+    info,
+    old_id: int,
+    new_id: int,
+    fields_map: list[int | None],
+    templates_map: list[int | None],
+    has_templates: bool,
+) -> nt.ChangeNotetypeRequest:
+    req = nt.ChangeNotetypeRequest()
+    req.old_notetype_id = old_id
+    req.new_notetype_id = new_id
+    try:
+        req.current_schema = int(
+            payload.get("current_schema", info.input.current_schema)
+        )
+    except (ValueError, TypeError):
+        req.current_schema = int(info.input.current_schema)
+    req.old_notetype_name = str(
+        payload.get("old_notetype_name", info.input.old_notetype_name)
+    )
+    req.is_cloze = bool(payload.get("is_cloze", info.input.is_cloze))
+    req.new_fields.extend([-1 if val is None else val for val in fields_map])
+    if has_templates:
+        req.new_templates.extend([-1 if val is None else val for val in templates_map])
+    return req
+
+
+def _execute_change(
+    col, note_ids: list[int], old_id: int, req: nt.ChangeNotetypeRequest
+):
+    _validate_note_ids(col, note_ids, old_id)
+    return col._backend.change_notetype(
+        note_ids=note_ids,
+        new_fields=req.new_fields,
+        new_templates=req.new_templates,
+        old_notetype_id=req.old_notetype_id,
+        new_notetype_id=req.new_notetype_id,
+        current_schema=req.current_schema,
+        old_notetype_name=req.old_notetype_name,
+        is_cloze=req.is_cloze,
+    )
+
+
+async def _save_change(service, payload):
+    try:
+        old_id, new_id, note_ids = _payload_selection(payload)
+        info = await service.run(
+            partial(_change_info, old_id=old_id, new_id=new_id, note_ids=note_ids)
+        )
+    except _SelectionError as exc:
+        return _selection_error_response(str(exc))
+    except anki.errors.BackendError as exc:
+        return elements_response(
+            _backend_error_html(exc), selector="#change-notetype-alert-area"
+        )
+
+    num_fields = len(info.new_field_names)
+    num_templates = len(info.new_template_names)
+    has_templates = len(info.input.new_templates) > 0 and not info.input.is_cloze
+    fields_map = _payload_mapping(payload, "field", num_fields)
+    templates_map = (
+        _payload_mapping(payload, "template", num_templates) if has_templates else []
+    )
+    if _is_unchanged(
+        old_id, new_id, fields_map, templates_map if has_templates else None
+    ):
+        return DatastarResponse(SSE.execute_script("alert('No changes to save')"))
+
+    req = _change_request(
+        payload, info, old_id, new_id, fields_map, templates_map, has_templates
+    )
+    try:
+        await service.run_op(
+            partial(_execute_change, note_ids=note_ids, old_id=old_id, req=req),
+            initiator="change-notetype",
+        )
+    except _SelectionError as exc:
+        return _selection_error_response(str(exc))
+    except Exception as exc:
+        logger.exception("Failed to change notetype")
+        return elements_response(
+            _backend_error_html(exc), selector="#change-notetype-alert-area"
+        )
+    return redirect_response("/deckbrowser")
+
+
 def make_router(get_service: Callable) -> APIRouter:
     router = APIRouter()
 
     @router.get("/change-notetype")
-    async def page(cids: str | None = Query(default=None)):
-        try:
-            card_ids = _parse_card_ids(cids)
-        except _SelectionError as exc:
-            body = render_fatal_error_html(str(exc))
-            return HTMLResponse(
-                render_page("changenotetype", body),
-                status_code=400,
-            )
-
-        service = get_service()
-
-        def check_and_render(col):
-            try:
-                old_id, note_ids = _resolve_card_selection(col, card_ids)
-            except _SelectionError as exc:
-                return render_fatal_error_html(str(exc)), True
-
-            try:
-                col.models.change_notetype_info(
-                    old_notetype_id=old_id,
-                    new_notetype_id=old_id,
-                )
-            except anki.errors.BackendError as exc:
-                return render_fatal_error_html(str(exc)), False
-
-            return (
-                render_change_notetype_html(
-                    col,
-                    old_ntid=old_id,
-                    new_ntid=old_id,
-                    note_ids=note_ids,
-                ),
-                False,
-            )
-
-        body, invalid_selection = await service.run(check_and_render)
-        return HTMLResponse(
-            render_page("changenotetype", body),
-            status_code=400 if invalid_selection else 200,
-        )
+    async def page(cids: Annotated[str | None, Query()] = None):
+        return await _change_notetype_page(get_service, cids)
 
     @router.post("/change-notetype/select-target")
     async def select_target(payload: ReadSignals):
-        service = get_service()
-        if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        try:
-            old_id = int(cast(Any, payload.get("old_notetype_id")))
-            new_id = int(cast(Any, payload.get("target_notetype_id")))
-        except (ValueError, TypeError):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        try:
-            note_ids = _parse_note_ids(payload.get("note_ids"))
-        except _SelectionError as exc:
-            return _selection_error_response(str(exc))
-
-        def render(col):
-            try:
-                _validate_note_ids(col, note_ids, old_id)
-                return render_change_notetype_html(
-                    col,
-                    old_ntid=old_id,
-                    new_ntid=new_id,
-                    note_ids=note_ids,
-                )
-            except _SelectionError as exc:
-                return _selection_error_html(str(exc))
-            except anki.errors.BackendError as exc:
-                return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
-
-        html = await service.run(render)
-        if html.startswith('<div class="alert alert-error'):
-            return elements_response(html, selector="#change-notetype-alert-area")
-        return elements_response(html, selector="#change-notetype-content")
+        return await _select_target(get_service(), payload)
 
     @router.post("/change-notetype/remap-field")
-    async def remap_field(
-        payload: ReadSignals,
-        new_index: int = Query(...),
-    ):
-        service = get_service()
-        if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        try:
-            old_id = int(cast(Any, payload.get("old_notetype_id")))
-            new_id = int(cast(Any, payload.get("target_notetype_id")))
-        except (ValueError, TypeError):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        try:
-            note_ids = _parse_note_ids(payload.get("note_ids"))
-        except _SelectionError as exc:
-            return _selection_error_response(str(exc))
-
-        def get_counts(col):
-            _validate_note_ids(col, note_ids, old_id)
-            info = col.models.change_notetype_info(
-                old_notetype_id=old_id,
-                new_notetype_id=new_id,
-            )
-            return len(info.new_field_names), len(info.new_template_names)
-
-        try:
-            num_fields, num_templates = await service.run(get_counts)
-        except _SelectionError as exc:
-            return _selection_error_response(str(exc))
-        except anki.errors.BackendError as exc:
-            err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        fields_map: list[int | None] = []
-        for i in range(num_fields):
-            try:
-                val = int(payload.get(f"field_map_{i}", -1))
-            except (ValueError, TypeError):
-                val = -1
-            fields_map.append(None if val == -1 else val)
-
-        templates_map: list[int | None] = []
-        for i in range(num_templates):
-            try:
-                val = int(payload.get(f"template_map_{i}", -1))
-            except (ValueError, TypeError):
-                val = -1
-            templates_map.append(None if val == -1 else val)
-
-        def render(col):
-            try:
-                return render_change_notetype_html(
-                    col,
-                    old_ntid=old_id,
-                    new_ntid=new_id,
-                    note_ids=note_ids,
-                    current_fields_map=fields_map,
-                    current_templates_map=templates_map,
-                )
-            except anki.errors.BackendError as exc:
-                return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
-
-        html = await service.run(render)
-        if html.startswith('<div class="alert alert-error'):
-            return elements_response(html, selector="#change-notetype-alert-area")
-        return elements_response(html, selector="#change-notetype-content")
+    async def remap_field(payload: ReadSignals, new_index: Annotated[int, Query()]):
+        return await _remap(get_service(), payload, None)
 
     @router.post("/change-notetype/remap-template")
-    async def remap_template(
-        payload: ReadSignals,
-        new_index: int = Query(...),
-    ):
-        service = get_service()
-        if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        try:
-            old_id = int(cast(Any, payload.get("old_notetype_id")))
-            new_id = int(cast(Any, payload.get("target_notetype_id")))
-        except (ValueError, TypeError):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        try:
-            note_ids = _parse_note_ids(payload.get("note_ids"))
-        except _SelectionError as exc:
-            return _selection_error_response(str(exc))
-
-        def get_counts(col):
-            _validate_note_ids(col, note_ids, old_id)
-            info = col.models.change_notetype_info(
-                old_notetype_id=old_id,
-                new_notetype_id=new_id,
-            )
-            return len(info.new_field_names), len(info.new_template_names)
-
-        try:
-            num_fields, num_templates = await service.run(get_counts)
-        except _SelectionError as exc:
-            return _selection_error_response(str(exc))
-        except anki.errors.BackendError as exc:
-            err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        fields_map: list[int | None] = []
-        for i in range(num_fields):
-            try:
-                val = int(payload.get(f"field_map_{i}", -1))
-            except (ValueError, TypeError):
-                val = -1
-            fields_map.append(None if val == -1 else val)
-
-        # For templates: upstream enforces that template mappings cannot have duplicates.
-        try:
-            target_val = int(payload.get(f"template_map_{new_index}", -1))
-        except (ValueError, TypeError):
-            target_val = -1
-        real_old_idx = None if target_val == -1 else target_val
-
-        templates_map: list[int | None] = []
-        for i in range(num_templates):
-            if i == new_index:
-                templates_map.append(real_old_idx)
-            else:
-                try:
-                    val = int(payload.get(f"template_map_{i}", -1))
-                except (ValueError, TypeError):
-                    val = -1
-                curr_real = None if val == -1 else val
-                if real_old_idx is not None and curr_real == real_old_idx:
-                    templates_map.append(None)
-                else:
-                    templates_map.append(curr_real)
-
-        def render(col):
-            try:
-                return render_change_notetype_html(
-                    col,
-                    old_ntid=old_id,
-                    new_ntid=new_id,
-                    note_ids=note_ids,
-                    current_fields_map=fields_map,
-                    current_templates_map=templates_map,
-                )
-            except anki.errors.BackendError as exc:
-                return f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
-
-        html = await service.run(render)
-        if html.startswith('<div class="alert alert-error'):
-            return elements_response(html, selector="#change-notetype-alert-area")
-        return elements_response(html, selector="#change-notetype-content")
+    async def remap_template(payload: ReadSignals, new_index: Annotated[int, Query()]):
+        return await _remap(get_service(), payload, new_index)
 
     @router.post("/change-notetype/save")
     async def save(payload: ReadSignals):
-        service = get_service()
-        if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        try:
-            old_id = int(cast(Any, payload.get("old_notetype_id")))
-            new_id = int(cast(Any, payload.get("target_notetype_id")))
-        except (ValueError, TypeError):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Malformed notetype IDs</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        try:
-            note_ids = _parse_note_ids(payload.get("note_ids"))
-        except _SelectionError as exc:
-            return _selection_error_response(str(exc))
-
-        def get_info(col):
-            _validate_note_ids(col, note_ids, old_id)
-            return col.models.change_notetype_info(
-                old_notetype_id=old_id,
-                new_notetype_id=new_id,
-            )
-
-        try:
-            info = await service.run(get_info)
-        except _SelectionError as exc:
-            return _selection_error_response(str(exc))
-        except anki.errors.BackendError as exc:
-            err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        num_fields = len(info.new_field_names)
-        num_templates = len(info.new_template_names)
-        has_templates = len(info.input.new_templates) > 0 and not info.input.is_cloze
-
-        fields_map: list[int | None] = []
-        for i in range(num_fields):
-            try:
-                val = int(payload.get(f"field_map_{i}", -1))
-            except (ValueError, TypeError):
-                val = -1
-            fields_map.append(None if val == -1 else val)
-
-        templates_map: list[int | None] = []
-        if has_templates:
-            for i in range(num_templates):
-                try:
-                    val = int(payload.get(f"template_map_{i}", -1))
-                except (ValueError, TypeError):
-                    val = -1
-                templates_map.append(None if val == -1 else val)
-
-        # Check unchanged
-        if _is_unchanged(old_id, new_id, fields_map, templates_map if has_templates else None):
-            return DatastarResponse(
-                SSE.execute_script("alert('No changes to save')")
-            )
-
-        req = nt.ChangeNotetypeRequest()
-        req.old_notetype_id = old_id
-        req.new_notetype_id = new_id
-        try:
-            req.current_schema = int(payload.get("current_schema", info.input.current_schema))
-        except (ValueError, TypeError):
-            req.current_schema = int(info.input.current_schema)
-        req.old_notetype_name = str(payload.get("old_notetype_name", info.input.old_notetype_name))
-        req.is_cloze = bool(payload.get("is_cloze", info.input.is_cloze))
-        req.new_fields.extend([-1 if val is None else val for val in fields_map])
-        if has_templates:
-            req.new_templates.extend([-1 if val is None else val for val in templates_map])
-
-        def execute_change(col):
-            _validate_note_ids(col, note_ids, old_id)
-            return col._backend.change_notetype(
-                note_ids=note_ids,
-                new_fields=req.new_fields,
-                new_templates=req.new_templates,
-                old_notetype_id=req.old_notetype_id,
-                new_notetype_id=req.new_notetype_id,
-                current_schema=req.current_schema,
-                old_notetype_name=req.old_notetype_name,
-                is_cloze=req.is_cloze,
-            )
-
-        try:
-            await service.run_op(execute_change, initiator="change-notetype")
-        except _SelectionError as exc:
-            return _selection_error_response(str(exc))
-        except Exception as exc:
-            logger.exception("Failed to change notetype")
-            err_html = f'<div class="alert alert-error py-2 px-3 mb-3">{exc}</div>'
-            return elements_response(err_html, selector="#change-notetype-alert-area")
-
-        return redirect_response("/deckbrowser")
+        return await _save_change(get_service(), payload)
 
     return router

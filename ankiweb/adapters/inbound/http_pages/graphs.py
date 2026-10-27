@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime, timedelta
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 from anki import stats_pb2
 from datastar_py.fastapi import ReadSignals
@@ -85,7 +85,11 @@ def generate_today_stats(today: stats_pb2.GraphsResponse.Today) -> dict[str, Any
     again_label = tr.statistics_today_again_count()
     if not again_label.endswith(":"):
         again_label = f"{again_label}:"
-    again_str = f"{again_label} {n_again} ({again_pct:.1f}%)" if again_pct % 1 != 0 else f"{again_label} {n_again} ({int(again_pct)}%)"
+    again_str = (
+        f"{again_label} {n_again} ({again_pct:.1f}%)"
+        if again_pct % 1 != 0
+        else f"{again_label} {n_again} ({int(again_pct)}%)"
+    )
 
     breakdown_str = f"Learn: {today.learn_count}, Review: {today.review_count}, Relearn: {today.relearn_count}, Filtered: {today.early_review_count}"
 
@@ -110,23 +114,19 @@ def generate_today_stats(today: stats_pb2.GraphsResponse.Today) -> dict[str, Any
     }
 
 
-def generate_future_due_chart(
-    future_due: stats_pb2.GraphsResponse.FutureDue,
-    range_days: int = 30,
-    show_backlog: bool = True,
-) -> dict[str, Any]:
-    """Generate SVG chart for Future Due."""
-    all_counts = dict(future_due.future_due)
-    # Backlog filtering: if show_backlog is False, only non-negative days
-    if show_backlog:
-        active_counts = all_counts
-    else:
-        active_counts = {k: v for k, v in all_counts.items() if k >= 0}
+def _future_due_backlog_start(min_day: int, range_days: int) -> int:
+    if range_days == 30:
+        return max(min_day, -30)
+    if range_days == 90:
+        return max(min_day, -90)
+    if range_days == 365:
+        return max(min_day, -365)
+    return min_day
 
-    # Future total counts reviews in the charted slice (matching legacy f = sum(b, count))
-    # Will be computed below as sum of counts in data
-    has_any = len(active_counts) > 0 and sum(active_counts.values()) > 0
 
+def _future_due_chart_range(
+    active_counts: dict[int, int], range_days: int, show_backlog: bool
+) -> tuple[int, int]:
     min_day = min(active_counts.keys()) if active_counts else 0
     max_day_data = max(active_counts.keys()) if active_counts else 30
 
@@ -148,37 +148,68 @@ def generate_future_due_chart(
 
     # If backlog exists, negative start
     if show_backlog and min_day < 0:
-        if range_days == 30:
-            start_day = max(min_day, -30)
-        elif range_days == 90:
-            start_day = max(min_day, -90)
-        elif range_days == 365:
-            start_day = max(min_day, -365)
-        else:
-            start_day = min_day
+        start_day = _future_due_backlog_start(min_day, range_days)
+    return start_day, end_day
 
+
+def _future_due_tooltip(day: int, count: int, running_total: int) -> str:
+    if day < 0:
+        day_label = f"{-day} days overdue"
+        return f"{day_label}:&#10;{count} cards due (backlog)"
+    if day == 0:
+        day_label = "Today"
+    elif day == 1:
+        day_label = "Tomorrow"
+    else:
+        day_label = f"in {day} days"
+    return f"{day_label}:&#10;{count} cards due&#10;Running total: {running_total}"
+
+
+def _future_due_chart_data(
+    active_counts: dict[int, int], start_day: int, end_day: int
+) -> tuple[list[dict[str, Any]], int]:
     data: list[dict[str, Any]] = []
     max_count = 0
     running_tot = 0
-
     for d in range(start_day, end_day + 1):
         c = active_counts.get(d, 0)
         if d >= 0:
             running_tot += c
         max_count = max(max_count, c)
-        if d < 0:
-            day_label = f"{-d} days overdue"
-            tt = f"{day_label}:&#10;{c} cards due (backlog)"
-        elif d == 0:
-            day_label = "Today"
-            tt = f"{day_label}:&#10;{c} cards due&#10;Running total: {running_tot}"
-        elif d == 1:
-            day_label = "Tomorrow"
-            tt = f"{day_label}:&#10;{c} cards due&#10;Running total: {running_tot}"
-        else:
-            day_label = f"in {d} days"
-            tt = f"{day_label}:&#10;{c} cards due&#10;Running total: {running_tot}"
-        data.append({"day": d, "count": c, "running": running_tot, "tooltip": tt, "is_backlog": d < 0})
+        tt = _future_due_tooltip(d, c, running_tot)
+        data.append(
+            {
+                "day": d,
+                "count": c,
+                "running": running_tot,
+                "tooltip": tt,
+                "is_backlog": d < 0,
+            }
+        )
+    return data, max_count
+
+
+def generate_future_due_chart(
+    future_due: stats_pb2.GraphsResponse.FutureDue,
+    range_days: int = 30,
+    show_backlog: bool = True,
+) -> dict[str, Any]:
+    """Generate SVG chart for Future Due."""
+    all_counts = dict(future_due.future_due)
+    # Backlog filtering: if show_backlog is False, only non-negative days
+    if show_backlog:
+        active_counts = all_counts
+    else:
+        active_counts = {k: v for k, v in all_counts.items() if k >= 0}
+
+    # Future total counts reviews in the charted slice (matching legacy f = sum(b, count))
+    # Will be computed below as sum of counts in data
+    has_any = len(active_counts) > 0 and sum(active_counts.values()) > 0
+
+    start_day, end_day = _future_due_chart_range(
+        active_counts, range_days, show_backlog
+    )
+    data, max_count = _future_due_chart_data(active_counts, start_day, end_day)
 
     width = 600
     height = 250
@@ -202,7 +233,7 @@ def generate_future_due_chart(
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
 
     svg_parts.append('<g class="bars">')
-    for idx, item in enumerate(data):
+    for item in data:
         bx = x_scale(item["day"])
         by = y_scale(item["count"])
         bh = (height - margin_bottom) - by
@@ -215,25 +246,31 @@ def generate_future_due_chart(
         svg_parts.append(
             f'  <rect rx="1" x="{bx:.2f}" y="{by:.2f}" width="{bar_w:.2f}" height="{bh:.2f}" fill="{fill}" data-tooltip="{tt}"></rect>'
         )
-    svg_parts.append('</g>')
-
-    svg_parts.append('<g class="hover-columns">')
+    svg_parts.extend(["</g>", '<g class="hover-columns">'])
     for item in data:
         bx = x_scale(item["day"])
         tt = item["tooltip"]
         svg_parts.append(
             f'  <rect x="{bx:.2f}" y="{margin_top}" width="{bar_w:.2f}" height="{chart_h}" fill="transparent" data-tooltip="{tt}" class="graph-element-clickable"></rect>'
         )
-    svg_parts.append('</g>')
-
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
-
+    svg_parts.extend(
+        [
+            "</g>",
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
+    )
     if not has_any:
         svg_parts.append(render_no_data_overlay(width, height))
 
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     span_days = end_day - min(0, start_day)
     slice_total = sum(item["count"] for item in data)
@@ -242,7 +279,12 @@ def generate_future_due_chart(
 
     summary = [
         {"label": "Total", "value": f"{slice_total} reviews"},
-        {"label": "Average", "value": f"{avg_reviews:.1f} reviews/day" if avg_reviews >= 1.0 else f"{round(avg_reviews)} reviews/day"},
+        {
+            "label": "Average",
+            "value": f"{avg_reviews:.1f} reviews/day"
+            if avg_reviews >= 1.0
+            else f"{round(avg_reviews)} reviews/day",
+        },
         {"label": "Due tomorrow", "value": f"{tomorrow_due} reviews"},
         {"label": "Daily load", "value": f"{future_due.daily_load} reviews/day"},
     ]
@@ -259,7 +301,9 @@ def generate_future_due_chart(
     }
 
 
-def generate_calendar_chart(revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes, year: int = 2026) -> dict[str, Any]:
+def generate_calendar_chart(
+    revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes, year: int = 2026
+) -> dict[str, Any]:
     """Generate year calendar activity heatmap matching legacy."""
     width = 600
     height = 120
@@ -278,13 +322,20 @@ def generate_calendar_chart(revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes,
             f'  <text x="{margin_left - 3:.1f}" y="{pos_y:.1f}" fill="currentColor" '
             f'dominant-baseline="hanging" text-anchor="end" font-size="small" font-family="monospace">{dl}</text>'
         )
-    svg_parts.append('</g>')
+    svg_parts.append("</g>")
 
     start_date = date(year, 1, 1)
     today_dt = datetime.now(tz=UTC).astimezone().date()
-    end_date = min(date(year, 12, 31), today_dt) if year == today_dt.year else date(year, 12, 31)
+    end_date = (
+        min(date(year, 12, 31), today_dt)
+        if year == today_dt.year
+        else date(year, 12, 31)
+    )
     cur = start_date
-    counts = {k: v.learn + v.relearn + v.young + v.mature + v.filtered for k, v in revs.count.items()}
+    counts = {
+        k: v.learn + v.relearn + v.young + v.mature + v.filtered
+        for k, v in revs.count.items()
+    }
     max_c = max(counts.values()) if counts else 0
 
     svg_parts.append('<g class="days">')
@@ -309,12 +360,12 @@ def generate_calendar_chart(revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes,
             f'  <rect x="{cx:.2f}" y="{cy:.2f}" width="{cell_size:.2f}" height="{cell_h:.2f}" fill="{fill}" data-tooltip="{tt}"></rect>'
         )
         cur += timedelta(days=1)
-    svg_parts.append('</g>')
+    svg_parts.append("</g>")
 
     if max_c == 0:
         svg_parts.append(render_no_data_overlay(width, height))
 
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     return {
         "title": tr.statistics_calendar_title(),
@@ -325,6 +376,88 @@ def generate_calendar_chart(revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes,
     }
 
 
+def _review_day_series(
+    day: int, entry: Any, series_keys: list[str], show_time: bool
+) -> tuple[dict[str, Any], float]:
+    item: dict[str, Any] = {"day": day}
+    running_base = 0.0
+    day_tot = 0.0
+    if entry:
+        for k in series_keys:
+            raw_v = getattr(entry, k, 0)
+            v = (raw_v / 1000.0 / 60.0) if show_time else float(raw_v)
+            item[f"_base_{k}"] = running_base
+            item[k] = v
+            running_base += v
+            day_tot += v
+    else:
+        for k in series_keys:
+            item[f"_base_{k}"] = 0.0
+            item[k] = 0.0
+    return item, day_tot
+
+
+def _review_chart_max_day(data_map: Any, days_range: int) -> int:
+    max_day = (
+        days_range
+        if days_range > 0
+        else (max(abs(k) for k in data_map) if data_map else 30)
+    )
+    return max(max_day, 1)
+
+
+def _review_chart_items(
+    data_map: Any, max_day: int, series_keys: list[str], show_time: bool
+) -> tuple[list[dict[str, Any]], float, int]:
+    items: list[dict[str, Any]] = []
+    total_val = 0.0
+    days_studied_count = 0
+    for d in range(-max_day, 1):
+        entry = data_map.get(d)
+        item, day_tot = _review_day_series(d, entry, series_keys, show_time)
+        if day_tot > 0:
+            days_studied_count += 1
+            total_val += day_tot
+
+        unit_str = "minutes" if show_time else "reviews"
+        item["tooltip"] = (
+            f"{-d} days ago: {day_tot:.1f} {unit_str}"
+            if show_time
+            else f"{-d} days ago: {int(day_tot)} {unit_str}"
+        )
+        items.append(item)
+    return items, total_val, days_studied_count
+
+
+def _review_chart_summary(
+    days_studied_count: int, max_day: int, total_val: float, show_time: bool
+) -> list[dict[str, str]]:
+    pct_studied = (days_studied_count / max_day * 100.0) if max_day > 0 else 0.0
+    unit_label = "minutes" if show_time else "reviews"
+    rate_label = "minutes/day" if show_time else "reviews/day"
+    val_str = (
+        f"{total_val:.1f} {unit_label}"
+        if show_time
+        else f"{int(total_val)} {unit_label}"
+    )
+    avg_str = (
+        f"{total_val / max_day:.1f} {rate_label}" if max_day > 0 else f"0 {rate_label}"
+    )
+
+    return [
+        {
+            "label": tr.statistics_days_studied(),
+            "value": f"{days_studied_count} of {max_day} ({pct_studied:.2f}%)",
+        },
+        {"label": "Total", "value": val_str},
+        {
+            "label": tr.statistics_average_for_days_studied(),
+            "value": f"{total_val / max(days_studied_count, 1):.1f} {rate_label}",
+        },
+        {"label": tr.statistics_average_over_period(), "value": avg_str},
+    ]
+
+
 def generate_reviews_chart(
     revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes,
     days_range: int = 30,
@@ -332,8 +465,7 @@ def generate_reviews_chart(
 ) -> dict[str, Any]:
     """Generate Reviews history chart (count or time)."""
     data_map = revs.time if show_time else revs.count
-    max_day = days_range if days_range > 0 else (max(abs(k) for k in data_map) if data_map else 30)
-    max_day = max(max_day, 1)
+    max_day = _review_chart_max_day(data_map, days_range)
 
     series_keys = ["learn", "relearn", "young", "mature", "filtered"]
     colors = [
@@ -344,35 +476,9 @@ def generate_reviews_chart(
         "rgb(107, 174, 214)",
     ]
 
-    items: list[dict[str, Any]] = []
-    total_val = 0.0
-    days_studied_count = 0
-
-    for d in range(-max_day, 1):
-        entry = data_map.get(d)
-        item: dict[str, Any] = {"day": d}
-        running_base = 0.0
-        day_tot = 0.0
-        if entry:
-            for k in series_keys:
-                raw_v = getattr(entry, k, 0)
-                v = (raw_v / 1000.0 / 60.0) if show_time else float(raw_v)
-                item[f"_base_{k}"] = running_base
-                item[k] = v
-                running_base += v
-                day_tot += v
-        else:
-            for k in series_keys:
-                item[f"_base_{k}"] = 0.0
-                item[k] = 0.0
-
-        if day_tot > 0:
-            days_studied_count += 1
-            total_val += day_tot
-
-        unit_str = "minutes" if show_time else "reviews"
-        item["tooltip"] = f"{-d} days ago: {day_tot:.1f} {unit_str}" if show_time else f"{-d} days ago: {int(day_tot)} {unit_str}"
-        items.append(item)
+    items, total_val, days_studied_count = _review_chart_items(
+        data_map, max_day, series_keys, show_time
+    )
 
     width = 600
     height = 250
@@ -385,47 +491,57 @@ def generate_reviews_chart(
     chart_h = height - margin_top - margin_bottom
 
     x_scale = LinearScale((-max_day, 0), (margin_left, width - margin_right))
-    max_y = max(sum(float(it.get(k, 0)) for k in series_keys) for it in items) if items else 0
+    max_y = (
+        max(sum(float(it.get(k, 0)) for k in series_keys) for it in items)
+        if items
+        else 0
+    )
     max_y = max(max_y, 1.0)
     y_scale = LinearScale((0, max_y), (height - margin_bottom, margin_top))
 
     bar_w = chart_w / max(len(items), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(render_stacked_bars(items, "day", series_keys, colors, x_scale, y_scale, bar_width=bar_w))
-
-    svg_parts.append('<g class="hover-columns">')
+    svg_parts.extend(
+        [
+            render_stacked_bars(
+                items, "day", series_keys, colors, x_scale, y_scale, bar_width=bar_w
+            ),
+            '<g class="hover-columns">',
+        ]
+    )
     for item in items:
         bx = x_scale(item["day"])
         tt = item["tooltip"]
         svg_parts.append(
             f'  <rect x="{bx:.2f}" y="{margin_top}" width="{bar_w:.2f}" height="{chart_h}" fill="transparent" data-tooltip="{tt}" class="graph-element-clickable"></rect>'
         )
-    svg_parts.append('</g>')
-
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
-
+    svg_parts.extend(
+        [
+            "</g>",
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
+    )
     if total_val == 0:
         svg_parts.append(render_no_data_overlay(width, height))
 
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
-    pct_studied = (days_studied_count / max_day * 100.0) if max_day > 0 else 0.0
-    unit_label = "minutes" if show_time else "reviews"
-    rate_label = "minutes/day" if show_time else "reviews/day"
-    val_str = f"{total_val:.1f} {unit_label}" if show_time else f"{int(total_val)} {unit_label}"
-    avg_str = f"{total_val / max_day:.1f} {rate_label}" if max_day > 0 else f"0 {rate_label}"
+    summary = _review_chart_summary(days_studied_count, max_day, total_val, show_time)
 
-    summary = [
-        {"label": tr.statistics_days_studied(), "value": f"{days_studied_count} of {max_day} ({pct_studied:.2f}%)"},
-        {"label": "Total", "value": val_str},
-        {"label": tr.statistics_average_for_days_studied(), "value": f"{total_val / max(days_studied_count, 1):.1f} {rate_label}"},
-        {"label": tr.statistics_average_over_period(), "value": avg_str},
-    ]
-
-    subtitle = tr.statistics_reviews_time_subtitle() if show_time else tr.statistics_reviews_count_subtitle()
+    subtitle = (
+        tr.statistics_reviews_time_subtitle()
+        if show_time
+        else tr.statistics_reviews_count_subtitle()
+    )
 
     return {
         "title": tr.statistics_reviews_title(),
@@ -446,20 +562,54 @@ def generate_card_counts_chart(
     # When separate_inactive is True, use excluding_inactive (so suspended/buried are separate).
     # When False, use including_inactive (all cards grouped into 5 active states).
     c = counts.excluding_inactive if separate_inactive else counts.including_inactive
-    total = c.newCards + c.learn + c.relearn + c.young + c.mature + c.suspended + c.buried
+    total = (
+        c.newCards + c.learn + c.relearn + c.young + c.mature + c.suspended + c.buried
+    )
 
     categories = [
         ("New", c.newCards, "#6baed6", "rgb(107, 174, 214)", '"is:new"'),
-        ("Learning", c.learn, "#fd8d3c", "rgb(253, 141, 60)", '(-"is:review" AND "is:learn")'),
-        ("Relearning", c.relearn, "#fb6a4a", "rgb(251, 106, 74)", '("is:review" AND "is:learn")'),
-        ("Young", c.young, "#74c476", "rgb(116, 196, 118)", '("is:review" AND -"is:learn") AND "prop:ivl<21"'),
-        ("Mature", c.mature, "#31a354", "rgb(49, 163, 84)", '("is:review" -"is:learn") AND "prop:ivl>=21"'),
+        (
+            "Learning",
+            c.learn,
+            "#fd8d3c",
+            "rgb(253, 141, 60)",
+            '(-"is:review" AND "is:learn")',
+        ),
+        (
+            "Relearning",
+            c.relearn,
+            "#fb6a4a",
+            "rgb(251, 106, 74)",
+            '("is:review" AND "is:learn")',
+        ),
+        (
+            "Young",
+            c.young,
+            "#74c476",
+            "rgb(116, 196, 118)",
+            '("is:review" AND -"is:learn") AND "prop:ivl<21"',
+        ),
+        (
+            "Mature",
+            c.mature,
+            "#31a354",
+            "rgb(49, 163, 84)",
+            '("is:review" -"is:learn") AND "prop:ivl>=21"',
+        ),
     ]
     if separate_inactive:
-        categories.extend([
-            ("Suspended", c.suspended, "#FFDC41", "rgb(255, 220, 65)", '"is:suspended"'),
-            ("Buried", c.buried, "grey", "grey", '"is:buried"'),
-        ])
+        categories.extend(
+            [
+                (
+                    "Suspended",
+                    c.suspended,
+                    "#FFDC41",
+                    "rgb(255, 220, 65)",
+                    '"is:suspended"',
+                ),
+                ("Buried", c.buried, "grey", "grey", '"is:buried"'),
+            ]
+        )
 
     width = 225
     height = 250
@@ -480,28 +630,32 @@ def generate_card_counts_chart(
         else:
             svg_parts.append(f'  <path fill="{fill_hex}" d="M0,-105L0,0Z"></path>')
 
-    svg_parts.append('</g>')
+    svg_parts.append("</g>")
     if total == 0:
         svg_parts.append(render_no_data_overlay(width, height))
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     table_rows = []
     for name, cnt, _, color_rgb, query in categories:
         pct = f"{cnt / total * 100:.2f}%" if total > 0 else "0%"
-        table_rows.append({
-            "name": name,
-            "count": cnt,
-            "percent": pct,
-            "color": color_rgb,
-            "query": query,
-        })
-    table_rows.append({
-        "name": "Total",
-        "count": total,
-        "percent": "",
-        "color": None,
-        "query": "",
-    })
+        table_rows.append(
+            {
+                "name": name,
+                "count": cnt,
+                "percent": pct,
+                "color": color_rgb,
+                "query": query,
+            }
+        )
+    table_rows.append(
+        {
+            "name": "Total",
+            "count": total,
+            "percent": "",
+            "color": None,
+            "query": "",
+        }
+    )
 
     return {
         "title": tr.statistics_counts_title(),
@@ -511,6 +665,24 @@ def generate_card_counts_chart(
         "total": total,
         "separate_inactive": separate_inactive,
     }
+
+
+def _interval_chart_maximum(
+    choice: str, all_intervals: list[float], imap: dict[int, int]
+) -> int:
+    if choice == "month":
+        max_interval = 30
+    elif choice == "50":
+        max_interval = (
+            math.ceil(_compute_percentile(all_intervals, 0.5)) if all_intervals else 30
+        )
+    elif choice == "95":
+        max_interval = (
+            math.ceil(_compute_percentile(all_intervals, 0.95)) if all_intervals else 30
+        )
+    else:  # "all"
+        max_interval = max(imap.keys()) if imap else 30
+    return max(max_interval, 1)
 
 
 def generate_intervals_chart(
@@ -526,16 +698,9 @@ def generate_intervals_chart(
     total_cards = len(all_intervals)
     median_ivl = _compute_median(all_intervals) if all_intervals else 0.0
 
-    if days_range_or_percentile == "month":
-        max_interval = 30
-    elif days_range_or_percentile == "50":
-        max_interval = math.ceil(_compute_percentile(all_intervals, 0.5)) if all_intervals else 30
-    elif days_range_or_percentile == "95":
-        max_interval = math.ceil(_compute_percentile(all_intervals, 0.95)) if all_intervals else 30
-    else:  # "all"
-        max_interval = max(imap.keys()) if imap else 30
-
-    max_interval = max(max_interval, 1)
+    max_interval = _interval_chart_maximum(
+        days_range_or_percentile, all_intervals, imap
+    )
 
     data: list[dict[str, Any]] = []
     max_count = 0
@@ -557,25 +722,40 @@ def generate_intervals_chart(
     margin_bottom = 25
     chart_w = width - margin_left - margin_right
 
-
     x_scale = LinearScale((0, max_interval), (margin_left, width - margin_right))
     y_scale = LinearScale((0, max(max_count, 1)), (height - margin_bottom, margin_top))
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(render_bars(data, "interval", "count", x_scale, y_scale, width=bar_w, fill="#6baed6"))
-
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
+    svg_parts.extend(
+        [
+            render_bars(
+                data, "interval", "count", x_scale, y_scale, width=bar_w, fill="#6baed6"
+            ),
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
+    )
 
     if total_cards == 0:
         svg_parts.append(render_no_data_overlay(width, height))
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     summary = []
     if total_cards > 0:
-        summary.append({"label": tr.statistics_median_interval(), "value": f"{round(median_ivl)} days"})
+        summary.append(
+            {
+                "label": tr.statistics_median_interval(),
+                "value": f"{round(median_ivl)} days",
+            }
+        )
 
     return {
         "title": tr.statistics_intervals_title(),
@@ -605,7 +785,9 @@ def generate_ease_chart(eases: stats_pb2.GraphsResponse.Eases) -> dict[str, Any]
 
     for ease_val in range(130, max_ease + 10, 10):
         c = emap.get(ease_val, 0)
-        data.append({"ease": ease_val, "count": c, "tooltip": f"Ease {ease_val}%: {c} cards"})
+        data.append(
+            {"ease": ease_val, "count": c, "tooltip": f"Ease {ease_val}%: {c} cards"}
+        )
 
     width = 600
     height = 250
@@ -620,22 +802,41 @@ def generate_ease_chart(eases: stats_pb2.GraphsResponse.Eases) -> dict[str, Any]
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(render_bars(data, "ease", "count", x_scale, y_scale, width=bar_w, fill="#74c476"))
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=6, tick_format=lambda x: f"{round(x)}%"))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
-
+    svg_parts.extend(
+        [
+            render_bars(
+                data, "ease", "count", x_scale, y_scale, width=bar_w, fill="#74c476"
+            ),
+            render_x_axis(
+                x_scale,
+                height - margin_bottom,
+                tick_count=6,
+                tick_format=lambda x: f"{round(x)}%",
+            ),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
+    )
     if total_cards == 0:
         svg_parts.append(render_no_data_overlay(width, height))
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     summary = []
     if total_cards > 0:
         # eases.average is already in percentage units (e.g. 250.0)
         avg_val = eases.average if eases.average > 1.0 else eases.average * 100.0
-        summary.append({"label": tr.statistics_average_ease(), "value": f"{avg_val:.0f}%"})
-        summary.append({"label": tr.statistics_median_ease(), "value": f"{round(median_e)}%"})
-
+        summary.extend(
+            [
+                {"label": tr.statistics_average_ease(), "value": f"{avg_val:.0f}%"},
+                {"label": tr.statistics_median_ease(), "value": f"{round(median_e)}%"},
+            ]
+        )
     return {
         "title": tr.statistics_card_ease_title(),
         "subtitle": tr.statistics_card_ease_subtitle(),
@@ -645,7 +846,9 @@ def generate_ease_chart(eases: stats_pb2.GraphsResponse.Eases) -> dict[str, Any]
     }
 
 
-def generate_difficulty_chart(difficulty: stats_pb2.GraphsResponse.Eases) -> dict[str, Any]:
+def generate_difficulty_chart(
+    difficulty: stats_pb2.GraphsResponse.Eases,
+) -> dict[str, Any]:
     """Generate Difficulty distribution chart for FSRS."""
     dmap = dict(difficulty.eases)
     all_d: list[float] = []
@@ -660,7 +863,9 @@ def generate_difficulty_chart(difficulty: stats_pb2.GraphsResponse.Eases) -> dic
 
     for d_pct in range(0, 101, 5):
         c = dmap.get(d_pct, 0)
-        data.append({"pct": d_pct, "count": c, "tooltip": f"Difficulty {d_pct}%: {c} cards"})
+        data.append(
+            {"pct": d_pct, "count": c, "tooltip": f"Difficulty {d_pct}%: {c} cards"}
+        )
 
     width = 600
     height = 250
@@ -675,20 +880,57 @@ def generate_difficulty_chart(difficulty: stats_pb2.GraphsResponse.Eases) -> dic
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(render_bars(data, "pct", "count", x_scale, y_scale, width=bar_w, fill="rgb(251, 106, 74)"))
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=6, tick_format=lambda x: f"{round(x)}%"))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
+    svg_parts.extend(
+        [
+            render_bars(
+                data,
+                "pct",
+                "count",
+                x_scale,
+                y_scale,
+                width=bar_w,
+                fill="rgb(251, 106, 74)",
+            ),
+            render_x_axis(
+                x_scale,
+                height - margin_bottom,
+                tick_count=6,
+                tick_format=lambda x: f"{round(x)}%",
+            ),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
+    )
 
     if total_cards == 0:
         svg_parts.append(render_no_data_overlay(width, height))
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     summary = []
     if total_cards > 0:
-        avg_val = difficulty.average if difficulty.average > 1.0 else difficulty.average * 100.0
-        summary.append({"label": tr.statistics_average_difficulty(), "value": f"{avg_val:.0f}%"})
-        summary.append({"label": tr.statistics_median_difficulty(), "value": f"{round(median_d)}%"})
+        avg_val = (
+            difficulty.average
+            if difficulty.average > 1.0
+            else difficulty.average * 100.0
+        )
+        summary.extend(
+            [
+                {
+                    "label": tr.statistics_average_difficulty(),
+                    "value": f"{avg_val:.0f}%",
+                },
+                {
+                    "label": tr.statistics_median_difficulty(),
+                    "value": f"{round(median_d)}%",
+                },
+            ]
+        )
 
     return {
         "title": tr.statistics_card_difficulty_title(),
@@ -699,7 +941,9 @@ def generate_difficulty_chart(difficulty: stats_pb2.GraphsResponse.Eases) -> dic
     }
 
 
-def generate_retrievability_chart(retrievability: stats_pb2.GraphsResponse.Retrievability) -> dict[str, Any]:
+def generate_retrievability_chart(
+    retrievability: stats_pb2.GraphsResponse.Retrievability,
+) -> dict[str, Any]:
     """Generate Retrievability distribution chart for FSRS."""
     rmap = dict(retrievability.retrievability)
     total_cards = sum(rmap.values())
@@ -709,7 +953,9 @@ def generate_retrievability_chart(retrievability: stats_pb2.GraphsResponse.Retri
 
     for r_pct in range(0, 101, 5):
         c = rmap.get(r_pct, 0)
-        data.append({"pct": r_pct, "count": c, "tooltip": f"Retrievability {r_pct}%: {c} cards"})
+        data.append(
+            {"pct": r_pct, "count": c, "tooltip": f"Retrievability {r_pct}%: {c} cards"}
+        )
 
     width = 600
     height = 250
@@ -724,23 +970,57 @@ def generate_retrievability_chart(retrievability: stats_pb2.GraphsResponse.Retri
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(render_bars(data, "pct", "count", x_scale, y_scale, width=bar_w, fill="rgb(49, 163, 84)"))
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=6, tick_format=lambda x: f"{round(x)}%"))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
+    svg_parts.extend(
+        [
+            render_bars(
+                data,
+                "pct",
+                "count",
+                x_scale,
+                y_scale,
+                width=bar_w,
+                fill="rgb(49, 163, 84)",
+            ),
+            render_x_axis(
+                x_scale,
+                height - margin_bottom,
+                tick_count=6,
+                tick_format=lambda x: f"{round(x)}%",
+            ),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
+    )
 
     if total_cards == 0:
         svg_parts.append(render_no_data_overlay(width, height))
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     summary = []
     if total_cards > 0:
-        avg_val = retrievability.average if retrievability.average > 1.0 else retrievability.average * 100.0
-        summary.append({"label": tr.statistics_average_retrievability(), "value": f"{avg_val:.0f}%"})
-        summary.append({
-            "label": tr.statistics_estimated_total_knowledge(),
-            "value": f"{round(retrievability.sum_by_card)} cards / {round(retrievability.sum_by_note)} notes",
-        })
+        avg_val = (
+            retrievability.average
+            if retrievability.average > 1.0
+            else retrievability.average * 100.0
+        )
+        summary.extend(
+            [
+                {
+                    "label": tr.statistics_average_retrievability(),
+                    "value": f"{avg_val:.0f}%",
+                },
+                {
+                    "label": tr.statistics_estimated_total_knowledge(),
+                    "value": f"{round(retrievability.sum_by_card)} cards / {round(retrievability.sum_by_note)} notes",
+                },
+            ]
+        )
 
     return {
         "title": tr.statistics_card_retrievability_title(),
@@ -751,7 +1031,9 @@ def generate_retrievability_chart(retrievability: stats_pb2.GraphsResponse.Retri
     }
 
 
-def generate_stability_chart(stability: stats_pb2.GraphsResponse.Intervals, range_choice: str = "95") -> dict[str, Any]:
+def generate_stability_chart(
+    stability: stats_pb2.GraphsResponse.Intervals, range_choice: str = "95"
+) -> dict[str, Any]:
     """Generate Stability distribution chart for FSRS."""
     smap = dict(stability.intervals)
     all_s: list[float] = []
@@ -777,7 +1059,9 @@ def generate_stability_chart(stability: stats_pb2.GraphsResponse.Intervals, rang
     for d in range(max_days + 1):
         c = smap.get(d, 0)
         max_c = max(max_c, c)
-        data.append({"days": d, "count": c, "tooltip": f"Stability: {d} days: {c} cards"})
+        data.append(
+            {"days": d, "count": c, "tooltip": f"Stability: {d} days: {c} cards"}
+        )
 
     width = 600
     height = 250
@@ -792,18 +1076,41 @@ def generate_stability_chart(stability: stats_pb2.GraphsResponse.Intervals, rang
     bar_w = chart_w / max(len(data), 1)
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-    svg_parts.append(render_bars(data, "days", "count", x_scale, y_scale, width=bar_w, fill="rgb(107, 174, 214)"))
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
+    svg_parts.extend(
+        [
+            render_bars(
+                data,
+                "days",
+                "count",
+                x_scale,
+                y_scale,
+                width=bar_w,
+                fill="rgb(107, 174, 214)",
+            ),
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
+    )
 
     if total_cards == 0:
         svg_parts.append(render_no_data_overlay(width, height))
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     summary = []
     if total_cards > 0:
-        summary.append({"label": tr.statistics_median_stability(), "value": f"{round(median_s)} days"})
+        summary.append(
+            {
+                "label": tr.statistics_median_stability(),
+                "value": f"{round(median_s)} days",
+            }
+        )
 
     return {
         "title": tr.statistics_card_stability_title(),
@@ -830,7 +1137,9 @@ def generate_hours_chart(
         pct = (corr / tot * 100.0) if tot > 0 else 0.0
         max_tot = max(max_tot, tot)
         tt = f"Hour {h}:00&#10;Reviews: {tot}&#10;Correct: {corr} ({pct:.1f}%)"
-        data.append({"hour": h, "total": tot, "correct": corr, "pct": pct, "tooltip": tt})
+        data.append(
+            {"hour": h, "total": tot, "correct": corr, "pct": pct, "tooltip": tt}
+        )
 
     width = 600
     height = 250
@@ -857,19 +1166,36 @@ def generate_hours_chart(
         svg_parts.append(
             f'  <rect rx="1" x="{bx:.2f}" y="{by:.2f}" width="{bar_w:.2f}" height="{bh:.2f}" fill="rgb(227, 238, 249)" data-tooltip="{tt}"></rect>'
         )
-    svg_parts.append('</g>')
+    svg_parts.append("</g>")
 
-    line_points = [(x_scale(d["hour"]) + bar_w / 2.0, y2_scale(d["pct"])) for d in data if d["total"] > 0]
+    line_points = [
+        (x_scale(d["hour"]) + bar_w / 2.0, y2_scale(d["pct"]))
+        for d in data
+        if d["total"] > 0
+    ]
     if line_points:
-        svg_parts.append(render_line(line_points, stroke="rgb(24, 100, 170)", stroke_width=2.0))
+        svg_parts.append(
+            render_line(line_points, stroke="rgb(24, 100, 170)", stroke_width=2.0)
+        )
 
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, ticks=list(range(24))))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y2_scale, width - margin_right, right=True, tick_format=lambda y: f"{round(y)}%", ticks=[0, 20, 40, 60, 80, 100], css_class="y2-ticks"))
+    svg_parts.extend(
+        [
+            render_x_axis(x_scale, height - margin_bottom, ticks=list(range(24))),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y2_scale,
+                width - margin_right,
+                right=True,
+                tick_format=lambda y: f"{round(y)}%",
+                ticks=[0, 20, 40, 60, 80, 100],
+                css_class="y2-ticks",
+            ),
+        ]
+    )
 
     if max_tot == 0:
         svg_parts.append(render_no_data_overlay(width, height))
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     return {
         "title": tr.statistics_hours_title(),
@@ -880,44 +1206,22 @@ def generate_hours_chart(
     }
 
 
-def generate_buttons_chart(
-    btn_counts: stats_pb2.GraphsResponse.Buttons.ButtonCounts,
-    days_range: int = 365,
-) -> dict[str, Any]:
-    """Generate Answer Buttons chart."""
-    categories = ["Learning", "Young", "Mature"]
-    btn_colors = [
-        "rgb(165, 0, 38)",
-        "rgb(253, 190, 112)",
-        "rgb(182, 224, 118)",
-        "rgb(0, 104, 55)",
-    ]
-
-    total_clicks = 0
-    cat_data = []
-
-    for name in categories:
-        counts = list(getattr(btn_counts, name.lower(), []))
-        while len(counts) < 4:
-            counts.append(0)
-        tot = sum(counts)
-        total_clicks += tot
-        cat_data.append({"category": name, "counts": counts, "total": tot})
-
-    width = 600
-    height = 250
-    margin_left = 70
-    margin_right = 70
-    margin_top = 20
-    margin_bottom = 25
+class _ButtonCategoryData(TypedDict):
+    category: str
+    counts: list[int]
+    total: int
 
 
-    b_scale = BandScale(categories, (margin_left, width - margin_right), padding_inner=0.2)
-    max_tot = max(cd["total"] for cd in cat_data) if cat_data else 0
-    y_scale = LinearScale((0, max(max_tot, 1)), (height - margin_bottom, margin_top))
-
-    svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
-
+def _append_button_chart_bars(
+    svg_parts: list[str],
+    cat_data: list[_ButtonCategoryData],
+    b_scale: BandScale,
+    btn_colors: list[str],
+    height: int,
+    margin_bottom: int,
+    margin_top: int,
+    max_tot: int,
+) -> None:
     for cd in cat_data:
         bx = b_scale(cd["category"])
         bw = b_scale.bandwidth
@@ -936,13 +1240,74 @@ def generate_buttons_chart(
             )
             cur_y = top_y
 
-    svg_parts.append(render_x_axis(b_scale, height - margin_bottom))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
+
+def generate_buttons_chart(
+    btn_counts: stats_pb2.GraphsResponse.Buttons.ButtonCounts,
+    days_range: int = 365,
+) -> dict[str, Any]:
+    """Generate Answer Buttons chart."""
+    categories = ["Learning", "Young", "Mature"]
+    btn_colors = [
+        "rgb(165, 0, 38)",
+        "rgb(253, 190, 112)",
+        "rgb(182, 224, 118)",
+        "rgb(0, 104, 55)",
+    ]
+
+    total_clicks = 0
+    cat_data: list[_ButtonCategoryData] = []
+
+    for name in categories:
+        counts: list[int] = list(getattr(btn_counts, name.lower(), []))
+        while len(counts) < 4:
+            counts.append(0)
+        tot = sum(counts)
+        total_clicks += tot
+        cat_data.append({"category": name, "counts": counts, "total": tot})
+
+    width = 600
+    height = 250
+    margin_left = 70
+    margin_right = 70
+    margin_top = 20
+    margin_bottom = 25
+
+    b_scale = BandScale(
+        categories, (margin_left, width - margin_right), padding_inner=0.2
+    )
+    max_tot = max(cd["total"] for cd in cat_data) if cat_data else 0
+    y_scale = LinearScale((0, max(max_tot, 1)), (height - margin_bottom, margin_top))
+
+    svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
+
+    _append_button_chart_bars(
+        svg_parts,
+        cat_data,
+        b_scale,
+        btn_colors,
+        height,
+        margin_bottom,
+        margin_top,
+        max_tot,
+    )
+
+    svg_parts.extend(
+        [
+            render_x_axis(b_scale, height - margin_bottom),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
+    )
 
     if total_clicks == 0:
         svg_parts.append(render_no_data_overlay(width, height))
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     return {
         "title": tr.statistics_answer_buttons_title(),
@@ -959,7 +1324,9 @@ def generate_added_chart(
 ) -> dict[str, Any]:
     """Generate Added new cards history chart."""
     amap = dict(added.added)
-    max_day = days_range if days_range > 0 else (max(abs(k) for k in amap) if amap else 30)
+    max_day = (
+        days_range if days_range > 0 else (max(abs(k) for k in amap) if amap else 30)
+    )
     max_day = max(max_day, 1)
 
     items: list[dict[str, Any]] = []
@@ -970,7 +1337,9 @@ def generate_added_chart(
         c = amap.get(d, 0)
         total_added += c
         max_c = max(max_c, c)
-        items.append({"day": d, "count": c, "tooltip": f"{-d} days ago: {c} cards added"})
+        items.append(
+            {"day": d, "count": c, "tooltip": f"{-d} days ago: {c} cards added"}
+        )
 
     width = 600
     height = 250
@@ -999,20 +1368,35 @@ def generate_added_chart(
         svg_parts.append(
             f'  <rect rx="1" x="{bx:.2f}" y="{by:.2f}" width="{bar_w:.2f}" height="{bh:.2f}" fill="{fill}" data-tooltip="{tt}"></rect>'
         )
-    svg_parts.append('</g>')
+    svg_parts.append("</g>")
 
-    svg_parts.append(render_x_axis(x_scale, height - margin_bottom, tick_count=7))
-    svg_parts.append(render_y_axis(y_scale, margin_left, tick_count=5))
-    svg_parts.append(render_y_axis(y_scale, width - margin_right, right=True, tick_count=5, css_class="y2-ticks"))
+    svg_parts.extend(
+        [
+            render_x_axis(x_scale, height - margin_bottom, tick_count=7),
+            render_y_axis(y_scale, margin_left, tick_count=5),
+            render_y_axis(
+                y_scale,
+                width - margin_right,
+                right=True,
+                tick_count=5,
+                css_class="y2-ticks",
+            ),
+        ]
+    )
 
     if total_added == 0:
         svg_parts.append(render_no_data_overlay(width, height))
-    svg_parts.append('</svg>')
+    svg_parts.append("</svg>")
 
     avg_added = total_added / max_day if max_day > 0 else 0
     summary = [
         {"label": "Total", "value": f"{total_added} cards"},
-        {"label": "Average", "value": f"{avg_added:.1f} cards/day" if avg_added >= 1.0 else f"{round(avg_added)} cards/day"},
+        {
+            "label": "Average",
+            "value": f"{avg_added:.1f} cards/day"
+            if avg_added >= 1.0
+            else f"{round(avg_added)} cards/day",
+        },
     ]
 
     return {
@@ -1054,19 +1438,21 @@ def generate_retention_chart(
         m_ret = f"{item.mature_passed / m_tot * 100:.1f}%" if m_tot > 0 else "N/A"
         t_ret = f"{tot_passed / tot_all * 100:.1f}%" if tot_all > 0 else "N/A"
 
-        table_rows.append({
-            "period": label,
-            "young": y_ret,
-            "mature": m_ret,
-            "total": t_ret,
-            "count": tot_all,
-            "young_passed": item.young_passed,
-            "young_failed": item.young_failed,
-            "mature_passed": item.mature_passed,
-            "mature_failed": item.mature_failed,
-            "total_passed": tot_passed,
-            "total_failed": tot_all - tot_passed,
-        })
+        table_rows.append(
+            {
+                "period": label,
+                "young": y_ret,
+                "mature": m_ret,
+                "total": t_ret,
+                "count": tot_all,
+                "young_passed": item.young_passed,
+                "young_failed": item.young_failed,
+                "mature_passed": item.mature_passed,
+                "mature_failed": item.mature_failed,
+                "total_passed": tot_passed,
+                "total_failed": tot_all - tot_passed,
+            }
+        )
 
     return {
         "title": tr.statistics_true_retention_title(),
@@ -1075,6 +1461,33 @@ def generate_retention_chart(
         "has_data": has_any_data,
         "filter_mode": filter_mode,
     }
+
+
+def _graph_range_source(g_resp: Any, chart: str, days: int) -> Any:
+    if days <= 30:
+        return getattr(g_resp, chart).one_month
+    if days <= 90:
+        return getattr(g_resp, chart).three_months
+    if days <= 365:
+        return getattr(g_resp, chart).one_year
+    return getattr(g_resp, chart).all_time
+
+
+def _fsrs_charts(
+    g_resp: Any, stability_range: str
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
+    retrievability_data = (
+        generate_retrievability_chart(g_resp.retrievability) if g_resp.fsrs else None
+    )
+    stability_data = (
+        generate_stability_chart(g_resp.stability, range_choice=stability_range)
+        if g_resp.fsrs
+        else None
+    )
+    difficulty_data = (
+        generate_difficulty_chart(g_resp.difficulty) if g_resp.fsrs else None
+    )
+    return retrievability_data, stability_data, difficulty_data
 
 
 def make_router(get_service: Callable[[], Any]) -> APIRouter:
@@ -1107,20 +1520,34 @@ def make_router(get_service: Callable[[], Any]) -> APIRouter:
         hours_data_src = g_resp.hours.one_year
         buttons_data_src = g_resp.buttons.one_year
         today_data = generate_today_stats(g_resp.today)
-        future_due_data = generate_future_due_chart(g_resp.future_due, range_days=future_due_range, show_backlog=prefs.future_due_show_backlog)
+        future_due_data = generate_future_due_chart(
+            g_resp.future_due,
+            range_days=future_due_range,
+            show_backlog=prefs.future_due_show_backlog,
+        )
         calendar_data = generate_calendar_chart(g_resp.reviews, year=2026)
-        reviews_data = generate_reviews_chart(g_resp.reviews, days_range=reviews_range, show_time=False)
-        card_counts_data = generate_card_counts_chart(g_resp.card_counts, separate_inactive=prefs.card_counts_separate_inactive)
-        intervals_data = generate_intervals_chart(g_resp.intervals, days_range_or_percentile="95")
+        reviews_data = generate_reviews_chart(
+            g_resp.reviews, days_range=reviews_range, show_time=False
+        )
+        card_counts_data = generate_card_counts_chart(
+            g_resp.card_counts, separate_inactive=prefs.card_counts_separate_inactive
+        )
+        intervals_data = generate_intervals_chart(
+            g_resp.intervals, days_range_or_percentile="95"
+        )
         ease_data = generate_ease_chart(g_resp.eases)
-        retention_data = generate_retention_chart(g_resp.true_retention, filter_mode="summary")
+        retention_data = generate_retention_chart(
+            g_resp.true_retention, filter_mode="summary"
+        )
         hours_data = generate_hours_chart(hours_data_src, days_range=hours_range)
-        buttons_data = generate_buttons_chart(buttons_data_src, days_range=buttons_range)
+        buttons_data = generate_buttons_chart(
+            buttons_data_src, days_range=buttons_range
+        )
         added_data = generate_added_chart(g_resp.added, days_range=added_range)
 
-        retrievability_data = generate_retrievability_chart(g_resp.retrievability) if g_resp.fsrs else None
-        stability_data = generate_stability_chart(g_resp.stability, range_choice="95") if g_resp.fsrs else None
-        difficulty_data = generate_difficulty_chart(g_resp.difficulty) if g_resp.fsrs else None
+        retrievability_data, stability_data, difficulty_data = _fsrs_charts(
+            g_resp, "95"
+        )
 
         body = templating.render(
             "pages/graphs.html.jinja",
@@ -1193,39 +1620,34 @@ def make_router(get_service: Callable[[], Any]) -> APIRouter:
         g_resp = await service.run(_fetch_and_set)
 
         # Select hours / buttons source based on per-chart range
-        if hours_range <= 30:
-            h_src = g_resp.hours.one_month
-        elif hours_range <= 90:
-            h_src = g_resp.hours.three_months
-        elif hours_range <= 365:
-            h_src = g_resp.hours.one_year
-        else:
-            h_src = g_resp.hours.all_time
-
-        if buttons_range <= 30:
-            b_src = g_resp.buttons.one_month
-        elif buttons_range <= 90:
-            b_src = g_resp.buttons.three_months
-        elif buttons_range <= 365:
-            b_src = g_resp.buttons.one_year
-        else:
-            b_src = g_resp.buttons.all_time
+        h_src = _graph_range_source(g_resp, "hours", hours_range)
+        b_src = _graph_range_source(g_resp, "buttons", buttons_range)
 
         today_data = generate_today_stats(g_resp.today)
-        future_due_data = generate_future_due_chart(g_resp.future_due, range_days=future_due_range, show_backlog=show_backlog)
+        future_due_data = generate_future_due_chart(
+            g_resp.future_due, range_days=future_due_range, show_backlog=show_backlog
+        )
         calendar_data = generate_calendar_chart(g_resp.reviews, year=calendar_year)
-        reviews_data = generate_reviews_chart(g_resp.reviews, days_range=reviews_range, show_time=reviews_show_time)
-        card_counts_data = generate_card_counts_chart(g_resp.card_counts, separate_inactive=separate_inactive)
-        intervals_data = generate_intervals_chart(g_resp.intervals, days_range_or_percentile=intervals_range)
+        reviews_data = generate_reviews_chart(
+            g_resp.reviews, days_range=reviews_range, show_time=reviews_show_time
+        )
+        card_counts_data = generate_card_counts_chart(
+            g_resp.card_counts, separate_inactive=separate_inactive
+        )
+        intervals_data = generate_intervals_chart(
+            g_resp.intervals, days_range_or_percentile=intervals_range
+        )
         ease_data = generate_ease_chart(g_resp.eases)
-        retention_data = generate_retention_chart(g_resp.true_retention, filter_mode=retention_mode)
+        retention_data = generate_retention_chart(
+            g_resp.true_retention, filter_mode=retention_mode
+        )
         hours_data = generate_hours_chart(h_src, days_range=hours_range)
         buttons_data = generate_buttons_chart(b_src, days_range=buttons_range)
         added_data = generate_added_chart(g_resp.added, days_range=added_range)
 
-        retrievability_data = generate_retrievability_chart(g_resp.retrievability) if g_resp.fsrs else None
-        stability_data = generate_stability_chart(g_resp.stability, range_choice=stability_range) if g_resp.fsrs else None
-        difficulty_data = generate_difficulty_chart(g_resp.difficulty) if g_resp.fsrs else None
+        retrievability_data, stability_data, difficulty_data = _fsrs_charts(
+            g_resp, stability_range
+        )
 
         updated_html = templating.render(
             "pages/graphs_content.html.jinja",

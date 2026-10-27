@@ -69,6 +69,7 @@ def _bridge_link(command: str, label: str) -> str:
 
 logger = logging.getLogger(__name__)
 
+
 def render_congrats_html(col) -> str:
     info = col.sched.congratulations_info()
 
@@ -76,9 +77,7 @@ def render_congrats_html(col) -> str:
     today_reviews = (
         tr.scheduling_today_review_limit_reached() if info.review_remaining else ""
     )
-    today_new = (
-        tr.scheduling_today_new_limit_reached() if info.new_remaining else ""
-    )
+    today_new = tr.scheduling_today_new_limit_reached() if info.new_remaining else ""
 
     show_buried = bool(
         info.bridge_commands_supported
@@ -104,7 +103,15 @@ def render_congrats_html(col) -> str:
             raw_desc = deck.get("desc", "")
             if raw_desc and deck.get("md"):
                 raw_desc = col.render_markdown(raw_desc)
-        except (AnkiException, AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError):
+        except (
+            AnkiException,
+            AttributeError,
+            KeyError,
+            OSError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ):
             logger.exception("Failed to render congratulations deck description")
             raw_desc = ""
     sanitized_desc = sanitize_html(raw_desc) if raw_desc else ""

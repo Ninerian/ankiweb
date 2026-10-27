@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
+import subprocess  # noqa: S404 - needed to run the trusted uv executable
 import sys
 import tempfile
 from pathlib import Path
@@ -24,7 +24,9 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
         uv_bin = shutil.which("uv") or "uv"
-        subprocess.run(
+        # uv comes from the caller's PATH; argv contains fixed flags, a pinned
+        # version, the temporary target, and the current interpreter.
+        subprocess.run(  # noqa: S603 - fixed argv, no shell
             [
                 uv_bin,
                 "pip",
@@ -36,6 +38,7 @@ def main() -> None:
                 "--python",
                 sys.executable,
             ],
+            shell=False,
             check=True,
         )
         src_dir = td / "_aqt" / "data" / "web"

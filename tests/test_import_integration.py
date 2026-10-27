@@ -101,7 +101,9 @@ def _open_import_dialog(page, file_path: Path):
 
 
 @pytest.mark.parametrize("dismiss_method", ["close_button", "escape", "backdrop"])
-def test_import_apkg_modal_completion_and_dismissal(live_server_apkg, dismiss_method: str):
+def test_import_apkg_modal_completion_and_dismissal(
+    live_server_apkg, dismiss_method: str
+):
     url, apkg_path, _corrupt_path, note_front = live_server_apkg
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -171,9 +173,9 @@ def test_import_apkg_modal_completion_and_dismissal(live_server_apkg, dismiss_me
             for entry in history
             if entry["progressVisible"] and not entry["resultsPresent"]
         ]
-        assert (
-            len(progress_while_active) > 0
-        ), f"Expected progress to be visible before results appeared; history: {history}"
+        assert len(progress_while_active) > 0, (
+            f"Expected progress to be visible before results appeared; history: {history}"
+        )
 
         close_button = dialog.get_by_role("button", name="Close", exact=True)
         expect(close_button).to_be_in_viewport(ratio=1)
@@ -269,4 +271,3 @@ def test_import_apkg_modal_corrupt_file_error_and_dismissal(live_server_apkg):
         assert "/browse" in page.url
 
         browser.close()
-

@@ -10,6 +10,7 @@ Transport boundary:
 - Audio playback and MathJax rendering are client runtime side effects; no audio or
   typesetting runs over WebSocket frames.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,6 +23,7 @@ from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
+
 
 def render_av_buttons(text: str) -> str:
     """Replace [anki:play:<side>:<N>] refs with inline replay buttons (pycmd('play:..'))."""
@@ -220,218 +222,250 @@ def reviewer_page_body() -> str:
     )
 
 
-def make_reviewer_handler(service, hub):
-    """Bridge handler for the 'reviewer' context. Owns one ReviewerSession."""
-    session = ReviewerSession()
+class _ReviewerHandler:
+    def __init__(self, service, hub):
+        self.service = service
+        self.hub = hub
+        self.session = ReviewerSession()
 
-    async def _show_next():
-        info = await service.run(lambda col: load_question(col, session))
+    async def _autoplay(self, question_side: bool):
+        files = await self.service.run(
+            lambda col: (
+                av_sound_filenames(self.session.card, question_side)
+                if self.session.card.autoplay()
+                else []
+            )
+        )
+        if files:
+            await self.hub.push_call("reviewer", "ankiwebPlayAudio", [files])
+
+    async def _show_next(self):
+        info = await self.service.run(lambda col: load_question(col, self.session))
         if info is None:  # finished → overview (which renders Congrats)
-            hub.ui_state.current_card_id = None
-            hub.ui_state.side = None
-            await hub.push_call("reviewer", "ankiwebNavigate", ["/overview"])
+            self.hub.ui_state.current_card_id = None
+            self.hub.ui_state.side = None
+            await self.hub.push_call("reviewer", "ankiwebNavigate", ["/overview"])
             return
-        hub.ui_state.current_card_id = session.card.id
-        hub.ui_state.side = "question"
-        await hub.push_call(
+        self.hub.ui_state.current_card_id = self.session.card.id
+        self.hub.ui_state.side = "question"
+        await self.hub.push_call(
             "reviewer",
             "_showQuestion",
             [
                 info["q"],
                 info["a"],
                 info["bodyclass"],
-                reviewer_actions_bar(cid=session.card.id, nid=session.card.nid),
+                reviewer_actions_bar(
+                    cid=self.session.card.id, nid=self.session.card.nid
+                ),
             ],
         )
-        await hub.push_call("reviewer", "ankiwebSetAnswerBar", [show_answer_bar()])
-        q_files = await service.run(
+        await self.hub.push_call("reviewer", "ankiwebSetAnswerBar", [show_answer_bar()])
+        await self._autoplay(True)
+
+    async def _show_answer(self):
+        if self.session.card is None:
+            return
+        info = await self.service.run(lambda col: render_answer(col, self.session))
+        await self.hub.push_call("reviewer", "_showAnswer", [info["a"]])
+        await self.hub.push_call(
+            "reviewer", "ankiwebSetAnswerBar", [ease_buttons_bar(info["labels"])]
+        )
+        self.hub.ui_state.side = "answer"
+        await self._autoplay(False)
+
+    async def _answer(self, arg: str):
+        if self.session.card is None:
+            return
+        ease = int(arg[4:])
+        await self.service.run_op(
+            lambda col: answer_current(col, self.session, ease), initiator="reviewer"
+        )
+        await self._show_next()
+
+    async def _start_timer(self):
+        if self.session.card is not None:
+            await self.service.run(lambda col: self.session.card.start_timer())
+
+    async def _replay(self):
+        if self.session.card is None:
+            return
+        is_answer = self.hub.ui_state.side == "answer"
+        files = await self.service.run(
             lambda col: (
-                av_sound_filenames(session.card, True)
-                if session.card.autoplay()
-                else []
+                answer_side_audio(self.session.card)
+                if is_answer
+                else av_sound_filenames(self.session.card, True)
             )
         )
-        if q_files:
-            await hub.push_call("reviewer", "ankiwebPlayAudio", [q_files])
+        if files:
+            await self.hub.push_call("reviewer", "ankiwebPlayAudio", [files])
 
-    async def handler(arg: str):
-        if arg == "show":
-            await _show_next()
-        elif arg == "ans":
-            if session.card is None:
-                return
-            info = await service.run(lambda col: render_answer(col, session))
-            await hub.push_call("reviewer", "_showAnswer", [info["a"]])
-            await hub.push_call(
-                "reviewer", "ankiwebSetAnswerBar", [ease_buttons_bar(info["labels"])]
+    async def _play(self, arg: str):
+        parts = arg.split(":")
+        if len(parts) != 3 or self.session.card is None:
+            return
+        side, idx = parts[1], int(parts[2])
+
+        def one(col):
+            tags = (
+                self.session.card.question_av_tags()
+                if side == "q"
+                else self.session.card.answer_av_tags()
             )
-            hub.ui_state.side = "answer"
-            a_files = await service.run(
-                lambda col: (
-                    av_sound_filenames(session.card, False)
-                    if session.card.autoplay()
-                    else []
-                )
-            )
-            if a_files:
-                await hub.push_call("reviewer", "ankiwebPlayAudio", [a_files])
-        elif arg in ("ease1", "ease2", "ease3", "ease4"):
-            if session.card is None:
-                return
-            ease = int(arg[4:])
-            await service.run_op(
-                lambda col: answer_current(col, session, ease), initiator="reviewer"
-            )
-            await _show_next()
-        elif arg == "starttimer":
-            if session.card is not None:
-                await service.run(lambda col: session.card.start_timer())
-        elif arg == "replay":
-            if session.card is not None:
-                is_answer = hub.ui_state.side == "answer"
-                files = await service.run(
-                    lambda col: (
-                        answer_side_audio(session.card)
-                        if is_answer
-                        else av_sound_filenames(session.card, True)
-                    )
-                )
-                if files:
-                    await hub.push_call("reviewer", "ankiwebPlayAudio", [files])
-        elif arg.startswith("play:"):
-            parts = arg.split(":")
-            if len(parts) == 3 and session.card is not None:
-                side, idx = parts[1], int(parts[2])
+            if 0 <= idx < len(tags) and isinstance(tags[idx], SoundOrVideoTag):
+                return [tags[idx].filename]
+            return []
 
-                def one(col):
-                    tags = (
-                        session.card.question_av_tags()
-                        if side == "q"
-                        else session.card.answer_av_tags()
-                    )
-                    if 0 <= idx < len(tags) and isinstance(tags[idx], SoundOrVideoTag):
-                        return [tags[idx].filename]
-                    return []
+        files = await self.service.run(one)
+        if files:
+            await self.hub.push_call("reviewer", "ankiwebPlayAudio", [files])
 
-                files = await service.run(one)
-                if files:
-                    await hub.push_call("reviewer", "ankiwebPlayAudio", [files])
-        elif arg.startswith("typed:"):
-            session.typed_answer = arg[len("typed:") :]
-        elif arg == "decks":
-            await hub.push_call("reviewer", "ankiwebNavigate", ["/deckbrowser"])
-        elif arg == "mark":
-            if session.card is None:
-                return
+    async def _mark(self):
+        state = {}
 
-            state = {}
+        def toggle_mark(col):
+            n = self.session.card.note()
+            if "marked" in n.tags:
+                n.tags.remove("marked")
+                state["marked"] = False
+            else:
+                n.tags.append("marked")
+                state["marked"] = True
+            return col.update_note(n, skip_undo_entry=False)
 
-            def toggle_mark(col):
-                n = session.card.note()
-                if "marked" in n.tags:
-                    n.tags.remove("marked")
-                    state["marked"] = False
-                else:
-                    n.tags.append("marked")
-                    state["marked"] = True
-                return col.update_note(n, skip_undo_entry=False)
+        await self.service.run_op(toggle_mark, initiator="reviewer")
+        await self.hub.push_call("reviewer", "_drawMark", [state["marked"]])
 
-            await service.run_op(toggle_mark, initiator="reviewer")
-            await hub.push_call("reviewer", "_drawMark", [state["marked"]])
-        elif arg.startswith("setflag:"):
-            if session.card is None:
-                return
-            try:
-                flag = int(arg[len("setflag:") :])
-            except ValueError:
-                return
-            if not 0 <= flag <= 4:
-                return
-            cid = session.card.id
-            await service.run_op(
-                lambda col: col.set_user_flag_for_cards(flag, [cid]),
+    async def _set_flag(self, arg: str):
+        try:
+            flag = int(arg[len("setflag:") :])
+        except ValueError:
+            return
+        if not 0 <= flag <= 4:
+            return
+        cid = self.session.card.id
+        await self.service.run_op(
+            lambda col: col.set_user_flag_for_cards(flag, [cid]),
+            initiator="reviewer",
+        )
+        await self.hub.push_call("reviewer", "_drawFlag", [flag])
+
+    async def _bury_card(self):
+        cid = self.session.card.id
+        await self.service.run_op(
+            lambda col: col.sched.bury_cards([cid]), initiator="reviewer"
+        )
+        await self._show_next()
+
+    async def _bury_note(self):
+        nid = self.session.card.note().id
+        await self.service.run_op(
+            lambda col: col.sched.bury_notes([nid]), initiator="reviewer"
+        )
+        await self._show_next()
+
+    async def _suspend_card(self):
+        cid = self.session.card.id
+        await self.service.run_op(
+            lambda col: col.sched.suspend_cards([cid]), initiator="reviewer"
+        )
+        await self._show_next()
+
+    async def _suspend_note(self):
+        def suspend_note(col):
+            cids = [c.id for c in self.session.card.note().cards()]
+            return col.sched.suspend_cards(cids)
+
+        await self.service.run_op(suspend_note, initiator="reviewer")
+        await self._show_next()
+
+    async def _set_due(self, arg: str):
+        spec = arg[len("setdue:") :]
+        cid = self.session.card.id
+        try:
+            await self.service.run_op(
+                lambda col: col.sched.set_due_date([cid], spec),
                 initiator="reviewer",
             )
-            await hub.push_call("reviewer", "_drawFlag", [flag])
+        except Exception as e:  # invalid spec, etc.
+            logger.exception("Failed to set due date for card %s", cid)
+            await self.hub.push_call("reviewer", "ankiwebReviewerError", [str(e)])
+            return
+        await self._show_next()
+
+    async def _forget(self):
+        cid = self.session.card.id
+        await self.service.run_op(
+            lambda col: col.sched.schedule_cards_as_new([cid]), initiator="reviewer"
+        )
+        await self._show_next()
+
+    async def _delete_note(self):
+        nid = self.session.card.note().id
+        await self.service.run_op(
+            lambda col: col.remove_notes([nid]), initiator="reviewer"
+        )
+        await self._show_next()
+
+    async def _undo(self):
+        import anki.errors
+
+        try:
+            await self.service.run_op(lambda col: col.undo(), initiator="reviewer")
+        except anki.errors.UndoEmpty:
+            await self.hub.push_call(
+                "reviewer", "ankiwebReviewerError", [tr.actions_nothing_to_undo()]
+            )
+            return
+        await self._show_next()
+
+    async def _card_action(self, arg: str):
+        if self.session.card is None:
+            return
+        if arg == "mark":
+            await self._mark()
+        elif arg.startswith("setflag:"):
+            await self._set_flag(arg)
         elif arg == "buryc":
-            if session.card is None:
-                return
-            cid = session.card.id
-            await service.run_op(
-                lambda col: col.sched.bury_cards([cid]), initiator="reviewer"
-            )
-            await _show_next()
+            await self._bury_card()
         elif arg == "buryn":
-            if session.card is None:
-                return
-            nid = session.card.note().id
-            await service.run_op(
-                lambda col: col.sched.bury_notes([nid]), initiator="reviewer"
-            )
-            await _show_next()
+            await self._bury_note()
         elif arg == "suspendc":
-            if session.card is None:
-                return
-            cid = session.card.id
-            await service.run_op(
-                lambda col: col.sched.suspend_cards([cid]), initiator="reviewer"
-            )
-            await _show_next()
+            await self._suspend_card()
         elif arg == "suspendn":
-            if session.card is None:
-                return
-
-            def suspend_note(col):
-                cids = [c.id for c in session.card.note().cards()]
-                return col.sched.suspend_cards(cids)
-
-            await service.run_op(suspend_note, initiator="reviewer")
-            await _show_next()
+            await self._suspend_note()
         elif arg.startswith("setdue:"):
-            if session.card is None:
-                return
-            spec = arg[len("setdue:") :]
-            cid = session.card.id
-            try:
-                await service.run_op(
-                    lambda col: col.sched.set_due_date([cid], spec),
-                    initiator="reviewer",
-                )
-            except Exception as e:  # invalid spec, etc.
-                logger.exception("Failed to set due date for card %s", cid)
-                await hub.push_call("reviewer", "ankiwebReviewerError", [str(e)])
-                return
-            await _show_next()
+            await self._set_due(arg)
         elif arg == "forget":
-            if session.card is None:
-                return
-            cid = session.card.id
-            await service.run_op(
-                lambda col: col.sched.schedule_cards_as_new([cid]), initiator="reviewer"
-            )
-            await _show_next()
+            await self._forget()
         elif arg == "deletenote":
-            if session.card is None:
-                return
-            nid = session.card.note().id
-            await service.run_op(
-                lambda col: col.remove_notes([nid]), initiator="reviewer"
-            )
-            await _show_next()
+            await self._delete_note()
         elif arg == "undo":
-            if session.card is None:
-                return
-            import anki.errors
+            await self._undo()
 
-            try:
-                await service.run_op(lambda col: col.undo(), initiator="reviewer")
-            except anki.errors.UndoEmpty:
-                await hub.push_call(
-                    "reviewer", "ankiwebReviewerError", [tr.actions_nothing_to_undo()]
-                )
-                return
-            await _show_next()
-        # ignore everything else (e.g. reviewer.js emits "updateToolbar" after each render)
-        return
+    async def handle(self, arg: str):
+        if arg == "show":
+            await self._show_next()
+        elif arg == "ans":
+            await self._show_answer()
+        elif arg in ("ease1", "ease2", "ease3", "ease4"):
+            await self._answer(arg)
+        elif arg == "starttimer":
+            await self._start_timer()
+        elif arg == "replay":
+            await self._replay()
+        elif arg.startswith("play:"):
+            await self._play(arg)
+        elif arg.startswith("typed:"):
+            self.session.typed_answer = arg[len("typed:") :]
+        elif arg == "decks":
+            await self.hub.push_call("reviewer", "ankiwebNavigate", ["/deckbrowser"])
+        else:
+            # Ignore unrecognized commands (e.g. reviewer.js's "updateToolbar").
+            await self._card_action(arg)
 
-    return handler
+
+def make_reviewer_handler(service, hub):
+    """Bridge handler for the 'reviewer' context. Owns one ReviewerSession."""
+    return _ReviewerHandler(service, hub).handle

@@ -21,6 +21,7 @@ from ankiweb.adapters.inbound.http_shared import templating
 
 logger = logging.getLogger(__name__)
 
+
 def render_deckbrowser_html(col) -> str:
     tree = col.sched.deck_due_tree()
     current_id = col.decks.get_current_id()
@@ -54,6 +55,7 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             lambda col: col.decks.set_current(did), initiator="deckbrowser"
         )
         return redirect_response("/overview")
+
     @router.post("/select/{did}")
     async def select_deck(did: int):
         service = get_service()
@@ -129,6 +131,5 @@ def make_deckbrowser_routes(get_service: Callable) -> APIRouter:
             logger.exception("Failed to delete deck %s", did)
             return error_response(exc)
         return DatastarResponse(SSE.execute_script("window.location.reload()"))
-
 
     return router

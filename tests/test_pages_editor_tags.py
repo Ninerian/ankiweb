@@ -49,5 +49,3 @@ def test_all_tags_endpoint(test_app):
     data = resp.json()
     assert "tags" in data
     assert len(data["tags"]) == 4
-
-

@@ -309,7 +309,7 @@ deliberately out of scope (see Scope, below).
 | Risk | Mitigation |
 |---|---|
 | ~40 files move → every `from ankiweb.X import Y` across `ankiweb/` and `tests/` must follow | Use `lsp rename_file` per move (rewrites every reference automatically); never hand-edit imports. Migration plan does one cohesive package move per task, full suite green before the next. |
-| A hand-missed import silently breaks only at request time, not at collection time | `ruff check` (F401/F811) plus `uv run pytest -q` (537 tests) run after every task in the plan; `ty check ankiweb` catches unresolved imports statically before tests even run. |
+| A hand-missed import silently breaks only at request time, not at collection time | `uv run ruff check` (F401/F811) plus `uv run pytest -q` (537 tests) run after every task in the plan; `uv run ty check ankiweb` catches unresolved imports statically before tests even run. |
 | Hexagonal ceremony added faster than value delivered (over-engineering a single-user hobby app) | Two ports (`BridgeCommandPort`, `AnkiConnectDispatchPort`) require zero shape changes — evidence the design fits rather than forces. Migration is phased so each task is independently valuable and stoppable; nothing later depends on finishing every phase. |
 | `col._backend` typed as `Any` inside `CollectionPort` weakens `ty`'s guarantees at the seam | Accepted deliberately (see Scope) — the alternative (typing every backend RPC) recreates the exact coupling `anki_rpc/passthrough.py` was designed to avoid. |
 | New `core/` package name collides with the unrelated `docs/superpowers/` "core" terminology used elsewhere | None needed — different namespaces (Python package vs. planning docs); not a real ambiguity risk in code or imports. |

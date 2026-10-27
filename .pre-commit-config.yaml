@@ -1,0 +1,31 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Ruff lint
+        entry: uv run --locked --extra dev ruff check .
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: ruff-format
+        name: Ruff format check
+        entry: uv run --locked --extra dev ruff format --check .
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: ty
+        name: ty
+        entry: uv run --locked --extra dev ty check
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: complexipy
+        name: Complexipy
+        entry: uv run --locked --extra dev complexipy --quiet
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

@@ -46,9 +46,7 @@ class SetNotifyConfigParams(ACBaseModel):
     url: str | None = Field(
         default=None, description="POST endpoint URL ('' to clear)."
     )
-    token: str | None = Field(
-        default=None, description="Bearer token ('' to clear)."
-    )
+    token: str | None = Field(default=None, description="Bearer token ('' to clear).")
     poll_sec: float | None = Field(
         default=None, description="Poll interval, seconds (>0)."
     )

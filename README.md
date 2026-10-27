@@ -476,17 +476,58 @@ for the migration that built it.
 ## Test
 
 ```bash
-uv sync --extra dev      # project dependencies and test tools in .venv
-uvx ruff check .         # lint all Python sources and tests
-uvx pyright              # type-check using the project's .venv
-uv run pytest            # full suite (Playwright tests skip if chromium absent)
+uv sync --extra dev
+uv run ruff check .
+uv run ruff format --check .
+uv run ty check
+uv run complexipy
+uv run pytest
 ```
 
-Integration tests use Playwright + real Chromium against a live uvicorn server; install the
-browser once with `python -m playwright install chromium`.
+The project configuration for Ruff, ty, and Complexipy is in `pyproject.toml`. ty automatically discovers the
+repository's `.venv`; run these commands from the repository root so it can resolve the project
+and its installed dependencies. For migration guidance, see [ty's guide for users coming from
+mypy or Pyright](https://docs.astral.sh/ty/coming-from-mypy-or-pyright/).
 
-Pyright's Python 3.12 environment is configured in `pyproject.toml`; run these commands
-from the repository root so imports resolve against the installed project dependencies.
+Ruff includes security rules; exact-rule exceptions are limited to documented test fixtures in
+`pyproject.toml`. The AnkiConnect `skipHash` MD5 is a non-security compatibility checksum;
+dynamic SQL binds user-supplied values rather than interpolating them.
+Asset downloads use HTTP(S)-only clients with finite timeouts. Run generators from the
+repository root with `uv run python tools/<script>.py` to use the project's dependencies.
+
+Complexipy checks cognitive complexity in `ankiweb`, `tests`, and `tools`, using the default
+threshold of 15. Functions above the threshold, including existing ones, are reported and cause a
+nonzero exit. See the [Complexipy usage guide](https://complexipy.com/usage-guide/).
+Use `uv run complexipy --suggest-refactors` for recommendations. Keep extracted helpers within
+the same limit; preserve behavior rather than adding suppressions or raising the threshold.
+
+Install the Git hooks in each new clone:
+
+```bash
+uv run --locked --extra dev pre-commit install
+```
+
+The installed hook is shared by worktrees using the same common Git directory. Before each
+commit, it runs Ruff lint, Ruff format check, ty, and Complexipy against the whole repository;
+failures block the commit, and no files are auto-fixed. Run the same checks manually or uninstall
+the hook with:
+
+```bash
+uv run --locked --extra dev pre-commit run --all-files
+uv run --locked --extra dev pre-commit uninstall
+```
+
+On pushes and pull requests, `.github/workflows/code-quality.yml` runs the same four checks
+using locked `uv` development dependencies.
+
+Apply Python formatting separately with `uv run ruff format .`. Re-run the complete test block
+after changing Ruff's rule categories or preview settings.
+
+For VS Code, install the `astral-sh.ty` and `charliermarsh.ruff` extensions. Workspace settings
+use ty instead of Pylance, with Ruff formatting and lint fixes on explicit save.
+
+Playwright integration tests use real Chromium against a live uvicorn server. Install the browser
+once with `uv run python -m playwright install chromium`.
 
 ## Project layout
 

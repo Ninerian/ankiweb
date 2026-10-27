@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 
 from google.protobuf.message import DecodeError
 
 logger = logging.getLogger(__name__)
+
+
 async def _emit_best_effort(service, flags: dict, initiator: str) -> None:
     try:
         await service.emit(flags, initiator)
@@ -184,14 +187,18 @@ async def get_image_for_occlusion(service, body: bytes, hub) -> bytes:
 
     req = iopb.GetImageForOcclusionRequest()
     req.ParseFromString(bytes(body))
-    if req.path and not import_tmp.is_within(service.settings, req.path):
-        raise ValueError("image path not allowed")
-    # touch-on-read: keep an in-progress drawing session's temp image fresh vs the GC
-    try:
-        if req.path and os.path.isfile(req.path):
-            os.utime(req.path, None)
-    except OSError:
-        pass
+
+    def _check_and_touch(settings, img_path: str | None) -> None:
+        if img_path and not import_tmp.is_within(settings, img_path):
+            raise ValueError("image path not allowed")
+        # touch-on-read: keep an in-progress drawing session's temp image fresh vs the GC
+        try:
+            if img_path and os.path.isfile(img_path):
+                os.utime(img_path, None)
+        except OSError:
+            pass
+
+    await asyncio.to_thread(_check_and_touch, service.settings, req.path)
     return await service.backend_raw("get_image_for_occlusion", body)
 
 
@@ -219,8 +226,10 @@ CUSTOM["getImageForOcclusion"] = get_image_for_occlusion
 CUSTOM["addImageOcclusionNote"] = add_image_occlusion_note
 CUSTOM["updateImageOcclusionNote"] = update_image_occlusion_note
 
+
 async def get_profile_config_json(service, body: bytes, hub=None) -> bytes:
     from anki import generic_pb2
+
     return generic_pb2.Json(json=b"null").SerializeToString()
 
 

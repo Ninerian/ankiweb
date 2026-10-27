@@ -17,8 +17,6 @@ from ankiweb.core.ankiconnect_actions.registry import action
 
 _logger = logging.getLogger(__name__)
 
-_REVLOG_COLS = "id, cid, usn, ease, ivl, lastIvl, factor, time, type"
-
 
 @action(
     "getNumCardsReviewedToday",
@@ -79,7 +77,7 @@ async def get_collection_stats_html(rt, wholeCollection=True):
 async def card_reviews(rt, deck=None, startID=0):
     def fn(col):
         return col.db.all(
-            f"select {_REVLOG_COLS} from revlog "
+            "select id, cid, usn, ease, ivl, lastIvl, factor, time, type from revlog "
             "where id > ? and cid in (select id from cards where did = ?)",
             startID,
             col.decks.id(deck),
@@ -102,8 +100,10 @@ async def get_reviews_of_cards(rt, cards=None):
         for i in range(0, len(cards), 999):  # sqlite var limit
             batch = cards[i : i + 999]
             ph = ",".join("?" * len(batch))
+            # Only generated placeholders are interpolated; card IDs are bound below.
             for rev in col.db.all(
-                "select {} from revlog where cid in ({})".format(", ".join(cols), ph),
+                "select cid, id, usn, ease, ivl, lastIvl, factor, time, type "  # noqa: S608
+                f"from revlog where cid in ({ph})",
                 *batch,
             ):
                 cid_to_reviews.setdefault(rev[0], []).append(rev[1:])
@@ -141,7 +141,9 @@ async def insert_reviews(rt, reviews=None):
     def fn(col):
         if rows:
             col.db.executemany(
-                f"insert into revlog({_REVLOG_COLS}) values (?,?,?,?,?,?,?,?,?)", rows
+                "insert into revlog(id, cid, usn, ease, ivl, lastIvl, factor, time, type) "
+                "values (?,?,?,?,?,?,?,?,?)",
+                rows,
             )
             col.save()
 

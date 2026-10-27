@@ -30,7 +30,12 @@ from typing import Any
 class LinearScale:
     """Linear scale mapping continuous domain [d0, d1] to range [r0, r1]."""
 
-    def __init__(self, domain: tuple[float, float], range: tuple[float, float], clamp: bool = False):
+    def __init__(
+        self,
+        domain: tuple[float, float],
+        range: tuple[float, float],
+        clamp: bool = False,
+    ):
         self.d0, self.d1 = float(domain[0]), float(domain[1])
         self.r0, self.r1 = float(range[0]), float(range[1])
         self.clamp = clamp
@@ -90,7 +95,7 @@ class LinearScale:
             return 0.0
         step = (stop - start) / count
         power = math.floor(math.log10(step))
-        err = step / (10 ** power)
+        err = step / (10**power)
         if err >= math.sqrt(50):
             factor = 10
         elif err >= math.sqrt(10):
@@ -99,7 +104,7 @@ class LinearScale:
             factor = 2
         else:
             factor = 1
-        return factor * (10 ** power) if power >= 0 else - (10 ** -power) / factor
+        return factor * (10**power) if power >= 0 else -(10**-power) / factor
 
 
 class BandScale:
@@ -171,7 +176,9 @@ def render_x_axis(
     if tick_format is None:
         tick_format = str if isinstance(scale, BandScale) else format_tick_number
 
-    lines = [f'<g class="{css_class}" transform="translate(0, {y:.1f})" fill="none" font-size="10" font-family="sans-serif" text-anchor="middle" direction="ltr" pointer-events="none">']
+    lines = [
+        f'<g class="{css_class}" transform="translate(0, {y:.1f})" fill="none" font-size="10" font-family="sans-serif" text-anchor="middle" direction="ltr" pointer-events="none">'
+    ]
     for t in ticks:
         if isinstance(scale, BandScale):
             pos_x = scale(t) + scale.bandwidth / 2.0
@@ -209,11 +216,15 @@ def render_y_axis(
     label_offset = (tick_line_length + 3.0) if right else -(tick_line_length + 3.0)
     line_x2 = tick_line_length if right else -tick_line_length
 
-    lines = [f'<g class="{css_class}" transform="translate({x:.1f}, 0)" fill="none" font-size="10" font-family="sans-serif" text-anchor="{text_anchor}" direction="ltr" pointer-events="none">']
+    lines = [
+        f'<g class="{css_class}" transform="translate({x:.1f}, 0)" fill="none" font-size="10" font-family="sans-serif" text-anchor="{text_anchor}" direction="ltr" pointer-events="none">'
+    ]
     if show_domain and len(ticks) > 0:
         y_min = min(scale.r0, scale.r1)
         y_max = max(scale.r0, scale.r1)
-        lines.append(f'  <path class="domain" stroke="currentColor" d="M0.5,{y_max:.1f}V{y_min:.1f}" pointer-events="none"></path>')
+        lines.append(
+            f'  <path class="domain" stroke="currentColor" d="M0.5,{y_max:.1f}V{y_min:.1f}" pointer-events="none"></path>'
+        )
 
     for t in ticks:
         pos_y = scale(t)
@@ -379,7 +390,9 @@ def render_pie_slice(
         )
 
 
-def interpolate_color(c1: tuple[int, int, int], c2: tuple[int, int, int], t: float) -> str:
+def interpolate_color(
+    c1: tuple[int, int, int], c2: tuple[int, int, int], t: float
+) -> str:
     """Interpolate linearly between two RGB colors (t between 0.0 and 1.0)."""
     t = max(0.0, min(1.0, t))
     r = round(c1[0] + t * (c2[0] - c1[0]))
@@ -388,7 +401,9 @@ def interpolate_color(c1: tuple[int, int, int], c2: tuple[int, int, int], t: flo
     return f"rgb({r}, {g}, {b})"
 
 
-def render_no_data_overlay(width: float, height: float, message: str = "NO DATA") -> str:
+def render_no_data_overlay(
+    width: float, height: float, message: str = "NO DATA"
+) -> str:
     """Render empty/no-data watermark text matching upstream .no-data class."""
     cx = width / 2.0
     cy = height / 2.0

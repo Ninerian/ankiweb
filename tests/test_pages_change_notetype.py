@@ -34,9 +34,7 @@ def _seed_note(client, notetype_id, prefix="note"):
             note[field_name] = f"{prefix}-{index}"
         col.add_note(note, col.decks.id("Default"))
         card_ids = [
-            cid
-            for cid in col.find_cards("")
-            if col.get_card(cid).nid == note.id
+            cid for cid in col.find_cards("") if col.get_card(cid).nid == note.id
         ]
         return note.id, card_ids
 
@@ -61,9 +59,7 @@ def test_change_notetype_get_resolves_selected_cards_and_deduplicates_notes(
     selected_nid, selected_cids = _seed_note(client, reverse_id, "selected")
     assert len(selected_cids) == 2
 
-    response = client.get(
-        "/change-notetype?cids=" + ",".join(map(str, selected_cids))
-    )
+    response = client.get("/change-notetype?cids=" + ",".join(map(str, selected_cids)))
 
     assert response.status_code == 200
     signals = _signals(response.text)
@@ -112,9 +108,7 @@ def test_change_notetype_get_rejects_cards_from_multiple_note_types(client):
     _basic_nid, basic_cids = _seed_note(client, basic_id, "basic")
     _reverse_nid, reverse_cids = _seed_note(client, reverse_id, "reverse")
 
-    response = client.get(
-        f"/change-notetype?cids={basic_cids[0]},{reverse_cids[0]}"
-    )
+    response = client.get(f"/change-notetype?cids={basic_cids[0]},{reverse_cids[0]}")
 
     assert response.status_code == 400
     assert "Invalid card selection" in response.text
@@ -128,9 +122,7 @@ def test_change_notetype_selection_survives_mapping_and_only_selected_note_conve
     unselected_nid, _unselected_cids = _seed_note(client, reverse_id, "unselected")
     headers = {"Datastar-Request": "true"}
 
-    page = client.get(
-        "/change-notetype?cids=" + ",".join(map(str, selected_cids))
-    )
+    page = client.get("/change-notetype?cids=" + ",".join(map(str, selected_cids)))
     assert page.status_code == 200
     assert _signals(page.text)["note_ids"] == [selected_nid]
 
@@ -165,9 +157,7 @@ def test_change_notetype_selection_survives_mapping_and_only_selected_note_conve
     assert _signals(remapped_templates.text)["note_ids"] == [selected_nid]
 
     save_payload = {**base_payload, "note_ids": [str(selected_nid)]}
-    saved = client.post(
-        "/change-notetype/save", headers=headers, json=save_payload
-    )
+    saved = client.post("/change-notetype/save", headers=headers, json=save_payload)
     assert saved.status_code == 200
 
     def read_result(col):
@@ -213,9 +203,7 @@ def test_change_notetype_remap_template_prevents_duplicate_mapping_and_keeps_sco
     assert signals["template_map_1"] == 0
 
 
-@pytest.mark.parametrize(
-    "endpoint", ["select-target", "remap-field", "remap-template"]
-)
+@pytest.mark.parametrize("endpoint", ["select-target", "remap-field", "remap-template"])
 @pytest.mark.parametrize(
     "invalid_case",
     [
@@ -261,13 +249,9 @@ def test_change_notetype_mapping_posts_reject_invalid_note_ids(
         payload["note_ids"] = invalid_values[invalid_case]
 
     path = f"/change-notetype/{endpoint}"
-    if endpoint == "remap-field":
+    if endpoint == "remap-field" or endpoint == "remap-template":
         path += "?new_index=0"
-    elif endpoint == "remap-template":
-        path += "?new_index=0"
-    response = client.post(
-        path, headers={"Datastar-Request": "true"}, json=payload
-    )
+    response = client.post(path, headers={"Datastar-Request": "true"}, json=payload)
 
     _assert_invalid_selection_response(response)
 
@@ -365,9 +349,12 @@ def test_change_notetype_save_rejects_empty_selection_before_noop_branch(client)
     )
 
     _assert_invalid_selection_response(response)
-    assert client.portal.call(
-        client.app.state.service.run, lambda col: col.get_note(nid).mid
-    ) == basic_id
+    assert (
+        client.portal.call(
+            client.app.state.service.run, lambda col: col.get_note(nid).mid
+        )
+        == basic_id
+    )
 
 
 @pytest.mark.parametrize(
@@ -394,9 +381,12 @@ def test_change_notetype_posts_reject_malformed_notetype_ids(client, endpoint):
     )
 
     _assert_invalid_selection_response(response)
-    assert client.portal.call(
-        client.app.state.service.run, lambda col: col.get_note(nid).mid
-    ) == basic_id
+    assert (
+        client.portal.call(
+            client.app.state.service.run, lambda col: col.get_note(nid).mid
+        )
+        == basic_id
+    )
 
 
 def _change_note_type_for_test(client, note_id, old_id, new_id):

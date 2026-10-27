@@ -10,7 +10,9 @@ from ankiweb.core.config import Settings
 
 @pytest.fixture
 def client(tmp_path: Path):
-    with TestClient(create_app(Settings(collection_path=tmp_path / "editor_test.anki2"))) as c:
+    with TestClient(
+        create_app(Settings(collection_path=tmp_path / "editor_test.anki2"))
+    ) as c:
         assert c.portal is not None
         app = cast(Any, c.app)
         c.portal.call(app.state.service.run, _seed)
@@ -39,6 +41,7 @@ def _first_nid(client):
         lambda col: next(iter(col.find_notes("FranceCapital"))),
     )
 
+
 def test_next_edit_route_renders(client):
     nid = _first_nid(client)
     r = client.get(f"/edit?nid={nid}")
@@ -50,8 +53,8 @@ def test_next_edit_route_renders(client):
     assert "ankiweb-tag-editor" in r.text
     assert "ankiweb-editor-toolbar" in r.text
     assert 'data-field-index="0"' in r.text
-    assert 'data-ankiweb-rich' in r.text
-    assert 'data-ankiweb-plain' in r.text
+    assert "data-ankiweb-rich" in r.text
+    assert "data-ankiweb-plain" in r.text
 
 
 def test_next_add_route_renders(client):

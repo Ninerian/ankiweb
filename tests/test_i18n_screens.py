@@ -26,6 +26,7 @@ def client(tmp_path: Path):
     with TestClient(create_app(Settings(collection_path=tmp_path / "c.anki2"))) as c:
         yield c
 
+
 def test_toolbar_default_english():
     html = render_page("deckbrowser", "<div>x</div>")
     assert ">Decks</a>" in html and ">Add</a>" in html
@@ -45,22 +46,27 @@ def test_spa_toolbar_default_english(client):
     assert r.status_code == 200
     assert ">Decks</a>" in r.text and ">Add</a>" in r.text
     assert ">Browse</a>" in r.text and ">Stats</a>" in r.text
-    assert "id=\"ankiweb-bottom-nav\"" in r.text
+    assert 'id="ankiweb-bottom-nav"' in r.text
+
 
 def test_spa_toolbar_zh(client):
     anki.lang.set_lang("zh-CN")
     r = client.get("/graphs")
     assert r.status_code == 200
     assert "牌组" in r.text and "浏览" in r.text and "统计" in r.text
-    assert "id=\"ankiweb-bottom-nav\"" in r.text
+    assert 'id="ankiweb-bottom-nav"' in r.text
 
 
 def test_spa_toolbar_de(client):
     anki.lang.set_lang("de")
     r = client.get("/graphs")
     assert r.status_code == 200
-    assert "Stapel" in r.text and "Kartenverwaltung" in r.text and "Statistiken" in r.text
-    assert "id=\"ankiweb-bottom-nav\"" in r.text
+    assert (
+        "Stapel" in r.text and "Kartenverwaltung" in r.text and "Statistiken" in r.text
+    )
+    assert 'id="ankiweb-bottom-nav"' in r.text
+
+
 def test_deckbrowser_default_english(temp_collection):
     html = render_deckbrowser_html(temp_collection)
     assert "Create Deck" in html and "Import" in html

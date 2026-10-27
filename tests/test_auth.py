@@ -1,6 +1,6 @@
-import anki.lang
 from pathlib import Path
 
+import anki.lang
 import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
@@ -99,6 +99,7 @@ def test_login_datastar_correct_unlocks(tmp_path: Path):
         assert r.cookies.get(COOKIE) == auth_token("secret")
         assert c.get("/deckbrowser", follow_redirects=False).status_code == 200
 
+
 def test_bad_cookie_still_gated(tmp_path: Path):
     with _client(tmp_path, "secret") as c:
         c.cookies.set(COOKIE, "garbage")
@@ -113,6 +114,35 @@ def test_logout_clears_session(tmp_path: Path):
         assert c.get("/deckbrowser", follow_redirects=False).status_code == 303
 
 
+def test_login_json_oversized_integer_falls_back_without_error(tmp_path: Path):
+    with _client(tmp_path, "secret") as c:
+        huge_json = b'{"password":' + b"1" * 5000 + b"}"
+        r = c.post(
+            "/login",
+            content=huge_json,
+            headers={"content-type": "x-application/json"},
+        )
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers.get("content-type", "")
+        assert "Email or password was incorrect" in r.text
+
+
+def test_login_json_deep_nesting_falls_back_without_error(tmp_path: Path):
+    import sys
+
+    with _client(tmp_path, "secret") as c:
+        depth = sys.getrecursionlimit() + 100
+        nested_json = ("[" * depth + "]" * depth).encode("utf-8")
+        r = c.post(
+            "/login",
+            content=nested_json,
+            headers={"content-type": "application/json; charset=utf-8"},
+        )
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers.get("content-type", "")
+        assert "Email or password was incorrect" in r.text
+
+
 def test_ws_rejected_without_cookie(tmp_path: Path):
     with (
         _client(tmp_path, "secret") as c,
@@ -120,6 +150,7 @@ def test_ws_rejected_without_cookie(tmp_path: Path):
         c.websocket_connect("/ws?context=browser") as ws,
     ):
         ws.receive_json()
+
 
 def test_ws_ok_with_cookie(tmp_path: Path):
     with _client(tmp_path, "secret") as c:

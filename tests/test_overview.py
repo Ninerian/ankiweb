@@ -54,7 +54,9 @@ def test_congrats_states_and_upstream_parity(col):
 
     # 2. Deck description rendered and sanitized
     deck = col.decks.get(did)
-    deck["desc"] = "<p>My <b>special</b> deck description</p><script>alert('xss')</script>"
+    deck["desc"] = (
+        "<p>My <b>special</b> deck description</p><script>alert('xss')</script>"
+    )
     col.decks.save(deck)
     html_desc = render_congrats_html(col)
     assert 'class="description"' in html_desc

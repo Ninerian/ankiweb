@@ -32,6 +32,7 @@ from ankiweb.ankiconnect.schemas.notes import (
 from ankiweb.core.ankiconnect_actions.actions._helpers import (
     build_note,
     check_addable,
+    note_to_info,
     run_emit,
 )
 from ankiweb.core.ankiconnect_actions.actions.media import attach_media
@@ -173,9 +174,6 @@ async def can_add_notes_with_error_detail(rt, notes=None):
 )
 async def find_notes(rt, query=None):
     return await rt.service.run(lambda col: list(col.find_notes(query or "")))
-
-
-from ankiweb.core.ankiconnect_actions.actions._helpers import note_to_info
 
 
 @action("notesInfo", params=NotesInfoParams, summary="Full info for each note")
@@ -391,8 +389,10 @@ async def cards_to_notes(rt, cards=None):
         # Match canonical AnkiConnect: a single non-raising SQL query that omits unknown
         # card ids (instead of looping col.get_card, which raises NotFoundError on a bad id).
         placeholders = ",".join("?" * len(cards))
+        # Only generated placeholders are interpolated; card IDs are bound below.
         return col.db.list(
-            f"select distinct nid from cards where id in ({placeholders})", *cards
+            f"select distinct nid from cards where id in ({placeholders})",  # noqa: S608
+            *cards,
         )
 
     return await rt.service.run(fn)

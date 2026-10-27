@@ -50,7 +50,9 @@ def test_browse_search_pushes_rows_and_mirrors_ui_state(client):
     from ankiweb.adapters.inbound.http_datastar.browser import _card_count_str
 
     # the status line is updated to the localized "<n> cards" label for the match count
-    assert any("browser-status" in data and _card_count_str(1) in data for _, data in events)
+    assert any(
+        "browser-status" in data and _card_count_str(1) in data for _, data in events
+    )
     assert hub.ui_state.browser_open is True
     assert hub.ui_state.last_browse_query == "dog"
     assert len(hub.ui_state.matched_card_ids) == 1
@@ -110,6 +112,7 @@ def _extract_cids_from_search_post(client, query: str) -> list[int]:
         if event_type == "datastar-patch-elements" and "results-body" in data:
             return _extract_cids_from_html(data)
     return []
+
 
 def test_browse_sidebar_links_and_exact_search_results(client):
     from urllib.parse import parse_qs, urlparse
@@ -242,6 +245,7 @@ def test_browse_sidebar_special_characters_and_wildcard_escaping(client):
     assert tag_get_cids == [c3_id]
     assert c4_id not in tag_get_cids
 
+
 def test_browse_open_pushes_detail_and_selection(client):
     assert client.portal is not None
     cid = client.portal.call(
@@ -282,11 +286,13 @@ def test_browse_invalid_compiled_regex_returns_invalid_search(client, query):
     assert any("invalid search" in data for _, data in events)
     assert any("0 cards" in data for _, data in events)
 
+
 def test_browse_page_with_invalid_compiled_regex_renders_empty_results(client):
     response = client.get("/browse", params={"q": "re:["})
     assert response.status_code == 200
     assert 'value="re:["' in response.text
     assert "0 cards" in response.text
+
 
 def test_browse_refresh_preserves_editor_state_and_updates_rows(client):
     from conftest import parse_datastar_events
@@ -326,8 +332,7 @@ def test_browse_refresh_preserves_editor_state_and_updates_rows(client):
         data for event_type, data in events if event_type == "datastar-patch-elements"
     ]
     assert any(
-        "results-body" in data and "dog refreshed" in data
-        for data in element_patches
+        "results-body" in data and "dog refreshed" in data for data in element_patches
     )
     assert any("browser-status" in data for data in element_patches)
     assert all("#detail" not in data for data in element_patches)
@@ -364,6 +369,7 @@ def test_browse_refresh_preserves_editor_state_and_updates_rows(client):
 def _run(client, fn):
     assert client.portal is not None
     return client.portal.call(client.app.state.service.run, fn)
+
 
 def test_refresh_keeps_detail_for_card_outside_search_results(client):
     from conftest import parse_datastar_events
@@ -642,7 +648,6 @@ def test_mutation_routes_are_silent_noop_with_empty_selection(client):
         assert r.text == ""
 
 
-
 def test_delete_removes_notes(client):
     from conftest import parse_datastar_events
 
@@ -739,8 +744,7 @@ def test_form_without_selection_never_falls_back_to_cached_cards(client):
     response = client.post("/browse/suspend", data={"browserQuery": ""})
     assert response.status_code == 204
     assert all(
-        _run(client, lambda col, cid=cid: col.get_card(cid).queue) != -1
-        for cid in cids
+        _run(client, lambda col, cid=cid: col.get_card(cid).queue) != -1 for cid in cids
     )
 
 
@@ -938,7 +942,6 @@ def test_row_data_rich_fields_and_formatted_due(client):
 
     rows = _run(client, check_rows)
     assert len(rows) == 5
-
 
     r1 = next(r for r in rows if r["cid"] == c1_id)
     assert r1["sort_text"] == "alpha"

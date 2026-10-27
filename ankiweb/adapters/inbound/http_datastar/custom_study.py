@@ -20,6 +20,7 @@ from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
 
+
 def render_custom_study_html(col) -> str:
     did = col.decks.get_current_id()
     d = col.sched.custom_study_defaults(did)
@@ -70,7 +71,12 @@ def render_custom_study_html(col) -> str:
             tr.scheduling_days(),
             1,
         ],
-        6: [tr.custom_study_select(), 100, tr.custom_study_cards_from_the_deck(count=100), 1],
+        6: [
+            tr.custom_study_select(),
+            100,
+            tr.custom_study_cards_from_the_deck(count=100),
+            1,
+        ],
     }
 
     return templating.render(
@@ -83,6 +89,32 @@ def render_custom_study_html(col) -> str:
         spin_default=cfg[1][1],
         cfg_json=json.dumps(cfg),
     )
+
+
+def _build_custom_study_request(col, radio: int, value: int, p: dict):
+    import anki.scheduler_pb2 as sp
+
+    did = col.decks.get_current_id()
+    req = sp.CustomStudyRequest(deck_id=did)
+    if radio == 1:
+        req.new_limit_delta = value
+    elif radio == 2:
+        req.review_limit_delta = value
+    elif radio == 3:
+        req.forgot_days = value
+    elif radio == 4:
+        req.review_ahead_days = value
+    elif radio == 5:
+        req.preview_days = value
+    elif radio == 6:
+        req.cram.kind = cast(
+            sp.CustomStudyRequest.Cram.CramKind.ValueType,
+            int(p.get("cram_kind", 1)),
+        )
+        req.cram.card_limit = value
+        req.cram.tags_to_include.extend([str(t) for t in p.get("include", [])])
+        req.cram.tags_to_exclude.extend([str(t) for t in p.get("exclude", [])])
+    return req
 
 
 def make_custom_study_routes(get_service: Callable) -> APIRouter:
@@ -98,25 +130,7 @@ def make_custom_study_routes(get_service: Callable) -> APIRouter:
         value = int(p.get("value", 0))
 
         def build_and_run(col):
-            import anki.scheduler_pb2 as sp
-
-            did = col.decks.get_current_id()
-            req = sp.CustomStudyRequest(deck_id=did)
-            if radio == 1:
-                req.new_limit_delta = value
-            elif radio == 2:
-                req.review_limit_delta = value
-            elif radio == 3:
-                req.forgot_days = value
-            elif radio == 4:
-                req.review_ahead_days = value
-            elif radio == 5:
-                req.preview_days = value
-            elif radio == 6:
-                req.cram.kind = cast(sp.CustomStudyRequest.Cram.CramKind.ValueType, int(p.get("cram_kind", 1)))
-                req.cram.card_limit = value
-                req.cram.tags_to_include.extend([str(t) for t in p.get("include", [])])
-                req.cram.tags_to_exclude.extend([str(t) for t in p.get("exclude", [])])
+            req = _build_custom_study_request(col, radio, value, p)
             return col.sched.custom_study(req)
 
         try:

@@ -6,6 +6,7 @@ Transport boundary:
 - Modern note additions in the web app utilize Datastar routes in
   `ankiweb/adapters/inbound/http_pages/editor.py` (`GET /add`).
 """
+
 from __future__ import annotations
 
 import json
@@ -49,62 +50,74 @@ def render_add_html(col) -> str:
     return add_page_body(decks, notetypes, paste_handler_js(), editor_links_js())
 
 
+def _initial_add(col):
+    ntid = int(col.models.current()["id"])
+    did = int(col.decks.get_current_id())
+    return ntid, did, empty_add_payload(col, ntid, did)
+
+
+def _add_note(col, ntid, did, fields, tags):
+    model = col.models.get(ntid)
+    note = col.new_note(model)
+    for i, h in enumerate(fields):
+        if i < len(note.fields):
+            note.fields[i] = _munge(col, h)
+    note.tags = tags
+    ok, err = check_addable(col, note, None)
+    if not ok:
+        return (None, err), None
+    op = col.add_note(note, did)
+    return (note.id, None), op
+
+
+async def _add_ready(service, hub, state):
+    ntid, did, data = await service.run(_initial_add)
+    state.update(notetype_id=ntid, deck_id=did, tags=[])
+    await hub.push_call("add", "ankiwebLoadNote", [data])
+
+
+async def _submit_add(service, hub, state, rest):
+    fields = json.loads(rest)
+    ntid_raw = state["notetype_id"]
+    did_raw = state["deck_id"]
+    ntid = int(ntid_raw) if ntid_raw is not None else 0
+    did = int(did_raw) if did_raw is not None else 0
+    tags = list(state["tags"] or [])
+    (_, err), op = await service.run(
+        lambda col: _add_note(col, ntid, did, fields, tags)
+    )
+    if op is not None:
+        flags = op_changes_to_flags(getattr(op, "changes", op))
+        if any(flags.values()):
+            await service.emit(flags, "add")
+    if err:
+        await hub.push_call("add", "ankiwebToast", [err])
+    else:
+        data = await service.run(lambda col: empty_add_payload(col, ntid, did))
+        await hub.push_call("add", "ankiwebLoadNote", [data])
+        await hub.push_call("add", "ankiwebToast", [tr.adding_added()])
+
+
 def make_add_handler(service, hub):
     state: dict[str, Any] = {"notetype_id": None, "deck_id": None, "tags": []}
 
     async def handler(arg: str):
         head, _, rest = arg.partition(":")
         if head == "addReady":
-
-            def init(col):
-                ntid = int(col.models.current()["id"])
-                did = int(col.decks.get_current_id())
-                return ntid, did, empty_add_payload(col, ntid, did)
-
-            ntid, did, data = await service.run(init)
-            state.update(notetype_id=ntid, deck_id=did, tags=[])
-            await hub.push_call("add", "ankiwebLoadNote", [data])
+            await _add_ready(service, hub, state)
         elif head == "setnotetype":
             ntid = int(rest)
             state["notetype_id"] = ntid
             state["tags"] = []
-            data = await service.run(lambda col: empty_add_payload(col, ntid, state["deck_id"]))
+            data = await service.run(
+                lambda col: empty_add_payload(col, ntid, state["deck_id"])
+            )
             await hub.push_call("add", "ankiwebLoadNote", [data])
         elif head == "setdeck":
             state["deck_id"] = int(rest)
         elif head == "saveTags":
             state["tags"] = json.loads(rest)
         elif head == "addnote":
-            fields = json.loads(rest)
-            ntid_raw = state["notetype_id"]
-            did_raw = state["deck_id"]
-            ntid = int(ntid_raw) if ntid_raw is not None else 0
-            did = int(did_raw) if did_raw is not None else 0
-            tags = list(state["tags"] or [])
-
-            def add(col):
-                model = col.models.get(ntid)
-                note = col.new_note(model)
-                for i, h in enumerate(fields):
-                    if i < len(note.fields):
-                        note.fields[i] = _munge(col, h)
-                note.tags = tags
-                ok, err = check_addable(col, note, None)
-                if not ok:
-                    return (None, err), None
-                op = col.add_note(note, did)
-                return (note.id, None), op
-
-            (_, err), op = await service.run(add)
-            if op is not None:
-                flags = op_changes_to_flags(getattr(op, "changes", op))
-                if any(flags.values()):
-                    await service.emit(flags, "add")
-            if err:
-                await hub.push_call("add", "ankiwebToast", [err])
-            else:
-                data = await service.run(lambda col: empty_add_payload(col, ntid, did))
-                await hub.push_call("add", "ankiwebLoadNote", [data])
-                await hub.push_call("add", "ankiwebToast", [tr.adding_added()])
+            await _submit_add(service, hub, state, rest)
 
     return handler

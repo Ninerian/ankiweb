@@ -1,13 +1,20 @@
 import asyncio
 import threading
 import time
+from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import TypedDict
 from urllib.parse import urlsplit
 
 import pytest
 import uvicorn
+from anki.cards import CardId
 from anki.collection import Collection
+from anki.dbproxy import Row
+from anki.models import NotetypeId
+from anki.notes import NoteId
+from fastapi import FastAPI
 
 from ankiweb.app import create_app
 from ankiweb.core.config import Settings
@@ -29,69 +36,104 @@ _TARGET_TEMPLATES = (
 )
 
 
+class _NotetypeSnapshot(TypedDict):
+    name: str
+    config: bytes
+    fields: list[tuple[int, str, bytes]]
+    templates: list[tuple[int, str, bytes]]
+
+
+type _NotetypeState = tuple[
+    str,
+    tuple[str, ...],
+    tuple[tuple[str, bytes], ...],
+    bytes,
+    tuple[bytes, ...],
+]
+type _CollectionSnapshot = tuple[
+    tuple[int, int, str],
+    tuple[Row, ...],
+    dict[int, _NotetypeState],
+]
+
+
+class _ChangeNotetypeFixture(TypedDict):
+    url: str
+    app: FastAPI
+    basic_cid: CardId
+    source_note_id: NoteId
+    source_card_ids: list[CardId]
+    source_model_id: NotetypeId
+    target_model_id: NotetypeId
+
+
+def _snapshot_notetypes(
+    model_ids: tuple[NotetypeId, NotetypeId],
+    notetype_rows: list[Row],
+    field_rows: list[Row],
+    template_rows: list[Row],
+) -> dict[int, _NotetypeState]:
+    models_by_id: dict[int, _NotetypeSnapshot] = {
+        model_id: {
+            "name": name,
+            "config": bytes(config),
+            "fields": [],
+            "templates": [],
+        }
+        for model_id, name, config in notetype_rows
+    }
+    assert set(models_by_id) == set(model_ids)
+    for notetype_id, ordinal, name, config in field_rows:
+        models_by_id[notetype_id]["fields"].append((ordinal, name, bytes(config)))
+    for notetype_id, ordinal, name, config in template_rows:
+        models_by_id[notetype_id]["templates"].append((ordinal, name, bytes(config)))
+
+    model_state: dict[int, _NotetypeState] = {}
+    for model_id, model in models_by_id.items():
+        model_state[model_id] = (
+            model["name"],
+            tuple(name for _ordinal, name, _config in model["fields"]),
+            tuple((name, config) for _ordinal, name, config in model["templates"]),
+            model["config"],
+            tuple(config for _ordinal, _name, config in model["fields"]),
+        )
+    return model_state
+
+
 def _read_collection_snapshot(
-    app,
-    note_id: int,
-    source_model_id: int,
-    target_model_id: int,
-):
+    app: FastAPI,
+    note_id: NoteId,
+    source_model_id: NotetypeId,
+    target_model_id: NotetypeId,
+) -> _CollectionSnapshot:
     model_ids = (source_model_id, target_model_id)
 
-    def read(col):
-        note = col.db.first(
-            "SELECT id, mid, flds FROM notes WHERE id = ?", note_id
-        )
-        cards = col.db.all(
+    def read(col: Collection) -> _CollectionSnapshot:
+        db = col.db
+        assert db is not None
+        note = db.first("SELECT id, mid, flds FROM notes WHERE id = ?", note_id)
+        cards = db.all(
             "SELECT id, nid, ord FROM cards WHERE nid = ? ORDER BY id", note_id
         )
-        notetype_rows = col.db.all(
+        notetype_rows = db.all(
             "SELECT id, name, config FROM notetypes NOT INDEXED "
             "WHERE id IN (?, ?) ORDER BY id",
             *model_ids,
         )
-        field_rows = col.db.all(
+        field_rows = db.all(
             "SELECT ntid, ord, name, config FROM fields NOT INDEXED "
             "WHERE ntid IN (?, ?) ORDER BY ntid, ord",
             *model_ids,
         )
-        template_rows = col.db.all(
+        template_rows = db.all(
             "SELECT ntid, ord, name, config FROM templates NOT INDEXED "
             "WHERE ntid IN (?, ?) ORDER BY ntid, ord",
             *model_ids,
         )
-
         assert note is not None
-        models_by_id = {
-            model_id: {
-                "name": name,
-                "config": bytes(config),
-                "fields": [],
-                "templates": [],
-            }
-            for model_id, name, config in notetype_rows
-        }
-        assert set(models_by_id) == set(model_ids)
-        for notetype_id, ordinal, name, config in field_rows:
-            models_by_id[notetype_id]["fields"].append(
-                (ordinal, name, bytes(config))
-            )
-        for notetype_id, ordinal, name, config in template_rows:
-            models_by_id[notetype_id]["templates"].append(
-                (ordinal, name, bytes(config))
-            )
-
-        model_state = {}
-        for model_id, model in models_by_id.items():
-            model_state[model_id] = (
-                model["name"],
-                tuple(name for _ordinal, name, _config in model["fields"]),
-                tuple(
-                    (name, config)
-                    for _ordinal, name, config in model["templates"]
-                ),
-                model["config"],
-                tuple(config for _ordinal, _name, config in model["fields"]),
-            )
+        model_state = _snapshot_notetypes(
+            model_ids, notetype_rows, field_rows, template_rows
+        )
         return tuple(note), tuple(cards), model_state
 
     return asyncio.run_coroutine_threadsafe(
@@ -118,7 +160,7 @@ def _assert_controls_fit(page, selectors: list[str]) -> None:
 
 
 @pytest.fixture
-def live_server_cnt(tmp_path: Path):
+def live_server_cnt(tmp_path: Path) -> Iterator[_ChangeNotetypeFixture]:
     col_path = tmp_path / "c.anki2"
     col = Collection(str(col_path))
     try:
@@ -130,7 +172,7 @@ def live_server_cnt(tmp_path: Path):
         did = col.decks.id("Default")
         assert did is not None
         col.add_note(basic_note, did)
-        basic_cid = col.find_cards("")[0]
+        basic_cid = CardId(col.find_cards("")[0])
 
         source = col.models.new(_SOURCE_NOTETYPE_NAME)
         for field_name in _SOURCE_FIELDS:
@@ -164,15 +206,13 @@ def live_server_cnt(tmp_path: Path):
         source_note[_SOURCE_FIELDS[0]] = "first-value"
         source_note[_SOURCE_FIELDS[1]] = "second-value"
         col.add_note(source_note, did)
-        source_note_id = int(source_note.id)
+        source_note_id = source_note.id
         source_card_ids = sorted(
-            cid
-            for cid in col.find_cards("")
-            if col.get_card(cid).nid == source_note_id
+            cid for cid in col.find_cards("") if col.get_card(cid).nid == source_note_id
         )
         assert len(source_card_ids) == 2
-        source_model_id = int(source["id"])
-        target_model_id = int(target["id"])
+        source_model_id = NotetypeId(int(source["id"]))
+        target_model_id = NotetypeId(int(target["id"]))
     finally:
         col.close()
 
@@ -272,14 +312,16 @@ def test_mobile_cancel_after_remapping_preserves_collection(live_server_cnt):
         _assert_controls_fit(page, controls)
 
         with page.expect_response(
-            lambda response: response.request.method == "POST"
-            and urlsplit(response.url).path == "/change-notetype/select-target"
-        ) as target_response:
-            page.locator("#target-notetype-select").select_option(
-                str(target_model_id)
+            lambda response: (
+                response.request.method == "POST"
+                and urlsplit(response.url).path == "/change-notetype/select-target"
             )
+        ) as target_response:
+            page.locator("#target-notetype-select").select_option(str(target_model_id))
         assert target_response.value.status == 200
-        assert page.locator("#target-notetype-select").input_value() == str(target_model_id)
+        assert page.locator("#target-notetype-select").input_value() == str(
+            target_model_id
+        )
         assert page.get_by_text(_TARGET_FIELDS[0], exact=True).is_visible()
         assert page.get_by_text(_TARGET_FIELDS[1], exact=True).is_visible()
         assert page.get_by_text(_TARGET_TEMPLATES[0], exact=True).is_visible()
@@ -289,8 +331,10 @@ def test_mobile_cancel_after_remapping_preserves_collection(live_server_cnt):
         field_map = page.locator('select[data-bind="field_map_0"]')
         field_value = "1" if field_map.input_value() != "1" else "0"
         with page.expect_response(
-            lambda response: response.request.method == "POST"
-            and urlsplit(response.url).path == "/change-notetype/remap-field"
+            lambda response: (
+                response.request.method == "POST"
+                and urlsplit(response.url).path == "/change-notetype/remap-field"
+            )
         ) as field_response:
             field_map.select_option(field_value)
         assert field_response.value.status == 200
@@ -300,8 +344,10 @@ def test_mobile_cancel_after_remapping_preserves_collection(live_server_cnt):
         template_map = page.locator('select[data-bind="template_map_0"]')
         template_value = "1" if template_map.input_value() != "1" else "0"
         with page.expect_response(
-            lambda response: response.request.method == "POST"
-            and urlsplit(response.url).path == "/change-notetype/remap-template"
+            lambda response: (
+                response.request.method == "POST"
+                and urlsplit(response.url).path == "/change-notetype/remap-template"
+            )
         ) as template_response:
             template_map.select_option(template_value)
         assert template_response.value.status == 200
@@ -357,19 +403,21 @@ def test_change_notetype_save_persists_ui_mapping_and_redirects(live_server_cnt)
         page.wait_for_selector("#target-notetype-select", timeout=10000)
 
         with page.expect_response(
-            lambda response: response.request.method == "POST"
-            and urlsplit(response.url).path == "/change-notetype/select-target"
-        ) as target_response:
-            page.locator("#target-notetype-select").select_option(
-                str(target_model_id)
+            lambda response: (
+                response.request.method == "POST"
+                and urlsplit(response.url).path == "/change-notetype/select-target"
             )
+        ) as target_response:
+            page.locator("#target-notetype-select").select_option(str(target_model_id))
         assert target_response.value.status == 200
 
         field_map_0 = page.locator('select[data-bind="field_map_0"]')
         if field_map_0.input_value() != "1":
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and urlsplit(response.url).path == "/change-notetype/remap-field"
+                lambda response: (
+                    response.request.method == "POST"
+                    and urlsplit(response.url).path == "/change-notetype/remap-field"
+                )
             ) as field_response:
                 field_map_0.select_option("1")
             assert field_response.value.status == 200
@@ -377,8 +425,10 @@ def test_change_notetype_save_persists_ui_mapping_and_redirects(live_server_cnt)
         field_map_1 = page.locator('select[data-bind="field_map_1"]')
         if field_map_1.input_value() != "0":
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and urlsplit(response.url).path == "/change-notetype/remap-field"
+                lambda response: (
+                    response.request.method == "POST"
+                    and urlsplit(response.url).path == "/change-notetype/remap-field"
+                )
             ) as field_response:
                 field_map_1.select_option("0")
             assert field_response.value.status == 200
@@ -388,8 +438,10 @@ def test_change_notetype_save_persists_ui_mapping_and_redirects(live_server_cnt)
         template_map_0 = page.locator('select[data-bind="template_map_0"]')
         if template_map_0.input_value() != "0":
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and urlsplit(response.url).path == "/change-notetype/remap-template"
+                lambda response: (
+                    response.request.method == "POST"
+                    and urlsplit(response.url).path == "/change-notetype/remap-template"
+                )
             ) as template_response:
                 template_map_0.select_option("0")
             assert template_response.value.status == 200
@@ -397,8 +449,10 @@ def test_change_notetype_save_persists_ui_mapping_and_redirects(live_server_cnt)
         template_map_1 = page.locator('select[data-bind="template_map_1"]')
         if template_map_1.input_value() != "1":
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and urlsplit(response.url).path == "/change-notetype/remap-template"
+                lambda response: (
+                    response.request.method == "POST"
+                    and urlsplit(response.url).path == "/change-notetype/remap-template"
+                )
             ) as template_response:
                 template_map_1.select_option("1")
             assert template_response.value.status == 200
@@ -406,8 +460,10 @@ def test_change_notetype_save_persists_ui_mapping_and_redirects(live_server_cnt)
         assert template_map_1.input_value() == "1"
 
         with page.expect_response(
-            lambda response: response.request.method == "POST"
-            and urlsplit(response.url).path == "/change-notetype/save"
+            lambda response: (
+                response.request.method == "POST"
+                and urlsplit(response.url).path == "/change-notetype/save"
+            )
         ) as save_response:
             page.locator("#change-notetype-save-btn").click()
         assert save_response.value.status == 200
@@ -426,9 +482,10 @@ def test_change_notetype_save_persists_ui_mapping_and_redirects(live_server_cnt)
     assert all(card[1] == source_note_id for card in saved_cards)
     assert {card[2] for card in saved_cards} == {0, 1}
     assert saved_models[target_model_id][1] == _TARGET_FIELDS
-    assert tuple(
-        template[0] for template in saved_models[target_model_id][2]
-    ) == _TARGET_TEMPLATES
+    assert (
+        tuple(template[0] for template in saved_models[target_model_id][2])
+        == _TARGET_TEMPLATES
+    )
     assert requests.count(("POST", "/change-notetype/save")) == 1
 
 

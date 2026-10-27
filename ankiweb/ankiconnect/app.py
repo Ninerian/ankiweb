@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
-import ankiweb.core.ankiconnect_actions.actions
 import ankiweb.core.ankiconnect_actions.extra_actions  # noqa: F401 — registers /extra_actions/<name>
 from ankiweb.adapters.inbound.http_ankiconnect.cors import allow_origin
 from ankiweb.adapters.inbound.http_ankiconnect.rest import (
@@ -42,6 +43,68 @@ _OPENAPI_TAGS = [
 ]
 
 
+@asynccontextmanager
+async def _app_lifespan(
+    app: FastAPI,
+    settings: Settings,
+    service: CollectionService | None,
+    config: AnkiConnectConfig,
+    hub: Any,
+    notifier: Any,
+) -> AsyncGenerator[None, None]:
+    owns_service = service is None
+    svc = service
+    if owns_service:
+        svc = CollectionService(settings)
+        await svc.open()
+    app.state.service = svc
+    app.state.config = config
+    app.state.hub = hub
+    app.state.notifier = notifier  # shared NotifierState, or None if not wired
+    try:
+        yield
+    finally:
+        if owns_service and svc is not None:
+            await svc.close()
+
+
+def _cors_headers(
+    origin: str | None, config: AnkiConnectConfig
+) -> tuple[bool, dict[str, str]]:
+    allowed, header = allow_origin(origin, config.cors_origin_list)
+    return allowed, {
+        "Access-Control-Allow-Origin": header,
+        "Access-Control-Allow-Headers": "*",
+    }
+
+
+async def _handle_rpc(
+    request: Request, app: FastAPI, config: AnkiConnectConfig
+) -> JSONResponse:
+    origin = request.headers.get("origin")
+    allowed, headers = _cors_headers(origin, config)
+    try:
+        req = await request.json()
+    except ValueError:
+        req = {}
+    if not req:  # empty body → liveness probe
+        return JSONResponse({"apiVersion": "AnkiConnect v.6"}, headers=headers)
+    action_name = req.get("action") or ""
+    if not allowed and action_name != "requestPermission":
+        return JSONResponse(
+            {"result": None, "error": "origin not allowed"},
+            status_code=403,
+            headers=headers,
+        )
+    rt = Runtime(service=app.state.service, config=app.state.config, hub=app.state.hub)
+    if action_name == "requestPermission":  # inject CORS result + origin
+        req.setdefault("params", {})
+        req["params"]["allowed"] = allowed
+        req["params"]["origin"] = origin
+    reply = await dispatch_one(rt, req)
+    return JSONResponse(reply, headers=headers)
+
+
 def create_ankiconnect_app(
     settings: Settings | None = None,
     service: CollectionService | None = None,
@@ -51,41 +114,20 @@ def create_ankiconnect_app(
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     config = config or AnkiConnectConfig()
-    owns_service = service is None
     hub = hub if hub is not None else BridgeHub()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        svc = service
-        if owns_service:
-            svc = CollectionService(settings)
-            await svc.open()
-        app.state.service = svc
-        app.state.config = config
-        app.state.hub = hub
-        app.state.notifier = (
-            notifier  # shared NotifierState (None if not wired, e.g. tests)
-        )
-        try:
+        async with _app_lifespan(app, settings, service, config, hub, notifier):
             yield
-        finally:
-            if owns_service and svc is not None:
-                await svc.close()
 
     app = FastAPI(
         title="ankiweb-ankiconnect", lifespan=lifespan, openapi_tags=_OPENAPI_TAGS
     )
 
-    def _cors_headers(origin):
-        allowed, header = allow_origin(origin, config.cors_origin_list)
-        return allowed, {
-            "Access-Control-Allow-Origin": header,
-            "Access-Control-Allow-Headers": "*",
-        }
-
     @app.options("/")
     async def preflight(request: Request):
-        _, headers = _cors_headers(request.headers.get("origin"))
+        _, headers = _cors_headers(request.headers.get("origin"), config)
         if request.headers.get("access-control-request-private-network") == "true":
             headers["Access-Control-Allow-Private-Network"] = "true"
         return Response(status_code=200, headers=headers)
@@ -96,30 +138,7 @@ def create_ankiconnect_app(
 
     @app.post("/")
     async def rpc(request: Request):
-        origin = request.headers.get("origin")
-        allowed, headers = _cors_headers(origin)
-        try:
-            req = await request.json()
-        except ValueError:
-            req = {}
-        if not req:  # empty body → liveness probe
-            return JSONResponse({"apiVersion": "AnkiConnect v.6"}, headers=headers)
-        action_name = req.get("action") or ""
-        if not allowed and action_name != "requestPermission":
-            return JSONResponse(
-                {"result": None, "error": "origin not allowed"},
-                status_code=403,
-                headers=headers,
-            )
-        rt = Runtime(
-            service=app.state.service, config=app.state.config, hub=app.state.hub
-        )
-        if action_name == "requestPermission":  # inject CORS result + origin
-            req.setdefault("params", {})
-            req["params"]["allowed"] = allowed
-            req["params"]["origin"] = origin
-        reply = await dispatch_one(rt, req)
-        return JSONResponse(reply, headers=headers)
+        return await _handle_rpc(request, app, config)
 
     # Additive typed surface for /docs (one POST /actions/<name> per action). The canonical
     # POST / above is the source of truth; these routes call the same dispatch_one.
