@@ -24,7 +24,7 @@
 | Service Worker | **Eigener Worker** `/app/service-worker.js` mit `Service-Worker-Allowed: /app/`, Scope `/app/` | Eigener Cache-Namespace und eigene Eviction; alter Worker bleibt unberührt. Max-Scope = Pfad (REFERENCE §4) |
 | Cache-Strategie | Wie gehabt: nur `GET /shell/static/app/` cache-first. **Plus** Offline-Fallback-Seite für Navigationen (`/app/offline`): bei Netzfehler statt Browserfehler (RESEARCH-pwa Szenario 2) | Kleine Verbesserung ohne Offline-Lernen. Authentifiziertes HTML wird **nie** gecacht |
 | Offline-Seite | Statisches HTML, beim Install precached, ohne Nutzerdaten, ohne Auth | Darf deshalb öffentlich sein |
-| Theme-Color | Aus Tokens (`#ffd43b` bleibt); `<meta name="theme-color">` mit `media`-Varianten hell/dunkel | Dunkel folgt `prefers-color-scheme` (DESIGN §6) |
+| Theme-Color | `<meta name="theme-color">` mit `media`-Varianten hell/dunkel; Werte = `--color-base-100` bzw. Primärfarbe der Themes `aw-light`/`aw-dark` (eine Quelle: Konstanten in Python, aus denselben Hexwerten wie `app-client.css`; Test gleicht beide ab) | Dunkel folgt `prefers-color-scheme` (DESIGN §6); verhindert Drift Theme und Manifest |
 | Icons | Platzhalter beibehalten; **nicht neu erfinden**. Maskable-Safe-Zone prüfen (Glyph innerhalb 80 % Kreis) | Kein genehmigtes Design (REFERENCE §7) |
 | Installations-UI | `beforeinstallprompt` → kleiner Button "Install app" in der Deck-Liste (nur wenn Ereignis feuerte); iOS: statischer Hinweis "Share → Add to Home Screen" nur in Standalone-Erkennung `!navigator.standalone` auf iOS | Chrome-Prompt braucht Nutzerinteraktion (RESEARCH-pwa §3); iOS installiert manuell |
 | Update-Strategie | `CACHE`-Konstante enthält Build-Hash der App-Assets (aus Dateimtime oder Paketversion), nicht manuelles `v1` | Verhindert vergessenes Bumping (REFERENCE §6 "Eviction nur per Konstante") |
@@ -53,7 +53,7 @@ Test: automatisierte Link-Matrix (alle Links je Seite crawlen, Ziel liefert 200/
 | `ankiweb/app.py` | Router einhängen; `PWA_PUBLIC_PATHS` um drei Pfade erweitern (Auth-Guard) |
 | `templates/app/base.html.jinja` | Manifest-Link, Theme-Color (2x), Apple-Tags, Apple-Touch-Icon, SW-Registrierung Scope `/app/` |
 | `static/app/install.js` | `beforeinstallprompt`, iOS-Hinweis |
-| `templates/app/offline.html.jinja` | Offline-Seite (eigenständig, nur `tokens.css` inline oder precached) |
+| `templates/app/offline.html.jinja` | Offline-Seite. Styling: precachte `app-client.css` (Worker cached sie ohnehin unter `/shell/static/app/…`-Regel? **Pfad prüfen**: `app-client.css` liegt unter `/shell/static/`, nicht `/shell/static/app/`; Worker-Regel und Precache-Liste entsprechend anpassen) |
 | `tests/app_client/test_app_pwa.py` | Manifest, SW, Auth, Cache-Regeln |
 | `tests/app_client/test_app_links.py` | Link-Matrix |
 | `docs/pwa-deployment.md` | HTTPS, Host-Whitelist, Cookie, Installation Android/iOS |
@@ -65,9 +65,9 @@ Test: automatisierte Link-Matrix (alle Links je Seite crawlen, Ziel liefert 200/
 - [ ] Manifest: `name` "AnkiWeb", `short_name` "Anki", `id`/`start_url`/`scope` `/app/`, `display: standalone`, Farben, Icons (bestehende Dateien), `application/manifest+json`.
 - [ ] Worker-Quelle als Python-Konstante wie `SERVICE_WORKER_JS`; Header `Cache-Control: no-cache`, `Service-Worker-Allowed: /app/`.
 - [ ] Fetch-Handler: (a) `GET` unter `/shell/static/app/` cache-first (wie bestehend); (b) Navigationen (`req.mode === "navigate"`, Pfad unter `/app/`): `fetch` network-only, bei Fehler `caches.match("/app/offline")`; (c) **alles andere nicht abfangen**.
-- [ ] `install`: precache `/app/offline` und `tokens.css` (Offline-Seite braucht Stil), danach `skipWaiting`.
+- [ ] `install`: precache `/app/offline` und `/shell/static/app-client.css` (Offline-Seite braucht Stil), danach `skipWaiting`. Fetch-Handler (a) deckt `GET /shell/static/app-client.css` und `/shell/static/app/*` ab (Pfadpräfix-Liste, nicht nur `/shell/static/app/`).
 - [ ] `activate`: alte Caches mit Präfix `ankiweb-app-` löschen, `clients.claim()`.
-- [ ] Cache-Name mit Build-Hash.
+- [ ] Cache-Name mit Build-Hash. Der Hash umfasst `app-client.css` und `shell_src/app/*.js`, damit eine CSS-Änderung den cache-first-Eintrag nicht veraltet stehen lässt (sonst bleibt altes Styling auf Geräten).
 - [ ] `PWA_PUBLIC_PATHS` erweitern; **`/app/offline` öffentlich** (enthält keine Daten), `/app/` und Rest bleiben geschützt.
 
 Tests (`test_app_pwa.py`), nur Verhalten:
@@ -75,7 +75,7 @@ Tests (`test_app_pwa.py`), nur Verhalten:
 - [ ] Manifest: `scope == start_url == id == "/app/"`; Icons existieren und liefern 200 (Datei-Existenz-Test, fängt die `.gitignore`-Falle aus Commit `b097545`).
 - [ ] Worker-Header: `Service-Worker-Allowed: /app/`, `no-cache`.
 - [ ] Alter Client unverändert: `/manifest.webmanifest` `scope == "/"`.
-- [ ] **Worker-Logik unter bun mit Fake-`caches`/`fetch`** (Methode aus RESEARCH-fastpwa §4, bewährt): `/shell/static/app/app.css` wird gecacht; `/app/` (HTML), `/app/review`, `POST` werden **nie** gecacht; Navigation bei Netzfehler liefert Offline-Seite; nach Cookie-Entzug wird kein Auth-HTML aus Cache geliefert. Falls `bun` in CI fehlt: Test per `pytest.mark.skipif(shutil.which("bun") is None)`.
+- [ ] **Worker-Logik unter bun mit Fake-`caches`/`fetch`** (Methode aus RESEARCH-fastpwa §4, bewährt): `/shell/static/app-client.css` und `/shell/static/app/*.js` werden gecacht; `/app/` (HTML), `/app/review`, `POST` werden **nie** gecacht; Navigation bei Netzfehler liefert Offline-Seite; nach Cookie-Entzug wird kein Auth-HTML aus Cache geliefert. Falls `bun` in CI fehlt: Test per `pytest.mark.skipif(shutil.which("bun") is None)`.
 
 ### 5.2 Layout-Einbindung
 - [ ] `base.html.jinja`: `link rel=manifest href=/app/manifest.webmanifest`, zwei `theme-color` mit `media="(prefers-color-scheme: ...)"`, `apple-mobile-web-app-capable`, `apple-mobile-web-app-title`, `apple-touch-icon`, Registrierung `register("/app/service-worker.js", {scope: "/app/"})`; Fehler nicht schlucken, sondern `console.warn` (REFERENCE-Stand schluckt still; schlechter zu debuggen).
@@ -117,6 +117,7 @@ Worker-Pfad und Scope stehen an drei Stellen: Route in `pwa.py`/`http_app/pwa.py
 |---|---|
 | Zwei Manifeste/Worker verwirren Installation (Chrome bietet beide an) | Klare Scopes; Test dass Manifest `/` den Scope `/` behält; manuelle Prüfung der Install-Auswahl |
 | Worker-Scope `/app/` vs. Registrierung | Test: `navigator.serviceWorker.getRegistration("/app/")` aktiv und kontrolliert die Seite (Playwright) |
+| cache-first liefert veraltetes `app-client.css` nach Redeploy | Build-Hash im Cache-Namen (5.1); Test: Hash ändert sich bei geänderter CSS-Datei |
 | `/app/offline` öffentlich = Fingerprint der App | Statisch, ohne Daten; akzeptiert |
 | Cookie ohne `secure` unter HTTPS | 5.5, mit Test |
 | iOS-Verhalten (Eviction, Add-to-Home) | **ungeprüft**, offen dokumentiert |

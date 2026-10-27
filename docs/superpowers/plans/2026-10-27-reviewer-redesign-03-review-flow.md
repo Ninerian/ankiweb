@@ -27,7 +27,7 @@ sequenceDiagram
 | Thema | Wahl | Begründung |
 |---|---|---|
 | Karten-HTML | `question_html`/`answer_html` aus dem Kern (sanitized) in `.flashcard` einsetzen | RESEARCH §3a Entscheidung |
-| Stilisierung | Klassen `.av-front-text`, `.av-hint`, `.av-back-text`, `.av-example` aus `app.css` | DESIGN §5.F Stable Class Names |
+| Stilisierung | Server-HTML trägt Klassen `.av-front-text`, `.av-hint`, `.av-back-text`, `.av-example` (DESIGN §5.F); sie werden in `app-client.css` per `@apply` mit Tailwind-Utilities gestylt, weil das Karten-HTML nicht im Template steuerbar ist. Alles andere: daisyUI/Tailwind im Template | DESIGN §5.F Stable Class Names |
 | `*word*` → `<mark>` | Kleines Client-Skript `card-render.js`: arbeitet **nur** auf `.av-example` nach Einfügen. Text ist schon HTML-escaped, nur `<mark>` kommt hinzu | DESIGN §5.F ("Anki hat keinen Template-Filter") |
 | Streak | Client-only in einem Datastar-Signal `_streak` (Präfix `_` wird **nicht** an den Server gesendet, `references/guide-core.md`) | DESIGN §2.A: nur im Speicher, kein Backend |
 | Fortschritt | Serverseitig aus Queue-Zählern: `done = start_total - (new+learning+review)` | Echte Zahlen statt Mockup-Konstanten `14/20`; `start_total` bei Session-Start gespeichert |
@@ -58,7 +58,7 @@ Offen und **ungeprüft** laut Recherche: Verhalten der Queue bei Decks mit gemis
 | `templates/app/_review_bar.html.jinja` | `#bar`: Show-Answer oder Ease-Kacheln |
 | `templates/app/_review_sheet.html.jinja` | Actions-Sheet |
 | `static/app/card-render.js` | `*word*`-Highlight (nur `.av-example`) + Tastatur |
-| `static/app/app.css` | `.hud`, `.flashcard`, `.ease-grid`, `.bottom-sheet`, `.streak` … aus Mockup |
+| `shell_src/app-client.css` | nur Eigenes: `.neo-press`, Keyframes (`streakPop`, `streakReset`, `revealAnswer`), Meter-Stripes, `.av-*`-Karten-Klassen |
 | `tests/app_client/test_review_core.py`, `test_review_routes.py`, `test_review_browser.py` | |
 
 ## Routen
@@ -95,10 +95,14 @@ Spiegeln `_ReviewerHandler` (belegt, `reviewer.py:330-440`), aber **ohne** Hub/W
 - [ ] Mark/Flag-Zustand im Sheet-Label ("Unmark Card", "Remove Flag") kommt vom Server (Fragment `#sheet`).
 - [ ] Fehler (`set_due` ungültig, Undo leer): `error_response` → Toast `#app-error` (Plan 1).
 
-### 3.3 Styling
-- [ ] Mockup-CSS portieren (Press-State, Candy-Stripe, Ease-Farben, Kontrastwerte unverändert).
-- [ ] `prefers-reduced-motion`: Streak-/Reveal-/Meter-Animationen aus.
-- [ ] Safe-Area-Insets oben (HUD) und unten (Ease-Grid), `viewport-fit=cover` aus Plan 1.
+### 3.3 Styling mit daisyUI und Tailwind (Vorlage `mockup.html`)
+- [ ] HUD: daisyUI `navbar` (Back = `btn btn-square`, Streak = `badge badge-lg` mit `data-class` für Pop/Reset, More = `btn btn-square`); Fortschritt = `progress` mit Stripes. Safe-Area oben per `pt-[env(safe-area-inset-top)]`.
+- [ ] Karte: daisyUI `card` mit `rounded-box` und `neo-press`-Schatten; Deck-Tag und Mark/Flag als `badge`. Antwort-Block mit `revealAnswer`-Keyframe, `motion-reduce:animate-none`.
+- [ ] Ease-Grid: `grid grid-cols-4 gap-2`, vier `btn` (`btn-error`, `btn-warning`, `btn-success`, `btn-info`) mit `neo-press`; Taste (`kbd kbd-xs`), Titel, Intervall (`font-mono`). Show-Answer = `btn btn-accent btn-block btn-lg` mit `kbd` SPACE. Unten `pb-[env(safe-area-inset-bottom)]`.
+- [ ] Sheet: daisyUI `modal modal-bottom` mit `modal-box`; Öffnen/Schließen über Datastar-Signal `sheetOpen` und `data-class:modal-open="$sheetOpen"` (vollständiger Klassenname). Tiles = `btn` im `grid grid-cols-2`, Delete = `btn-error btn-outline`. Mode-Switch = daisyUI `join` mit zwei `btn` (`btn-active` für aktuell) und `aria-current`. Backdrop-Klick: `modal-backdrop` als `<form method="dialog">`-freies Element mit `data-on:click="$sheetOpen = false"`. Hinweis: native `<dialog>`/`showModal` ist **nicht** nötig; `modal-open` genügt und vermeidet Block-JS (Gotcha #24).
+- [ ] Toast = daisyUI `toast toast-top toast-center` mit `alert`.
+- [ ] Ease-Kontrast gemessen (Plan 1, 1.0) in beiden Themes; Streak-Text (`--color-streak-text` im Mockup) als `text-warning-content` oder eigener Theme-Wert, Messung entscheidet.
+- [ ] `motion-reduce:` für Streak, Reveal, Meter.
 
 ### 3.4 Tests
 Routen (`TestClient`, Collection mit 3 Karten):
@@ -127,6 +131,8 @@ Browser (Playwright, `importorskip`):
 ## Risiken
 | Risiko | Gegenmaßnahme |
 |---|---|
+| `data-class` mit dynamisch gebautem Klassennamen wird von Tailwind nicht erkannt | nur vollständige Namen (`modal-open`, `animate-streak-pop`) |
+| daisyUI-`modal` ohne `<dialog>` hat keine Fokus-Falle | Fokus-Falle und Escape in `window.avSheetKey` (Delegation), `aria-modal`/`role="dialog"` setzen, im Browser-Test prüfen |
 | Datastar-Ausdrücke mit Ternär/`++` auf `_`-Signal fehlerhaft | Smoke im Browser vor Tests; Fallback: Streak in `card-render.js` führen |
 | Antwort steht im HTML vor Reveal (Spoiler im Quelltext) | Akzeptiert (Single-User-Lernapp, kein Wettbewerb); in Doku vermerken |
 | Fremde Note-Types brechen Layout | Task 0 Default (Anzeige "wie sie sind" + Badge) |
@@ -139,7 +145,7 @@ Browser (Playwright, `importorskip`):
 3. `Add review fragments: stage, bar, progress, finished state`
 4. `Add card-render.js: example highlight and keyboard guard`
 5. `Add actions sheet and action routes`
-6. `Style review from mockup incl. reduced motion and safe areas`
+6. `Style review with daisyUI and tailwind incl. reduced motion and safe areas`
 7. `Add review route and browser tests`
 8. `Record queue filter spike result in DESIGN.md`
 

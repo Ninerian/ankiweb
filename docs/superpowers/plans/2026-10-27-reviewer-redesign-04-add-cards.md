@@ -37,7 +37,7 @@ Folgen fürs Design (ins `DESIGN.md` §5.D/§6 nachtragen): "Pop to editor" = Ka
 | Speichern | `POST /app/add/commit` (Signale als JSON) | Server validiert, escaped, fügt hinzu |
 | Stapel | Server rendert `#stack` aus den **in dieser Sitzung** hinzugefügten Noten-IDs (Session-Liste, wie `StudySession` in Plan 1), nicht aus Suche | "Stapel" = diese Sitzung, nicht alle Karten des Decks |
 | Edit-last | `POST /app/add/edit/{nid}` lädt Felder in Signale (Unescape!), nächster `commit` mit `nid` → `update_note` | Note existiert bereits |
-| Animation | CSS-Keyframes aus Mockup (`slideToStack`, `popInFreshCard`, `stackPillPop`), ausgelöst per Klasse nach SSE-Patch; `prefers-reduced-motion` aus | Gotcha #15/#19 |
+| Animation | Keyframes aus Mockup in `app-client.css` (`slideToStack`, `popInFreshCard`, `stackPillPop`), ausgelöst per vollständiger Klasse nach SSE-Patch (Neustart via `data-ts`, Gotcha #19); `motion-reduce:animate-none` | Gotcha #15/#19 |
 | Note-Type-Anlage | `ensure_vocab_model(col)` beim ersten `GET /app/add` (idempotent) | Kein manueller Setup-Schritt; wiederverwendet `createModel`-Logik |
 | Wiederverwendung | `_create_model`-Logik **nicht** aus `core.ankiconnect_actions.actions.models` importieren (privat); eigene 12 Zeilen in `core/app_client/vocab.py` | Kein Zugriff auf Underscore-Funktion eines anderen Moduls; Kern bleibt klein |
 
@@ -53,7 +53,7 @@ Speichern: `html.escape(value, quote=False)` (nur `& < >`; Anführungszeichen un
 | `http_app/add.py` | Routen |
 | `templates/app/add.html.jinja`, `_add_stack.html.jinja`, `_add_summary.html.jinja` | Seite, Stapel, Zusammenfassung |
 | `static/app/add.js` | nur Zeichenzähler-freie Helfer: Guard-Funktion, Chip-Insert (Umlaute/Artikel), Focus-Management |
-| `static/app/app.css` | Wizard, Stack, Peek-Bar, Modal |
+| `shell_src/app-client.css` | nur Eigenes: Keyframes (`slideToStack`, `popInFreshCard`, `popCardUp`, `stackPillPop`), Stapel-Offsets/Rotationen als Utility-Klassen `.stack-0 … .stack-3` |
 | `tests/app_client/test_vocab.py`, `test_add_routes.py`, `test_add_browser.py` | |
 
 ## Aufgaben
@@ -86,6 +86,15 @@ Speichern: `html.escape(value, quote=False)` (nur `& < >`; Anführungszeichen un
 - [ ] Finish: zeigt Summary-Modal mit Anzahl (`role="dialog"`, `aria-modal`, Fokus-Falle, Escape); Buttons "Keep adding" / "Start studying" → `/app/review?deck=<id>`. Guard bei ungespeichertem Text. Leerer Stapel → Toast "Add a card to your stack first."
 - [ ] Exit/Chip/Study-Link: `onclick`-frei; Guard über `data-on:click="window.avGuardNav(evt)"` das bei Abbruch `evt.preventDefault()` aufruft. `beforeunload`-Warnung bei Tab-Schließen mit ungespeichertem Text ergänzen (Mockup hat nur den Klick-Guard; **Erweiterung**, klein, optional).
 
+### 4.2b Styling mit daisyUI und Tailwind (Vorlage `editor-mockup.html`)
+- [ ] Schritte: daisyUI `steps steps-horizontal` (Pills `step step-primary` per `data-class`), aktive Karte = `card` mit `neo-press`. Textareas = `textarea textarea-bordered textarea-lg w-full`; Zähler `text-xs opacity-70`.
+- [ ] Optionale Felder: daisyUI `collapse collapse-arrow` mit `<details>`-Verhalten (`<details class="collapse">`); Chips = `btn btn-xs btn-outline`.
+- [ ] Preview: `card` mit Abschnitts-`badge`; Hint/Example-Abschnitte nur gerendert, wenn gefüllt (Server-Fragment).
+- [ ] Primär-Button `btn btn-success btn-block btn-lg` (Add to Stack), Zurück `btn btn-ghost`. Stack-Pill im HUD = `badge badge-lg` mit Pop-Klasse.
+- [ ] Stapel: absolut positionierte `card`-Layer mit `.stack-0 … .stack-3` (Offsets +32/+64/+96 px, Rotationen -3.2/+2.8/-2.0°), oberste mit `badge badge-accent` "TOP CARD". Peek-Bar = `btn btn-block`.
+- [ ] Summary = daisyUI `modal` mit `modal-box`, `role="dialog"`, `aria-modal`, Fokus-Falle über `window.avModalKey`; Öffnen per Signal `summaryOpen` und `data-class:modal-open`.
+- [ ] Toast wie Plan 3. Safe-Area unten für die Aktionsleiste.
+
 ### 4.3 Tests
 Routen (`TestClient`):
 - [ ] Commit legt Note im Ziel-Deck an, Typ `AnkiWeb Vocab`, Felder escaped; Stack-Fragment enthält neue Karte; Zähler +1.
@@ -116,6 +125,7 @@ Browser (Playwright):
 |---|---|
 | Doppelte Escape/Unescape | Round-Trip-Tests (4.1) |
 | Typname existiert mit anderem Aufbau | `ensure_vocab_model` bricht mit Meldung ab |
+| daisyUI `collapse` und natives `<details>` kollidieren im Zustand | Variante mit `<details class="collapse">` im Browser-Test prüfen; Fallback: eigenes `data-show` |
 | Datastar-`data-bind` auf `<details>`/Textarea-Cursor-Insert | Chip-Insert in `add.js`; Smoke zuerst |
 | Stack-Sitzungsliste verloren bei Server-Neustart | akzeptiert; Karten selbst bleiben |
 | Mehrere Tabs teilen Stack-Liste | akzeptiert, gleiche Begründung wie Plan 1 |
@@ -130,6 +140,6 @@ Browser (Playwright):
 3. `Add add-commit route and stack fragment`
 4. `Add edit-last route with unescape round trip`
 5. `Add finish summary modal and navigation guard`
-6. `Style add wizard from editor mockup`
+6. `Style add wizard with daisyUI and tailwind`
 7. `Add add-flow route and browser tests`
 8. `Update DESIGN.md: persist per card, Finish semantics`

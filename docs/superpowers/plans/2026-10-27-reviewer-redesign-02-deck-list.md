@@ -37,7 +37,7 @@
 | `ankiweb/adapters/inbound/http_app/decks.py` | `GET /app/` (+ `GET /app` Redirect), Router-Factory |
 | `.../templates/app/decks.html.jinja` | Seite |
 | `.../templates/app/_deck_row.html.jinja` | Zeile (eigene Datei, wiederverwendbar für Fragment-Updates) |
-| `ankiweb/shell/static/app/app.css` | Klassen `.deck-card`, `.stripe`, `.search`, `.empty` (aus Mockup) |
+| `shell_src/app-client.css` | nur `.neo-press` und Meter-Stripes, falls nicht schon aus Plan 1 vorhanden |
 | `tests/app_client/test_decks.py` | Kern + HTTP |
 | `tests/app_client/test_decks_browser.py` | Playwright-Smoke (optional per `importorskip`, wie `test_study_loop_home.py`) |
 
@@ -84,10 +84,12 @@ Tests (`TestClient`, ohne Browser):
 - [ ] Mit Passwort: 303 ohne Cookie.
 - [ ] Kein Verweis auf alte Assets (Isolations-Test aus Plan 1 deckt ab; hier Wiederverwendung der Hilfsfunktion).
 
-### 2.3 Styling (aus `decks-mockup.html`)
-- [ ] Zeilen-Klassen, Candy-Stripe, Press-State (`translate(2px,2px)`, Schatten 0), Fokus-Ring, `min-height: 44px` Touch-Ziele.
-- [ ] `prefers-reduced-motion: reduce` deaktiviert Press-/Stripe-Animation (im Mockup nicht belegt: **prüfen**, sonst ergänzen).
-- [ ] `env(safe-area-inset-*)` in Header/Footer (RESEARCH-pwa §6 offen: Standalone-Modus; hier vorsorglich).
+### 2.3 Styling mit daisyUI und Tailwind (Vorlage `decks-mockup.html`)
+- [ ] Zeile = daisyUI `card card-border` mit `neo-press`; Inhalt per Tailwind-Flex. Emoji als `text-3xl`, Name `font-black tracking-tight`, Zähler als `badge badge-info` (New) und `badge badge-error` bzw. `badge-success` (Due), Learn = `btn btn-primary`, Edit/Add = `btn btn-ghost`.
+- [ ] Fortschritt = daisyUI `progress progress-accent` mit Stripes aus `app-client.css`; `role="progressbar"` und `aria-valuenow` bleiben (daisyUI `progress` ist `<progress>`: dann reicht `value`/`max` und der native Role, **prüfen**, welche Variante im Test stabiler ist).
+- [ ] Suche = daisyUI `input input-bordered` in `label` (mit sichtbarem oder `sr-only` Text). Leerzustand = daisyUI `alert` oder zentrierter Block.
+- [ ] Touch-Ziele `min-h-11`; Fokus-Ring über daisyUI-Default; `motion-reduce:` für Press/Stripes; Safe-Area per `pt-[env(safe-area-inset-top)]` und `pb-[env(safe-area-inset-bottom)]`.
+- [ ] Klassen **vollständig** im Template ausschreiben (kein `badge-{{ x }}`); Due/New-Farbe über feste Zuordnung im Template.
 
 ### 2.4 Browser-Smoke
 - [ ] Wegwerf-Server mit 5 Decks (Namen/Zähler wie REFERENCE §2.1), Headless-Chromium 375x812 hell/dunkel.
@@ -104,6 +106,7 @@ Tests (`TestClient`, ohne Browser):
 ## Risiken
 | Risiko | Gegenmaßnahme |
 |---|---|
+| Tailwind-Klasse fehlt im Build (z. B. neue Utility nur im Template) | Klassen-Test aus Plan 1; `npm run build` vor Smoke |
 | Datastar-Ausdruck mit Deck-Namen enthält Quotes/Backslashes | Name über `tojson`-Filter in den Ausdruck; Test mit `'`, `"`, `\` im Namen |
 | Zähler weichen von Anki Desktop ab (Limits, Kinder) | Test gegen `deck_due_tree`; Abweichung dokumentieren statt neu berechnen |
 | Emoji-Erkennung zerlegt Graphem-Cluster | Test mit Flaggen und ZWJ-Sequenzen; Fallback Standard-Emoji |
@@ -112,6 +115,6 @@ Tests (`TestClient`, ohne Browser):
 ## Commits
 1. `Add deck_rows core: counts, emoji split, progress`
 2. `Add /app/ deck list route and templates`
-3. `Style deck list from decks mockup`
+3. `Style deck list with daisyUI and tailwind`
 4. `Add deck list tests incl. escaping and auth`
 5. `Add deck list browser smoke test`

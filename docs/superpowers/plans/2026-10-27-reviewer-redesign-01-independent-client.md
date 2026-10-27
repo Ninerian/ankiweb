@@ -27,8 +27,8 @@
 | Auth | `/app/*` bleibt hinter `_auth_guard` (Session-Cookie). Keine Änderung am Guard. Manifest/SW-Ausnahmen existieren bereits |
 | State der In-flight-Karte | Serverseitig, **eine `StudySession` je Browser-Session**, Schlüssel = zufälliges Cookie `app_sid` (httponly, samesite=lax), im Speicher (`dict`, LRU ≤ 8). Zwei Tabs im selben Browser teilen sie, Stale-Answer wird per `cardId`-Check mit 409 abgelehnt |
 | Fehlerform | Datastar-Signal `error` via vorhandenes `error_response` (`http_datastar/common.py`) |
-| CSS | Eigene Dateien `ankiweb/shell/static/app/*.css`, **nicht** `app.css`/`theme.css` (daisyUI) laden |
-| Bundles | Kein Build-Schritt: statisches CSS/JS (Mockups sind schon so), Datastar aus `/shell/static/datastar.js` |
+| CSS | **Tailwind 4 + daisyUI 5** über eigenen Entry `shell_src/app-client.css` → `ankiweb/shell/static/app-client.css` (Styling-Vertrag in Übersicht). Das alte `app.css`/`theme.css`/`components.css` wird **nicht** geladen |
+| Build | `npm run build` erzeugt `app-client.css` zusätzlich (neues Skript `build:css:app`). JS bleibt unbundled: statische Dateien unter `shell_src/app/*.js`, kopiert nach `ankiweb/shell/static/app/` (wie `dialogs.js` in `tools/build_shell.mjs`, sonst wären sie gitignoriert und fehlten im Docker-Image). Datastar aus `/shell/static/datastar.js` |
 | i18n | UI-Texte Englisch wie Mockups; `tr.*` nur für Ease-Labels (kommen fertig von `describe_next_states`). Lokalisierung = ungeprüft, nicht im Scope |
 | Sanitizing | Karten-HTML kommt aus dedizierten Typen. Vor Einfügen `sanitize_html` (`core/html_sanitize.py`) anwenden (RESEARCH §3a: Felder können aus Importen stammen) |
 
@@ -42,8 +42,8 @@
 | `ankiweb/adapters/inbound/http_app/layout.py` | `render_app_page(title, body, *, active, scripts=())` |
 | `ankiweb/adapters/inbound/http_app/session.py` | Cookie `app_sid` + `SessionStore` |
 | `ankiweb/adapters/inbound/http_shared/templates/app/base.html.jinja` | Dokument-Gerüst (eigenes, **nicht** `shell.html.jinja`) |
-| `ankiweb/shell/static/app/tokens.css` | `:root` + dunkle Variante, aus `mockup.html` extrahiert |
-| `ankiweb/shell/static/app/app.css` | Basis-Komponenten (HUD, Button, Sheet) |
+| `shell_src/app-client.css` | Tailwind-Entry: `@import "tailwindcss"`, `@plugin "daisyui" { themes: false; }`, zwei `@plugin "daisyui/theme"` (`aw-light` default, `aw-dark` prefersdark), `@source`-Zeilen, `@layer components` für `.neo-press`, Meter-Stripes, Keyframes |
+| `tools/build_shell.mjs`, `package.json` | `shell_src/app/*.js` kopieren; Skript `build:css:app` in `build` aufnehmen |
 | `ankiweb/app.py` | **eine** Zeile: `app.include_router(build_app_router(...))` vor Media-Router |
 | `tests/app_client/conftest.py` | Fixtures `col_with_vocab`, `client`, `live_app` |
 | `tests/app_client/test_study_core.py` | Kernlogik |
@@ -51,10 +51,12 @@
 
 ## Aufgaben
 
-### 1.0 Design-Tokens extrahieren (kein Code-Risiko)
-- [ ] `:root` und `[data-theme="dark"]` Variablen aus `mockup.html` (Zeilen `<style>`) kopieren nach `static/app/tokens.css`. Dunkel **per `@media (prefers-color-scheme: dark)`** statt JS-`data-theme` (DESIGN §6: "dark palette applied via prefers-color-scheme"; spart Inline-JS, vermeidet FOUC).
-- [ ] Gemeinsame Basisklassen (`.btn`, `.hud`, `.sheet`, Fokus-Ring) nach `app.css`. Kontrast ≥ 4.5:1 beibehalten (REFERENCE §3, bereits gefixt in Mockups: Werte 1:1 übernehmen, nicht neu wählen).
-- [ ] Verifikation: Seite mit nur diesen CSS-Dateien lädt ohne `/shell/static/app.css`.
+### 1.0 Tailwind/daisyUI-Theme und Build (kein Code-Risiko)
+- [ ] `shell_src/app-client.css` nach Styling-Vertrag anlegen. Mockup-Palette (`mockup.html` `:root` und Dark-Block) auf daisyUI-Variablen abbilden; Mapping-Tabelle als Kommentar im CSS. Dunkel per `prefersdark: true` (Compile belegt `@media (prefers-color-scheme: dark) { :root:not([data-theme]) … }`), kein JS, kein Toggle.
+- [ ] `package.json`: `build:css:app`, in `build` einbinden; `tools/build_shell.mjs` kopiert `shell_src/app/*.js`.
+- [ ] `.gitignore` braucht keine Änderung (`ankiweb/shell/static/*` ignoriert Artefakte, Quellen liegen in `shell_src/`). Docker-Frontend-Stage prüfen: ruft sie `npm run build`? Falls sie `build:css` einzeln aufruft, `build:css:app` ergänzen (`Dockerfile` lesen, nicht raten).
+- [ ] **Kontrast messen**, nicht annehmen: WCAG-Verhältnis für Ease-Text auf Ease-Fläche in beiden Themes ≥ 4.5:1 (kleines Skript im Test, sRGB-Luminanz). Mockup-Werte wurden in `REFERENCE.md` §3 nach zwei QA-Runden korrigiert; beim Mapping auf `--color-*` und `--color-*-content` können sie wieder abweichen.
+- [ ] Verifikation: `/app/ping` lädt nur `app-client.css`; `npm run build` läuft sauber; Datei enthält `aw-light` und `aw-dark`.
 
 ### 1.1 Study-Kern (TDD)
 `core/app_client/study.py`, reines Python auf `Collection`:
@@ -98,14 +100,16 @@ Tests (`test_study_core.py`, `temp_collection` aus `tests/conftest.py`):
 
 ### 1.2 Router, Layout, Session
 - [ ] `http_app/__init__.py`: `build_app_router(get_service) -> APIRouter(prefix="/app")`; inkludiert Sub-Router der Pläne 2 bis 4 (jetzt leer, nur Healthprobe `GET /app/ping` → 200, für Smoke).
-- [ ] `layout.py::render_app_page` rendert `app/base.html.jinja`: `<meta viewport-fit=cover>`, Tokens/App-CSS, `datastar.js` (module), Manifest/Theme-Color-Tags **noch nicht** (Plan 5, hält Schritte unabhängig).
+- [ ] `layout.py::render_app_page` rendert `app/base.html.jinja`: `<meta viewport-fit=cover>`, `app-client.css`, `datastar.js` (module), Manifest/Theme-Color-Tags **noch nicht** (Plan 5, hält Schritte unabhängig).
 - [ ] `session.py`: `SessionStore` (LRU 8), `get_session(request) -> StudySession` setzt Cookie `app_sid` bei Bedarf. Kein `localStorage`, Server ist Quelle der Wahrheit (Tao).
 - [ ] `app.py`: `app.include_router(build_app_router(lambda: app.state.service))` **vor** `build_media_router`. Test sichert Reihenfolge (`GET /app/ping` nicht 404 durch Catch-All).
-- [ ] Datastar-Basis: `<body data-signals="{error: ''}">`. Fehler-Toast-Element `#app-error` mit `data-show="$error"` + `style="display:none"` (Gotcha #4), `data-text="$error"`.
+- [ ] Datastar-Basis: `<body data-signals="{error: ''}">`. Fehler als daisyUI `toast` + `alert alert-error` (`#app-error`) mit `data-show="$error"` + `style="display:none"` (Gotcha #4), `data-text="$error"`. Kein Tailwind-`hidden` zusammen mit `data-show`.
 
 Tests (`test_app_shell.py`):
 - [ ] `GET /app/ping` 200 ohne Passwort; mit Passwort 303 → `/login`; mit Cookie 200.
-- [ ] Seite enthält **keine** Referenz auf `/_anki/`, `reviewer.js`, `editor.js`, `/ws`, `bootstrap.js`, `/shell/static/app.css` (Isolations-Test, Substring-Check über `render_app_page`).
+- [ ] Seite enthält **keine** Referenz auf `/_anki/`, `reviewer.js`, `editor.js`, `/ws`, `bootstrap.js`, `/shell/static/app.css`, `theme.css`, `components.css` (Isolations-Test, Substring-Check über `render_app_page`) und referenziert `app-client.css`.
+- [ ] Build-Test: `app-client.css` existiert, enthält `aw-light`, `aw-dark` und `prefers-color-scheme`; keine `data-theme`-Setzung im Layout.
+- [ ] Klassen-Test: alle Klassen aus `http_app`-Templates (Regex auf `class="…"`) kommen im gebauten CSS vor oder stehen auf einer kleinen Ausnahmeliste (Datastar-Selektoren wie `av-*`).
 - [ ] Router-Reihenfolge vor Media-Catch-All.
 - [ ] `app_sid` Cookie: httponly, samesite=lax, gesetzt nur wenn nötig.
 
@@ -125,9 +129,11 @@ Tests (`test_app_shell.py`):
 | Zwei Tabs teilen In-flight-Karte | 409 per `cardId`; UI lädt bei 409 neu (Plan 3). Dokumentiert, nicht gelöst (RESEARCH Limit) |
 | `get_queued_cards`-Felder heißen anders in `anki` 26.9.2 | Task 1.1 beginnt mit 5-Zeilen-Check per `uv run python` gegen Wegwerf-Collection, Namen in Docstring festhalten |
 | Cookie-Store unbegrenzt | LRU 8, Test |
+| Tailwind erkennt Klassen nicht (Konkatenation, fehlendes `@source`) | Klassen-Test oben; nur vollständige Klassennamen im Code |
+| daisyUI-Geometrie weicht vom Mockup ab | Ziel ist gleiche Wirkung, nicht Pixelgleichheit; Abweichungen im Screenshot-Vergleich benennen |
 
 ## Commits
-1. `Add app client design tokens and base css`
+1. `Add app-client tailwind entry with aw-light/aw-dark daisyUI themes`
 2. `Add study core: queue head, answer, stale-card guard` (Tests in demselben Commit)
 3. `Add /app router, layout and session store`
 4. `Wire /app router before media catch-all`
