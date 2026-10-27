@@ -15,7 +15,7 @@
             <span class="ml-3 text-base-content/60 text-sm" id="vt-status">Rendered rows: <span id="vt-slice-count">0</span> | Current slice: <span id="vt-slice-range">0 - 0</span></span>
         </div>
 
-        <div style="height: 350px; border: 1px solid var(--border-subtle, #dee2e6); border-radius: 4px; overflow: hidden;">
+        <div class="h-[350px] overflow-hidden rounded-[4px] border border-solid border-base-300">
             {{ virtual_table(
                 id="demo-vt-100k",
                 items_count=100000,
