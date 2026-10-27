@@ -1,0 +1,199 @@
+{% set has_sel = (selected_cids | length) > 0 %}
+{% set is_single = (selected_cids | length) == 1 %}
+<div id="browser-actions" class="flex flex-wrap items-center gap-1 ms-auto" data-attr:inert="$_browserBusy">
+  <!-- Category 1: Learning -->
+  <details
+    id="browser-actions-learning"
+    class="dropdown dropdown-end"
+    name="browser-actions"
+    data-preserve-attr="open"
+  >
+    <summary
+      id="btn-actions-learning"
+      class="btn btn-sm btn-outline inline-flex items-center gap-1"
+      role="button"
+    >
+      <span>{{ tr.scheduling_learning() }}</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </summary>
+    <ul class="dropdown-content menu bg-base-100 rounded-box border border-base-300 shadow-sm z-50 p-1 w-52 text-sm browser-action-panel">
+      <li>
+        <button
+          id="btn-suspend"
+          type="button"
+          data-indicator:_browser-busy
+          data-attr:disabled="{% if not has_sel %}true{% else %}$_browserBusy{% endif %}"
+          {% if not has_sel %}disabled{% endif %}
+          data-on:click="el.closest('details')?.removeAttribute('open'), @post('/browse/suspend', {contentType: 'form', selector: '#browser-state'})"
+        >
+          {{ tr.studying_suspend() }}
+        </button>
+      </li>
+      <li>
+        <button
+          id="btn-unsuspend"
+          type="button"
+          data-indicator:_browser-busy
+          data-attr:disabled="{% if not has_sel %}true{% else %}$_browserBusy{% endif %}"
+          {% if not has_sel %}disabled{% endif %}
+          data-on:click="el.closest('details')?.removeAttribute('open'), @post('/browse/unsuspend', {contentType: 'form', selector: '#browser-state'})"
+        >
+          {{ tr.actions_unbury_unsuspend() }}
+        </button>
+      </li>
+      <li>
+        <button
+          id="btn-forget"
+          type="button"
+          data-indicator:_browser-busy
+          data-attr:disabled="{% if not has_sel %}true{% else %}$_browserBusy{% endif %}"
+          {% if not has_sel %}disabled{% endif %}
+          data-on:click="el.closest('details')?.removeAttribute('open'), @post('/browse/forget', {contentType: 'form', selector: '#browser-state'})"
+        >
+          {{ tr.actions_forget_card() }}
+        </button>
+      </li>
+      <li>
+        <button
+          id="btn-setdue"
+          type="button"
+          data-indicator:_browser-busy
+          data-attr:disabled="{% if not has_sel %}true{% else %}$_browserBusy{% endif %}"
+          {% if not has_sel %}disabled{% endif %}
+          data-on:click="el.closest('details')?.removeAttribute('open'), @get('/browse/dialog/setdue', {contentType: 'form', selector: '#browser-state'})"
+        >
+          {{ tr.actions_set_due_date() }}
+        </button>
+      </li>
+    </ul>
+  </details>
+
+  <!-- Category 2: Organize -->
+  <details
+    id="browser-actions-organize"
+    class="dropdown dropdown-end"
+    name="browser-actions"
+    data-preserve-attr="open"
+  >
+    <summary
+      id="btn-actions-organize"
+      class="btn btn-sm btn-outline inline-flex items-center gap-1"
+      role="button"
+    >
+      <span>{{ (tr.actions_manage() | tr_clean).replace('…', '').replace('...', '').strip() }}</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </summary>
+    <ul class="dropdown-content menu bg-base-100 rounded-box border border-base-300 shadow-sm z-50 p-1 w-52 text-sm browser-action-panel">
+      <li>
+        <button
+          id="btn-changedeck"
+          type="button"
+          data-indicator:_browser-busy
+          data-attr:disabled="{% if not has_sel %}true{% else %}$_browserBusy{% endif %}"
+          {% if not has_sel %}disabled{% endif %}
+          data-on:click="el.closest('details')?.removeAttribute('open'), @get('/browse/dialog/changedeck', {contentType: 'form', selector: '#browser-state'})"
+        >
+          {{ tr.browsing_change_deck() }}
+        </button>
+      </li>
+      <li>
+        <button
+          id="btn-addtag"
+          type="button"
+          data-indicator:_browser-busy
+          data-attr:disabled="{% if not has_sel %}true{% else %}$_browserBusy{% endif %}"
+          {% if not has_sel %}disabled{% endif %}
+          data-on:click="el.closest('details')?.removeAttribute('open'), @get('/browse/dialog/addtag', {contentType: 'form', selector: '#browser-state'})"
+        >
+          {{ tr.editing_tags_add() }}
+        </button>
+      </li>
+      <li>
+        <button
+          id="btn-removetag"
+          type="button"
+          data-indicator:_browser-busy
+          data-attr:disabled="{% if not has_sel %}true{% else %}$_browserBusy{% endif %}"
+          {% if not has_sel %}disabled{% endif %}
+          data-on:click="el.closest('details')?.removeAttribute('open'), @get('/browse/dialog/removetag', {contentType: 'form', selector: '#browser-state'})"
+        >
+          {{ tr.actions_remove_tag() }}
+        </button>
+      </li>
+    </ul>
+  </details>
+
+  <!-- Category 3: Cards -->
+  <details
+    id="browser-actions-cards"
+    class="dropdown dropdown-end"
+    name="browser-actions"
+    data-preserve-attr="open"
+  >
+    <summary
+      id="btn-actions-cards"
+      class="btn btn-sm btn-outline inline-flex items-center gap-1"
+      role="button"
+    >
+      <span>{{ tr.browsing_cards() }}</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </summary>
+    <ul class="dropdown-content menu bg-base-100 rounded-box border border-base-300 shadow-sm z-50 p-1 w-52 text-sm browser-action-panel">
+      <li>
+        <a
+          id="btn-cardinfo"
+          class="{% if not is_single %}btn-disabled menu-disabled pointer-events-none opacity-50{% endif %}"
+          role="button"
+          tabindex="{% if is_single %}0{% else %}-1{% endif %}"
+          aria-disabled="{% if is_single %}false{% else %}true{% endif %}"
+          {% if is_single %}href="/card-info/{{ selected_cids[0] }}"{% endif %}
+          data-attr:href="{% if is_single %}$_browserBusy ? null : '/card-info/{{ selected_cids[0] }}'{% else %}null{% endif %}"
+          data-attr:aria-disabled="{% if is_single %}$_browserBusy ? 'true' : 'false'{% else %}'true'{% endif %}"
+          data-attr:tabindex="{% if is_single %}$_browserBusy ? '-1' : '0'{% else %}-1{% endif %}"
+          data-class="{'btn-disabled menu-disabled pointer-events-none opacity-50': {% if is_single %}$_browserBusy{% else %}true{% endif %}}"
+          data-on:click="({% if not is_single %}true{% else %}$_browserBusy{% endif %}) ? evt.preventDefault() : el.closest('details')?.removeAttribute('open')"
+        >
+          {{ tr.actions_card_info() }}
+        </a>
+      </li>
+      <li>
+        <a
+          id="btn-changenotetype"
+          class="{% if not has_sel %}btn-disabled menu-disabled pointer-events-none opacity-50{% endif %}"
+          role="button"
+          tabindex="{% if has_sel %}0{% else %}-1{% endif %}"
+          aria-disabled="{% if has_sel %}false{% else %}true{% endif %}"
+          {% if has_sel %}href="/change-notetype?cids={{ selected_cids | join(',') }}"{% endif %}
+          data-attr:href="{% if has_sel %}$_browserBusy ? null : '/change-notetype?cids={{ selected_cids | join(',') }}'{% else %}null{% endif %}"
+          data-attr:aria-disabled="{% if has_sel %}$_browserBusy ? 'true' : 'false'{% else %}'true'{% endif %}"
+          data-attr:tabindex="{% if has_sel %}$_browserBusy ? '-1' : '0'{% else %}-1{% endif %}"
+          data-class="{'btn-disabled menu-disabled pointer-events-none opacity-50': {% if has_sel %}$_browserBusy{% else %}true{% endif %}}"
+          data-on:click="({% if not has_sel %}true{% else %}$_browserBusy{% endif %}) ? evt.preventDefault() : el.closest('details')?.removeAttribute('open')"
+        >
+          {{ tr.browsing_change_notetype() }}
+        </a>
+      </li>
+      <li><hr class="border-base-300 my-1"></li>
+      <li>
+        <button
+          id="btn-delete"
+          class="{% if not has_sel %}menu-disabled disabled:opacity-50 disabled:text-base-content/40 disabled:pointer-events-none{% else %}text-error hover:bg-error/10{% endif %}"
+          type="button"
+          data-indicator:_browser-busy
+          data-attr:disabled="{% if not has_sel %}true{% else %}$_browserBusy{% endif %}"
+          {% if not has_sel %}disabled{% endif %}
+          data-class="{'menu-disabled disabled:opacity-50 disabled:text-base-content/40 disabled:pointer-events-none': {% if not has_sel %}true{% else %}$_browserBusy{% endif %}, 'text-error hover:bg-error/10': {% if has_sel %}!$_browserBusy{% else %}false{% endif %}}"
+          data-on:click="el.closest('details')?.removeAttribute('open'), @get('/browse/dialog/delete', {contentType: 'form', selector: '#browser-state'})"
+        >
+          {{ tr.actions_delete() }}
+        </button>
+      </li>
+    </ul>
+  </details>
+</div>

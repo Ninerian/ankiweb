@@ -1,0 +1,71 @@
+<script>
+  (function() {
+    // Refresh the browser list only when its active editor confirms a persisted change.
+    window.addEventListener('message', function(event) {
+      var editorFrame = document.getElementById('editor-frame');
+      if (!editorFrame || event.source !== editorFrame.contentWindow || event.origin !== window.location.origin) return;
+      if (!event.data || event.data.type !== 'ankiweb:editor-saved') return;
+      window.dispatchEvent(new CustomEvent('ankiweb:browser-refresh'));
+    });
+    // Helpers for mobile detail modal opening and closing
+    window.ankiwebOpenMobileDetail = function() {
+      if (window.innerWidth < 768) {
+        var p = document.getElementById('detail-offcanvas');
+        if (p && typeof p.showModal === 'function' && !p.open) {
+          p.showModal();
+        }
+      }
+    };
+
+    window.ankiwebCloseMobileDetail = function() {
+      var p = document.getElementById('detail-offcanvas');
+      if (p && typeof p.close === 'function' && p.open) {
+        p.close();
+      }
+    };
+
+    // Single #detail node: desktop aside on md+, bottom modal slot below md
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(min-width: 768px)');
+      var placeDetail = function() {
+        var d = document.getElementById('detail');
+        var host = document.getElementById(mq.matches ? 'detail-desktop' : 'detail-mobile-slot');
+        if (d && host && d.parentNode !== host) host.appendChild(d);
+      };
+      mq.addEventListener('change', function(e) {
+        if (e.matches) {
+          ['sidebar-offcanvas', 'detail-offcanvas'].forEach(function(id) {
+            var d = document.getElementById(id);
+            if (d && typeof d.close === 'function' && d.open) {
+              d.close();
+            }
+          });
+        }
+        placeDetail();
+      });
+      placeDetail();
+    }
+
+    // Close browser action dropdowns on outside click or Escape
+    var actionGroup = document.getElementById('browser-actions');
+    if (actionGroup) {
+      document.addEventListener('click', function(evt) {
+        var openDetails = actionGroup.querySelectorAll('details[open]');
+        openDetails.forEach(function(d) {
+          if (!d.contains(evt.target)) {
+            d.removeAttribute('open');
+          }
+        });
+      }, true);
+      document.addEventListener('keydown', function(evt) {
+        if (evt.key === 'Escape') {
+          var openDetails = actionGroup.querySelectorAll('details[open]');
+          openDetails.forEach(function(d) {
+            d.removeAttribute('open');
+            d.querySelector('summary')?.focus();
+          });
+        }
+      });
+    }
+  })();
+</script>

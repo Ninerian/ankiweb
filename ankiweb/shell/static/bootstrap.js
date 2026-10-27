@@ -22,8 +22,8 @@
 
   // shell_src/pycmd_shim.ts
   var Bridge = class {
-    constructor(ctx2) {
-      this.ctx = ctx2;
+    constructor(ctx) {
+      this.ctx = ctx;
       __publicField(this, "ws");
       __publicField(this, "nextId", 1);
       __publicField(this, "cbs", /* @__PURE__ */ new Map());
@@ -31,7 +31,7 @@
       __publicField(this, "queue", []);
       __publicField(this, "calls", {});
       const proto = location.protocol === "https:" ? "wss" : "ws";
-      this.ws = new WebSocket(`${proto}://${location.host}/ws?context=${encodeURIComponent(ctx2)}`);
+      this.ws = new WebSocket(`${proto}://${location.host}/ws?context=${encodeURIComponent(ctx)}`);
       this.ws.onmessage = (e) => this.onMessage(JSON.parse(e.data));
       const fn = (arg, cb) => {
         const id = cb ? this.nextId++ : null;
@@ -83,21 +83,32 @@
   };
 
   // shell_src/bootstrap.ts
-  var ctx = window.__ankiwebContext || new URLSearchParams(location.search).get("context") || "default";
-  var bridge = new Bridge(ctx);
-  window.__ankiwebBridge = bridge;
+  if (window.__ankiwebEnableBridge === true) {
+    const ctx = window.__ankiwebContext || new URLSearchParams(location.search).get("context") || "default";
+    const bridge = new Bridge(ctx);
+    window.__ankiwebBridge = bridge;
+    bridge.registerCalls({
+      ankiwebNavigate: (url) => {
+        const target = String(url);
+        location.assign(target);
+      },
+      ankiwebReload: () => {
+        location.reload();
+      }
+    });
+    window.addEventListener("anki-opchanges", (e) => {
+      const detail = e.detail;
+      const flags = detail.flags || {};
+      if (detail.initiator === ctx) return;
+      if (flags.study_queues || flags.deck || flags.card || flags.note) {
+        location.reload();
+      }
+    });
+    window.addEventListener("load", () => bridge.ready());
+  }
   function nightOn() {
     return location.hash.includes("night") || localStorage.getItem("ankiweb-night") === "1";
   }
-  bridge.registerCalls({
-    ankiwebNavigate: (url) => {
-      const target = String(url);
-      location.assign(target);
-    },
-    ankiwebReload: () => {
-      location.reload();
-    }
-  });
   window.ankiwebImportFile = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -154,19 +165,6 @@
     };
     input.click();
   };
-  window.addEventListener("anki-opchanges", (e) => {
-    const detail = e.detail;
-    const flags = detail.flags || {};
-    if (detail.initiator === ctx) return;
-    const custom = window.__ankiwebOnOpchanges;
-    if (typeof custom === "function") {
-      custom(detail);
-      return;
-    }
-    if (flags.study_queues || flags.deck || flags.card || flags.note) {
-      location.reload();
-    }
-  });
   addBrowserClasses();
   if (nightOn()) {
     document.documentElement.classList.add("night-mode");
@@ -221,5 +219,4 @@
   window.addEventListener("load", () => {
     setTimeout(() => document.documentElement.classList.add("tooltips-ready"), 150);
   });
-  window.addEventListener("load", () => bridge.ready());
 })();

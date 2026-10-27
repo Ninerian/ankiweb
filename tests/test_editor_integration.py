@@ -52,6 +52,8 @@ def test_editor_mounts_and_loads(live_server_edit):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
+        websocket_urls = []
+        page.on("websocket", lambda websocket: websocket_urls.append(websocket.url))
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(f"{url}/edit?nid={nid}")
@@ -61,6 +63,25 @@ def test_editor_mounts_and_loads(live_server_edit):
             timeout=8000,
         )
         assert not errors, errors
+        assert websocket_urls == []
+        browser.close()
+
+
+def test_preview_and_notetype_manager_do_not_open_websockets(live_server_edit):
+    url, nid = live_server_edit
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        websocket_urls = []
+        page.on("websocket", lambda websocket: websocket_urls.append(websocket.url))
+
+        page.goto(f"{url}/preview/{nid}")
+        page.locator(".preview-card").wait_for(state="visible", timeout=8000)
+        assert "CapitalFrance" in page.locator(".preview").inner_text()
+
+        page.goto(f"{url}/notetypes")
+        page.locator("#ntrows .nt-row").first.wait_for(state="visible", timeout=8000)
+        assert websocket_urls == []
         browser.close()
 
 
@@ -69,6 +90,8 @@ def test_browse_single_select_embeds_editor(live_server_edit):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
+        websocket_urls = []
+        page.on("websocket", lambda websocket: websocket_urls.append(websocket.url))
         page.goto(f"{url}/browse")
         page.wait_for_function(
             "document.getElementById('results-body').children.length>=1", timeout=6000
@@ -82,6 +105,7 @@ def test_browse_single_select_embeds_editor(live_server_edit):
             "f.contentDocument.querySelector('#editor-fields-container')!==null; }",
             timeout=8000,
         )
+        assert websocket_urls == []
         browser.close()
 
 

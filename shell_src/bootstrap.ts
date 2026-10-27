@@ -1,30 +1,45 @@
 import { addBrowserClasses } from "./browser_selector";
 import { Bridge } from "./pycmd_shim";
 
-// Resolve once for this document; browser navigation creates a new document and context.
-const ctx =
-  (window as any).__ankiwebContext ||
-  new URLSearchParams(location.search).get("context") ||
-  "default";
+// Browser-to-server transport is reserved for the native reviewer.
+if ((window as any).__ankiwebEnableBridge === true) {
+  // Resolve once for this document; browser navigation creates a new document and context.
+  const ctx =
+    (window as any).__ankiwebContext ||
+    new URLSearchParams(location.search).get("context") ||
+    "default";
 
-const bridge = new Bridge(ctx);
-(window as any).__ankiwebBridge = bridge;
+  const bridge = new Bridge(ctx);
+  (window as any).__ankiwebBridge = bridge;
+
+  // Server-invokable navigation/reload helpers (called via {type:"call"}).
+  bridge.registerCalls({
+    ankiwebNavigate: (url: unknown) => {
+      const target = String(url);
+      location.assign(target);
+    },
+    ankiwebReload: () => {
+      location.reload();
+    },
+  });
+
+  // Reload when another screen's operation changed data used by this screen.
+  window.addEventListener("anki-opchanges", (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    const flags = detail.flags || {};
+    if (detail.initiator === ctx) return;
+    if (flags.study_queues || flags.deck || flags.card || flags.note) {
+      location.reload();
+    }
+  });
+
+  // Register before the native reviewer body script runs; ready fires on load.
+  window.addEventListener("load", () => bridge.ready());
+}
 
 function nightOn(): boolean {
   return location.hash.includes("night") || localStorage.getItem("ankiweb-night") === "1";
 }
-
-
-// Server-invokable navigation/reload helpers (called via {type:"call"}).
-bridge.registerCalls({
-  ankiwebNavigate: (url: unknown) => {
-    const target = String(url);
-    location.assign(target);
-  },
-  ankiwebReload: () => {
-    location.reload();
-  },
-});
 
 (window as any).ankiwebImportFile = () => {
   const input = document.createElement("input");
@@ -77,23 +92,6 @@ bridge.registerCalls({
   };
   input.click();
 };
-
-// Cross-screen refresh: a screen may set window.__ankiwebOnOpchanges to handle this
-// itself (e.g. the Browser re-searches in place to keep an embedded editor iframe alive);
-// otherwise reload when another screen's op changed our data.
-window.addEventListener("anki-opchanges", (e: Event) => {
-  const detail = (e as CustomEvent).detail;
-  const flags = detail.flags || {};
-  if (detail.initiator === ctx) return;
-  const custom = (window as any).__ankiwebOnOpchanges;
-  if (typeof custom === "function") {
-    custom(detail);
-    return;
-  }
-  if (flags.study_queues || flags.deck || flags.card || flags.note) {
-    location.reload();
-  }
-});
 
 // Upstream browser_selector.ts parity: platform/browser classes on <html>.
 addBrowserClasses();
@@ -168,4 +166,3 @@ window.addEventListener("load", () => {
   setTimeout(() => document.documentElement.classList.add("tooltips-ready"), 150);
 });
 
-window.addEventListener("load", () => bridge.ready());

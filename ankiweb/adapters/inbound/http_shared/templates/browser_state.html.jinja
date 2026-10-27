@@ -1,0 +1,9 @@
+<form id="browser-state" class="hidden" aria-hidden="true">
+  <input type="hidden" name="browserQuery" value="{{ query }}">
+  {% if selection_anchor is not none %}
+    <input type="hidden" name="selectionAnchor" value="{{ selection_anchor }}">
+  {% endif %}
+  {% for cid in selected_cids %}
+    <input type="hidden" name="selectedCids" value="{{ cid }}">
+  {% endfor %}
+</form>

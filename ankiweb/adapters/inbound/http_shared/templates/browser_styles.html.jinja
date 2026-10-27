@@ -1,0 +1,299 @@
+<style>
+  #browser {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 57px);
+  }
+  @media (max-width: 767.98px) {
+    #browser {
+      height: calc(100dvh - var(--ankiweb-bottomnav-h, 3.5rem));
+    }
+  }
+
+  #browser-top {
+    flex-shrink: 0;
+  }
+
+  #browser-main {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: stretch;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #search {
+    max-width: 320px;
+    padding: 4px;
+  }
+
+  /* Desktop sidebar */
+  @media (min-width: 768px) {
+    #sidebar-offcanvas {
+      display: block !important;
+      position: static !important;
+      width: 200px !important;
+      height: 100% !important;
+      max-height: none !important;
+      flex-shrink: 0;
+      border-right: 1px solid var(--color-base-300);
+      overflow-y: auto;
+      background: transparent;
+      padding: 0;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transition: none !important;
+      animation: none !important;
+    }
+    #sidebar-offcanvas > .modal-box {
+      opacity: 1 !important;
+      visibility: visible !important;
+      transition: none !important;
+      animation: none !important;
+      translate: 0 !important;
+      scale: 1 !important;
+    }
+    #sidebar-offcanvas::backdrop {
+      display: none !important;
+    }
+  }
+
+  #sidebar {
+    width: 100%;
+    padding: 6px;
+  }
+
+  #sidebar .side-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 4px;
+    font-weight: bold;
+    margin-top: 8px;
+    color: var(--color-base-content);
+    list-style: none;
+    cursor: pointer;
+  }
+  #sidebar .side-section:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-selector, 0.25rem);
+  }
+
+  #sidebar .side-section::-webkit-details-marker {
+    display: none;
+  }
+
+  #sidebar .side-section::after {
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+  }
+
+  #sidebar details[open] > .side-section::after {
+    transform: rotate(45deg);
+  }
+
+  #sidebar .side-item {
+    display: block;
+    padding: 2px 4px;
+    color: var(--color-primary);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: left;
+    border-radius: var(--radius-selector, 0.25rem);
+  }
+
+  #sidebar .side-item:hover {
+    background-color: var(--color-base-200);
+  }
+
+  #results-wrap {
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: auto;
+    height: 100%;
+  }
+  @media (max-width: 767.98px) {
+    #results-wrap {
+      padding-bottom: var(--ankiweb-bottomnav-h, 3.5rem);
+    }
+  }
+
+  #results {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .browser-row {
+    cursor: pointer;
+  }
+  .browser-checkbox-target {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+  }
+  @media (max-width: 767.98px) {
+    .browser-row {
+      min-height: 56px;
+    }
+    .browser-row td.cell-mobile {
+      min-height: 56px;
+    }
+    #results .cell-select {
+      width: 44px;
+      min-width: 44px;
+      max-width: 44px;
+      padding: 0;
+    }
+    .browser-checkbox-target {
+      width: 44px;
+      height: 44px;
+    }
+  }
+
+  .browser-row:hover {
+    background-color: var(--color-base-200);
+  }
+
+  .browser-row.suspended-card {
+    opacity: 0.65;
+  }
+
+  #results tr.selected {
+    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent) !important;
+    border-left: 3px solid var(--color-primary);
+  }
+
+  #results tr.selected > td {
+    background-color: transparent !important;
+  }
+
+  /* Desktop column widths */
+  .cell-select {
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    text-align: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .cell-sortfield {
+    width: 35%;
+    max-width: 0;
+  }
+  .cell-card {
+    width: 20%;
+    max-width: 0;
+  }
+  .cell-deck {
+    width: 25%;
+    max-width: 0;
+  }
+  .cell-due {
+    width: 20%;
+  }
+  @media (min-width: 1200px) {
+    .cell-sortfield { width: 30%; }
+    .cell-card { width: 15%; }
+    .cell-deck { width: 20%; }
+    .cell-due { width: 15%; }
+    .cell-tags { width: 20%; max-width: 0; }
+  }
+  /* Scoped action dropdown styling: right-aligned dropdown panels with viewport safety */
+  #browser-selection-status-row {
+    display: flex;
+    flex: 0 0 100%;
+    align-items: center;
+    min-width: 0;
+    min-height: 1.5rem;
+  }
+  @media (max-width: 767.98px) {
+    #browser-selection-status-row {
+      display: none;
+    }
+  }
+  #browser-selected-status {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 1.5rem;
+    height: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  #browser-actions {
+    position: relative;
+  }
+  #browser-actions details.dropdown {
+    position: static;
+  }
+  #browser-actions .browser-action-panel {
+    right: 0;
+    left: auto;
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100vh - 5rem);
+    overflow-y: auto;
+  }
+  #browser-actions details.dropdown summary svg {
+    transition: transform 0.2s ease;
+  }
+  #browser-actions details.dropdown[open] summary svg {
+    transform: rotate(180deg);
+  }
+  @media (min-width: 640px) {
+    #browser-actions details.dropdown {
+      position: relative;
+    }
+  }
+  /* Desktop detail pane (mobile uses the bottom modal) */
+  #detail-desktop {
+    width: 46%;
+    height: 100%;
+    flex-shrink: 0;
+    border-left: 1px solid var(--color-base-300);
+    overflow: hidden;
+  }
+
+  #detail {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 6px;
+  }
+
+  #detail .fldname {
+    font-weight: bold;
+    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+    font-size: 11px;
+    margin-top: 6px;
+  }
+
+  .editor-frame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  #detail-mobile-slot #detail { height: auto; }
+  #detail-mobile-slot .editor-frame { height: 70dvh; }
+  /* Mobile editor modal: vertical scrolling only */
+  #detail-offcanvas .modal-box,
+  #detail-mobile-slot {
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+  }
+  .editor-frame { touch-action: pan-y; }
+</style>

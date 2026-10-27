@@ -11,7 +11,7 @@ from starlette.background import BackgroundTask
 
 from ankiweb.adapters.inbound.http_datastar.browser import (
     make_browser_routes,
-    render_browser_html,
+    render_browser_page,
 )
 from ankiweb.adapters.inbound.http_datastar.card_layout import (
     make_card_layout_routes,
@@ -159,13 +159,21 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=N
                     "js/reviewer.js",
                 ],
                 toolbar=False,
+                bridge=True,
             )
         )
 
     @router.get("/browse", response_class=HTMLResponse)
-    async def browse_page(q: str = ""):
+    async def browse_page(q: str = "") -> HTMLResponse:
         service = get_service()
-        body = await service.run(lambda col: render_browser_html(col, q))
+        body, matched_cids = await service.run(lambda col: render_browser_page(col, q))
+        hub = get_hub() if get_hub is not None else None
+        if hub is not None:
+            hub.ui_state.browser_open = True
+            hub.ui_state.last_browse_query = q
+            hub.ui_state.matched_card_ids = matched_cids
+            hub.ui_state.selected_card_ids = []
+            hub.ui_state.selected_note_ids = []
         return HTMLResponse(render_page("browser", body))
 
     @router.get("/preferences", response_class=HTMLResponse)

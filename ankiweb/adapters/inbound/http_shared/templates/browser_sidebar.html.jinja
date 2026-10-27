@@ -1,0 +1,40 @@
+<dialog
+  id="sidebar-offcanvas"
+  class="modal modal-bottom sm:modal-middle md:modal-open md:static md:h-full md:max-h-none md:bg-transparent md:border-0 md:p-0 md:shadow-none"
+  aria-labelledby="sidebar-offcanvas-label"
+  data-on:click="(evt.target.closest('.side-item') && window.innerWidth < 768 && el.open && typeof el.close === 'function') ? el.close() : null"
+>
+  <div class="modal-box p-0 md:max-w-none md:w-full md:h-full md:p-0 md:rounded-none md:shadow-none md:bg-transparent">
+    <div class="flex justify-between items-center md:hidden border-b border-base-300 p-2">
+      <h6 class="font-bold text-sm m-0" id="sidebar-offcanvas-label">{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}</h6>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
+      </form>
+    </div>
+    <div class="p-0 overflow-y-auto">
+      <div id="sidebar">
+        <details id="sidebar-decks-section" open>
+          <summary class="side-section">{{ tr.browsing_sidebar_decks() }}</summary>
+          {% for item in decks %}
+            <a
+              class="side-item"
+              title="{{ item.name }}"
+              href="/browse?{{ {'q': item.query} | urlencode }}"
+            >{{ item.name }}</a>
+          {% endfor %}
+        </details>
+        <details id="sidebar-tags-section" open>
+          <summary class="side-section">{{ tr.browsing_sidebar_tags() }}</summary>
+          {% for item in tags %}
+            <a
+              class="side-item"
+              title="{{ item.name }}"
+              href="/browse?{{ {'q': item.query} | urlencode }}"
+            >{{ item.name }}</a>
+          {% endfor %}
+        </details>
+      </div>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop md:hidden"><button>close</button></form>
+</dialog>

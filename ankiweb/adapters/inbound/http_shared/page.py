@@ -48,16 +48,22 @@ def render_page(
     css_files: Sequence[str] | None = None,
     js_files: Sequence[str] | None = None,
     toolbar: bool | None = None,
+    *,
+    bridge: bool = False,
 ) -> str:
     """Wrap a server-rendered fragment in a full shell HTML document.
 
-    Sets window.__ankiwebContext BEFORE any script so the Bridge connects to
-    /ws?context=<context>. Vendored js_files (served from /_anki/) load BEFORE
-    the shell bootstrap.js, so globals they define (e.g. reviewer.js's
-    window._showQuestion) exist when the page body's inline script runs.
+    Publishes ``window.__ankiwebContext`` and the bridge opt-in before scripts. Browser
+    WebSocket transport (``/ws?context=...``) is disabled by default; only the native
+    reviewer passes ``bridge=True``; all other pages retain their existing HTTP/
+    Datastar behavior.
 
-    `toolbar` adds the always-present top toolbar (Decks/Add/Browse/Stats); pass
-    False for embedded fragments like the editor iframe inside the Browser.
+    Vendored ``js_files`` (served from ``/_anki/``) load before the shell bootstrap, so
+    globals they define (e.g. reviewer.js's ``window._showQuestion``) exist when the page
+    body's inline script runs.
+
+    ``toolbar`` adds the always-present top toolbar (Decks/Add/Browse/Stats); pass ``False``
+    for embedded fragments like the editor iframe inside the Browser.
     """
     if css_files is None:
         css_files = ()
@@ -73,4 +79,5 @@ def render_page(
         css_files=css_files,
         js_files=js_files,
         toolbar=toolbar,
+        bridge=bridge,
     )

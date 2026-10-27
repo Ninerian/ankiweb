@@ -13,6 +13,18 @@ pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import sync_playwright
 
 
+def _observe_browser_refreshes(page):
+    page.add_init_script(
+        """
+        if (window.parent === window) {
+          window.__browserRefreshEvents = 0;
+          window.addEventListener("ankiweb:browser-refresh", () => {
+            window.__browserRefreshEvents += 1;
+          });
+        }
+        """
+    )
+
 @pytest.fixture
 def live_server_browse(tmp_path: Path):
     col_path = tmp_path / "browse.anki2"
@@ -51,6 +63,8 @@ def test_browse_search_and_open(live_server_browse):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
+        websocket_urls = []
+        page.on("websocket", lambda websocket: websocket_urls.append(websocket.url))
         page.goto(f"{live_server_browse}/browse")
         # initial empty search loads all rows
         page.wait_for_function(
@@ -73,6 +87,7 @@ def test_browse_search_and_open(live_server_browse):
             "&& f.contentDocument.querySelector('#editor-fields-container')!==null; }",
             timeout=8000,
         )
+        assert websocket_urls == []
         browser.close()
 
 
@@ -84,6 +99,16 @@ def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
+        websocket_urls = []
+        page.on("websocket", lambda websocket: websocket_urls.append(websocket.url))
+        browser_refresh_requests = []
+
+        def record_browser_refresh_request(request):
+            if request.method == "POST" and request.url.endswith("/browse/refresh"):
+                browser_refresh_requests.append(request)
+
+        page.on("request", record_browser_refresh_request)
+        _observe_browser_refreshes(page)
         page.goto(f"{live_server_browse}/browse")
         page.wait_for_function(
             "document.getElementById('results-body').children.length>=2", timeout=6000
@@ -107,6 +132,29 @@ def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
         )
         field0.wait_for(state="visible", timeout=8000)
         field1.wait_for(state="visible", timeout=8000)
+
+        refresh_events_before_unrelated_messages = page.evaluate(
+            "window.__browserRefreshEvents"
+        )
+        page.evaluate(
+            """() => {
+              const editor = document.querySelector('#detail iframe#editor-frame');
+              const saved = {type: 'ankiweb:editor-saved'};
+              window.dispatchEvent(new MessageEvent('message', {
+                data: saved, origin: location.origin, source: window
+              }));
+              window.dispatchEvent(new MessageEvent('message', {
+                data: saved, origin: 'https://unrelated.invalid', source: editor.contentWindow
+              }));
+              window.dispatchEvent(new MessageEvent('message', {
+                data: {type: 'unrelated'}, origin: location.origin, source: editor.contentWindow
+              }));
+            }"""
+        )
+        assert (
+            page.evaluate("window.__browserRefreshEvents")
+            == refresh_events_before_unrelated_messages
+        )
 
         original_iframe = page.locator(iframe_selector).element_handle()
         assert original_iframe is not None
@@ -170,6 +218,72 @@ def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
         saved_editor = page.request.get(urljoin(live_server_browse, editor_src))
         assert saved_editor.status == 200
         assert second_value in saved_editor.text()
+        tag_add_button = frame.locator(".tag-add-button")
+        with page.expect_response(
+            lambda response: response.request.method == "POST"
+            and response.url.endswith("/editor/blur-field"),
+            timeout=10000,
+        ) as tag_button_blur:
+            with page.expect_response(
+                lambda response: response.request.method == "POST"
+                and response.url.endswith("/browse/refresh"),
+                timeout=10000,
+            ) as tag_button_refresh:
+                tag_add_button.click()
+        assert tag_button_blur.value.status == 200
+        assert tag_button_refresh.value.status == 200
+
+        tag_input = frame.locator(".tag-input")
+        tag_input.fill("same-tab-editor-tag")
+        with page.expect_response(
+            lambda response: response.request.method == "POST"
+            and response.url.endswith("/editor/save-tags"),
+            timeout=10000,
+        ) as tag_save_info:
+            with page.expect_response(
+                lambda response: response.request.method == "POST"
+                and response.url.endswith("/browse/refresh"),
+                timeout=10000,
+            ) as tag_refresh_info:
+                tag_input.press("Enter")
+        assert tag_save_info.value.status == 200
+        assert tag_refresh_info.value.status == 200
+        page.wait_for_function(
+            "(cid) => { const cell = document.querySelector('#browser-row-' + cid + ' .cell-tags'); "
+            "return cell && cell.textContent.includes('same-tab-editor-tag'); }",
+            arg=cid,
+            timeout=10000,
+        )
+        saved_editor = page.request.get(urljoin(live_server_browse, editor_src))
+        assert "same-tab-editor-tag" in saved_editor.text()
+
+        refresh_requests_before_failed_tag = len(browser_refresh_requests)
+        page.route(
+            "**/editor/save-tags",
+            lambda route: route.fulfill(status=500, body="tag save failed"),
+        )
+        tag_add_button.click()
+        failed_tag_input = frame.locator(".tag-input")
+        failed_tag_input.fill("failed-editor-tag")
+        with page.expect_response(
+            lambda response: response.request.method == "POST"
+            and response.url.endswith("/editor/save-tags"),
+            timeout=10000,
+        ) as failed_tag_save:
+            failed_tag_input.press("Enter")
+        assert failed_tag_save.value.status == 500
+        failed_tag_save.value.finished()
+        frame.locator(".tag-chip .tag-label", has_text="failed-editor-tag").wait_for(
+            state="visible", timeout=6000
+        )
+        assert selected_row.is_visible()
+        assert_editor_identity_is_unchanged()
+        tag_cell_text = selected_row.locator(".cell-tags").text_content()
+        assert tag_cell_text is not None
+        assert "same-tab-editor-tag" in tag_cell_text
+        assert "failed-editor-tag" not in tag_cell_text
+        assert len(browser_refresh_requests) == refresh_requests_before_failed_tag
+        assert websocket_urls == []
         browser.close()
 
 
@@ -194,6 +308,208 @@ def test_select_all_and_suspend(live_server_browse):
             "document.querySelectorAll('#results-body tr.selected').length===0",
             timeout=6000,
         )
+        browser.close()
+
+
+def test_due_dialog_validation_preserves_selection_and_retries(live_server_browse):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1101, "height": 803})
+        page.goto(f"{live_server_browse}/browse")
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body tr.browser-row').length === 2",
+            timeout=6000,
+        )
+
+        row = page.locator("#results-body tr[data-cid]").first
+        cid = row.get_attribute("data-cid")
+        assert cid is not None
+        original_due = row.locator(".cell-due").inner_text().strip()
+        row.click()
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body tr[aria-selected=\"true\"]').length === 1",
+            timeout=6000,
+        )
+
+        page.locator("#btn-actions-learning").click()
+        page.locator("#btn-setdue").click()
+        dialog = page.locator("#dialog-setdue")
+        dialog.wait_for(state="visible", timeout=6000)
+        due_input = dialog.locator("#input-setdue")
+        due_input.fill("not-a-valid-due")
+        dialog.locator('form button[type="submit"]').click()
+
+        alert = dialog.get_by_role("alert")
+        alert.wait_for(state="visible", timeout=6000)
+        assert alert.is_visible()
+        assert alert.inner_text().strip()
+        assert dialog.is_visible()
+        assert dialog.get_attribute("open") is not None
+        assert due_input.input_value() == "not-a-valid-due"
+        selected_row = page.locator(f'#browser-row-{cid}')
+        assert selected_row.get_attribute("aria-selected") == "true"
+        assert selected_row.locator('input[type="checkbox"]').is_checked()
+        assert dialog.locator('input[name="selectedCids"]').input_value() == cid
+
+        due_input.fill("3")
+        dialog.locator('form button[type="submit"]').click()
+        dialog.wait_for(state="hidden", timeout=6000)
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body tr[aria-selected=\"true\"]').length === 0",
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "(args) => { const row = document.getElementById('browser-row-' + args.cid); "
+            "return row && row.querySelector('.cell-due')?.textContent.trim() !== args.due; }",
+            arg={"cid": cid, "due": original_due},
+            timeout=6000,
+        )
+        changed_due = page.locator(f"#browser-row-{cid} .cell-due").inner_text().strip()
+        assert changed_due != original_due
+        browser.close()
+
+
+def test_change_deck_dialog_cancels_without_saving(live_server_browse):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1101, "height": 803})
+        page.goto(f"{live_server_browse}/browse")
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body tr[data-cid]').length === 2",
+            timeout=6000,
+        )
+
+        rows = page.locator("#results-body tr[data-cid]")
+        initial_cids = [
+            rows.nth(index).get_attribute("data-cid")
+            for index in range(rows.count())
+        ]
+        assert all(initial_cids)
+        row = rows.first
+        cid = row.get_attribute("data-cid")
+        assert cid is not None
+        row.click()
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body tr[aria-selected=\"true\"]').length === 1",
+            timeout=6000,
+        )
+
+        draft_deck = "Unsaved Cancel Deck"
+        page.locator("#btn-actions-organize").click()
+        page.locator("#btn-changedeck").click()
+        dialog = page.locator("#dialog-changedeck")
+        dialog.wait_for(state="visible", timeout=6000)
+        deck_input = dialog.locator("#input-changedeck")
+        deck_input.fill(draft_deck)
+        page.keyboard.press("Escape")
+        dialog.wait_for(state="hidden", timeout=6000)
+        assert row.get_attribute("aria-selected") == "true"
+        assert page.locator('#browser-state input[name="selectedCids"]').input_value() == cid
+
+        page.locator("#btn-actions-organize").click()
+        page.locator("#btn-changedeck").click()
+        dialog.wait_for(state="visible", timeout=6000)
+        deck_input = dialog.locator("#input-changedeck")
+        assert deck_input.input_value() == ""
+        dialog.locator('form button[type="button"]').click()
+        dialog.wait_for(state="hidden", timeout=6000)
+        assert row.get_attribute("aria-selected") == "true"
+        assert page.locator('#browser-state input[name="selectedCids"]').input_value() == cid
+
+        page.goto(f"{live_server_browse}/browse")
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body tr[data-cid]').length === 2",
+            timeout=6000,
+        )
+        refreshed_rows = page.locator("#results-body tr[data-cid]")
+        refreshed_cids = [
+            refreshed_rows.nth(index).get_attribute("data-cid")
+            for index in range(refreshed_rows.count())
+        ]
+        assert refreshed_cids == initial_cids
+        assert page.get_by_role("link", name=draft_deck, exact=True).count() == 0
+        browser.close()
+
+
+def test_selection_request_finishes_before_pending_browser_refresh(live_server_browse):
+    from urllib.parse import parse_qs
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1101, "height": 803})
+        page_errors = []
+        page.on("pageerror", lambda err: page_errors.append(str(err)))
+        page.goto(f"{live_server_browse}/browse")
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body tr.browser-row').length === 2",
+            timeout=6000,
+        )
+
+        row = page.locator("#results-body tr[data-cid]").first
+        cid = row.get_attribute("data-cid")
+        assert cid is not None
+        front = row.locator(".cell-sortfield").inner_text().strip()
+        paused_select = []
+
+        def hold_select(route):
+            paused_select.append(route)
+
+        page.route("**/browse/select*", hold_select)
+        with page.expect_request(
+            lambda request: request.method == "POST"
+            and request.url.split("?", 1)[0].endswith("/browse/select"),
+            timeout=6000,
+        ):
+            row.click()
+
+        with page.expect_response(
+            lambda response: response.request.method == "POST"
+            and response.url.split("?", 1)[0].endswith("/browse/refresh"),
+            timeout=6000,
+        ) as refresh_info:
+            with page.expect_request(
+                lambda request: request.method == "POST"
+                and request.url.split("?", 1)[0].endswith("/browse/refresh"),
+                timeout=6000,
+            ) as refresh_request_info:
+                page.evaluate(
+                    "window.dispatchEvent(new Event('ankiweb:browser-refresh'))"
+                )
+                assert paused_select
+                paused_select[0].continue_()
+
+        refresh_fields = parse_qs(refresh_request_info.value.post_data or "")
+        assert refresh_fields.get("selectedCids") == [cid]
+        assert refresh_fields.get("selectionAnchor") == [cid]
+        refresh_response = refresh_info.value
+        assert refresh_response.status == 200
+        refresh_response.finished()
+
+        page.wait_for_function(
+            "(cid) => {"
+            " const row = document.getElementById('browser-row-' + cid);"
+            " const selected = document.querySelectorAll("
+            "'#browser-state input[name=\"selectedCids\"]');"
+            " const anchor = document.querySelector("
+            "'#browser-state input[name=\"selectionAnchor\"]');"
+            " const cardInfo = document.getElementById('btn-cardinfo');"
+            " return row?.getAttribute('aria-selected') === 'true' &&"
+            " row.querySelector('input[type=\"checkbox\"]')?.checked &&"
+            " selected.length === 1 && selected[0].value === cid &&"
+            " anchor?.value === cid && "
+            "cardInfo?.getAttribute('href') === '/card-info/' + cid;"
+            "}",
+            arg=cid,
+            timeout=6000,
+        )
+        page.wait_for_function(
+            "(front) => { const frame = document.querySelector('#detail iframe.editor-frame'); "
+            "const field = frame?.contentDocument?.querySelector('[data-ankiweb-rich]'); "
+            "return field?.textContent.includes(front); }",
+            arg=front,
+            timeout=8000,
+        )
+        assert not page_errors, f"Unexpected page errors: {page_errors}"
         browser.close()
 
 
@@ -263,7 +579,7 @@ def test_browser_row_and_checkbox_selection_regression(live_server_browse):
         assert not header_chk.is_checked()
 
         # 3. Select-all checks all rendered row checkboxes
-        header_chk.check()
+        header_chk.click()
         page.wait_for_function(
             "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 2",
             timeout=6000,
@@ -277,7 +593,7 @@ def test_browser_row_and_checkbox_selection_regression(live_server_browse):
         assert not header_chk.evaluate("el => el.indeterminate === true")
 
         # 4. Selecting none clears all row checkboxes and disables actions
-        header_chk.uncheck()
+        header_chk.click()
         page.wait_for_function(
             "() => document.querySelectorAll('#results-body tr.browser-row.selected').length === 0",
             timeout=6000,
@@ -850,9 +1166,17 @@ def test_browse_sidebar_sections_fold_independently_and_filter(
         )
         assert page.locator("#results-body tr.browser-row").count() == 1
 
-        decks.locator("summary").press("Enter")
+        deck_summary = decks.locator("summary")
+        if decks.get_attribute("open") is None:
+            deck_summary.press("Enter")
         assert decks.get_attribute("open") is not None
+        deck_summary.press("Enter")
+        assert decks.get_attribute("open") is None
+        if tags.get_attribute("open") is None:
+            tags.locator("summary").press("Enter")
         assert tags.get_attribute("open") is not None
+        deck_summary.press("Enter")
+        assert decks.get_attribute("open") is not None
         tags.locator("summary").click()
         assert decks.get_attribute("open") is not None
         assert tags.get_attribute("open") is None
