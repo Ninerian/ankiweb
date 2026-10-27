@@ -21,6 +21,16 @@ reside under `ankiweb/adapters/inbound/http_shared/templates/pages/`. Minimal JS
 in `shell_src/bundles/` are built via `npm run build`. Vendored SvelteKit bundles are no longer
 served; only core static assets (reviewer.js, MathJax, jQuery) are retained under `/_anki/`.
 
+Shell styling uses daisyUI components and semantic colors, with Tailwind utilities in
+markup or `@apply` on stable component selectors. `shell_src/app.css` emits the framework;
+`theme.css` holds shell layout and tokens; `components/*.css` are auto-discovered and
+compiled into the `components` layer so markup utilities can override them. The latter
+two entries use `@reference` rather than emitting duplicate framework CSS. Anki's legacy
+tokens, border-width collision guard, and reviewer-content reset are isolated in
+`shell_src/compat/anki.css`; owned shell styles use daisyUI tokens directly. Keep raw CSS
+for runtime geometry, animations, and host-content adapters. Do not edit generated files
+under `ankiweb/shell/static/`.
+
 **Scope:** everything in the desktop study/edit/manage flow + the AnkiConnect API.
 **Out of scope (by design):** sync (AnkiWeb) and add-ons/plugins.
 
@@ -85,9 +95,10 @@ uv run python tools/fetch_web_assets.py
 #    ankiweb/shell/static/ — tracked in git, but re-run this to update the pinned version).
 uv run python tools/fetch_datastar.py
 
-# 3. Build the shell: the bridge bundle (shell_src/bootstrap.ts -> ankiweb/shell/static/bootstrap.js)
-#    and the Tailwind CSS 4 + daisyUI 5 stylesheet (shell_src/app.css -> ankiweb/shell/static/app.css).
-#    Re-run after changing any template, route module or shell source (Tailwind scans them for classes).
+# 3. Build the shell bundles and compile app.css, theme.css and components.css
+#    into the gitignored ankiweb/shell/static/ directory.
+#    Re-run after changing templates, route modules or shell sources (Tailwind scans them).
+#    For CSS-only changes, npm run build:css compiles all three stylesheets.
 npm install && npm run build
 
 # 4. (optional) for the Playwright integration tests
@@ -541,7 +552,7 @@ once with `uv run python -m playwright install chromium`.
 
 ```
 ankiweb/            the application package (core, adapters/{inbound,outbound}, assets, ankiconnect)
-shell_src/          the TS pycmd-bridge shell (compiled to ankiweb/shell/static/bootstrap.js)
+shell_src/          shell bundles, Tailwind/daisyUI styles, and the Anki compatibility shim
 tools/              fetch_web_assets.py (vendor the frontend), build_shell.mjs (build the shell)
 tests/              pytest suite (backend + bridge + Playwright integration)
 docs/superpowers/   design specs + implementation plans
