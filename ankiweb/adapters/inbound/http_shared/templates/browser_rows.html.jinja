@@ -1,40 +1,53 @@
-{% for r in rows %}<tr class="browser-row{% if r.is_suspended %} suspended-card{% endif %}" data-cid="{{ r.cid }}" data-class="{'selected': $selectedCids.includes({{ r.cid }})}" data-attr:aria-selected="$selectedCids.includes({{ r.cid }}) ? 'true' : 'false'" data-on:click="(() => { const cid = {{ r.cid }}; if (evt.shiftKey) { const rs = $_visibleCids || []; const i = typeof $_selectionAnchor === 'number' ? rs.indexOf($_selectionAnchor) : -1; const j = rs.indexOf(cid); if (i >= 0 && j >= 0) { const lo = Math.min(i, j); const hi = Math.max(i, j); $selectedCids = rs.slice(lo, hi + 1); } else { $selectedCids = [cid]; $_selectionAnchor = cid; } } else if (evt.ctrlKey || evt.metaKey) { const k = $selectedCids.indexOf(cid); if (k >= 0) { $selectedCids = $selectedCids.filter(x => x !== cid); } else { $selectedCids = [...$selectedCids, cid]; } $_selectionAnchor = cid; } else { $selectedCids = [cid]; $_selectionAnchor = cid; } if ($selectedCids.length > 0 && window.innerWidth < 768) { const p = document.getElementById('detail-offcanvas'); if (p && typeof p.showModal === 'function' && !p.open) p.showModal(); } @post('/browse/select'); })()" data-on:contextmenu="(() => { if (evt.ctrlKey) { evt.preventDefault(); const cid = {{ r.cid }}; if (evt.shiftKey) { const rs = $_visibleCids || []; const i = typeof $_selectionAnchor === 'number' ? rs.indexOf($_selectionAnchor) : -1; const j = rs.indexOf(cid); if (i >= 0 && j >= 0) { const lo = Math.min(i, j); const hi = Math.max(i, j); $selectedCids = rs.slice(lo, hi + 1); } else { $selectedCids = [cid]; $_selectionAnchor = cid; } } else { const k = $selectedCids.indexOf(cid); if (k >= 0) { $selectedCids = $selectedCids.filter(x => x !== cid); } else { $selectedCids = [...$selectedCids, cid]; } $_selectionAnchor = cid; } if ($selectedCids.length > 0 && window.innerWidth < 768) { const p = document.getElementById('detail-offcanvas'); if (p && typeof p.showModal === 'function' && !p.open) p.showModal(); } @post('/browse/select'); } })()">
-    <td class="cell-select text-center" data-on:click="evt.stopPropagation()">
-      <label class="browser-checkbox-target">
-        <input
-          type="checkbox"
-          class="checkbox checkbox-xs"
-          aria-label="{{ tr.browsing_card() }}: {{ r.sort_text }}"
-          data-effect="if (el) el.checked = Boolean($selectedCids.includes({{ r.cid }}))"
-          data-on:change="(() => { const cid = {{ r.cid }}; const k = $selectedCids.indexOf(cid); if (el.checked && k < 0) { $selectedCids = [...$selectedCids, cid]; } else if (!el.checked && k >= 0) { $selectedCids = $selectedCids.filter(x => x !== cid); } $_selectionAnchor = cid; @post('/browse/select'); })()"
-        >
-      </label>
-    </td>
-    <td class="md:hidden cell-mobile py-2 px-3">
-      <div class="row-line1 font-semibold truncate flex items-center gap-1">
-        <span class="truncate min-w-0 flex-1">{{ r.sort_text }}</span>
-        {% if r.is_suspended %}
-        <span class="badge badge-neutral ms-auto shrink-0">{{ tr.browsing_suspended() }}</span>
-        {% endif %}
-      </div>
-      <div class="row-line2 text-base-content/60 text-xs truncate min-w-0 mt-1">
-        <span>{{ r.template_name }}</span>
-        <span class="mx-1">·</span>
-        <span>{{ r.deck }}</span>
-        {% if r.due %}
-        <span class="mx-1">·</span>
-        <span>{{ r.due }}</span>
-        {% endif %}
-      </div>
-    </td>
-    <td class="hidden md:table-cell truncate cell-sortfield" title="{{ r.sort_text }}">
-      {{ r.sort_text }}
+{% for r in rows %}
+<tr
+  id="browser-row-{{ r.cid }}"
+  class="browser-row{% if r.is_suspended %} suspended-card{% endif %}{% if r.selected %} selected{% endif %}"
+  data-cid="{{ r.cid }}"
+  data-indicator:_browser-busy
+  aria-selected="{% if r.selected %}true{% else %}false{% endif %}"
+  data-on:click="$_browserBusy ? null : @post('/browse/select?cid={{ r.cid }}&mode=' + (evt.shiftKey ? 'range' : ((evt.ctrlKey || evt.metaKey) ? 'toggle' : 'single')) + '&openDetail=1', {contentType: 'form', selector: '#browser-state'})"
+  data-on:contextmenu="evt.ctrlKey ? (evt.preventDefault(), ($_browserBusy ? null : @post('/browse/select?cid={{ r.cid }}&mode=' + (evt.shiftKey ? 'range' : 'toggle') + '&openDetail=1', {contentType: 'form', selector: '#browser-state'}))) : null"
+>
+  <td class="cell-select text-center" data-on:click="evt.stopPropagation()">
+    <label class="browser-checkbox-target">
+      <input
+        type="checkbox"
+        class="checkbox checkbox-xs"
+        aria-label="{{ tr.browsing_card() }}: {{ r.sort_text }}"
+        data-indicator:_browser-busy
+        data-attr:disabled="$_browserBusy"
+        {% if r.selected %}checked{% endif %}
+        data-init="el.checked = {{ 'true' if r.selected else 'false' }}"
+        data-on:click__prevent="$_browserBusy ? null : @post('/browse/select?cid={{ r.cid }}&mode=toggle', {contentType: 'form', selector: '#browser-state'})"
+      >
+    </label>
+  </td>
+  <td class="md:hidden cell-mobile py-2 px-3">
+    <div class="row-line1 font-semibold truncate flex items-center gap-1">
+      <span class="truncate min-w-0 flex-1">{{ r.sort_text }}</span>
       {% if r.is_suspended %}
-      <span class="badge badge-neutral ms-1">{{ tr.browsing_suspended() }}</span>
+      <span class="badge badge-neutral ms-auto shrink-0">{{ tr.browsing_suspended() }}</span>
       {% endif %}
-    </td>
-    <td class="hidden md:table-cell truncate cell-card" title="{{ r.template_name }}">{{ r.template_name }}</td>
-    <td class="hidden md:table-cell truncate cell-deck" title="{{ r.deck }}">{{ r.deck }}</td>
-    <td class="hidden md:table-cell whitespace-nowrap cell-due">{{ r.due }}</td>
-    <td class="hidden xl:table-cell truncate cell-tags text-base-content/60" title="{{ r.tags }}">{{ r.tags }}</td>
-  </tr>{% endfor %}
+    </div>
+    <div class="row-line2 text-base-content/60 text-xs truncate min-w-0 mt-1">
+      <span>{{ r.template_name }}</span>
+      <span class="mx-1">·</span>
+      <span>{{ r.deck }}</span>
+      {% if r.due %}
+      <span class="mx-1">·</span>
+      <span>{{ r.due }}</span>
+      {% endif %}
+    </div>
+  </td>
+  <td class="hidden md:table-cell truncate cell-sortfield" title="{{ r.sort_text }}">
+    {{ r.sort_text }}
+    {% if r.is_suspended %}
+    <span class="badge badge-neutral ms-1">{{ tr.browsing_suspended() }}</span>
+    {% endif %}
+  </td>
+  <td class="hidden md:table-cell truncate cell-card" title="{{ r.template_name }}">{{ r.template_name }}</td>
+  <td class="hidden md:table-cell truncate cell-deck">{{ r.deck }}</td>
+  <td class="hidden md:table-cell whitespace-nowrap cell-due">{{ r.due }}</td>
+  <td class="hidden xl:table-cell truncate cell-tags text-base-content/60" title="{{ r.tags }}">{{ r.tags }}</td>
+</tr>
+{% endfor %}

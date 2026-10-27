@@ -1,0 +1,120 @@
+{% macro render_dialog(act_key, act_title, prompt_label, input_name="value", placeholder_text="", is_danger=false, is_confirm=false) %}
+<dialog
+  id="dialog-{{ act_key }}"
+  class="modal modal-bottom sm:modal-middle"
+  aria-labelledby="dialog-{{ act_key }}-title"
+  data-preserve-attr="open"
+  data-init="el.showModal(), el.querySelector('input:not([type=hidden]), button.btn-error, button.btn-primary')?.focus()"
+  data-on:cancel="evt.preventDefault(), ($_browserBusy ? null : @get('/browse/dialog/close', {contentType: 'form', selector: '#browser-state'}))"
+>
+  <div class="modal-box">
+    <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
+      <h5 class="font-bold text-lg{% if is_danger %} text-error{% endif %}" id="dialog-{{ act_key }}-title">{{ act_title }}</h5>
+      <button
+        type="button"
+        class="btn btn-sm btn-circle btn-ghost"
+        aria-label="Close"
+        data-indicator:_browser-busy
+        data-attr:disabled="$_browserBusy"
+        data-on:click="$_browserBusy ? null : @get('/browse/dialog/close', {contentType: 'form', selector: '#browser-state'})"
+      >✕</button>
+    </div>
+    {% if error %}
+      <div id="browser-action-error-{{ act_key }}" class="mb-3 text-error text-sm font-semibold" role="alert">{{ error }}</div>
+    {% endif %}
+    <form
+      data-indicator:_browser-busy
+      data-on:submit__prevent="@post('/browse/{{ act_key }}', {contentType: 'form'})"
+    >
+      <input type="hidden" name="browserQuery" value="{{ query }}">
+      {% if selection_anchor is not none %}
+        <input type="hidden" name="selectionAnchor" value="{{ selection_anchor }}">
+      {% endif %}
+      {% for cid in selected_cids %}
+        <input type="hidden" name="selectedCids" value="{{ cid }}">
+      {% endfor %}
+      {% if is_confirm %}
+        <p class="py-2 text-sm">{{ prompt_label }}</p>
+      {% else %}
+        <div class="mb-4">
+          <label for="input-{{ act_key }}" class="block py-1 text-sm font-semibold">{{ prompt_label }}</label>
+          <input
+            id="input-{{ act_key }}"
+            name="{{ input_name }}"
+            type="text"
+            class="input input-sm w-full"
+            placeholder="{{ placeholder_text }}"
+            value="{{ value }}"
+            required
+          >
+        </div>
+      {% endif %}
+      <div class="modal-action">
+        <button
+          type="button"
+          class="btn btn-sm btn-ghost"
+          data-indicator:_browser-busy
+          data-attr:disabled="$_browserBusy"
+          data-on:click="$_browserBusy ? null : @get('/browse/dialog/close', {contentType: 'form', selector: '#browser-state'})"
+        >
+          {{ tr.actions_cancel() }}
+        </button>
+        <button
+          type="submit"
+          class="btn btn-sm {% if is_danger %}btn-error{% else %}btn-primary{% endif %}"
+          data-indicator:_browser-busy
+          data-attr:disabled="$_browserBusy"
+        >
+          {{ act_title }}
+        </button>
+      </div>
+    </form>
+  </div>
+  <div class="modal-backdrop" data-on:click="$_browserBusy ? null : @get('/browse/dialog/close', {contentType: 'form', selector: '#browser-state'})"><button type="button" tabindex="-1" data-attr:disabled="$_browserBusy">close</button></div>
+</dialog>
+{% endmacro %}
+
+<div id="browser-dialogs">
+  {% if dialog == "setdue" %}
+    {{ render_dialog(
+        act_key="setdue",
+        act_title=tr.actions_set_due_date(),
+        prompt_label="Due in days (e.g. 0, 3, 1-7):",
+        input_name="value",
+        placeholder_text="0, 3, 1-7"
+    ) }}
+  {% elif dialog == "changedeck" %}
+    {{ render_dialog(
+        act_key="changedeck",
+        act_title=tr.browsing_change_deck(),
+        prompt_label="Move to deck:",
+        input_name="deck",
+        placeholder_text="Deck name"
+    ) }}
+  {% elif dialog == "addtag" %}
+    {{ render_dialog(
+        act_key="addtag",
+        act_title=tr.editing_tags_add(),
+        prompt_label="Add tag:",
+        input_name="tag",
+        placeholder_text="Tag"
+    ) }}
+  {% elif dialog == "removetag" %}
+    {{ render_dialog(
+        act_key="removetag",
+        act_title=tr.actions_remove_tag(),
+        prompt_label="Remove tag:",
+        input_name="tag",
+        placeholder_text="Tag"
+    ) }}
+  {% elif dialog == "delete" %}
+    {{ render_dialog(
+        act_key="delete",
+        act_title=tr.actions_delete(),
+        prompt_label=(tr.browsing_delete_notes() ~ '?'),
+        input_name="",
+        is_danger=true,
+        is_confirm=true
+    ) }}
+  {% endif %}
+</div>

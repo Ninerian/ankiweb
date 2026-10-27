@@ -1,0 +1,19 @@
+<div id="detail">
+  {% if detail_nid is not none %}
+    {% if detail_is_io %}
+      <iframe
+        id="editor-frame"
+        class="editor-frame"
+        src="/image-occlusion/{{ detail_nid }}"
+        title="Image Occlusion Editor"
+      ></iframe>
+    {% else %}
+      <iframe
+        id="editor-frame"
+        class="editor-frame"
+        src="/edit?nid={{ detail_nid }}"
+        title="Note Editor"
+      ></iframe>
+    {% endif %}
+  {% endif %}
+</div>

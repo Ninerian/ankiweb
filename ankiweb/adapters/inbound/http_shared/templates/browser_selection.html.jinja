@@ -1,0 +1,7 @@
+<div id="browser-selection-status-row">
+  <span
+    id="browser-selected-status"
+    class="badge badge-neutral"
+    {% if not (selected_cids | length) %}style="display: none;"{% endif %}
+  >{{ selection_label }}</span>
+</div>

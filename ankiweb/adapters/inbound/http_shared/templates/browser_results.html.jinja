@@ -1,0 +1,46 @@
+<table id="results" class="table table-sm mb-0" data-attr:inert="$_browserBusy">
+  <thead class="sticky top-0 bg-base-100 z-10">
+    <tr>
+      <th class="cell-select">
+        <label class="browser-checkbox-target">
+          <input
+            id="select-all-cards"
+            type="checkbox"
+            class="checkbox checkbox-xs"
+            aria-label="{{ tr.qt_accel_select_all() | replace('&', '') }}"
+            data-indicator:_browser-busy
+            data-attr:disabled="$_browserBusy"
+            {% if all_selected %}checked{% endif %}
+            data-init="el.indeterminate = {{ 'true' if partial_selection else 'false' }}, el.checked = {{ 'true' if all_selected else 'false' }}"
+            data-on:click__prevent="$_browserBusy ? null : @post('/browse/select?mode={{ 'none' if all_selected else 'all' }}', {contentType: 'form', selector: '#browser-state'})"
+          >
+        </label>
+      </th>
+      <th class="md:hidden">
+        {{ tr.qt_accel_select_all() | replace('&', '') }}
+        <span
+          id="browser-selected-status-compact"
+          class="badge badge-neutral ml-2 whitespace-nowrap"
+          aria-label="{{ selection_label }}"
+          {% if not (selected_cids | length) %}style="display: none;"{% endif %}
+        >{{ selected_cids | length }}/{{ count }}</span>
+      </th>
+      <th class="hidden md:table-cell cell-sortfield">{{ tr.browsing_sort_field() }}</th>
+      <th class="hidden md:table-cell cell-card">{{ tr.browsing_card() }}</th>
+      <th class="hidden md:table-cell cell-deck">{{ tr.decks_deck() }}</th>
+      <th class="hidden md:table-cell cell-due">{{ tr.statistics_due_date() }}</th>
+      <th class="cell-tags hidden xl:table-cell">{{ tr.editing_tags() }}</th>
+    </tr>
+  </thead>
+  <tbody id="results-body">
+    {% if search_error %}
+      <tr>
+        <td colspan="5" class="text-error p-4 text-center font-semibold" role="alert">
+          {{ error or "invalid search" }}
+        </td>
+      </tr>
+    {% else %}
+      {% include "browser_rows.html.jinja" %}
+    {% endif %}
+  </tbody>
+</table>
