@@ -33,7 +33,11 @@ def _store(
 ):
     """Returns the stored filename (possibly renamed), or None if skipHash matched."""
     raw = _fetch_bytes(data, path, url)
-    if skipHash is not None and hashlib.md5(raw).hexdigest() == skipHash:
+    # AnkiConnect skipHash is an MD5 compatibility checksum, not a security hash.
+    if (
+        skipHash is not None
+        and hashlib.md5(raw, usedforsecurity=False).hexdigest() == skipHash
+    ):
         return None  # ref 702-710: caller already has an identical file
     if deleteExisting:
         col.media.trash_files([filename])  # ref 711-712: delete-then-write

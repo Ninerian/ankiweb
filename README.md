@@ -489,6 +489,12 @@ repository's `.venv`; run these commands from the repository root so it can reso
 and its installed dependencies. For migration guidance, see [ty's guide for users coming from
 mypy or Pyright](https://docs.astral.sh/ty/coming-from-mypy-or-pyright/).
 
+Ruff includes security rules; exact-rule exceptions are limited to documented test fixtures in
+`pyproject.toml`. The AnkiConnect `skipHash` MD5 is a non-security compatibility checksum;
+dynamic SQL binds user-supplied values rather than interpolating them.
+Asset downloads use HTTP(S)-only clients with finite timeouts. Run generators from the
+repository root with `uv run python tools/<script>.py` to use the project's dependencies.
+
 Complexipy checks cognitive complexity in `ankiweb`, `tests`, and `tools`, using the default
 threshold of 15. Functions above the threshold, including existing ones, are reported and cause a
 nonzero exit. See the [Complexipy usage guide](https://complexipy.com/usage-guide/).

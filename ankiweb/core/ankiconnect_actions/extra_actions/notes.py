@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from anki.collection import SearchNode
-from anki.utils import ids2str, split_fields, strip_html_media
+from anki.utils import split_fields, strip_html_media
 
 from ankiweb.ankiconnect.schemas.extra import RemoveDuplicateNotesParams
 from ankiweb.core.ankiconnect_actions.actions._helpers import run_emit
@@ -45,14 +45,20 @@ def _remove_duplicates(col, deck, deck_id, dry_run):
         raise ValueError("deck was not found: " + str(deck or deck_id))
 
     nids = col.find_notes(col.build_search_string(SearchNode(deck=name)))
-    # Order by id makes group and member ordering deterministic, oldest first.
-    rows = (
-        col.db.all(
-            f"select id, mid, flds from notes where id in {ids2str(nids)} order by id"
+    # Sorting unique IDs preserves the single IN query's ordered, deduplicated rows.
+    ids = sorted(set(nids))
+    rows = []
+    for i in range(0, len(ids), 999):
+        batch = ids[i : i + 999]
+        placeholders = ",".join("?" * len(batch))
+        # Only generated placeholders are interpolated; note IDs are bound below.
+        rows.extend(
+            col.db.all(
+                "select id, mid, flds from notes "  # noqa: S608
+                f"where id in ({placeholders}) order by id",
+                *batch,
+            )
         )
-        if nids
-        else []
-    )
 
     detail = []
     redundant: list[int] = []

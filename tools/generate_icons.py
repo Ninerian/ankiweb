@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Generate icon data and Jinja templates from Anki's upstream icons.ts.
 
 Fetches SVG icons referenced in anki's `ts/lib/components/icons.ts` and `ts/icons/`,
@@ -9,9 +9,9 @@ normalizes them, and outputs:
 
 import json
 import re
-import urllib.error
-import urllib.request
 from pathlib import Path
+
+import httpx
 
 ICONS_TS_URL = (
     "https://raw.githubusercontent.com/ankitects/anki/main/ts/lib/components/icons.ts"
@@ -34,43 +34,44 @@ COMPONENTS_DIR = (
 
 
 def fetch_icons():
-    req = urllib.request.Request(ICONS_TS_URL, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req) as resp:
-        icons_ts = resp.read().decode()
+    with httpx.Client(
+        headers={"User-Agent": "Mozilla/5.0"}, follow_redirects=True, timeout=30.0
+    ) as client:
+        response = client.get(ICONS_TS_URL)
+        response.raise_for_status()
+        icons_ts = response.content.decode("utf-8")
 
-    imports = dict(re.findall(r'import (\w+) from "([^"]+)";', icons_ts))
-    exports = re.findall(
-        r"export const (\w+) = \{ url: (\w+), component: (\w+) \};", icons_ts
-    )
+        imports = dict(re.findall(r'import (\w+) from "([^"]+)";', icons_ts))
+        exports = re.findall(
+            r"export const (\w+) = \{ url: (\w+), component: (\w+) \};", icons_ts
+        )
 
-    icons = {}
-    for exp, url_name, comp_name in exports:
-        import_path = imports.get(comp_name, imports.get(url_name, ""))
-        clean_path = import_path.split("?")[0]
-        if clean_path.startswith("@mdi/svg/svg/"):
-            svg_file = clean_path.replace("@mdi/svg/svg/", "")
-            fetch_url = MDI_RAW + svg_file
-        elif clean_path.startswith("bootstrap-icons/icons/"):
-            svg_file = clean_path.replace("bootstrap-icons/icons/", "")
-            fetch_url = BS_RAW + svg_file
-        elif clean_path.startswith("../../icons/"):
-            svg_file = clean_path.replace("../../icons/", "")
-            fetch_url = TS_ICONS_RAW + svg_file
-        else:
-            continue
+        icons = {}
+        for exp, url_name, comp_name in exports:
+            import_path = imports.get(comp_name, imports.get(url_name, ""))
+            clean_path = import_path.split("?")[0]
+            if clean_path.startswith("@mdi/svg/svg/"):
+                svg_file = clean_path.replace("@mdi/svg/svg/", "")
+                fetch_url = MDI_RAW + svg_file
+            elif clean_path.startswith("bootstrap-icons/icons/"):
+                svg_file = clean_path.replace("bootstrap-icons/icons/", "")
+                fetch_url = BS_RAW + svg_file
+            elif clean_path.startswith("../../icons/"):
+                svg_file = clean_path.replace("../../icons/", "")
+                fetch_url = TS_ICONS_RAW + svg_file
+            else:
+                continue
 
-        try:
-            req = urllib.request.Request(
-                fetch_url, headers={"User-Agent": "Mozilla/5.0"}
-            )
-            with urllib.request.urlopen(req) as resp:
-                raw_svg = resp.read().decode()
+            try:
+                response = client.get(fetch_url)
+                response.raise_for_status()
+                raw_svg = response.content.decode("utf-8")
                 s = re.sub(r"<\?xml[^>]*\?>", "", raw_svg)
                 s = re.sub(r"<!DOCTYPE[^>]*>", "", s)
                 s = re.sub(r"<!--.*?-->", "", s, flags=re.DOTALL)
                 icons[exp] = s.strip()
-        except (urllib.error.URLError, TimeoutError, OSError, UnicodeDecodeError) as e:
-            print(f"Warning: could not fetch {exp} from {fetch_url}: {e}")
+            except (httpx.HTTPError, TimeoutError, OSError, UnicodeDecodeError) as e:
+                print(f"Warning: could not fetch {exp} from {fetch_url}: {e}")
     return icons
 
 
