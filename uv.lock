@@ -55,20 +55,20 @@ dev = [
 requires-dist = [
     { name = "anki", specifier = "==26.9.2" },
     { name = "complexipy", marker = "extra == 'dev'", specifier = ">=8.3.0" },
-    { name = "datastar-py", specifier = ">=1.0.2" },
-    { name = "fastapi", specifier = ">=0.115" },
+    { name = "datastar-py", specifier = ">=1.0.3" },
+    { name = "fastapi", specifier = ">=0.162.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "jinja2", specifier = ">=3.1" },
-    { name = "playwright", marker = "extra == 'dev'", specifier = ">=1.44" },
+    { name = "playwright", marker = "extra == 'dev'", specifier = ">=1.64.1" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.7.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.2.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.4.1" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.17.3" },
-    { name = "starlette-compress", specifier = ">=1.8.0" },
+    { name = "starlette-compress", specifier = ">=2.0.0" },
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.92" },
-    { name = "uvicorn", specifier = ">=0.30" },
-    { name = "websockets", specifier = ">=12" },
+    { name = "uvicorn", specifier = ">=0.54.0" },
+    { name = "websockets", specifier = ">=17.3" },
 ]
 provides-extras = ["dev"]
 
