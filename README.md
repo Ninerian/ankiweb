@@ -501,9 +501,24 @@ nonzero exit. See the [Complexipy usage guide](https://complexipy.com/usage-guid
 Use `uv run complexipy --suggest-refactors` for recommendations. Keep extracted helpers within
 the same limit; preserve behavior rather than adding suppressions or raising the threshold.
 
-Apply Python formatting with `uv run ruff format .`. Before committing Python changes, run
-the lint, formatting, and type checks above against the whole repository.
-Re-run the complete block after changing Ruff's rule categories or preview settings.
+Install the Git hooks in each new clone:
+
+```bash
+uv run --locked --extra dev pre-commit install
+```
+
+The installed hook is shared by worktrees using the same common Git directory. Before each
+commit, it runs Ruff lint, Ruff format check, ty, and Complexipy against the whole repository;
+failures block the commit, and no files are auto-fixed. Run the same checks manually or uninstall
+the hook with:
+
+```bash
+uv run --locked --extra dev pre-commit run --all-files
+uv run --locked --extra dev pre-commit uninstall
+```
+
+Apply Python formatting separately with `uv run ruff format .`. Re-run the complete test block
+after changing Ruff's rule categories or preview settings.
 
 For VS Code, install the `astral-sh.ty` and `charliermarsh.ruff` extensions. Workspace settings
 use ty instead of Pylance, with Ruff formatting and lint fixes on explicit save.

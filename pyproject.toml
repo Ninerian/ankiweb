@@ -32,6 +32,7 @@ dev = [
     "ty>=0.0.92",
     "ruff>=0.17.3",
     "complexipy>=8.3.0",
+    "pre-commit>=4.7.0",
 ]
 
 [tool.pytest.ini_options]
