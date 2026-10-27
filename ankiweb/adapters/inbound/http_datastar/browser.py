@@ -9,10 +9,12 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from json import JSONDecodeError
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from anki.cards import Card, CardId
 from anki.collection import Collection, SearchNode
+from anki.consts import MODEL_CLOZE
+from anki.decks import DeckId
 from anki.errors import InvalidInput, NotFoundError, SearchError, TemplateError
 from anki.notes import NoteId
 from datastar_py.fastapi import (
@@ -28,6 +30,8 @@ from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
 if TYPE_CHECKING:
+    from anki.decks_pb2 import DeckTreeNode
+
     from ankiweb.adapters.outbound.anki_collection_adapter import CollectionService
     from ankiweb.core.bridge.hub import BridgeHub
 
@@ -266,6 +270,81 @@ def _all_visible_selected(
     )
 
 
+def _card_types(col: Collection) -> list[dict[str, str]]:
+    """List each notetype's templates with exact, canonical card searches."""
+    items: list[dict[str, str]] = []
+    for notetype in col.models.all():
+        notetype_node = SearchNode(parsable_text=f"mid:{notetype['id']}")
+        for template in notetype["tmpls"]:
+            nodes = [notetype_node]
+            if notetype["type"] != MODEL_CLOZE:
+                nodes.append(SearchNode(template=template["ord"]))
+            items.append(
+                {
+                    "name": f"{template['name']} — {notetype['name']}",
+                    "query": col.build_search_string(*nodes),
+                }
+            )
+    return sorted(items, key=lambda item: item["name"].casefold())
+
+
+class _DeckItem(TypedDict):
+    name: str
+    full_name: str
+    query: str
+    children: list[_DeckItem]
+    selected: bool
+    expanded: bool
+
+
+def _expand_deck_path(items: list[_DeckItem], target: _DeckItem) -> bool:
+    contains_target = False
+    for item in items:
+        selected = item is target
+        child_selected = _expand_deck_path(item["children"], target)
+        item["selected"] = selected
+        item["expanded"] = selected or child_selected
+        contains_target |= item["expanded"]
+    return contains_target
+
+
+def _deck_items(col: Collection, query: str, search_error: bool) -> list[_DeckItem]:
+    try:
+        normalized_query = (
+            col.build_search_string(query).casefold()
+            if query and not search_error
+            else ""
+        )
+    except (SearchError, InvalidInput):
+        normalized_query = ""
+
+    matches: list[_DeckItem] = []
+
+    def to_items(nodes: Sequence[DeckTreeNode], depth: int) -> list[_DeckItem]:
+        items: list[_DeckItem] = []
+        for node in nodes:
+            full_name = col.decks.name(DeckId(node.deck_id))
+            deck_query = col.build_search_string(SearchNode(deck=full_name))
+            item: _DeckItem = {
+                "name": node.name,
+                "full_name": full_name,
+                "query": deck_query,
+                "children": to_items(node.children, depth + 1),
+                "selected": False,
+                "expanded": depth == 0,
+            }
+            if normalized_query and deck_query.casefold() == normalized_query:
+                matches.append(item)
+            items.append(item)
+        return items
+
+    tree = col.sched.deck_due_tree()
+    items = to_items(tree.children if tree is not None else [], 0)
+    if len(matches) == 1:
+        _expand_deck_path(items, matches[0])
+    return items
+
+
 def build_browser_context(
     col: Collection,
     query: str = "",
@@ -273,8 +352,9 @@ def build_browser_context(
     selected_cids: Sequence[CardId | int] | None = None,
     selection_anchor: CardId | int | None = None,
     matched_cids: Sequence[CardId | int] | None = None,
-    decks: list[dict[str, str]] | None = None,
+    decks: list[_DeckItem] | None = None,
     tags: list[dict[str, str]] | None = None,
+    card_types: list[dict[str, str]] | None = None,
     open_detail: bool = False,
     dialog: str = "",
     error: str = "",
@@ -286,24 +366,11 @@ def build_browser_context(
     Submitted selection is never inferred from the shared BridgeHub mirror.
     Existing cards remain selected even when they no longer match the filter.
     """
+    resolved_matched_cids, has_search_error = _matched_cards(
+        col, query, matched_cids, search_error
+    )
     if decks is None:
-        tree = col.sched.deck_due_tree()
-
-        def _to_items(nodes):
-            items = []
-            for n in nodes:
-                full_name = col.decks.name(n.deck_id)
-                items.append(
-                    {
-                        "name": n.name,
-                        "full_name": full_name,
-                        "query": col.build_search_string(SearchNode(deck=full_name)),
-                        "children": _to_items(n.children),
-                    }
-                )
-            return items
-
-        decks = _to_items(tree.children if tree is not None else [])
+        decks = _deck_items(col, query, has_search_error)
     if tags is None:
         tags = [
             {
@@ -312,10 +379,8 @@ def build_browser_context(
             }
             for name in col.tags.all()
         ]
-
-    resolved_matched_cids, has_search_error = _matched_cards(
-        col, query, matched_cids, search_error
-    )
+    if card_types is None:
+        card_types = _card_types(col)
 
     visible_cids = resolved_matched_cids[:_LIMIT]
     raw_sel = selected_cids or []
@@ -339,6 +404,7 @@ def build_browser_context(
     return {
         "decks": decks,
         "tags": tags,
+        "card_types": card_types,
         "query": query,
         "rows": rows,
         "count": count,
@@ -630,6 +696,7 @@ def _search_context(
         selected_cids=[],
         selection_anchor=None,
         matched_cids=matched,
+        card_types=[],
         open_detail=False,
         search_error=search_failed,
     )
@@ -654,6 +721,7 @@ def _select_context(
         selected_cids=selected,
         selection_anchor=anchor,
         matched_cids=matched,
+        card_types=[],
         open_detail=parsed.open_detail,
     )
     return ctx, matched, [CardId(c) for c in ctx["selected_cids"]]
@@ -668,6 +736,7 @@ def _dialog_context(
         query=parsed.browser_query,
         selected_cids=valid_sel,
         selection_anchor=parsed.selection_anchor,
+        card_types=[],
         dialog=action if valid_sel else "",
     )
 
@@ -706,6 +775,7 @@ async def _run_browser_mutation(
                 query=applied_q,
                 selected_cids=valid_cids,
                 selection_anchor=anchor,
+                card_types=[],
                 dialog=dialog_name,
                 error=err_msg,
                 value=submitted_value,
@@ -724,6 +794,7 @@ async def _run_browser_mutation(
             query=applied_q,
             selected_cids=[],
             selection_anchor=None,
+            card_types=[],
             dialog="",
         )
         matched = [CardId(c) for c in ctx["matched_cids"]]
@@ -752,7 +823,10 @@ async def _search_browser(
     await service.run(
         lambda col: _mirror_hub(hub, q if not search_failed else "", matched, [], col)
     )
-    return DatastarResponse(_render_selection_patches(ctx))
+    decks_html = templating.render("browser_sidebar_decks.html.jinja", **ctx)
+    events = _render_selection_patches(ctx)
+    events.append(SSE.patch_elements(decks_html, selector="#sidebar-decks-section"))
+    return DatastarResponse(events)
 
 
 async def _refresh_browser(
@@ -773,6 +847,7 @@ async def _refresh_browser(
             query=applied_q,
             selected_cids=cur_sel,
             selection_anchor=cur_anc,
+            card_types=[],
             open_detail=False,
         )
         matched = [CardId(c) for c in ctx["matched_cids"]]
@@ -824,6 +899,7 @@ async def _open_browser_card(
             query=applied_q,
             selected_cids=[card_id],
             selection_anchor=card_id,
+            card_types=[],
             open_detail=True,
         )
         matched = [CardId(c) for c in ctx["matched_cids"]]
@@ -947,6 +1023,7 @@ def make_browser_routes(
                 query=applied_q,
                 selected_cids=cur_sel,
                 selection_anchor=cur_anc,
+                card_types=[],
                 dialog="",
             )
 

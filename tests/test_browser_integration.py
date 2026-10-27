@@ -11,7 +11,7 @@ from ankiweb.app import create_app
 from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import ViewportSize, sync_playwright
+from playwright.sync_api import Locator, ViewportSize, expect, sync_playwright
 
 
 def _observe_browser_refreshes(page):
@@ -963,7 +963,17 @@ def test_browse_sidebar_long_name_truncated(live_server_longdeck):
         page.goto(f"{base}/browse")
         _open_browse_sidebar(page)
         page.wait_for_selector("#sidebar .side-item", timeout=6000)
+        parent_name = long_name.rsplit("::", 1)[0]
+        parent = (
+            page.locator("#sidebar")
+            .get_by_title(parent_name, exact=True)
+            .locator("xpath=ancestor::details[1]")
+        )
+        assert parent.get_attribute("open") is None
+        parent.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(parent).to_have_attribute("open", "")
         item = page.locator("#sidebar").get_by_title(long_name, exact=True)
+        expect(item).to_be_visible(timeout=6000)
         # the full name is preserved on the hover tooltip even though the visible text is clipped
         assert item.get_attribute("title") == long_name
         href = item.get_attribute("href")
@@ -1201,8 +1211,21 @@ def test_browse_sidebar_responsive_layout_and_dismissal(
             .get_by_title("Other branch::Unit 0::Holiday words", exact=True)
             .locator("xpath=ancestor::details[1]")
         )
+        other_parent = (
+            page.locator("#sidebar")
+            .get_by_title("Other branch::Unit 0", exact=True)
+            .locator("xpath=ancestor::details[1]")
+        )
         assert decks.get_attribute("open") is not None
         assert tags.get_attribute("open") is not None
+        assert branch.get_attribute("open") is None
+        assert descendant.get_attribute("open") is None
+        assert other_parent.get_attribute("open") is None
+        assert other_branch.get_attribute("open") is None
+        branch.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        descendant.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        other_parent.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        other_branch.locator(":scope > summary").click(position={"x": 6, "y": 10})
         assert branch.get_attribute("open") is not None
         assert descendant.get_attribute("open") is not None
         assert other_branch.get_attribute("open") is not None
@@ -1294,7 +1317,20 @@ def test_browse_sidebar_nested_decks_filter_by_full_path(
             (leaf, 'Extra "quoted" words', {"quoted leaf card"}),
         ):
             _open_browse_sidebar(page)
+            if deck_name == leaf:
+                for parent_name in (intermediate, f"{intermediate}::Holiday words"):
+                    parent = (
+                        page.locator("#sidebar")
+                        .get_by_title(parent_name, exact=True)
+                        .locator("xpath=ancestor::details[1]")
+                    )
+                    if parent.get_attribute("open") is None:
+                        parent.locator(":scope > summary").click(
+                            position={"x": 6, "y": 10}
+                        )
+                    expect(parent).to_have_attribute("open", "")
             link = page.locator("#sidebar").get_by_title(deck_name, exact=True)
+            expect(link).to_be_visible(timeout=6000)
             assert link.inner_text() == label
             assert link.get_attribute("title") == deck_name
             href = link.get_attribute("href")
@@ -1325,6 +1361,135 @@ def test_browse_sidebar_nested_decks_filter_by_full_path(
             assert set(actual_ids) == {card_ids[front] for front in expected_cards}
             _wait_browse_sidebar(page, width >= 1024)
 
+        browser.close()
+
+
+@pytest.mark.parametrize("width,is_mobile", [(1229, False), (375, True)])
+def test_browse_sidebar_search_opens_only_selected_deck_path(
+    live_server_nested_decks: tuple[str, str, str, dict[str, str], dict[str, int]],
+    width: int,
+    is_mobile: bool,
+) -> None:
+    base, intermediate, leaf, queries, _ = live_server_nested_decks
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context(
+            viewport={"width": width, "height": 812},
+            is_mobile=is_mobile,
+            has_touch=is_mobile,
+        )
+        page = context.new_page()
+        page.goto(f"{base}/browse")
+        _open_browse_sidebar(page)
+
+        def link(name: str) -> Locator:
+            return page.locator("#sidebar-decks-section").get_by_title(name, exact=True)
+
+        def branch(name: str) -> Locator:
+            return link(name).locator("xpath=ancestor::details[1]")
+
+        def submit(query: str) -> None:
+            page.locator("#search").fill(query)
+            page.locator("#search").press("Enter")
+            page.wait_for_function(
+                "(query) => new URL(location.href).searchParams.get('q') === query",
+                arg=query,
+                timeout=6000,
+            )
+            _open_browse_sidebar(page)
+
+        root = branch("Green Line 2")
+        unit = branch(intermediate)
+        child = branch(f"{intermediate}::Holiday words")
+        sibling = branch("Green Line 2::Unit 1")
+        other_root = branch("Other branch")
+        other_unit = branch("Other branch::Unit 0")
+        active = page.locator('#sidebar-decks-section a[aria-current="true"]')
+
+        assert root.get_attribute("open") is not None
+        assert other_root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is None
+        assert sibling.get_attribute("open") is None
+        assert other_unit.get_attribute("open") is None
+        assert link(intermediate).is_visible()
+        assert link("Green Line 2::Unit 1").is_visible()
+        assert link("Other branch::Unit 0").is_visible()
+        assert not link(f"{intermediate}::Holiday words").is_visible()
+        assert not link(leaf).is_visible()
+        expect(active).to_have_count(0)
+
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(unit).to_have_attribute("open", "")
+        child.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(child).to_have_attribute("open", "")
+        expect(link(leaf)).to_be_visible(timeout=6000)
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        assert child.get_attribute("open") is not None
+        expect(link(leaf)).not_to_be_visible(timeout=6000)
+
+        submit(queries[leaf].lower())
+        expect(link(leaf)).to_have_attribute("aria-current", "true")
+        expect(active).to_have_count(1)
+        expect(link(leaf)).to_be_visible(timeout=6000)
+        assert root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is not None
+        assert child.get_attribute("open") is not None
+        assert sibling.get_attribute("open") is None
+        assert other_root.get_attribute("open") is None
+        assert other_unit.get_attribute("open") is None
+        assert link("Green Line 2::Unit 1").is_visible()
+        assert not link("Other branch::Unit 0").is_visible()
+
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(link(leaf)).not_to_be_visible(timeout=6000)
+        assert link(leaf).get_attribute("aria-current") == "true"
+        if not is_mobile:
+            tags = page.locator("#sidebar-tags-section")
+            card_types = page.locator("#sidebar-card-types-section")
+            tags.locator(":scope > summary").click()
+            card_types.locator(":scope > summary").click()
+            page.locator("#results-body tr.browser-row").click()
+            page.locator("#detail iframe.editor-frame").wait_for(
+                state="visible", timeout=6000
+            )
+            assert unit.get_attribute("open") is None
+            assert child.get_attribute("open") is not None
+            assert link(leaf).get_attribute("aria-current") == "true"
+            assert tags.get_attribute("open") is None
+            assert card_types.get_attribute("open") is None
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(link(leaf)).to_be_visible(timeout=6000)
+
+        submit(queries[intermediate])
+        expect(link(intermediate)).to_have_attribute("aria-current", "true")
+        expect(active).to_have_count(1)
+        expect(link(intermediate)).to_be_visible(timeout=6000)
+        assert root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is not None
+        assert child.get_attribute("open") is None
+        assert sibling.get_attribute("open") is None
+        assert other_root.get_attribute("open") is None
+        assert not link(leaf).is_visible()
+
+        submit("tag:no-such-tag")
+        expect(active).to_have_count(0)
+        assert root.get_attribute("open") is not None
+        assert other_root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is None
+        assert sibling.get_attribute("open") is None
+        assert other_unit.get_attribute("open") is None
+        assert not link(leaf).is_visible()
+
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        assert unit.get_attribute("open") is not None
+        submit("")
+        expect(active).to_have_count(0)
+        assert root.get_attribute("open") is not None
+        assert other_root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is None
+        assert sibling.get_attribute("open") is None
+        assert other_unit.get_attribute("open") is None
+        assert not link(leaf).is_visible()
         browser.close()
 
 
@@ -1531,7 +1696,7 @@ def test_browse_sidebar_sections_fold_independently_and_filter(
         assert tags.get_attribute("open") is not None
         assert deck_link.is_visible() and tag_link.is_visible()
 
-        decks.locator("summary").click()
+        decks.locator(":scope > summary").click()
         assert decks.get_attribute("open") is None
         assert tags.get_attribute("open") is not None
         assert not deck_link.is_visible() and tag_link.is_visible()
@@ -1552,7 +1717,7 @@ def test_browse_sidebar_sections_fold_independently_and_filter(
         assert page.locator("#results-body tr.browser-row").count() == 1
 
         _open_browse_sidebar(page)
-        deck_summary = decks.locator("summary")
+        deck_summary = decks.locator(":scope > summary")
         if decks.get_attribute("open") is None:
             deck_summary.press("Enter")
         assert decks.get_attribute("open") is not None
@@ -1611,7 +1776,7 @@ def test_browse_mobile_sidebar_folding_keeps_panel_open(live_server_sidebar_sear
         tags = page.locator("#sidebar-tags-section")
         assert decks.get_attribute("open") is not None
         assert tags.get_attribute("open") is not None
-        decks.locator("summary").tap()
+        decks.locator(":scope > summary").tap()
         assert decks.get_attribute("open") is None
         assert tags.get_attribute("open") is not None
         assert page.locator("#browser-sidebar-state").is_checked()
@@ -1620,7 +1785,7 @@ def test_browse_mobile_sidebar_folding_keeps_panel_open(live_server_sidebar_sear
             == "true"
         )
 
-        decks.locator("summary").tap()
+        decks.locator(":scope > summary").tap()
         deck_link = page.get_by_role("link", name=special_deck, exact=True)
         href = deck_link.get_attribute("href")
         assert href is not None

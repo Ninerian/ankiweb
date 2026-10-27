@@ -1,35 +1,7 @@
 <aside id="sidebar-panel" class="bg-base-100 border-base-300">
     <ul id="sidebar" class="menu w-full min-w-0 flex-nowrap gap-1 p-2">
       <li>
-        <details id="sidebar-decks-section" open>
-          <summary>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" class="size-4"><path d="M12 3l8 4.5l-8 4.5l-8 -4.5z"></path><path d="M4 12l8 4.5l8 -4.5"></path><path d="M4 16.5l8 4.5l8 -4.5"></path></svg>
-            <span>{{ tr.browsing_sidebar_decks() }}</span>
-          </summary>
-          <ul>
-            {% macro deck_nodes(nodes) %}
-              {% for item in nodes %}
-                <li class="min-w-0">
-                  {% if item.children %}
-                    <details open>
-                      <summary>
-                        <a class="side-item" title="{{ item.full_name }}" href="/browse?{{ {'q': item.query} | urlencode }}">{{ item.name }}</a>
-                      </summary>
-                      <ul>{{ deck_nodes(item.children) }}</ul>
-                    </details>
-                  {% else %}
-                    <a
-                      class="side-item"
-                      title="{{ item.full_name }}"
-                      href="/browse?{{ {'q': item.query} | urlencode }}"
-                    >{{ item.name }}</a>
-                  {% endif %}
-                </li>
-              {% endfor %}
-            {% endmacro %}
-            {{ deck_nodes(decks) }}
-          </ul>
-        </details>
+        {% include "browser_sidebar_decks.html.jinja" %}
       </li>
       <li>
         <details id="sidebar-tags-section" open>
@@ -39,6 +11,25 @@
           </summary>
           <ul>
             {% for item in tags %}
+              <li class="min-w-0">
+                <a
+                  class="side-item"
+                  title="{{ item.name }}"
+                  href="/browse?{{ {'q': item.query} | urlencode }}"
+                >{{ item.name }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </details>
+      </li>
+      <li>
+        <details id="sidebar-card-types-section" open>
+          <summary>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" class="size-4"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
+            <span>{{ tr.card_stats_card_template() }}</span>
+          </summary>
+          <ul>
+            {% for item in card_types %}
               <li class="min-w-0">
                 <a
                   class="side-item"

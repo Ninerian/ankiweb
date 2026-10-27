@@ -39,12 +39,16 @@ shortcuts.
 
 ![Reviewer](docs/images/reviewer.png)
 
-**Browse & edit** — search with an icon-toggled deck/tag sidebar, the results table,
+**Browse & edit** — search with an icon-toggled deck/tag/card-type sidebar, the results table,
 and Anki's real `editor.js` embedded live in the detail pane (with Fields… / Cards… / Preview).
 From 1024px wide, the sidebar starts open beside the cards; on narrower screens it starts
 closed and overlays the card list at its full available height when opened.
+The deck tree initially shows two levels. A standalone deck query highlights the exact deck
+and opens only its path; compound and negated queries do not imply a single selected deck.
 Nested deck links filter by the full deck path, keeping identically named subdecks distinct.
 Disclosure arrows precede deck names: the arrow folds the branch, while the name opens its cards.
+Card-type entries show the template name followed by its note type and filter that exact
+template within the note type. Cloze entries include all cloze cards for that note type.
 
 ![Browser](docs/images/browser.png)
 

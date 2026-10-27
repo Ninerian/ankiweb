@@ -1,7 +1,11 @@
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from anki.collection import Collection, SearchNode
+from anki.decks import DeckId
+from anki.models import NotetypeId
 from fastapi.testclient import TestClient
 
 from ankiweb.app import create_app
@@ -248,6 +252,339 @@ def test_browse_sidebar_special_characters_and_wildcard_escaping(client):
     # Must only match the exact note with special_tag, NOT the decoy note
     assert tag_get_cids == [c3_id]
     assert c4_id not in tag_get_cids
+
+
+_SPECIAL_DECK = 'Quoted "deck"* Ω'
+_DECK_NAMES = (
+    "Root",
+    "Root::Unit1",
+    "Root::Unit1::Lesson",
+    "Root::Unit1::Lesson::Deep",
+    "Root::Unit10",
+    "Root::Unit10::Lesson",
+    "Other",
+    "Other::Chapter",
+    "Other::Chapter::Leaf",
+    _SPECIAL_DECK,
+    f"{_SPECIAL_DECK}::Child",
+)
+
+
+def _seed_deck_paths(col: Collection) -> dict[str, str]:
+    for name in _DECK_NAMES:
+        col.decks.id(name)
+    return {
+        name: col.build_search_string(SearchNode(deck=name)) for name in _DECK_NAMES
+    }
+
+
+@pytest.fixture
+def deck_queries(client: TestClient) -> dict[str, str]:
+    return cast(dict[str, str], _run(client, _seed_deck_paths))
+
+
+class _DeckStateParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.details: list[bool] = []
+        self.in_section = False
+        self.in_summary = False
+        self.expanded: set[str] = set()
+        self.active: set[str] = set()
+        self.current: set[str] = set()
+        self.names: set[str] = set()
+        self.visible: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag == "details" and attributes.get("id") == "sidebar-decks-section":
+            self.in_section = True
+        if not self.in_section:
+            return
+        if tag == "details":
+            self.details.append("open" in attributes)
+        elif tag == "summary":
+            self.in_summary = True
+        elif tag == "a":
+            self._record_anchor(attributes)
+
+    def _record_anchor(self, attributes: dict[str, str | None]) -> None:
+        name = attributes.get("title")
+        if not name:
+            return
+        self.names.add(name)
+        ancestors = self.details[:-1] if self.in_summary else self.details
+        if all(ancestors):
+            self.visible.add(name)
+        if self.in_summary and len(self.details) > 1 and self.details[-1]:
+            self.expanded.add(name)
+        if "menu-active" in (attributes.get("class") or "").split():
+            self.active.add(name)
+        if attributes.get("aria-current") == "true":
+            self.current.add(name)
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self.in_section:
+            return
+        if tag == "summary":
+            self.in_summary = False
+        elif tag == "details":
+            self.details.pop()
+            if not self.details:
+                self.in_section = False
+
+
+def _deck_state(html: str) -> _DeckStateParser:
+    parser = _DeckStateParser()
+    parser.feed(html)
+    assert set(_DECK_NAMES) <= parser.names
+    return parser
+
+
+def _assert_deck_search_state(
+    client: TestClient, query: str, selected: set[str], expanded: set[str]
+) -> None:
+    from conftest import parse_datastar_events
+
+    response = client.get("/browse", params={"q": query})
+    assert response.status_code == 200
+    get_state = _deck_state(response.text)
+
+    response = client.post(
+        "/browse/search",
+        json={"query": query},
+        headers={"Datastar-Request": "true"},
+    )
+    assert response.status_code == 200
+    patches = [
+        data
+        for event, data in parse_datastar_events(response.text)
+        if event == "datastar-patch-elements" and "sidebar-decks-section" in data
+    ]
+    assert len(patches) == 1
+    assert 'id="sidebar-panel"' not in patches[0]
+    assert 'id="sidebar-tags-section"' not in patches[0]
+    assert 'id="sidebar-card-types-section"' not in patches[0]
+    post_state = _deck_state(patches[0])
+    visible = {
+        name
+        for name in _DECK_NAMES
+        if all(
+            "::".join(name.split("::")[:depth]) in expanded
+            for depth in range(1, len(name.split("::")))
+        )
+    }
+
+    for state in (get_state, post_state):
+        assert state.active == selected
+        assert state.current == selected
+        assert state.expanded == expanded
+        assert state.visible & set(_DECK_NAMES) == visible
+
+
+@pytest.mark.parametrize(
+    ("name", "expanded"),
+    [
+        ("Root", {"Root"}),
+        ("Root::Unit1", {"Root", "Root::Unit1"}),
+        ("Root::Unit10", {"Root", "Root::Unit10"}),
+        (
+            "Root::Unit1::Lesson",
+            {"Root", "Root::Unit1", "Root::Unit1::Lesson"},
+        ),
+        (
+            "Root::Unit1::Lesson::Deep",
+            {"Root", "Root::Unit1", "Root::Unit1::Lesson"},
+        ),
+        (_SPECIAL_DECK, {_SPECIAL_DECK}),
+        (f"{_SPECIAL_DECK}::Child", {_SPECIAL_DECK}),
+    ],
+)
+def test_browse_deck_search_opens_only_selected_path(
+    client: TestClient, deck_queries: dict[str, str], name: str, expanded: set[str]
+) -> None:
+    _assert_deck_search_state(client, deck_queries[name], {name}, expanded)
+
+
+@pytest.mark.parametrize("query", ['deck:"Root::Unit1"', 'deck:"rOoT::uNiT1"'])
+def test_browse_deck_search_accepts_alternate_quoting(
+    client: TestClient, deck_queries: dict[str, str], query: str
+) -> None:
+    _assert_deck_search_state(
+        client,
+        query,
+        {"Root::Unit1"},
+        {"Root", "Root::Unit1"},
+    )
+
+
+def _basic_card_type_query(col: Collection) -> str:
+    model = col.models.by_name("Basic")
+    assert model is not None
+    return f"mid:{model['id']} card:1"
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "",
+        "dog",
+        "deck:(((",
+        "-deck:Root::Unit1",
+        "deck:Root::Unit1 OR deck:Root::Unit10",
+        "deck:Root::Unit*",
+        "deck:Root::Unit1 dog",
+        'deck:"Root::Unit1" card:1',
+        None,
+    ],
+)
+def test_browse_other_searches_clear_deck_selection(
+    client: TestClient, deck_queries: dict[str, str], query: str | None
+) -> None:
+    if query is None:
+        query = cast(str, _run(client, _basic_card_type_query))
+    _assert_deck_search_state(
+        client,
+        deck_queries["Root::Unit1::Lesson"],
+        {"Root::Unit1::Lesson"},
+        {"Root", "Root::Unit1", "Root::Unit1::Lesson"},
+    )
+    _assert_deck_search_state(client, query, set(), {"Root", "Other", _SPECIAL_DECK})
+
+
+def test_browse_selection_and_refresh_do_not_patch_decks(client: TestClient) -> None:
+    from conftest import parse_datastar_events
+
+    cid = _run(client, lambda col: next(iter(col.find_cards("dog"))))
+    responses = (
+        client.post(f"/browse/open/{cid}"),
+        client.post(
+            "/browse/refresh",
+            json={"selectedCids": [cid], "selectionAnchor": cid, "browserQuery": "dog"},
+            headers={"Datastar-Request": "true"},
+        ),
+    )
+    for response in responses:
+        assert response.status_code == 200
+        assert all(
+            "sidebar-decks-section" not in data and "sidebar-panel" not in data
+            for event, data in parse_datastar_events(response.text)
+            if event == "datastar-patch-elements"
+        )
+
+
+def _assert_card_type_link(
+    client: TestClient, links: dict[str, str], label: str, expected_ids: set[int]
+) -> None:
+    from urllib.parse import parse_qs, urlparse
+
+    assert label in links
+    href = links[label]
+    parsed = urlparse(href)
+    assert parsed.path == "/browse"
+    query = parse_qs(parsed.query).get("q", [""])[0]
+    assert query
+
+    response = client.get(href)
+    assert response.status_code == 200
+    assert set(_extract_cids_from_html(response.text)) == expected_ids
+    assert set(_extract_cids_from_search_post(client, query)) == expected_ids
+    if not expected_ids:
+        assert _run(client, lambda col: col.find_cards(query)) == []
+
+
+def _add_card_type_model(
+    col: Collection,
+    deck_id: DeckId,
+    name: str,
+    template_fields: list[tuple[str, str]],
+) -> tuple[str, list[str], dict[int, int]]:
+    model = col.models.new(name)
+    for field in ("Front", "Back", "Extra", "Unused"):
+        col.models.add_field(model, col.models.new_field(field))
+    for template_name, field in template_fields:
+        template = col.models.new_template(template_name)
+        template["qfmt"] = f"{{{{{field}}}}}"
+        template["afmt"] = "{{FrontSide}}<hr id=answer>{{Back}}"
+        col.models.add_template(model, template)
+    result = col.models.add_dict(model)
+    saved_model = col.models.get(NotetypeId(result.id))
+    assert saved_model is not None
+    note = col.new_note(saved_model)
+    note["Front"] = f"{name} question"
+    note["Back"] = f"{name} answer"
+    note["Extra"] = f"{name} extra"
+    col.add_note(note, deck_id)
+    return (
+        str(saved_model["name"]),
+        [str(template["name"]) for template in saved_model["tmpls"]],
+        {card.ord: int(card.id) for card in note.cards()},
+    )
+
+
+def _seed_card_type_templates(col: Collection) -> dict[str, set[int]]:
+    model_name = 'Quoted "model"* & Ω'
+    decoy_model_name = 'Quoted "model" decoy & Ω'
+    first_template = 'Front "card"* & Ω'
+    decoy_template = 'Front "card" decoy & Ω'
+    shared_template = 'Shared "card"* & Ω'
+    unused_template = 'Unused "card" & Ω'
+    deck_id = col.decks.id("Default")
+    assert deck_id is not None
+
+    model_name, templates, cards = _add_card_type_model(
+        col,
+        deck_id,
+        model_name,
+        [
+            (first_template, "Front"),
+            (shared_template, "Back"),
+            (decoy_template, "Extra"),
+            (unused_template, "Unused"),
+        ],
+    )
+    decoy_model_name, decoy_templates, decoy_cards = _add_card_type_model(
+        col,
+        deck_id,
+        decoy_model_name,
+        [(decoy_template, "Front"), (shared_template, "Back")],
+    )
+    assert set(cards) == {0, 1, 2}
+    assert set(decoy_cards) == {0, 1}
+    first_template, shared_template, decoy_template, unused_template = templates
+    decoy_model_template, decoy_shared_template = decoy_templates
+
+    cloze = col.models.by_name("Cloze")
+    assert cloze is not None
+    cloze_note = col.new_note(cloze)
+    cloze_note["Text"] = "{{c1::first}} and {{c2::second}}"
+    col.add_note(cloze_note, deck_id)
+    cloze_cards = {card.ord: int(card.id) for card in cloze_note.cards()}
+    assert set(cloze_cards) == {0, 1}
+    cloze_name = str(cloze["name"])
+    cloze_template = str(cloze["tmpls"][0]["name"])
+    return {
+        f"{first_template} — {model_name}": {cards[0]},
+        f"{shared_template} — {model_name}": {cards[1]},
+        f"{decoy_template} — {model_name}": {cards[2]},
+        f"{unused_template} — {model_name}": set(),
+        f"{decoy_model_template} — {decoy_model_name}": {decoy_cards[0]},
+        f"{decoy_shared_template} — {decoy_model_name}": {decoy_cards[1]},
+        f"{cloze_template} — {cloze_name}": set(cloze_cards.values()),
+    }
+
+
+def test_browse_sidebar_card_templates_filter_exact_cards(client: TestClient) -> None:
+    expected = cast(dict[str, set[int]], _run(client, _seed_card_type_templates))
+    browse = client.get("/browse")
+    assert browse.status_code == 200
+    links = _extract_sidebar_links(browse.text)
+    cloze_label = next(label for label, ids in expected.items() if len(ids) == 2)
+    cloze_suffix = f" — {cloze_label.rpartition(' — ')[2]}"
+    assert {label for label in links if label.endswith(cloze_suffix)} == {cloze_label}
+
+    for label, expected_ids in expected.items():
+        _assert_card_type_link(client, links, label, expected_ids)
 
 
 def test_browse_open_pushes_detail_and_selection(client):
