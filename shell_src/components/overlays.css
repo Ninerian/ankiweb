@@ -139,10 +139,6 @@ body {
   margin-bottom: 1.5rem;
 }
 
-.modal-title {
-  margin-inline-end: 0.75rem;
-}
-
 .invert {
   filter: invert(1) grayscale(100%) brightness(200%);
 }
