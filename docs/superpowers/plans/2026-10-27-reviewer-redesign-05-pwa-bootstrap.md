@@ -9,7 +9,7 @@
 | Ist | Folge |
 |---|---|
 | Manifest `/manifest.webmanifest`: `id`/`start_url`/`scope` = `/` | Installiert den **alten** Client. Muss für `/app/` getrennt werden |
-| SW `/service-worker.js`, Scope `/`, cached nur `GET /shell/static/*`, cache-first, `CACHE = ankiweb-shell-v1` | Funktioniert; App-CSS/JS liegen unter `/shell/static/app/` und werden automatisch mit-gecacht. Versionierung nur per Konstante |
+| SW `/service-worker.js`, Scope `/`, cached nur `GET /shell/static/*`, cache-first, `CACHE = ankiweb-shell-v1` | Funktioniert; Der **alte** Worker cached dank `/shell/static/*` auch `app-client.css` (gleicher Origin); der neue Worker braucht eine eigene Regel (siehe Cache-Strategie). Versionierung nur per Konstante |
 | Manifest/SW öffentlich (`PWA_PUBLIC_PATHS`) | Neue Pfade müssen ebenfalls dort eingetragen werden |
 | Icons 192/512 Platzhalter, `any maskable` | Maskable-Beschnitt auf Gerät **ungeprüft** |
 | Kein Test für Manifest/SW/Auth-Ausnahme | Wird hier nachgeholt (permanente Tests mit Verhaltenswert) |
@@ -22,7 +22,7 @@
 | Manifest-`id` | Das Manifest `/` behält `id: "/"` unverändert (sonst zweite installierte App für Bestandsnutzer). Das neue Manifest `/app/` erhält `id: "/app/"` und ist bewusst eine **eigene** App | Stabile Identität des bestehenden PWA-Installs |
 | Manifest-Trennung | **Zweites Manifest** `/app/manifest.webmanifest` mit `id`/`scope`/`start_url` = `/app/`; Manifest `/` bleibt für den alten Client | Zwei Apps, zwei Identitäten; Scope-Trennung verhindert, dass beide sich überlagern |
 | Service Worker | **Eigener Worker** `/app/service-worker.js` mit `Service-Worker-Allowed: /app/`, Scope `/app/` | Eigener Cache-Namespace und eigene Eviction; alter Worker bleibt unberührt. Max-Scope = Pfad (REFERENCE §4) |
-| Cache-Strategie | Wie gehabt: nur `GET /shell/static/app/` cache-first. **Plus** Offline-Fallback-Seite für Navigationen (`/app/offline`): bei Netzfehler statt Browserfehler (RESEARCH-pwa Szenario 2) | Kleine Verbesserung ohne Offline-Lernen. Authentifiziertes HTML wird **nie** gecacht |
+| Cache-Strategie | Wie gehabt: nur `GET /shell/static/app-client.css` und `GET /shell/static/app/*` cache-first. **Plus** Offline-Fallback-Seite für Navigationen (`/app/offline`): bei Netzfehler statt Browserfehler (RESEARCH-pwa Szenario 2) | Kleine Verbesserung ohne Offline-Lernen. Authentifiziertes HTML wird **nie** gecacht |
 | Offline-Seite | Statisches HTML, beim Install precached, ohne Nutzerdaten, ohne Auth | Darf deshalb öffentlich sein |
 | Theme-Color | `<meta name="theme-color">` mit `media`-Varianten hell/dunkel; Werte = `--color-base-100` bzw. Primärfarbe der Themes `aw-light`/`aw-dark` (eine Quelle: Konstanten in Python, aus denselben Hexwerten wie `app-client.css`; Test gleicht beide ab) | Dunkel folgt `prefers-color-scheme` (DESIGN §6); verhindert Drift Theme und Manifest |
 | Icons | Platzhalter beibehalten; **nicht neu erfinden**. Maskable-Safe-Zone prüfen (Glyph innerhalb 80 % Kreis) | Kein genehmigtes Design (REFERENCE §7) |
@@ -53,7 +53,7 @@ Test: automatisierte Link-Matrix (alle Links je Seite crawlen, Ziel liefert 200/
 | `ankiweb/app.py` | Router einhängen; `PWA_PUBLIC_PATHS` um drei Pfade erweitern (Auth-Guard) |
 | `templates/app/base.html.jinja` | Manifest-Link, Theme-Color (2x), Apple-Tags, Apple-Touch-Icon, SW-Registrierung Scope `/app/` |
 | `static/app/install.js` | `beforeinstallprompt`, iOS-Hinweis |
-| `templates/app/offline.html.jinja` | Offline-Seite. Styling: precachte `app-client.css` (Worker cached sie ohnehin unter `/shell/static/app/…`-Regel? **Pfad prüfen**: `app-client.css` liegt unter `/shell/static/`, nicht `/shell/static/app/`; Worker-Regel und Precache-Liste entsprechend anpassen) |
+| `templates/app/offline.html.jinja` | Offline-Seite. Styling: precachte `/shell/static/app-client.css` (Install-Schritt, Regel siehe Cache-Strategie) |
 | `tests/app_client/test_app_pwa.py` | Manifest, SW, Auth, Cache-Regeln |
 | `tests/app_client/test_app_links.py` | Link-Matrix |
 | `docs/pwa-deployment.md` | HTTPS, Host-Whitelist, Cookie, Installation Android/iOS |
@@ -64,7 +64,7 @@ Test: automatisierte Link-Matrix (alle Links je Seite crawlen, Ziel liefert 200/
 ### 5.1 Manifest und Worker für `/app/`
 - [ ] Manifest: `name` "AnkiWeb", `short_name` "Anki", `id`/`start_url`/`scope` `/app/`, `display: standalone`, Farben, Icons (bestehende Dateien), `application/manifest+json`.
 - [ ] Worker-Quelle als Python-Konstante wie `SERVICE_WORKER_JS`; Header `Cache-Control: no-cache`, `Service-Worker-Allowed: /app/`.
-- [ ] Fetch-Handler: (a) `GET` unter `/shell/static/app/` cache-first (wie bestehend); (b) Navigationen (`req.mode === "navigate"`, Pfad unter `/app/`): `fetch` network-only, bei Fehler `caches.match("/app/offline")`; (c) **alles andere nicht abfangen**.
+- [ ] Fetch-Handler: (a) `GET` auf `/shell/static/app-client.css` und unter `/shell/static/app/` cache-first; (b) Navigationen (`req.mode === "navigate"`, Pfad unter `/app/`): `fetch` network-only, bei Fehler `caches.match("/app/offline")`; (c) **alles andere nicht abfangen**.
 - [ ] `install`: precache `/app/offline` und `/shell/static/app-client.css` (Offline-Seite braucht Stil), danach `skipWaiting`. Fetch-Handler (a) deckt `GET /shell/static/app-client.css` und `/shell/static/app/*` ab (Pfadpräfix-Liste, nicht nur `/shell/static/app/`).
 - [ ] `activate`: alte Caches mit Präfix `ankiweb-app-` löschen, `clients.claim()`.
 - [ ] Cache-Name mit Build-Hash. Der Hash umfasst `app-client.css` und `shell_src/app/*.js`, damit eine CSS-Änderung den cache-first-Eintrag nicht veraltet stehen lässt (sonst bleibt altes Styling auf Geräten).
