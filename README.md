@@ -517,6 +517,9 @@ uv run --locked --extra dev pre-commit run --all-files
 uv run --locked --extra dev pre-commit uninstall
 ```
 
+On pushes and pull requests, `.github/workflows/code-quality.yml` runs the same four checks
+using locked `uv` development dependencies.
+
 Apply Python formatting separately with `uv run ruff format .`. Re-run the complete test block
 after changing Ruff's rule categories or preview settings.
 
