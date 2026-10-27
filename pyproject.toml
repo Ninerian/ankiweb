@@ -29,6 +29,7 @@ dev = [
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1",
     "playwright>=1.64.1",
+    "httpx2>=2.16.0",
     "ty>=0.0.92",
     "ruff>=0.17.3",
     "complexipy>=8.3.0",
@@ -37,6 +38,7 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 
 [tool.ty.environment]
