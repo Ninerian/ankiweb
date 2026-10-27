@@ -19,7 +19,7 @@ import re
 import unicodedata
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
-from urllib.parse import quote, urlsplit, urlunsplit
+from urllib.parse import SplitResult, quote, urlsplit, urlunsplit
 
 from datastar_py.attributes import SignalValue
 from datastar_py.fastapi import DatastarResponse
@@ -56,6 +56,18 @@ def _normalize_return_url(target: str) -> str:
     return re.sub(r"%(?![0-9A-Fa-f]{2})", "%25", encoded)
 
 
+def _same_origin_return_url(
+    target: str, request_url: str | None, parsed: SplitResult
+) -> str | None:
+    if request_url is None:
+        return None
+    target_origin = _url_origin(target)
+    if target_origin is None or target_origin != _url_origin(request_url):
+        return None
+    path = urlunsplit(("", "", parsed.path or "/", parsed.query, parsed.fragment))
+    return safe_return_url(path)
+
+
 def safe_return_url(target: object, *, request_url: str | None = None) -> str | None:
     """Return a safe same-app path, optionally reducing a same-origin Referer."""
     if (
@@ -76,13 +88,7 @@ def safe_return_url(target: object, *, request_url: str | None = None) -> str | 
     if request_url is not None and not has_origin:
         return None
     if has_origin:
-        if request_url is None:
-            return None
-        target_origin = _url_origin(target)
-        if target_origin is None or target_origin != _url_origin(request_url):
-            return None
-        path = urlunsplit(("", "", parsed.path or "/", parsed.query, parsed.fragment))
-        return safe_return_url(path)
+        return _same_origin_return_url(target, request_url, parsed)
 
     if not parsed.path.startswith("/") or parsed.path.startswith("//"):
         return None

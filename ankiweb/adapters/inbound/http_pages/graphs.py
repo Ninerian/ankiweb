@@ -114,23 +114,19 @@ def generate_today_stats(today: stats_pb2.GraphsResponse.Today) -> dict[str, Any
     }
 
 
-def generate_future_due_chart(
-    future_due: stats_pb2.GraphsResponse.FutureDue,
-    range_days: int = 30,
-    show_backlog: bool = True,
-) -> dict[str, Any]:
-    """Generate SVG chart for Future Due."""
-    all_counts = dict(future_due.future_due)
-    # Backlog filtering: if show_backlog is False, only non-negative days
-    if show_backlog:
-        active_counts = all_counts
-    else:
-        active_counts = {k: v for k, v in all_counts.items() if k >= 0}
+def _future_due_backlog_start(min_day: int, range_days: int) -> int:
+    if range_days == 30:
+        return max(min_day, -30)
+    if range_days == 90:
+        return max(min_day, -90)
+    if range_days == 365:
+        return max(min_day, -365)
+    return min_day
 
-    # Future total counts reviews in the charted slice (matching legacy f = sum(b, count))
-    # Will be computed below as sum of counts in data
-    has_any = len(active_counts) > 0 and sum(active_counts.values()) > 0
 
+def _future_due_chart_range(
+    active_counts: dict[int, int], range_days: int, show_backlog: bool
+) -> tuple[int, int]:
     min_day = min(active_counts.keys()) if active_counts else 0
     max_day_data = max(active_counts.keys()) if active_counts else 30
 
@@ -152,36 +148,35 @@ def generate_future_due_chart(
 
     # If backlog exists, negative start
     if show_backlog and min_day < 0:
-        if range_days == 30:
-            start_day = max(min_day, -30)
-        elif range_days == 90:
-            start_day = max(min_day, -90)
-        elif range_days == 365:
-            start_day = max(min_day, -365)
-        else:
-            start_day = min_day
+        start_day = _future_due_backlog_start(min_day, range_days)
+    return start_day, end_day
 
+
+def _future_due_tooltip(day: int, count: int, running_total: int) -> str:
+    if day < 0:
+        day_label = f"{-day} days overdue"
+        return f"{day_label}:&#10;{count} cards due (backlog)"
+    if day == 0:
+        day_label = "Today"
+    elif day == 1:
+        day_label = "Tomorrow"
+    else:
+        day_label = f"in {day} days"
+    return f"{day_label}:&#10;{count} cards due&#10;Running total: {running_total}"
+
+
+def _future_due_chart_data(
+    active_counts: dict[int, int], start_day: int, end_day: int
+) -> tuple[list[dict[str, Any]], int]:
     data: list[dict[str, Any]] = []
     max_count = 0
     running_tot = 0
-
     for d in range(start_day, end_day + 1):
         c = active_counts.get(d, 0)
         if d >= 0:
             running_tot += c
         max_count = max(max_count, c)
-        if d < 0:
-            day_label = f"{-d} days overdue"
-            tt = f"{day_label}:&#10;{c} cards due (backlog)"
-        elif d == 0:
-            day_label = "Today"
-            tt = f"{day_label}:&#10;{c} cards due&#10;Running total: {running_tot}"
-        elif d == 1:
-            day_label = "Tomorrow"
-            tt = f"{day_label}:&#10;{c} cards due&#10;Running total: {running_tot}"
-        else:
-            day_label = f"in {d} days"
-            tt = f"{day_label}:&#10;{c} cards due&#10;Running total: {running_tot}"
+        tt = _future_due_tooltip(d, c, running_tot)
         data.append(
             {
                 "day": d,
@@ -191,6 +186,30 @@ def generate_future_due_chart(
                 "is_backlog": d < 0,
             }
         )
+    return data, max_count
+
+
+def generate_future_due_chart(
+    future_due: stats_pb2.GraphsResponse.FutureDue,
+    range_days: int = 30,
+    show_backlog: bool = True,
+) -> dict[str, Any]:
+    """Generate SVG chart for Future Due."""
+    all_counts = dict(future_due.future_due)
+    # Backlog filtering: if show_backlog is False, only non-negative days
+    if show_backlog:
+        active_counts = all_counts
+    else:
+        active_counts = {k: v for k, v in all_counts.items() if k >= 0}
+
+    # Future total counts reviews in the charted slice (matching legacy f = sum(b, count))
+    # Will be computed below as sum of counts in data
+    has_any = len(active_counts) > 0 and sum(active_counts.values()) > 0
+
+    start_day, end_day = _future_due_chart_range(
+        active_counts, range_days, show_backlog
+    )
+    data, max_count = _future_due_chart_data(active_counts, start_day, end_day)
 
     width = 600
     height = 250
@@ -357,51 +376,45 @@ def generate_calendar_chart(
     }
 
 
-def generate_reviews_chart(
-    revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes,
-    days_range: int = 30,
-    show_time: bool = False,
-) -> dict[str, Any]:
-    """Generate Reviews history chart (count or time)."""
-    data_map = revs.time if show_time else revs.count
+def _review_day_series(
+    day: int, entry: Any, series_keys: list[str], show_time: bool
+) -> tuple[dict[str, Any], float]:
+    item: dict[str, Any] = {"day": day}
+    running_base = 0.0
+    day_tot = 0.0
+    if entry:
+        for k in series_keys:
+            raw_v = getattr(entry, k, 0)
+            v = (raw_v / 1000.0 / 60.0) if show_time else float(raw_v)
+            item[f"_base_{k}"] = running_base
+            item[k] = v
+            running_base += v
+            day_tot += v
+    else:
+        for k in series_keys:
+            item[f"_base_{k}"] = 0.0
+            item[k] = 0.0
+    return item, day_tot
+
+
+def _review_chart_max_day(data_map: Any, days_range: int) -> int:
     max_day = (
         days_range
         if days_range > 0
         else (max(abs(k) for k in data_map) if data_map else 30)
     )
-    max_day = max(max_day, 1)
+    return max(max_day, 1)
 
-    series_keys = ["learn", "relearn", "young", "mature", "filtered"]
-    colors = [
-        "rgb(253, 141, 60)",
-        "rgb(251, 106, 74)",
-        "rgb(116, 196, 118)",
-        "rgb(49, 163, 84)",
-        "rgb(107, 174, 214)",
-    ]
 
+def _review_chart_items(
+    data_map: Any, max_day: int, series_keys: list[str], show_time: bool
+) -> tuple[list[dict[str, Any]], float, int]:
     items: list[dict[str, Any]] = []
     total_val = 0.0
     days_studied_count = 0
-
     for d in range(-max_day, 1):
         entry = data_map.get(d)
-        item: dict[str, Any] = {"day": d}
-        running_base = 0.0
-        day_tot = 0.0
-        if entry:
-            for k in series_keys:
-                raw_v = getattr(entry, k, 0)
-                v = (raw_v / 1000.0 / 60.0) if show_time else float(raw_v)
-                item[f"_base_{k}"] = running_base
-                item[k] = v
-                running_base += v
-                day_tot += v
-        else:
-            for k in series_keys:
-                item[f"_base_{k}"] = 0.0
-                item[k] = 0.0
-
+        item, day_tot = _review_day_series(d, entry, series_keys, show_time)
         if day_tot > 0:
             days_studied_count += 1
             total_val += day_tot
@@ -413,6 +426,59 @@ def generate_reviews_chart(
             else f"{-d} days ago: {int(day_tot)} {unit_str}"
         )
         items.append(item)
+    return items, total_val, days_studied_count
+
+
+def _review_chart_summary(
+    days_studied_count: int, max_day: int, total_val: float, show_time: bool
+) -> list[dict[str, str]]:
+    pct_studied = (days_studied_count / max_day * 100.0) if max_day > 0 else 0.0
+    unit_label = "minutes" if show_time else "reviews"
+    rate_label = "minutes/day" if show_time else "reviews/day"
+    val_str = (
+        f"{total_val:.1f} {unit_label}"
+        if show_time
+        else f"{int(total_val)} {unit_label}"
+    )
+    avg_str = (
+        f"{total_val / max_day:.1f} {rate_label}" if max_day > 0 else f"0 {rate_label}"
+    )
+
+    return [
+        {
+            "label": tr.statistics_days_studied(),
+            "value": f"{days_studied_count} of {max_day} ({pct_studied:.2f}%)",
+        },
+        {"label": "Total", "value": val_str},
+        {
+            "label": tr.statistics_average_for_days_studied(),
+            "value": f"{total_val / max(days_studied_count, 1):.1f} {rate_label}",
+        },
+        {"label": tr.statistics_average_over_period(), "value": avg_str},
+    ]
+
+
+def generate_reviews_chart(
+    revs: stats_pb2.GraphsResponse.ReviewCountsAndTimes,
+    days_range: int = 30,
+    show_time: bool = False,
+) -> dict[str, Any]:
+    """Generate Reviews history chart (count or time)."""
+    data_map = revs.time if show_time else revs.count
+    max_day = _review_chart_max_day(data_map, days_range)
+
+    series_keys = ["learn", "relearn", "young", "mature", "filtered"]
+    colors = [
+        "rgb(253, 141, 60)",
+        "rgb(251, 106, 74)",
+        "rgb(116, 196, 118)",
+        "rgb(49, 163, 84)",
+        "rgb(107, 174, 214)",
+    ]
+
+    items, total_val, days_studied_count = _review_chart_items(
+        data_map, max_day, series_keys, show_time
+    )
 
     width = 600
     height = 250
@@ -469,30 +535,7 @@ def generate_reviews_chart(
 
     svg_parts.append("</svg>")
 
-    pct_studied = (days_studied_count / max_day * 100.0) if max_day > 0 else 0.0
-    unit_label = "minutes" if show_time else "reviews"
-    rate_label = "minutes/day" if show_time else "reviews/day"
-    val_str = (
-        f"{total_val:.1f} {unit_label}"
-        if show_time
-        else f"{int(total_val)} {unit_label}"
-    )
-    avg_str = (
-        f"{total_val / max_day:.1f} {rate_label}" if max_day > 0 else f"0 {rate_label}"
-    )
-
-    summary = [
-        {
-            "label": tr.statistics_days_studied(),
-            "value": f"{days_studied_count} of {max_day} ({pct_studied:.2f}%)",
-        },
-        {"label": "Total", "value": val_str},
-        {
-            "label": tr.statistics_average_for_days_studied(),
-            "value": f"{total_val / max(days_studied_count, 1):.1f} {rate_label}",
-        },
-        {"label": tr.statistics_average_over_period(), "value": avg_str},
-    ]
+    summary = _review_chart_summary(days_studied_count, max_day, total_val, show_time)
 
     subtitle = (
         tr.statistics_reviews_time_subtitle()
@@ -624,6 +667,24 @@ def generate_card_counts_chart(
     }
 
 
+def _interval_chart_maximum(
+    choice: str, all_intervals: list[float], imap: dict[int, int]
+) -> int:
+    if choice == "month":
+        max_interval = 30
+    elif choice == "50":
+        max_interval = (
+            math.ceil(_compute_percentile(all_intervals, 0.5)) if all_intervals else 30
+        )
+    elif choice == "95":
+        max_interval = (
+            math.ceil(_compute_percentile(all_intervals, 0.95)) if all_intervals else 30
+        )
+    else:  # "all"
+        max_interval = max(imap.keys()) if imap else 30
+    return max(max_interval, 1)
+
+
 def generate_intervals_chart(
     intervals: stats_pb2.GraphsResponse.Intervals,
     days_range_or_percentile: str = "95",
@@ -637,20 +698,9 @@ def generate_intervals_chart(
     total_cards = len(all_intervals)
     median_ivl = _compute_median(all_intervals) if all_intervals else 0.0
 
-    if days_range_or_percentile == "month":
-        max_interval = 30
-    elif days_range_or_percentile == "50":
-        max_interval = (
-            math.ceil(_compute_percentile(all_intervals, 0.5)) if all_intervals else 30
-        )
-    elif days_range_or_percentile == "95":
-        max_interval = (
-            math.ceil(_compute_percentile(all_intervals, 0.95)) if all_intervals else 30
-        )
-    else:  # "all"
-        max_interval = max(imap.keys()) if imap else 30
-
-    max_interval = max(max_interval, 1)
+    max_interval = _interval_chart_maximum(
+        days_range_or_percentile, all_intervals, imap
+    )
 
     data: list[dict[str, Any]] = []
     max_count = 0
@@ -1162,6 +1212,35 @@ class _ButtonCategoryData(TypedDict):
     total: int
 
 
+def _append_button_chart_bars(
+    svg_parts: list[str],
+    cat_data: list[_ButtonCategoryData],
+    b_scale: BandScale,
+    btn_colors: list[str],
+    height: int,
+    margin_bottom: int,
+    margin_top: int,
+    max_tot: int,
+) -> None:
+    for cd in cat_data:
+        bx = b_scale(cd["category"])
+        bw = b_scale.bandwidth
+        cur_y = height - margin_bottom
+        for b_idx in range(4):
+            val = cd["counts"][b_idx]
+            if val <= 0:
+                continue
+            bh = ((height - margin_bottom) - margin_top) * (val / max(max_tot, 1))
+            top_y = cur_y - bh
+            color = btn_colors[b_idx]
+            pct = (val / cd["total"] * 100.0) if cd["total"] > 0 else 0.0
+            tt = f"{cd['category']} Button {b_idx + 1}: {val} ({pct:.1f}%)"
+            svg_parts.append(
+                f'  <rect rx="1" x="{bx:.2f}" y="{top_y:.2f}" width="{bw:.2f}" height="{bh:.2f}" fill="{color}" data-tooltip="{tt}"></rect>'
+            )
+            cur_y = top_y
+
+
 def generate_buttons_chart(
     btn_counts: stats_pb2.GraphsResponse.Buttons.ButtonCounts,
     days_range: int = 365,
@@ -1201,23 +1280,16 @@ def generate_buttons_chart(
 
     svg_parts = [f'<svg viewBox="0 0 {width} {height}">']
 
-    for cd in cat_data:
-        bx = b_scale(cd["category"])
-        bw = b_scale.bandwidth
-        cur_y = height - margin_bottom
-        for b_idx in range(4):
-            val = cd["counts"][b_idx]
-            if val <= 0:
-                continue
-            bh = ((height - margin_bottom) - margin_top) * (val / max(max_tot, 1))
-            top_y = cur_y - bh
-            color = btn_colors[b_idx]
-            pct = (val / cd["total"] * 100.0) if cd["total"] > 0 else 0.0
-            tt = f"{cd['category']} Button {b_idx + 1}: {val} ({pct:.1f}%)"
-            svg_parts.append(
-                f'  <rect rx="1" x="{bx:.2f}" y="{top_y:.2f}" width="{bw:.2f}" height="{bh:.2f}" fill="{color}" data-tooltip="{tt}"></rect>'
-            )
-            cur_y = top_y
+    _append_button_chart_bars(
+        svg_parts,
+        cat_data,
+        b_scale,
+        btn_colors,
+        height,
+        margin_bottom,
+        margin_top,
+        max_tot,
+    )
 
     svg_parts.extend(
         [
@@ -1391,6 +1463,33 @@ def generate_retention_chart(
     }
 
 
+def _graph_range_source(g_resp: Any, chart: str, days: int) -> Any:
+    if days <= 30:
+        return getattr(g_resp, chart).one_month
+    if days <= 90:
+        return getattr(g_resp, chart).three_months
+    if days <= 365:
+        return getattr(g_resp, chart).one_year
+    return getattr(g_resp, chart).all_time
+
+
+def _fsrs_charts(
+    g_resp: Any, stability_range: str
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
+    retrievability_data = (
+        generate_retrievability_chart(g_resp.retrievability) if g_resp.fsrs else None
+    )
+    stability_data = (
+        generate_stability_chart(g_resp.stability, range_choice=stability_range)
+        if g_resp.fsrs
+        else None
+    )
+    difficulty_data = (
+        generate_difficulty_chart(g_resp.difficulty) if g_resp.fsrs else None
+    )
+    return retrievability_data, stability_data, difficulty_data
+
+
 def make_router(get_service: Callable[[], Any]) -> APIRouter:
     router = APIRouter()
 
@@ -1446,18 +1545,8 @@ def make_router(get_service: Callable[[], Any]) -> APIRouter:
         )
         added_data = generate_added_chart(g_resp.added, days_range=added_range)
 
-        retrievability_data = (
-            generate_retrievability_chart(g_resp.retrievability)
-            if g_resp.fsrs
-            else None
-        )
-        stability_data = (
-            generate_stability_chart(g_resp.stability, range_choice="95")
-            if g_resp.fsrs
-            else None
-        )
-        difficulty_data = (
-            generate_difficulty_chart(g_resp.difficulty) if g_resp.fsrs else None
+        retrievability_data, stability_data, difficulty_data = _fsrs_charts(
+            g_resp, "95"
         )
 
         body = templating.render(
@@ -1531,23 +1620,8 @@ def make_router(get_service: Callable[[], Any]) -> APIRouter:
         g_resp = await service.run(_fetch_and_set)
 
         # Select hours / buttons source based on per-chart range
-        if hours_range <= 30:
-            h_src = g_resp.hours.one_month
-        elif hours_range <= 90:
-            h_src = g_resp.hours.three_months
-        elif hours_range <= 365:
-            h_src = g_resp.hours.one_year
-        else:
-            h_src = g_resp.hours.all_time
-
-        if buttons_range <= 30:
-            b_src = g_resp.buttons.one_month
-        elif buttons_range <= 90:
-            b_src = g_resp.buttons.three_months
-        elif buttons_range <= 365:
-            b_src = g_resp.buttons.one_year
-        else:
-            b_src = g_resp.buttons.all_time
+        h_src = _graph_range_source(g_resp, "hours", hours_range)
+        b_src = _graph_range_source(g_resp, "buttons", buttons_range)
 
         today_data = generate_today_stats(g_resp.today)
         future_due_data = generate_future_due_chart(
@@ -1571,18 +1645,8 @@ def make_router(get_service: Callable[[], Any]) -> APIRouter:
         buttons_data = generate_buttons_chart(b_src, days_range=buttons_range)
         added_data = generate_added_chart(g_resp.added, days_range=added_range)
 
-        retrievability_data = (
-            generate_retrievability_chart(g_resp.retrievability)
-            if g_resp.fsrs
-            else None
-        )
-        stability_data = (
-            generate_stability_chart(g_resp.stability, range_choice=stability_range)
-            if g_resp.fsrs
-            else None
-        )
-        difficulty_data = (
-            generate_difficulty_chart(g_resp.difficulty) if g_resp.fsrs else None
+        retrievability_data, stability_data, difficulty_data = _fsrs_charts(
+            g_resp, stability_range
         )
 
         updated_html = templating.render(

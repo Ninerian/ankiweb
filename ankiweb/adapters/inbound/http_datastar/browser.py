@@ -5,7 +5,7 @@ import html
 import json
 import logging
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from json import JSONDecodeError
@@ -22,7 +22,7 @@ from datastar_py.fastapi import (
     ServerSentEventGenerator as SSE,
 )
 from fastapi import APIRouter, Request
-from starlette.datastructures import UploadFile
+from starlette.datastructures import FormData, QueryParams, UploadFile
 
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
@@ -114,6 +114,18 @@ def _status_html(count: int) -> str:
     )
 
 
+def _card_template_name(card: Card) -> str | int | None:
+    try:
+        template = card.template()
+        return template.get("name", "") if template is not None else ""
+    except (IndexError, TemplateError):
+        return ""
+
+
+def _sort_field(fields: list[str], index: int) -> str:
+    return fields[index] if index < len(fields) else (fields[0] if fields else "")
+
+
 def _row_data(
     col: Collection,
     cids: Sequence[CardId | int],
@@ -129,16 +141,8 @@ def _row_data(
         note = card.note()
         model = note.note_type()
         sf = model.get("sortf", 0) if model is not None else 0
-        sort = (
-            note.fields[sf]
-            if sf < len(note.fields)
-            else (note.fields[0] if note.fields else "")
-        )
-        try:
-            template = card.template()
-            template_name = template.get("name", "") if template is not None else ""
-        except (IndexError, TemplateError):
-            template_name = ""
+        sort = _sort_field(note.fields, sf)
+        template_name = _card_template_name(card)
         note_type_name = model.get("name", "") if model is not None else ""
         deck_name = col.decks.name(card.did)
         tags_str = " ".join(note.tags)
@@ -217,6 +221,51 @@ def _resolve_deck_id(col: Collection, name: str) -> int:
     return int(deck_id)
 
 
+def _matched_cards(
+    col: Collection,
+    query: str,
+    matched_cids: Sequence[CardId | int] | None,
+    search_error: bool,
+) -> tuple[list[CardId], bool]:
+    if matched_cids is not None:
+        return [CardId(int(c)) for c in matched_cids], search_error
+    try:
+        return list(col.find_cards(query or "")), search_error
+    except (SearchError, InvalidInput):
+        return [], True
+
+
+def _selection_anchor(
+    col: Collection,
+    selection_anchor: CardId | int | None,
+    selected_cids: Sequence[CardId],
+) -> CardId | None:
+    fallback = selected_cids[0] if selected_cids else None
+    if selection_anchor is None:
+        return fallback
+    parsed = _parse_positive_int64(selection_anchor)
+    if parsed is None:
+        return fallback
+    candidate = CardId(parsed)
+    try:
+        col.get_card(candidate)
+    except NotFoundError:
+        return fallback
+    return candidate
+
+
+def _all_visible_selected(
+    visible_cids: Sequence[CardId],
+    selected_cids: Sequence[CardId],
+    selected_set: AbstractSet[CardId],
+) -> bool:
+    return bool(
+        visible_cids
+        and len(selected_cids) >= len(visible_cids)
+        and all(c in selected_set for c in visible_cids)
+    )
+
+
 def build_browser_context(
     col: Collection,
     query: str = "",
@@ -254,16 +303,9 @@ def build_browser_context(
             for name in col.tags.all()
         ]
 
-    resolved_matched_cids: list[CardId]
-    has_search_error = search_error
-    if matched_cids is None:
-        try:
-            resolved_matched_cids = list(col.find_cards(query or ""))
-        except (SearchError, InvalidInput):
-            resolved_matched_cids = []
-            has_search_error = True
-    else:
-        resolved_matched_cids = [CardId(int(c)) for c in matched_cids]
+    resolved_matched_cids, has_search_error = _matched_cards(
+        col, query, matched_cids, search_error
+    )
 
     visible_cids = resolved_matched_cids[:_LIMIT]
     raw_sel = selected_cids or []
@@ -273,30 +315,13 @@ def build_browser_context(
     seen_cids = set(valid_selected_cids)
 
     # Preserve valid existing anchor even if currently unselected
-    anchor: CardId | None = None
-    if selection_anchor is not None:
-        parsed_anchor = _parse_positive_int64(selection_anchor)
-        if parsed_anchor is not None:
-            candidate_anchor = CardId(parsed_anchor)
-            try:
-                col.get_card(candidate_anchor)
-                anchor = candidate_anchor
-            except NotFoundError:
-                anchor = valid_selected_cids[0] if valid_selected_cids else None
-        else:
-            anchor = valid_selected_cids[0] if valid_selected_cids else None
-    elif valid_selected_cids:
-        anchor = valid_selected_cids[0]
+    anchor = _selection_anchor(col, selection_anchor, valid_selected_cids)
 
     rows = _row_data(col, visible_cids, seen_cids)
     count = len(resolved_matched_cids)
     count_label = _card_count_str(count)
     sel_label = _selection_label_str(len(valid_selected_cids), count)
-    all_sel = bool(
-        visible_cids
-        and len(valid_selected_cids) >= len(visible_cids)
-        and all(c in seen_cids for c in visible_cids)
-    )
+    all_sel = _all_visible_selected(visible_cids, valid_selected_cids, seen_cids)
     part_sel = bool(valid_selected_cids and not all_sel)
 
     detail_nid, detail_is_io = _resolve_detail_nid(col, valid_selected_cids)
@@ -347,28 +372,32 @@ class BrowserRequestData:
     tag: str = ""
 
 
-async def _parse_browser_request(
-    request: Request, *, prefer_query_draft: bool = False
-) -> BrowserRequestData:
-    """Explicitly decode Request data from query params, forms, and JSON."""
-    out = BrowserRequestData()
+def _request_query(data: Mapping[str, object], prefer_query_draft: bool) -> object:
+    first, last = (
+        ("query", "browserQuery") if prefer_query_draft else ("browserQuery", "query")
+    )
+    if first in data:
+        return data[first]
+    if "q" in data:
+        return data["q"]
+    return data.get(last)
 
-    # 1. URL Query parameters (including repeated selectedCids)
-    qp = request.query_params
-    if prefer_query_draft:
-        q_val = (
-            qp.get("query")
-            if "query" in qp
-            else (qp.get("q") if "q" in qp else qp.get("browserQuery"))
-        )
-    else:
-        q_val = (
-            qp.get("browserQuery")
-            if "browserQuery" in qp
-            else (qp.get("q") if "q" in qp else qp.get("query"))
-        )
-    if q_val is not None:
-        out.browser_query = q_val
+
+def _append_selected(out: BrowserRequestData, values: Iterable[object]) -> None:
+    for value in values:
+        if isinstance(value, UploadFile):
+            continue
+        parsed = _parse_positive_int64(value)
+        if parsed is not None:
+            out.selected_cids.append(CardId(parsed))
+
+
+def _apply_query_params(
+    out: BrowserRequestData, qp: QueryParams, prefer_query_draft: bool
+) -> None:
+    query = _request_query(qp, prefer_query_draft)
+    if query is not None:
+        out.browser_query = str(query)
     if "cid" in qp:
         parsed_cid = _parse_positive_int64(qp["cid"])
         if parsed_cid is not None:
@@ -376,131 +405,112 @@ async def _parse_browser_request(
     if "mode" in qp:
         out.mode = qp["mode"]
     if "openDetail" in qp:
-        od_val = qp["openDetail"]
-        out.open_detail = od_val not in ("0", "false", "False", "")
+        out.open_detail = qp["openDetail"] not in ("0", "false", "False", "")
     if "selectionAnchor" in qp:
-        parsed_anc = _parse_positive_int64(qp["selectionAnchor"])
-        if parsed_anc is not None:
-            out.selection_anchor = CardId(parsed_anc)
-    for c_str in qp.getlist("selectedCids"):
-        parsed_c = _parse_positive_int64(c_str)
-        if parsed_c is not None:
-            out.selected_cids.append(CardId(parsed_c))
-    for field_name in ("value", "deck", "tag"):
-        if field_name in qp:
-            setattr(out, field_name, qp[field_name])
+        parsed_anchor = _parse_positive_int64(qp["selectionAnchor"])
+        if parsed_anchor is not None:
+            out.selection_anchor = CardId(parsed_anchor)
+    _append_selected(out, qp.getlist("selectedCids"))
+    for name in ("value", "deck", "tag"):
+        if name in qp:
+            setattr(out, name, qp[name])
 
-    # 2. Form or JSON body
+
+def _body_card_id(raw: object) -> CardId | None:
+    if raw is None or isinstance(raw, UploadFile):
+        return None
+    parsed = _parse_positive_int64(raw)
+    return CardId(parsed) if parsed is not None else None
+
+
+def _apply_body_ids(out: BrowserRequestData, data: Mapping[str, object]) -> None:
+    if "cid" in data and out.cid is None:
+        out.cid = _body_card_id(data["cid"])
+    if "selectionAnchor" in data and out.selection_anchor is None:
+        out.selection_anchor = _body_card_id(data["selectionAnchor"])
+
+
+def _apply_body_action(out: BrowserRequestData, data: Mapping[str, object]) -> None:
+    mode = data.get("mode")
+    if not out.mode and mode is not None and not isinstance(mode, UploadFile):
+        out.mode = str(mode)
+    if "openDetail" in data and not out.open_detail:
+        detail = data["openDetail"]
+        if not isinstance(detail, UploadFile):
+            out.open_detail = str(detail) not in ("0", "false", "False", "")
+
+
+def _apply_body_text(out: BrowserRequestData, data: Mapping[str, object]) -> None:
+    for name in ("value", "deck", "tag"):
+        value = data.get(name)
+        if (
+            not getattr(out, name)
+            and value is not None
+            and not isinstance(value, UploadFile)
+        ):
+            setattr(out, name, str(value))
+
+
+def _apply_body(
+    out: BrowserRequestData, data: Mapping[str, object], prefer_query_draft: bool
+) -> None:
+    query = _request_query(data, prefer_query_draft)
+    if query is not None and not isinstance(query, UploadFile):
+        out.browser_query = str(query)
+    _apply_body_ids(out, data)
+    _apply_body_action(out, data)
+    _apply_body_text(out, data)
+
+
+def _apply_form(
+    out: BrowserRequestData, form: FormData, prefer_query_draft: bool
+) -> None:
+    _apply_body(out, form, prefer_query_draft)
+    _append_selected(out, form.getlist("selectedCids"))
+
+
+def _apply_json(
+    out: BrowserRequestData, data: dict[str, Any], prefer_query_draft: bool
+) -> None:
+    _apply_body(out, data, prefer_query_draft)
+    selected = data.get("selectedCids")
+    if isinstance(selected, list):
+        _append_selected(out, selected)
+
+
+async def _parse_browser_request(
+    request: Request, *, prefer_query_draft: bool = False
+) -> BrowserRequestData:
+    """Explicitly decode Request data from query params, forms, and JSON."""
+    out = BrowserRequestData()
+    _apply_query_params(out, request.query_params, prefer_query_draft)
     content_type = request.headers.get("content-type", "").lower()
     if (
         "application/x-www-form-urlencoded" in content_type
         or "multipart/form-data" in content_type
     ):
-        form = await request.form()
-        if prefer_query_draft:
-            form_q = (
-                form.get("query")
-                if "query" in form
-                else (form.get("q") if "q" in form else form.get("browserQuery"))
-            )
-        else:
-            form_q = (
-                form.get("browserQuery")
-                if "browserQuery" in form
-                else (form.get("q") if "q" in form else form.get("query"))
-            )
-        if form_q is not None and not isinstance(form_q, UploadFile):
-            out.browser_query = str(form_q)
-
-        if "selectionAnchor" in form and out.selection_anchor is None:
-            raw_anc = form["selectionAnchor"]
-            if not isinstance(raw_anc, UploadFile):
-                parsed_anc = _parse_positive_int64(raw_anc)
-                if parsed_anc is not None:
-                    out.selection_anchor = CardId(parsed_anc)
-        if "cid" in form and out.cid is None:
-            raw_cid = form["cid"]
-            if not isinstance(raw_cid, UploadFile):
-                parsed_cid = _parse_positive_int64(raw_cid)
-                if parsed_cid is not None:
-                    out.cid = CardId(parsed_cid)
-        if "mode" in form and not out.mode:
-            raw_mode = form["mode"]
-            if not isinstance(raw_mode, UploadFile):
-                out.mode = str(raw_mode)
-        if "openDetail" in form and not out.open_detail:
-            raw_od = form["openDetail"]
-            if not isinstance(raw_od, UploadFile):
-                od_val = str(raw_od)
-                out.open_detail = od_val not in ("0", "false", "False", "")
-        for field_name in ("value", "deck", "tag"):
-            if field_name in form and not getattr(out, field_name):
-                raw_field = form[field_name]
-                if not isinstance(raw_field, UploadFile):
-                    setattr(out, field_name, str(raw_field))
-
-        for item in form.getlist("selectedCids"):
-            if not isinstance(item, UploadFile):
-                parsed_c = _parse_positive_int64(item)
-                if parsed_c is not None:
-                    out.selected_cids.append(CardId(parsed_c))
+        _apply_form(out, await request.form(), prefer_query_draft)
     elif "application/json" in content_type:
         try:
             body_bytes = await request.body()
             if body_bytes:
                 data = json.loads(body_bytes.decode("utf-8"))
                 if isinstance(data, dict):
-                    if prefer_query_draft:
-                        json_q = (
-                            data["query"]
-                            if "query" in data
-                            else (
-                                data["q"] if "q" in data else data.get("browserQuery")
-                            )
-                        )
-                    else:
-                        json_q = (
-                            data["browserQuery"]
-                            if "browserQuery" in data
-                            else (data["q"] if "q" in data else data.get("query"))
-                        )
-                    if json_q is not None:
-                        out.browser_query = str(json_q)
-                    if "cid" in data and out.cid is None and data["cid"] is not None:
-                        parsed_cid = _parse_positive_int64(data["cid"])
-                        if parsed_cid is not None:
-                            out.cid = CardId(parsed_cid)
-                    if "mode" in data and not out.mode and data["mode"] is not None:
-                        out.mode = str(data["mode"])
-                    if "openDetail" in data and not out.open_detail:
-                        od_val = str(data["openDetail"])
-                        out.open_detail = od_val not in ("0", "false", "False", "")
-                    if (
-                        "selectionAnchor" in data
-                        and out.selection_anchor is None
-                        and data["selectionAnchor"] is not None
-                    ):
-                        parsed_anc = _parse_positive_int64(data["selectionAnchor"])
-                        if parsed_anc is not None:
-                            out.selection_anchor = CardId(parsed_anc)
-                    for field_name in ("value", "deck", "tag"):
-                        if (
-                            field_name in data
-                            and not getattr(out, field_name)
-                            and data[field_name] is not None
-                        ):
-                            setattr(out, field_name, str(data[field_name]))
-                    if "selectedCids" in data and isinstance(
-                        data["selectedCids"], list
-                    ):
-                        for item in data["selectedCids"]:
-                            parsed_c = _parse_positive_int64(item)
-                            if parsed_c is not None:
-                                out.selected_cids.append(CardId(parsed_c))
+                    _apply_json(out, data, prefer_query_draft)
         except (JSONDecodeError, UnicodeDecodeError):
             logger.warning("Failed to decode JSON body in browser request")
-
     return out
+
+
+def _range_selection(
+    visible_cids: Sequence[CardId], anchor: CardId | None, target_cid: CardId
+) -> tuple[list[CardId], CardId]:
+    if anchor is not None and anchor in visible_cids and target_cid in visible_cids:
+        idx_a = visible_cids.index(anchor)
+        idx_b = visible_cids.index(target_cid)
+        lo, hi = min(idx_a, idx_b), max(idx_a, idx_b)
+        return list(visible_cids[lo : hi + 1]), anchor
+    return [target_cid], target_cid
 
 
 def _compute_new_selection(
@@ -530,14 +540,365 @@ def _compute_new_selection(
         else:
             return list(current_selected) + [target_cid], target_cid
     elif mode == "range":
-        if anchor is not None and anchor in visible_cids and target_cid in visible_cids:
-            idx_a = visible_cids.index(anchor)
-            idx_b = visible_cids.index(target_cid)
-            lo, hi = min(idx_a, idx_b), max(idx_a, idx_b)
-            return list(visible_cids[lo : hi + 1]), anchor
-        else:
-            return [target_cid], target_cid
+        return _range_selection(visible_cids, anchor, target_cid)
     return [target_cid], target_cid
+
+
+def _render_selection_patches(ctx: dict[str, Any]) -> list[Any]:
+    """Render standard patches after a selection change."""
+    state_html = templating.render("browser_state.html.jinja", **ctx)
+    results_html = templating.render("browser_results.html.jinja", **ctx)
+    actions_html = templating.render("browser_actions.html.jinja", **ctx)
+    sel_row_html = templating.render("browser_selection.html.jinja", **ctx)
+    detail_shell_html = templating.render("browser_detail_shell.html.jinja", **ctx)
+    status_html = _status_html(ctx["count"])
+    dialogs_html = templating.render("browser_dialogs.html.jinja", **ctx)
+    events = [
+        SSE.patch_elements(state_html, selector="#browser-state"),
+        SSE.patch_elements(results_html, selector="#results"),
+        SSE.patch_elements(actions_html, selector="#browser-actions"),
+        SSE.patch_elements(sel_row_html, selector="#browser-selection-status-row"),
+        SSE.patch_elements(detail_shell_html, selector="#detail"),
+        SSE.patch_elements(status_html, selector="#browser-status"),
+        SSE.patch_elements(dialogs_html, selector="#browser-dialogs"),
+    ]
+    if ctx.get("open_detail") and ctx.get("detail_nid"):
+        events.append(SSE.execute_script("window.ankiwebOpenMobileDetail?.()"))
+    return events
+
+
+def _render_refresh_patches(
+    ctx: dict[str, Any], *, selection_deleted: bool = False
+) -> list[Any]:
+    """Render background refresh patches."""
+    state_html = templating.render("browser_state.html.jinja", **ctx)
+    results_html = templating.render("browser_results.html.jinja", **ctx)
+    actions_html = templating.render("browser_actions.html.jinja", **ctx)
+    sel_row_html = templating.render("browser_selection.html.jinja", **ctx)
+    status_html = _status_html(ctx["count"])
+    events = [
+        SSE.patch_elements(state_html, selector="#browser-state"),
+        SSE.patch_elements(results_html, selector="#results"),
+        SSE.patch_elements(actions_html, selector="#browser-actions"),
+        SSE.patch_elements(sel_row_html, selector="#browser-selection-status-row"),
+        SSE.patch_elements(status_html, selector="#browser-status"),
+    ]
+    if selection_deleted:
+        detail_shell_html = templating.render("browser_detail_shell.html.jinja", **ctx)
+        events.extend(
+            [
+                SSE.patch_elements(detail_shell_html, selector="#detail"),
+                SSE.execute_script("window.ankiwebCloseMobileDetail?.()"),
+            ]
+        )
+    return events
+
+
+def _mirror_hub(
+    hub: BridgeHub | None,
+    query: str,
+    matched_cids: Sequence[CardId | int],
+    selected_cids: Sequence[CardId | int],
+    col: Collection,
+) -> None:
+    if not hub:
+        return
+    hub.ui_state.browser_open = True
+    hub.ui_state.last_browse_query = query
+    hub.ui_state.matched_card_ids = [int(c) for c in matched_cids]
+    hub.ui_state.selected_card_ids = [int(c) for c in selected_cids]
+    hub.ui_state.selected_note_ids = [int(n) for n in _nids(col, selected_cids)]
+
+
+def _search_context(
+    col: Collection, query: str
+) -> tuple[dict[str, Any], list[CardId], bool]:
+    matched, search_failed = _matched_cards(col, query, None, False)
+    ctx = build_browser_context(
+        col,
+        query=query,
+        selected_cids=[],
+        selection_anchor=None,
+        matched_cids=matched,
+        open_detail=False,
+        search_error=search_failed,
+    )
+    return ctx, matched, search_failed
+
+
+def _select_context(
+    col: Collection,
+    parsed: BrowserRequestData,
+) -> tuple[dict[str, Any], list[CardId], list[CardId]]:
+    matched, _ = _matched_cards(col, parsed.browser_query, None, False)
+    selected, anchor = _compute_new_selection(
+        matched[:_LIMIT],
+        parsed.selected_cids,
+        parsed.selection_anchor,
+        parsed.cid,
+        parsed.mode or "single",
+    )
+    ctx = build_browser_context(
+        col,
+        query=parsed.browser_query,
+        selected_cids=selected,
+        selection_anchor=anchor,
+        matched_cids=matched,
+        open_detail=parsed.open_detail,
+    )
+    return ctx, matched, [CardId(c) for c in ctx["selected_cids"]]
+
+
+def _dialog_context(
+    col: Collection, parsed: BrowserRequestData, action: str
+) -> dict[str, Any]:
+    valid_sel = _validate_cids(col, parsed.selected_cids)
+    return build_browser_context(
+        col,
+        query=parsed.browser_query,
+        selected_cids=valid_sel,
+        selection_anchor=parsed.selection_anchor,
+        dialog=action if valid_sel else "",
+    )
+
+
+async def _run_browser_mutation(
+    get_service: Callable[[], CollectionService],
+    get_hub: Callable[[], BridgeHub] | None,
+    request: Request,
+    op_fn: Callable[[Collection, list[CardId], BrowserRequestData], Any],
+    dialog_name: str = "",
+    submitted_value: str = "",
+) -> DatastarResponse:
+    service = get_service()
+    hub = get_hub() if get_hub is not None else None
+    parsed = await _parse_browser_request(request)
+    applied_q = parsed.browser_query
+    raw_cids = parsed.selected_cids
+    anchor = parsed.selection_anchor
+
+    # Pre-validate and deduplicate selected CIDs before operation
+    valid_cids = await service.run(lambda col: _validate_cids(col, raw_cids))
+    if not valid_cids:
+        return DatastarResponse()
+
+    try:
+        await service.run_op(
+            lambda col: op_fn(col, valid_cids, parsed), initiator="browser"
+        )
+    except (InvalidInput, NotFoundError) as exc:
+        err_msg = str(exc)
+        logger.warning("Browser mutation error: %s", err_msg)
+
+        def err_ctx(col: Collection) -> dict[str, Any]:
+            return build_browser_context(
+                col,
+                query=applied_q,
+                selected_cids=valid_cids,
+                selection_anchor=anchor,
+                dialog=dialog_name,
+                error=err_msg,
+                value=submitted_value,
+            )
+
+        ctx = await service.run(err_ctx)
+        dialogs_html = templating.render("browser_dialogs.html.jinja", **ctx)
+        return DatastarResponse(
+            [SSE.patch_elements(dialogs_html, selector="#browser-dialogs")]
+        )
+
+    # Mutation success: re-fetch and clear selection & close dialog
+    def reload_ctx(col: Collection) -> tuple[dict[str, Any], list[CardId]]:
+        ctx = build_browser_context(
+            col,
+            query=applied_q,
+            selected_cids=[],
+            selection_anchor=None,
+            dialog="",
+        )
+        matched = [CardId(c) for c in ctx["matched_cids"]]
+        return ctx, matched
+
+    ctx, matched = await service.run(reload_ctx)
+    await service.run(lambda col: _mirror_hub(hub, applied_q, matched, [], col))
+    events = _render_selection_patches(ctx)
+    return DatastarResponse(events)
+
+
+async def _search_browser(
+    request: Request,
+    get_service: Callable[[], CollectionService],
+    get_hub: Callable[[], BridgeHub] | None,
+) -> DatastarResponse:
+    service = get_service()
+    hub = get_hub() if get_hub is not None else None
+    parsed = await _parse_browser_request(request, prefer_query_draft=True)
+    q = parsed.browser_query
+
+    def run(col: Collection) -> tuple[dict[str, Any], list[CardId], bool]:
+        return _search_context(col, q)
+
+    ctx, matched, search_failed = await service.run(run)
+    await service.run(
+        lambda col: _mirror_hub(hub, q if not search_failed else "", matched, [], col)
+    )
+    return DatastarResponse(_render_selection_patches(ctx))
+
+
+async def _refresh_browser(
+    request: Request,
+    get_service: Callable[[], CollectionService],
+    get_hub: Callable[[], BridgeHub] | None,
+) -> DatastarResponse:
+    service = get_service()
+    hub = get_hub() if get_hub is not None else None
+    parsed = await _parse_browser_request(request)
+    applied_q = parsed.browser_query
+    cur_sel = parsed.selected_cids
+    cur_anc = parsed.selection_anchor
+
+    def run(col: Collection) -> tuple[dict[str, Any], list[CardId], list[CardId], bool]:
+        ctx = build_browser_context(
+            col,
+            query=applied_q,
+            selected_cids=cur_sel,
+            selection_anchor=cur_anc,
+            open_detail=False,
+        )
+        matched = [CardId(c) for c in ctx["matched_cids"]]
+        selected = [CardId(c) for c in ctx["selected_cids"]]
+        selection_deleted = bool(set(cur_sel) - set(selected))
+        return ctx, matched, selected, selection_deleted
+
+    ctx, matched, valid_sel, selection_deleted = await service.run(run)
+    await service.run(lambda col: _mirror_hub(hub, applied_q, matched, valid_sel, col))
+    return DatastarResponse(
+        _render_refresh_patches(ctx, selection_deleted=selection_deleted)
+    )
+
+
+async def _select_browser_cards(
+    request: Request,
+    get_service: Callable[[], CollectionService],
+    get_hub: Callable[[], BridgeHub] | None,
+) -> DatastarResponse:
+    service = get_service()
+    hub = get_hub() if get_hub is not None else None
+    parsed = await _parse_browser_request(request)
+    applied_q = parsed.browser_query
+
+    def run(col: Collection) -> tuple[dict[str, Any], list[CardId], list[CardId]]:
+        return _select_context(col, parsed)
+
+    ctx, matched, valid_sel = await service.run(run)
+    await service.run(lambda col: _mirror_hub(hub, applied_q, matched, valid_sel, col))
+    return DatastarResponse(_render_selection_patches(ctx))
+
+
+async def _open_browser_card(
+    cid: int,
+    request: Request,
+    get_service: Callable[[], CollectionService],
+    get_hub: Callable[[], BridgeHub] | None,
+) -> DatastarResponse:
+    service = get_service()
+    hub = get_hub() if get_hub is not None else None
+    parsed = await _parse_browser_request(request)
+    applied_q = parsed.browser_query
+    parsed_cid = _parse_positive_int64(cid)
+    card_id = CardId(parsed_cid) if parsed_cid is not None else CardId(cid)
+
+    def run(col: Collection) -> tuple[dict[str, Any], list[CardId], list[CardId]]:
+        ctx = build_browser_context(
+            col,
+            query=applied_q,
+            selected_cids=[card_id],
+            selection_anchor=card_id,
+            open_detail=True,
+        )
+        matched = [CardId(c) for c in ctx["matched_cids"]]
+        selected = [CardId(c) for c in ctx["selected_cids"]]
+        return ctx, matched, selected
+
+    ctx, matched, valid_sel = await service.run(run)
+    await service.run(lambda col: _mirror_hub(hub, applied_q, matched, valid_sel, col))
+    return DatastarResponse(_render_selection_patches(ctx))
+
+
+async def _set_browser_due(
+    request: Request,
+    get_service: Callable[[], CollectionService],
+    get_hub: Callable[[], BridgeHub] | None,
+) -> DatastarResponse:
+    parsed = await _parse_browser_request(request)
+    val = parsed.value.strip()
+    if not val:
+        return DatastarResponse()
+    return await _run_browser_mutation(
+        get_service,
+        get_hub,
+        request,
+        lambda col, cids, p: col.sched.set_due_date(cids, val),
+        dialog_name="setdue",
+        submitted_value=val,
+    )
+
+
+async def _change_browser_deck(
+    request: Request,
+    get_service: Callable[[], CollectionService],
+    get_hub: Callable[[], BridgeHub] | None,
+) -> DatastarResponse:
+    parsed = await _parse_browser_request(request)
+    deck = parsed.deck.strip()
+    if not deck:
+        return DatastarResponse()
+    return await _run_browser_mutation(
+        get_service,
+        get_hub,
+        request,
+        lambda col, cids, p: col.set_deck(cids, _resolve_deck_id(col, deck)),
+        dialog_name="changedeck",
+        submitted_value=deck,
+    )
+
+
+async def _add_browser_tag(
+    request: Request,
+    get_service: Callable[[], CollectionService],
+    get_hub: Callable[[], BridgeHub] | None,
+) -> DatastarResponse:
+    parsed = await _parse_browser_request(request)
+    tag = parsed.tag.strip()
+    if not tag:
+        return DatastarResponse()
+    return await _run_browser_mutation(
+        get_service,
+        get_hub,
+        request,
+        lambda col, cids, p: col.tags.bulk_add(_nids(col, cids), tag),
+        dialog_name="addtag",
+        submitted_value=tag,
+    )
+
+
+async def _remove_browser_tag(
+    request: Request,
+    get_service: Callable[[], CollectionService],
+    get_hub: Callable[[], BridgeHub] | None,
+) -> DatastarResponse:
+    parsed = await _parse_browser_request(request)
+    tag = parsed.tag.strip()
+    if not tag:
+        return DatastarResponse()
+    return await _run_browser_mutation(
+        get_service,
+        get_hub,
+        request,
+        lambda col, cids, p: col.tags.bulk_remove(_nids(col, cids), tag),
+        dialog_name="removetag",
+        submitted_value=tag,
+    )
 
 
 def make_browser_routes(
@@ -546,213 +907,21 @@ def make_browser_routes(
 ) -> APIRouter:
     router = APIRouter(prefix="/browse")
 
-    def _render_selection_patches(ctx: dict[str, Any]) -> list[Any]:
-        """Render standard patches after a selection change."""
-        state_html = templating.render("browser_state.html.jinja", **ctx)
-        results_html = templating.render("browser_results.html.jinja", **ctx)
-        actions_html = templating.render("browser_actions.html.jinja", **ctx)
-        sel_row_html = templating.render("browser_selection.html.jinja", **ctx)
-        detail_shell_html = templating.render("browser_detail_shell.html.jinja", **ctx)
-        status_html = _status_html(ctx["count"])
-        dialogs_html = templating.render("browser_dialogs.html.jinja", **ctx)
-
-        events = [
-            SSE.patch_elements(state_html, selector="#browser-state"),
-            SSE.patch_elements(results_html, selector="#results"),
-            SSE.patch_elements(actions_html, selector="#browser-actions"),
-            SSE.patch_elements(sel_row_html, selector="#browser-selection-status-row"),
-            SSE.patch_elements(detail_shell_html, selector="#detail"),
-            SSE.patch_elements(status_html, selector="#browser-status"),
-            SSE.patch_elements(dialogs_html, selector="#browser-dialogs"),
-        ]
-        if ctx.get("open_detail") and ctx.get("detail_nid"):
-            events.append(SSE.execute_script("window.ankiwebOpenMobileDetail?.()"))
-        return events
-
-    def _render_refresh_patches(
-        ctx: dict[str, Any], *, selection_deleted: bool = False
-    ) -> list[Any]:
-        """Render background refresh patches."""
-        state_html = templating.render("browser_state.html.jinja", **ctx)
-        results_html = templating.render("browser_results.html.jinja", **ctx)
-        actions_html = templating.render("browser_actions.html.jinja", **ctx)
-        sel_row_html = templating.render("browser_selection.html.jinja", **ctx)
-        status_html = _status_html(ctx["count"])
-
-        events = [
-            SSE.patch_elements(state_html, selector="#browser-state"),
-            SSE.patch_elements(results_html, selector="#results"),
-            SSE.patch_elements(actions_html, selector="#browser-actions"),
-            SSE.patch_elements(sel_row_html, selector="#browser-selection-status-row"),
-            SSE.patch_elements(status_html, selector="#browser-status"),
-        ]
-        if selection_deleted:
-            detail_shell_html = templating.render(
-                "browser_detail_shell.html.jinja", **ctx
-            )
-            events.extend(
-                [
-                    SSE.patch_elements(detail_shell_html, selector="#detail"),
-                    SSE.execute_script("window.ankiwebCloseMobileDetail?.()"),
-                ]
-            )
-        return events
-
-    def _mirror_hub(
-        hub: BridgeHub | None,
-        query: str,
-        matched_cids: Sequence[CardId | int],
-        selected_cids: Sequence[CardId | int],
-        col: Collection,
-    ) -> None:
-        if not hub:
-            return
-        hub.ui_state.browser_open = True
-        hub.ui_state.last_browse_query = query
-        hub.ui_state.matched_card_ids = [int(c) for c in matched_cids]
-        hub.ui_state.selected_card_ids = [int(c) for c in selected_cids]
-        hub.ui_state.selected_note_ids = [int(n) for n in _nids(col, selected_cids)]
-
     @router.post("/search")
     async def search(request: Request) -> DatastarResponse:
-        service = get_service()
-        hub = get_hub() if get_hub is not None else None
-        parsed = await _parse_browser_request(request, prefer_query_draft=True)
-        q = parsed.browser_query
-
-        def run(col: Collection) -> tuple[dict[str, Any], list[CardId], bool]:
-            search_failed = False
-            try:
-                matched = list(col.find_cards(q or ""))
-            except (SearchError, InvalidInput):
-                matched = []
-                search_failed = True
-            ctx = build_browser_context(
-                col,
-                query=q,
-                selected_cids=[],
-                selection_anchor=None,
-                matched_cids=matched,
-                open_detail=False,
-                search_error=search_failed,
-            )
-            return ctx, matched, search_failed
-
-        ctx, matched, search_failed = await service.run(run)
-        await service.run(
-            lambda col: _mirror_hub(
-                hub, q if not search_failed else "", matched, [], col
-            )
-        )
-
-        events = _render_selection_patches(ctx)
-        return DatastarResponse(events)
+        return await _search_browser(request, get_service, get_hub)
 
     @router.post("/refresh")
     async def refresh(request: Request) -> DatastarResponse:
-        service = get_service()
-        hub = get_hub() if get_hub is not None else None
-        parsed = await _parse_browser_request(request)
-        applied_q = parsed.browser_query
-        cur_sel = parsed.selected_cids
-        cur_anc = parsed.selection_anchor
-
-        def run(
-            col: Collection,
-        ) -> tuple[dict[str, Any], list[CardId], list[CardId], bool]:
-            ctx = build_browser_context(
-                col,
-                query=applied_q,
-                selected_cids=cur_sel,
-                selection_anchor=cur_anc,
-                open_detail=False,
-            )
-            matched = [CardId(c) for c in ctx["matched_cids"]]
-            selected = [CardId(c) for c in ctx["selected_cids"]]
-            selection_deleted = bool(set(cur_sel) - set(selected))
-            return ctx, matched, selected, selection_deleted
-
-        ctx, matched, valid_sel, selection_deleted = await service.run(run)
-        await service.run(
-            lambda col: _mirror_hub(hub, applied_q, matched, valid_sel, col)
-        )
-
-        events = _render_refresh_patches(ctx, selection_deleted=selection_deleted)
-        return DatastarResponse(events)
+        return await _refresh_browser(request, get_service, get_hub)
 
     @router.post("/select")
     async def select_cards(request: Request) -> DatastarResponse:
-        service = get_service()
-        hub = get_hub() if get_hub is not None else None
-        parsed = await _parse_browser_request(request)
-        applied_q = parsed.browser_query
-        cur_sel = parsed.selected_cids
-        cur_anc = parsed.selection_anchor
-        target_cid = parsed.cid
-        mode = parsed.mode or "single"
-        open_detail = parsed.open_detail
-
-        def run(
-            col: Collection,
-        ) -> tuple[dict[str, Any], list[CardId], list[CardId]]:
-            try:
-                matched = list(col.find_cards(applied_q or ""))
-            except (SearchError, InvalidInput):
-                matched = []
-            visible = matched[:_LIMIT]
-
-            new_sel, new_anc = _compute_new_selection(
-                visible, cur_sel, cur_anc, target_cid, mode
-            )
-            ctx = build_browser_context(
-                col,
-                query=applied_q,
-                selected_cids=new_sel,
-                selection_anchor=new_anc,
-                matched_cids=matched,
-                open_detail=open_detail,
-            )
-            selected = [CardId(c) for c in ctx["selected_cids"]]
-            return ctx, matched, selected
-
-        ctx, matched, valid_sel = await service.run(run)
-        await service.run(
-            lambda col: _mirror_hub(hub, applied_q, matched, valid_sel, col)
-        )
-
-        events = _render_selection_patches(ctx)
-        return DatastarResponse(events)
+        return await _select_browser_cards(request, get_service, get_hub)
 
     @router.post("/open/{cid}")
     async def open_card(cid: int, request: Request) -> DatastarResponse:
-        service = get_service()
-        hub = get_hub() if get_hub is not None else None
-        parsed = await _parse_browser_request(request)
-        applied_q = parsed.browser_query
-        parsed_cid = _parse_positive_int64(cid)
-        card_id = CardId(parsed_cid) if parsed_cid is not None else CardId(cid)
-
-        def run(
-            col: Collection,
-        ) -> tuple[dict[str, Any], list[CardId], list[CardId]]:
-            ctx = build_browser_context(
-                col,
-                query=applied_q,
-                selected_cids=[card_id],
-                selection_anchor=card_id,
-                open_detail=True,
-            )
-            matched = [CardId(c) for c in ctx["matched_cids"]]
-            selected = [CardId(c) for c in ctx["selected_cids"]]
-            return ctx, matched, selected
-
-        ctx, matched, valid_sel = await service.run(run)
-        await service.run(
-            lambda col: _mirror_hub(hub, applied_q, matched, valid_sel, col)
-        )
-
-        events = _render_selection_patches(ctx)
-        return DatastarResponse(events)
+        return await _open_browser_card(cid, request, get_service, get_hub)
 
     @router.get("/dialog/close")
     async def close_dialog(request: Request) -> DatastarResponse:
@@ -781,27 +950,9 @@ def make_browser_routes(
     async def open_dialog(action: str, request: Request) -> DatastarResponse:
         service = get_service()
         parsed = await _parse_browser_request(request)
-        applied_q = parsed.browser_query
-        cur_sel = parsed.selected_cids
-        cur_anc = parsed.selection_anchor
 
         def run(col: Collection) -> dict[str, Any]:
-            valid_sel = _validate_cids(col, cur_sel)
-            if not valid_sel:
-                return build_browser_context(
-                    col,
-                    query=applied_q,
-                    selected_cids=[],
-                    selection_anchor=cur_anc,
-                    dialog="",
-                )
-            return build_browser_context(
-                col,
-                query=applied_q,
-                selected_cids=valid_sel,
-                selection_anchor=cur_anc,
-                dialog=action,
-            )
+            return _dialog_context(col, parsed, action)
 
         ctx = await service.run(run)
         dialogs_html = templating.render("browser_dialogs.html.jinja", **ctx)
@@ -815,62 +966,9 @@ def make_browser_routes(
         dialog_name: str = "",
         submitted_value: str = "",
     ) -> DatastarResponse:
-        service = get_service()
-        hub = get_hub() if get_hub is not None else None
-        parsed = await _parse_browser_request(request)
-        applied_q = parsed.browser_query
-        raw_cids = parsed.selected_cids
-        anchor = parsed.selection_anchor
-
-        # Pre-validate and deduplicate selected CIDs before operation
-        valid_cids = await service.run(lambda col: _validate_cids(col, raw_cids))
-
-        # Empty-selection writes remain no-op
-        if not valid_cids:
-            return DatastarResponse()
-
-        try:
-            await service.run_op(
-                lambda col: op_fn(col, valid_cids, parsed), initiator="browser"
-            )
-        except (InvalidInput, NotFoundError) as exc:
-            err_msg = str(exc)
-            logger.warning("Browser mutation error: %s", err_msg)
-
-            def err_ctx(col: Collection) -> dict[str, Any]:
-                return build_browser_context(
-                    col,
-                    query=applied_q,
-                    selected_cids=valid_cids,
-                    selection_anchor=anchor,
-                    dialog=dialog_name,
-                    error=err_msg,
-                    value=submitted_value,
-                )
-
-            ctx = await service.run(err_ctx)
-            dialogs_html = templating.render("browser_dialogs.html.jinja", **ctx)
-            return DatastarResponse(
-                [SSE.patch_elements(dialogs_html, selector="#browser-dialogs")]
-            )
-
-        # Mutation success: re-fetch and clear selection & close dialog
-        def reload_ctx(col: Collection) -> tuple[dict[str, Any], list[CardId]]:
-            ctx = build_browser_context(
-                col,
-                query=applied_q,
-                selected_cids=[],
-                selection_anchor=None,
-                dialog="",
-            )
-            matched = [CardId(c) for c in ctx["matched_cids"]]
-            return ctx, matched
-
-        ctx, matched = await service.run(reload_ctx)
-        await service.run(lambda col: _mirror_hub(hub, applied_q, matched, [], col))
-
-        events = _render_selection_patches(ctx)
-        return DatastarResponse(events)
+        return await _run_browser_mutation(
+            get_service, get_hub, request, op_fn, dialog_name, submitted_value
+        )
 
     @router.post("/suspend")
     async def suspend(request: Request) -> DatastarResponse:
@@ -900,54 +998,18 @@ def make_browser_routes(
 
     @router.post("/setdue")
     async def set_due(request: Request) -> DatastarResponse:
-        parsed = await _parse_browser_request(request)
-        val = parsed.value.strip()
-        if not val:
-            return DatastarResponse()
-        return await _handle_mutation(
-            request,
-            lambda col, cids, p: col.sched.set_due_date(cids, val),
-            dialog_name="setdue",
-            submitted_value=val,
-        )
+        return await _set_browser_due(request, get_service, get_hub)
 
     @router.post("/changedeck")
     async def change_deck(request: Request) -> DatastarResponse:
-        parsed = await _parse_browser_request(request)
-        deck = parsed.deck.strip()
-        if not deck:
-            return DatastarResponse()
-        return await _handle_mutation(
-            request,
-            lambda col, cids, p: col.set_deck(cids, _resolve_deck_id(col, deck)),
-            dialog_name="changedeck",
-            submitted_value=deck,
-        )
+        return await _change_browser_deck(request, get_service, get_hub)
 
     @router.post("/addtag")
     async def add_tag(request: Request) -> DatastarResponse:
-        parsed = await _parse_browser_request(request)
-        tag = parsed.tag.strip()
-        if not tag:
-            return DatastarResponse()
-        return await _handle_mutation(
-            request,
-            lambda col, cids, p: col.tags.bulk_add(_nids(col, cids), tag),
-            dialog_name="addtag",
-            submitted_value=tag,
-        )
+        return await _add_browser_tag(request, get_service, get_hub)
 
     @router.post("/removetag")
     async def remove_tag(request: Request) -> DatastarResponse:
-        parsed = await _parse_browser_request(request)
-        tag = parsed.tag.strip()
-        if not tag:
-            return DatastarResponse()
-        return await _handle_mutation(
-            request,
-            lambda col, cids, p: col.tags.bulk_remove(_nids(col, cids), tag),
-            dialog_name="removetag",
-            submitted_value=tag,
-        )
+        return await _remove_browser_tag(request, get_service, get_hub)
 
     return router

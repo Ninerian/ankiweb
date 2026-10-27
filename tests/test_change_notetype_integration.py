@@ -67,6 +67,39 @@ class _ChangeNotetypeFixture(TypedDict):
     target_model_id: NotetypeId
 
 
+def _snapshot_notetypes(
+    model_ids: tuple[NotetypeId, NotetypeId],
+    notetype_rows: list[Row],
+    field_rows: list[Row],
+    template_rows: list[Row],
+) -> dict[int, _NotetypeState]:
+    models_by_id: dict[int, _NotetypeSnapshot] = {
+        model_id: {
+            "name": name,
+            "config": bytes(config),
+            "fields": [],
+            "templates": [],
+        }
+        for model_id, name, config in notetype_rows
+    }
+    assert set(models_by_id) == set(model_ids)
+    for notetype_id, ordinal, name, config in field_rows:
+        models_by_id[notetype_id]["fields"].append((ordinal, name, bytes(config)))
+    for notetype_id, ordinal, name, config in template_rows:
+        models_by_id[notetype_id]["templates"].append((ordinal, name, bytes(config)))
+
+    model_state: dict[int, _NotetypeState] = {}
+    for model_id, model in models_by_id.items():
+        model_state[model_id] = (
+            model["name"],
+            tuple(name for _ordinal, name, _config in model["fields"]),
+            tuple((name, config) for _ordinal, name, config in model["templates"]),
+            model["config"],
+            tuple(config for _ordinal, _name, config in model["fields"]),
+        )
+    return model_state
+
+
 def _read_collection_snapshot(
     app: FastAPI,
     note_id: NoteId,
@@ -98,32 +131,9 @@ def _read_collection_snapshot(
             *model_ids,
         )
         assert note is not None
-        models_by_id: dict[int, _NotetypeSnapshot] = {
-            model_id: {
-                "name": name,
-                "config": bytes(config),
-                "fields": [],
-                "templates": [],
-            }
-            for model_id, name, config in notetype_rows
-        }
-        assert set(models_by_id) == set(model_ids)
-        for notetype_id, ordinal, name, config in field_rows:
-            models_by_id[notetype_id]["fields"].append((ordinal, name, bytes(config)))
-        for notetype_id, ordinal, name, config in template_rows:
-            models_by_id[notetype_id]["templates"].append(
-                (ordinal, name, bytes(config))
-            )
-
-        model_state: dict[int, _NotetypeState] = {}
-        for model_id, model in models_by_id.items():
-            model_state[model_id] = (
-                model["name"],
-                tuple(name for _ordinal, name, _config in model["fields"]),
-                tuple((name, config) for _ordinal, name, config in model["templates"]),
-                model["config"],
-                tuple(config for _ordinal, _name, config in model["fields"]),
-            )
+        model_state = _snapshot_notetypes(
+            model_ids, notetype_rows, field_rows, template_rows
+        )
         return tuple(note), tuple(cards), model_state
 
     return asyncio.run_coroutine_threadsafe(

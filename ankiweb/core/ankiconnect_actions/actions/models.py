@@ -207,6 +207,25 @@ async def model_name_from_id(rt, modelId=None):
     return await rt.service.run(fn)
 
 
+def _create_model(col, model_name, fields, templates, css, is_cloze):
+    if model_name in [m.name for m in col.models.all_names_and_ids()]:
+        raise ValueError("Model name already exists")  # ref 1126-1127
+    model = col.models.new(model_name)
+    for fname in fields:
+        col.models.add_field(model, col.models.new_field(fname))
+    for i, tmpl in enumerate(templates):
+        template = col.models.new_template(tmpl.get("Name", f"Card {i + 1}"))
+        template["qfmt"] = tmpl.get("Front", "")
+        template["afmt"] = tmpl.get("Back", "")
+        col.models.add_template(model, template)
+    if css is not None:
+        model["css"] = css
+    if is_cloze:
+        model["type"] = 1
+    op = col.models.add_dict(model)
+    return col.models.get(op.id), op  # return the persisted model dict
+
+
 @action("createModel", params=CreateModelParams, summary="Create a new note type")
 async def create_model(
     rt, modelName=None, inOrderFields=None, cardTemplates=None, css=None, isCloze=False
@@ -220,22 +239,7 @@ async def create_model(
         raise ValueError("Must provide at least one card for cardTemplates")
 
     def fn(col):
-        if modelName in [m.name for m in col.models.all_names_and_ids()]:
-            raise ValueError("Model name already exists")  # ref 1126-1127
-        m = col.models.new(modelName)
-        for fname in inOrderFields:
-            col.models.add_field(m, col.models.new_field(fname))
-        for i, tmpl in enumerate(cardTemplates):
-            t = col.models.new_template(tmpl.get("Name", f"Card {i + 1}"))
-            t["qfmt"] = tmpl.get("Front", "")
-            t["afmt"] = tmpl.get("Back", "")
-            col.models.add_template(m, t)
-        if css is not None:
-            m["css"] = css
-        if isCloze:
-            m["type"] = 1
-        op = col.models.add_dict(m)
-        return col.models.get(op.id), op  # return the persisted model dict
+        return _create_model(col, modelName, inOrderFields, cardTemplates, css, isCloze)
 
     return await run_emit(rt, fn)
 
@@ -279,6 +283,28 @@ async def update_model_styling(rt, model=None):
     await run_emit(rt, fn)
 
 
+def _replace_template_text(template, find_text, replace_text, front, back):
+    changed = False
+    if front and find_text in template["qfmt"]:
+        template["qfmt"] = template["qfmt"].replace(find_text, replace_text)
+        changed = True
+    if back and find_text in template["afmt"]:
+        template["afmt"] = template["afmt"].replace(find_text, replace_text)
+        changed = True
+    return changed
+
+
+def _replace_model_text(model, find_text, replace_text, front, back, css):
+    changed = False
+    for template in model["tmpls"]:
+        if _replace_template_text(template, find_text, replace_text, front, back):
+            changed = True
+    if css and find_text in model["css"]:
+        model["css"] = model["css"].replace(find_text, replace_text)
+        changed = True
+    return changed
+
+
 @action(
     "findAndReplaceInModels",
     params=FindAndReplaceInModelsParams,
@@ -290,20 +316,6 @@ async def find_and_replace_in_models(
 ):
     # Reference returns the number of MODELS updated (ref 1328-1353), not the
     # occurrence count, and treats a falsy modelName as "all models".
-    def _replace(m):
-        changed = False
-        for t in m["tmpls"]:
-            if front and findText in t["qfmt"]:
-                t["qfmt"] = t["qfmt"].replace(findText, replaceText)
-                changed = True
-            if back and findText in t["afmt"]:
-                t["afmt"] = t["afmt"].replace(findText, replaceText)
-                changed = True
-        if css and findText in m["css"]:
-            m["css"] = m["css"].replace(findText, replaceText)
-            changed = True
-        return changed
-
     def fn(col):
         if modelName:
             models = [_model_or_raise(col, modelName)]
@@ -312,7 +324,7 @@ async def find_and_replace_in_models(
         updated = 0
         last_op = None
         for m in models:
-            if _replace(m):
+            if _replace_model_text(m, findText, replaceText, front, back, css):
                 last_op = col.models.update_dict(m)
                 updated += 1
         return updated, last_op  # run_emit tolerates last_op None (no model changed)

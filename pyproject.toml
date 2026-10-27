@@ -31,6 +31,7 @@ dev = [
     "playwright>=1.44",
     "ty>=0.0.92",
     "ruff>=0.17.3",
+    "complexipy>=8.3.0",
 ]
 
 [tool.pytest.ini_options]
@@ -40,10 +41,15 @@ testpaths = ["tests"]
 [tool.ty.environment]
 python-version = "3.12"
 
+[tool.complexipy]
+paths = ["ankiweb", "tests", "tools"]
+max-complexity-allowed = 15
+failed = true
+sort = "desc"
+
 [tool.ruff]
 target-version = "py312"
 line-length = 88
-
 
 [tool.ruff.lint]
 preview = true
@@ -53,6 +59,7 @@ select = [
     "complexity",
     "performance",
     "style",
+    "security"
 ]
 
 [tool.ruff.format]

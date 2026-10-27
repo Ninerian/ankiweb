@@ -1457,6 +1457,15 @@ def test_browse_mobile_touch_checkbox_selection_and_remorphed_row(live_server_br
         browser.close()
 
 
+def _assert_selection_geometry_stable(current, baseline, label, state):
+    for key in ("actions", "statusRow", "resultsWrap", "results"):
+        for edge in ("top", "bottom"):
+            assert abs(current[key][edge] - baseline[key][edge]) <= 2, (
+                f"{label} {state} moved {key}.{edge}: "
+                f"{baseline[key][edge]} -> {current[key][edge]}"
+            )
+
+
 def test_browser_selected_status_reserves_layout_across_selection(live_server_browse):
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -1556,17 +1565,7 @@ def test_browser_selected_status_reserves_layout_across_selection(live_server_br
                 if baseline is None:
                     baseline = current
                 else:
-                    for key in (
-                        "actions",
-                        "statusRow",
-                        "resultsWrap",
-                        "results",
-                    ):
-                        for edge in ("top", "bottom"):
-                            assert abs(current[key][edge] - baseline[key][edge]) <= 2, (
-                                f"{lbl} {state} moved {key}.{edge}: "
-                                f"{baseline[key][edge]} -> {current[key][edge]}"
-                            )
+                    _assert_selection_geometry_stable(current, baseline, lbl, state)
 
             def toggle(target, touch=has_touch):
                 if touch:

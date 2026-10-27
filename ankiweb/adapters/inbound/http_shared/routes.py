@@ -99,23 +99,7 @@ def _return_url(request: Request) -> str:
     return referer or "/notetypes"
 
 
-def build_screen_router(
-    get_service, get_notifier=None, get_hub=None, settings=None
-) -> APIRouter:
-    router = APIRouter()
-
-    router.include_router(make_deckbrowser_routes(get_service))
-    router.include_router(make_overview_routes(get_service))
-    router.include_router(make_custom_study_routes(get_service))
-    router.include_router(make_filtered_deck_routes(get_service))
-    router.include_router(make_preferences_routes(get_service))
-    router.include_router(make_fields_routes(get_service))
-    router.include_router(make_card_layout_routes(get_service))
-    router.include_router(make_tools_routes(get_service))
-    router.include_router(make_notetypes_routes(get_service))
-    if get_hub is not None:
-        router.include_router(make_browser_routes(get_service, get_hub))
-
+def _register_collection_pages(router, get_service, get_hub) -> None:
     @router.get("/", response_class=HTMLResponse)
     @router.get("/deckbrowser", response_class=HTMLResponse)
     async def deckbrowser_page():
@@ -214,6 +198,8 @@ def build_screen_router(
         body = await service.run(render_tools_html)
         return HTMLResponse(render_page("tools", body))
 
+
+def _register_notification_routes(router, get_notifier) -> None:
     @router.get("/notify", response_class=HTMLResponse)
     async def notify_page():
         state = get_notifier() if get_notifier is not None else None
@@ -258,6 +244,8 @@ def build_screen_router(
                 state.request_resync()  # drop the baseline so all learnable decks re-push
         return RedirectResponse("/notify", status_code=303)
 
+
+def _register_about_and_dev_routes(router, get_service, settings) -> None:
     @router.get("/about", response_class=HTMLResponse)
     async def about_page():
         # AGPL §13 Corresponding-Source offer (settings carries the source URL).
@@ -278,6 +266,8 @@ def build_screen_router(
         # Dev-only simulated backend progress stream for the BackendProgressIndicator demo.
         router.include_router(dev_progress_router)
 
+
+def _register_preview_and_media_routes(router, get_service) -> None:
     @router.get("/preview/{nid}", response_class=HTMLResponse)
     async def preview_page(nid: int):
         service = get_service()
@@ -295,6 +285,79 @@ def build_screen_router(
         fname = await get_service().run(lambda col: col.media.write_data(base, data))
         return {"filename": fname}
 
+
+def _make_export_limit(ie, target: str):
+    lim = ie.ExportLimit()
+    if target == "all":
+        lim.whole_collection.SetInParent()
+    else:
+        lim.deck_id = int(target)
+    return lim
+
+
+async def _export_anki_package(
+    service, ie, out, target, with_scheduling, with_media, with_deck_configs, legacy
+) -> None:
+    opts = ie.ExportAnkiPackageOptions(
+        with_scheduling=with_scheduling,
+        with_media=with_media,
+        with_deck_configs=with_deck_configs,
+        legacy=legacy,
+    )
+    lim = _make_export_limit(ie, target)
+    await service.run(
+        lambda col: col.export_anki_package(out_path=out, options=opts, limit=lim)
+    )
+
+
+async def _export_collection_package(service, out, with_media, legacy) -> None:
+    await service.run(
+        lambda col: col.export_collection_package(out, with_media, legacy)
+    )
+    await service.reopen()  # export_collection_package closed the collection
+
+
+async def _export_notes_csv(
+    service, ie, out, target, with_html, with_tags, with_deck, with_notetype, with_guid
+) -> None:
+    lim = _make_export_limit(ie, target)
+    await service.run(
+        lambda col: col.export_note_csv(
+            out_path=out,
+            limit=lim,
+            with_html=with_html,
+            with_tags=with_tags,
+            with_deck=with_deck,
+            with_notetype=with_notetype,
+            with_guid=with_guid,
+        )
+    )
+
+
+async def _export_cards_csv(service, ie, out, target, with_html) -> None:
+    lim = _make_export_limit(ie, target)
+    await service.run(
+        lambda col: col.export_card_csv(out_path=out, limit=lim, with_html=with_html)
+    )
+
+
+async def _export_failure_response(service, out, fmt, exc) -> HTMLResponse:
+    logger.exception("Export failed (format=%s)", fmt)
+    try:
+        os.remove(out)
+    except OSError:
+        pass
+    body = await service.run(render_export_html)
+    return HTMLResponse(
+        render_page(
+            "export",
+            f"<div id='err' class='text-error text-sm font-semibold mt-2'>Export failed: {exc}</div>"
+            + body,
+        )
+    )
+
+
+def _register_export_routes(router, get_service) -> None:
     @router.get("/export", response_class=HTMLResponse)
     async def export_page():
         service = get_service()
@@ -319,14 +382,6 @@ def build_screen_router(
 
         service = get_service()
 
-        def make_limit():
-            lim = ie.ExportLimit()
-            if target == "all":
-                lim.whole_collection.SetInParent()
-            else:
-                lim.deck_id = int(target)
-            return lim
-
         suffix = {
             "apkg": ".apkg",
             "colpkg": ".colpkg",
@@ -337,66 +392,41 @@ def build_screen_router(
         os.close(fd)
         try:
             if fmt == "apkg":
-                opts = ie.ExportAnkiPackageOptions(
-                    with_scheduling=with_scheduling,
-                    with_media=with_media,
-                    with_deck_configs=with_deck_configs,
-                    legacy=legacy,
-                )
-                lim = make_limit()
-                await service.run(
-                    lambda col: col.export_anki_package(
-                        out_path=out, options=opts, limit=lim
-                    )
+                await _export_anki_package(
+                    service,
+                    ie,
+                    out,
+                    target,
+                    with_scheduling,
+                    with_media,
+                    with_deck_configs,
+                    legacy,
                 )
                 filename, media = "export.apkg", "application/octet-stream"
             elif fmt == "colpkg":
-                await service.run(
-                    lambda col: col.export_collection_package(out, with_media, legacy)
-                )
-                await (
-                    service.reopen()
-                )  # export_collection_package closed the collection
+                await _export_collection_package(service, out, with_media, legacy)
                 filename, media = "collection.colpkg", "application/octet-stream"
             elif fmt == "notes_csv":
-                lim = make_limit()
-                await service.run(
-                    lambda col: col.export_note_csv(
-                        out_path=out,
-                        limit=lim,
-                        with_html=with_html,
-                        with_tags=with_tags,
-                        with_deck=with_deck,
-                        with_notetype=with_notetype,
-                        with_guid=with_guid,
-                    )
+                await _export_notes_csv(
+                    service,
+                    ie,
+                    out,
+                    target,
+                    with_html,
+                    with_tags,
+                    with_deck,
+                    with_notetype,
+                    with_guid,
                 )
                 filename, media = "notes.csv", "text/csv"
             elif fmt == "cards_csv":
-                lim = make_limit()
-                await service.run(
-                    lambda col: col.export_card_csv(
-                        out_path=out, limit=lim, with_html=with_html
-                    )
-                )
+                await _export_cards_csv(service, ie, out, target, with_html)
                 filename, media = "cards.csv", "text/csv"
             else:
                 os.remove(out)
                 return HTMLResponse("unknown export format", status_code=400)
         except (AnkiException, OSError, RuntimeError, TypeError, ValueError) as exc:
-            logger.exception("Export failed (format=%s)", fmt)
-            try:
-                os.remove(out)
-            except OSError:
-                pass
-            body = await service.run(render_export_html)
-            return HTMLResponse(
-                render_page(
-                    "export",
-                    f"<div id='err' class='text-error text-sm font-semibold mt-2'>Export failed: {exc}</div>"
-                    + body,
-                )
-            )
+            return await _export_failure_response(service, out, fmt, exc)
         return FileResponse(
             out,
             media_type=media,
@@ -404,6 +434,8 @@ def build_screen_router(
             background=BackgroundTask(os.remove, out),
         )
 
+
+def _register_import_upload_routes(router, get_service) -> None:
     @router.post("/image-occlusion/upload")
     async def image_occlusion_upload(file: UploadFile):
         from fastapi.responses import JSONResponse
@@ -459,6 +491,31 @@ def build_screen_router(
         dest = import_tmp.allocate(service.settings, ext)
         dest.write_bytes(await file.read())
         return {"route": route, "path": str(dest)}
+
+
+def build_screen_router(
+    get_service, get_notifier=None, get_hub=None, settings=None
+) -> APIRouter:
+    router = APIRouter()
+
+    router.include_router(make_deckbrowser_routes(get_service))
+    router.include_router(make_overview_routes(get_service))
+    router.include_router(make_custom_study_routes(get_service))
+    router.include_router(make_filtered_deck_routes(get_service))
+    router.include_router(make_preferences_routes(get_service))
+    router.include_router(make_fields_routes(get_service))
+    router.include_router(make_card_layout_routes(get_service))
+    router.include_router(make_tools_routes(get_service))
+    router.include_router(make_notetypes_routes(get_service))
+    if get_hub is not None:
+        router.include_router(make_browser_routes(get_service, get_hub))
+
+    _register_collection_pages(router, get_service, get_hub)
+    _register_notification_routes(router, get_notifier)
+    _register_about_and_dev_routes(router, get_service, settings)
+    _register_preview_and_media_routes(router, get_service)
+    _register_export_routes(router, get_service)
+    _register_import_upload_routes(router, get_service)
 
     # Replacements for vendored SvelteKit pages, served at original URLs.
     router.include_router(make_pages_router(get_service))

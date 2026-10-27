@@ -56,6 +56,68 @@ def render_card_layout_html(col, ntid: int, *, return_url: str) -> str:
     )
 
 
+def _draft_templates(draft):
+    rows = draft.get("rows", {}) or {}
+    order = draft.get("order", []) or []
+    payload_templates = []
+    for key in order:
+        if key in rows and isinstance(rows[key], dict):
+            payload_templates.append(dict(rows[key]))
+    return payload_templates
+
+
+def _update_existing_templates(payload_templates, by_ord):
+    for tp in payload_templates:
+        if tp.get("orig") is None:
+            continue
+        td = by_ord[tp["orig"]]
+        td["name"] = tp["name"]
+        td["qfmt"] = tp.get("qfmt", "")
+        td["afmt"] = tp.get("afmt", "")
+
+
+def _add_new_templates(col, m, payload_templates):
+    for tp in payload_templates:
+        if tp.get("orig") is not None:
+            continue
+        nt = col.models.new_template(tp["name"])
+        nt["qfmt"] = tp.get("qfmt", "")
+        nt["afmt"] = tp.get("afmt", "")
+        col.models.add_template(m, nt)
+
+
+def _template_by_name(m, name):
+    return next(x for x in m["tmpls"] if x["name"] == name)
+
+
+def _reposition_templates(col, m, payload_templates):
+    for i, tp in enumerate(payload_templates):
+        col.models.reposition_template(m, _template_by_name(m, tp["name"]), i)
+
+
+def _apply_layout(col, p, payload_templates, css):
+    ntid = int(p["notetypeId"])
+    m = col.models.get(ntid)
+    cur = list(m["tmpls"])
+    by_ord = {t["ord"]: t for t in cur}
+    kept = {t["orig"] for t in payload_templates if t.get("orig") is not None}
+    deletes = [t for t in cur if t["ord"] not in kept]
+    remaining = (
+        len(cur)
+        - len(deletes)
+        + sum(1 for t in payload_templates if t.get("orig") is None)
+    )
+    if len(payload_templates) == 0 or remaining < 1:
+        raise ValueError("a notetype needs at least one card type")
+    for t in deletes:
+        col.models.remove_template(m, t)
+    _update_existing_templates(payload_templates, by_ord)
+    _add_new_templates(col, m, payload_templates)
+    _reposition_templates(col, m, payload_templates)
+    m["css"] = css
+    return col.models.update_dict(m)
+
+
 def make_card_layout_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/card-layout")
 
@@ -69,50 +131,11 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
         draft = p.get("layoutDraft")
         if not isinstance(draft, dict):
             return DatastarResponse()
-        rows = draft.get("rows", {}) or {}
-        order = draft.get("order", []) or []
-        payload_templates = []
-        for key in order:
-            if key in rows and isinstance(rows[key], dict):
-                payload_templates.append(dict(rows[key]))
+        payload_templates = _draft_templates(draft)
         css = draft.get("css", "")
 
         def apply(col):
-            ntid = int(p["notetypeId"])
-            m = col.models.get(ntid)
-            cur = list(m["tmpls"])
-            by_ord = {t["ord"]: t for t in cur}
-            kept = {t["orig"] for t in payload_templates if t.get("orig") is not None}
-            deletes = [t for t in cur if t["ord"] not in kept]
-            remaining = (
-                len(cur)
-                - len(deletes)
-                + sum(1 for t in payload_templates if t.get("orig") is None)
-            )
-            if len(payload_templates) == 0 or remaining < 1:
-                raise ValueError("a notetype needs at least one card type")
-            for t in deletes:
-                col.models.remove_template(m, t)
-            for tp in payload_templates:
-                if tp.get("orig") is not None:
-                    td = by_ord[tp["orig"]]
-                    td["name"] = tp["name"]
-                    td["qfmt"] = tp.get("qfmt", "")
-                    td["afmt"] = tp.get("afmt", "")
-            for tp in payload_templates:
-                if tp.get("orig") is None:
-                    nt = col.models.new_template(tp["name"])
-                    nt["qfmt"] = tp.get("qfmt", "")
-                    nt["afmt"] = tp.get("afmt", "")
-                    col.models.add_template(m, nt)
-
-            def by_name(nm):
-                return next(x for x in m["tmpls"] if x["name"] == nm)
-
-            for i, tp in enumerate(payload_templates):
-                col.models.reposition_template(m, by_name(tp["name"]), i)
-            m["css"] = css
-            return col.models.update_dict(m)
+            return _apply_layout(col, p, payload_templates, css)
 
         try:
             await service.run_op(apply, initiator="cardlayout")

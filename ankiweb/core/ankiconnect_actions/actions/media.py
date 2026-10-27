@@ -101,6 +101,23 @@ async def delete_media_file(rt, filename=None):
     await rt.service.run(lambda col: col.media.trash_files([filename]))
 
 
+def _attach_media_item(col, media, tmpl, fields, valid):
+    stored = _store(
+        col,
+        media["filename"],
+        media.get("data"),
+        media.get("path"),
+        media.get("url"),
+        media.get("skipHash"),
+    )
+    fname = stored if stored is not None else media["filename"]
+    html = tmpl % fname
+    for field_name in media.get("fields") or []:
+        if valid is not None and field_name not in valid:
+            continue  # ref only writes fields present on the model (790)
+        fields[field_name] = (fields.get(field_name, "") or "") + html
+
+
 # --- media-field attachment for addNote/addNotes (called from notes.py) ---
 def attach_media(col, spec):
     """Store any audio/video/picture media in the note spec and append the right HTML
@@ -120,17 +137,4 @@ def attach_media(col, spec):
         ):  # AnkiConnect accepts a single object too (ref 773-776)
             media_list = [media_list]
         for media in media_list:
-            stored = _store(
-                col,
-                media["filename"],
-                media.get("data"),
-                media.get("path"),
-                media.get("url"),
-                media.get("skipHash"),
-            )
-            fname = stored if stored is not None else media["filename"]
-            html = tmpl % fname
-            for field_name in media.get("fields") or []:
-                if valid is not None and field_name not in valid:
-                    continue  # ref only writes fields present on the model (790)
-                fields[field_name] = (fields.get(field_name, "") or "") + html
+            _attach_media_item(col, media, tmpl, fields, valid)

@@ -241,6 +241,13 @@ class DeckNotifier:
         except asyncio.CancelledError:
             pass
 
+    def _acknowledge_changes(self, changes: list, gone: set) -> None:
+        for ch in changes:
+            if ch["deck"] in gone:
+                self.last_notified.pop(ch["deck"], None)  # zero-out acked -> forget
+            else:
+                self.last_notified[ch["deck"]] = counts_sig(ch)
+
     async def _tick(self, cfg: NotifyConfig) -> float:
         """One observe-diff-send cycle. Returns how long to wait before the next cycle."""
         current = await self._fetch()
@@ -284,11 +291,7 @@ class DeckNotifier:
         st.last_attempt_ts = self._now()
         ok, err = await self._safe_post(cfg, build_payload(changes, self._now()))
         if ok:
-            for ch in changes:
-                if ch["deck"] in gone:
-                    self.last_notified.pop(ch["deck"], None)  # zero-out acked -> forget
-                else:
-                    self.last_notified[ch["deck"]] = counts_sig(ch)
+            self._acknowledge_changes(changes, gone)
             st.last_success_ts = self._now()
             st.last_error = ""
             st.pending = 0

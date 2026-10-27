@@ -49,15 +49,19 @@ def render_notetypes_html(col) -> str:
     )
 
 
+def _requested_name(payload: object) -> str:
+    if payload and isinstance(payload, dict):
+        return str(payload.get("name", "")).strip()
+    return ""
+
+
 def make_notetypes_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/notetypes")
 
     @router.post("/rename/{ntid}")
     async def rename(ntid: int, payload: ReadSignals):
         service = get_service()
-        newname = ""
-        if payload and isinstance(payload, dict):
-            newname = str(payload.get("name", "")).strip()
+        newname = _requested_name(payload)
         if not newname:
             return error_response("A name is required.")
 
@@ -94,9 +98,7 @@ def make_notetypes_routes(get_service: Callable) -> APIRouter:
     @router.post("/add/{base_ntid}")
     async def add_notetype(base_ntid: int, payload: ReadSignals):
         service = get_service()
-        newname = ""
-        if payload and isinstance(payload, dict):
-            newname = str(payload.get("name", "")).strip()
+        newname = _requested_name(payload)
         if not newname:
             return error_response("A name is required.")
 

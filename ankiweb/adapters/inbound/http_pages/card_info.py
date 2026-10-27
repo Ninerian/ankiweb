@@ -174,13 +174,7 @@ def _fsrs_retrievability(stability: float, elapsed_days: float, decay: float) ->
     return math.pow(val, -decay)
 
 
-def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
-    if stats_proto is None:
-        return {}
-
-    card_id = stats_proto.card_id
-    rows = []
-
+def _append_card_date_rows(stats_proto, rows: list) -> None:
     # 1. Added
     rows.append(
         {"label": tr.card_stats_added(), "value": format_date(stats_proto.added)}
@@ -231,8 +225,8 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
             }
         )
 
-    # 7. Memory state vs Ease
-    has_memory_state = stats_proto.HasField("memory_state")
+
+def _append_memory_rows(stats_proto, rows: list, has_memory_state: bool) -> None:
     if has_memory_state:
         stab = stats_proto.memory_state.stability
         val_stab = format_timespan(stab * 86400, short=False, exact=False)
@@ -263,6 +257,52 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
                     "value": f"{stats_proto.ease / 10.0:.0f}%",
                 }
             )
+
+
+def _build_revlog_rows(raw_revlogs: list) -> list:
+    revlog_rows = []
+    for u, log in enumerate(raw_revlogs):
+        m = None
+        for s_idx in range(u + 1, len(raw_revlogs)):
+            if _is_revlog_counted(
+                raw_revlogs[s_idx].review_kind, raw_revlogs[s_idx].ease
+            ):
+                m = raw_revlogs[s_idx]
+                break
+        elapsed = "N/A"
+        if _is_revlog_counted(log.review_kind, log.ease):
+            elapsed = format_timespan(log.time - m.time) if m else "0"
+
+        rating_class = "revlog-ease1" if log.button_chosen == 1 else ""
+        revlog_rows.append(
+            {
+                "date": format_date(log.time),
+                "time": format_time(log.time),
+                "review_kind": _review_kind_text(log.review_kind),
+                "review_kind_class": _review_kind_class(log.review_kind),
+                "rating": log.button_chosen,
+                "rating_class": rating_class,
+                "interval": format_timespan(log.interval),
+                "ease": _ease_text(log.ease),
+                "taken_secs": format_timespan(log.taken_secs, short=True),
+                "elapsed_time": elapsed,
+            }
+        )
+    return revlog_rows
+
+
+def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
+    if stats_proto is None:
+        return {}
+
+    card_id = stats_proto.card_id
+    rows = []
+
+    _append_card_date_rows(stats_proto, rows)
+
+    # 7. Memory state vs Ease
+    has_memory_state = stats_proto.HasField("memory_state")
+    _append_memory_rows(stats_proto, rows, has_memory_state)
 
     # 8. Reviews & Lapses
     rows.extend(
@@ -320,34 +360,7 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
 
     # Build revlogs
     raw_revlogs = list(stats_proto.revlog)
-    revlog_rows = []
-    for u, log in enumerate(raw_revlogs):
-        m = None
-        for s_idx in range(u + 1, len(raw_revlogs)):
-            if _is_revlog_counted(
-                raw_revlogs[s_idx].review_kind, raw_revlogs[s_idx].ease
-            ):
-                m = raw_revlogs[s_idx]
-                break
-        elapsed = "N/A"
-        if _is_revlog_counted(log.review_kind, log.ease):
-            elapsed = format_timespan(log.time - m.time) if m else "0"
-
-        rating_class = "revlog-ease1" if log.button_chosen == 1 else ""
-        revlog_rows.append(
-            {
-                "date": format_date(log.time),
-                "time": format_time(log.time),
-                "review_kind": _review_kind_text(log.review_kind),
-                "review_kind_class": _review_kind_class(log.review_kind),
-                "rating": log.button_chosen,
-                "rating_class": rating_class,
-                "interval": format_timespan(log.interval),
-                "ease": _ease_text(log.ease),
-                "taken_secs": format_timespan(log.taken_secs, short=True),
-                "elapsed_time": elapsed,
-            }
-        )
+    revlog_rows = _build_revlog_rows(raw_revlogs)
 
     # Forgetting curve SVG
     decay = _fsrs_decay(stats_proto)
@@ -414,25 +427,9 @@ _D3_TIME_INTERVALS = [
 ]
 
 
-def d3_time_ticks(
-    start_dt: datetime.datetime, stop_dt: datetime.datetime, count: int = 5
-) -> list[datetime.datetime]:
-    span_ms = (stop_dt.timestamp() - start_dt.timestamp()) * 1000.0
-    if span_ms <= 0:
-        return [start_dt]
-
-    target = span_ms / max(1, count)
-    p = d3_bisect_right(_D3_TIME_INTERVALS, target)
-    if p == len(_D3_TIME_INTERVALS):
-        unit, step, _ = _D3_TIME_INTERVALS[-1]
-    elif p == 0:
-        unit, step, _ = _D3_TIME_INTERVALS[0]
-    else:
-        if target / _D3_TIME_INTERVALS[p - 1][2] < _D3_TIME_INTERVALS[p][2] / target:
-            unit, step, _ = _D3_TIME_INTERVALS[p - 1]
-        else:
-            unit, step, _ = _D3_TIME_INTERVALS[p]
-
+def _align_time_tick(
+    start_dt: datetime.datetime, unit: str, step: int
+) -> tuple[datetime.datetime, datetime.timedelta | None]:
     if unit == "second":
         curr = start_dt.replace(second=(start_dt.second // step) * step, microsecond=0)
         delta = datetime.timedelta(seconds=step)
@@ -482,28 +479,49 @@ def d3_time_ticks(
             microsecond=0,
         )
         delta = None
+    return curr, delta
+
+
+def _advance_time_tick(
+    curr: datetime.datetime, unit: str, step: int, delta: datetime.timedelta | None
+) -> datetime.datetime:
+    if delta:
+        return curr + delta
+    if unit == "month":
+        m = curr.month + step
+        y = curr.year + (m - 1) // 12
+        return curr.replace(year=y, month=((m - 1) % 12) + 1)
+    return curr.replace(year=curr.year + step)
+
+
+def d3_time_ticks(
+    start_dt: datetime.datetime, stop_dt: datetime.datetime, count: int = 5
+) -> list[datetime.datetime]:
+    span_ms = (stop_dt.timestamp() - start_dt.timestamp()) * 1000.0
+    if span_ms <= 0:
+        return [start_dt]
+
+    target = span_ms / max(1, count)
+    p = d3_bisect_right(_D3_TIME_INTERVALS, target)
+    if p == len(_D3_TIME_INTERVALS):
+        unit, step, _ = _D3_TIME_INTERVALS[-1]
+    elif p == 0:
+        unit, step, _ = _D3_TIME_INTERVALS[0]
+    else:
+        if target / _D3_TIME_INTERVALS[p - 1][2] < _D3_TIME_INTERVALS[p][2] / target:
+            unit, step, _ = _D3_TIME_INTERVALS[p - 1]
+        else:
+            unit, step, _ = _D3_TIME_INTERVALS[p]
+
+    curr, delta = _align_time_tick(start_dt, unit, step)
 
     if curr < start_dt:
-        if delta:
-            curr += delta
-        elif unit == "month":
-            m = curr.month + step
-            y = curr.year + (m - 1) // 12
-            curr = curr.replace(year=y, month=((m - 1) % 12) + 1)
-        else:
-            curr = curr.replace(year=curr.year + step)
+        curr = _advance_time_tick(curr, unit, step, delta)
 
     ticks = []
     while curr <= stop_dt:
         ticks.append(curr)
-        if delta:
-            curr += delta
-        elif unit == "month":
-            m = curr.month + step
-            y = curr.year + (m - 1) // 12
-            curr = curr.replace(year=y, month=((m - 1) % 12) + 1)
-        else:
-            curr = curr.replace(year=curr.year + step)
+        curr = _advance_time_tick(curr, unit, step, delta)
     return ticks
 
 
@@ -554,23 +572,7 @@ def d3_linear_ticks(
     return ticks, fmt
 
 
-def render_forgetting_curve_svg(
-    raw_revlogs: list,
-    desired_retention: float,
-    decay: float,
-    selected_range: int = -1,
-    bounds: dict | None = None,
-) -> tuple[str, float, int]:
-    if bounds is None:
-        bounds = {
-            "width": 600,
-            "height": 250,
-            "marginLeft": 70,
-            "marginRight": 70,
-            "marginTop": 20,
-            "marginBottom": 25,
-        }
-
+def _curve_revlogs(raw_revlogs: list) -> list:
     e = []
     for r in raw_revlogs:
         has_ms = r.HasField("memory_state")
@@ -578,31 +580,22 @@ def render_forgetting_curve_svg(
             break
         e.append(r)
     e = [r for r in e if _is_revlog_counted(r.review_kind, r.ease)]
+    return e
 
-    if not e:
-        return "", 0.0, 0
 
-    now_ts = datetime.datetime.now(tz=datetime.UTC).astimezone().timestamp()
-    t_days = (now_ts - e[-1].time) / 86400.0
-    h_days = (now_ts - e[0].time) / 86400.0
-    s_days = e[0].interval / 86400.0
-    n_days = max(s_days * 1.5 - h_days, s_days * 0.5)
-    max_span = t_days + n_days
+def _curve_range(max_span: float, selected_range: int) -> int:
+    if selected_range != -1:
+        return selected_range
+    if max_span > 365:
+        return 3
+    if max_span > 30:
+        return 2
+    if max_span > 7:
+        return 1
+    return 0
 
-    range_limits = {0: 7.0, 1: 30.0, 2: 365.0, 3: float("inf")}
 
-    if selected_range == -1:
-        if max_span > 365:
-            selected_range = 3
-        elif max_span > 30:
-            selected_range = 2
-        elif max_span > 7:
-            selected_range = 1
-        else:
-            selected_range = 0
-
-    active_span = min(max_span, range_limits.get(selected_range, 7.0))
-
+def _curve_points(e: list, active_span: float, now_ts: float, decay: float) -> list:
     ta = 1000.0
     step = min(active_span / ta, 1.0)
     pts = []
@@ -656,7 +649,7 @@ def render_forgetting_curve_svg(
         s = stab
 
     if not pts:
-        return "", max_span, selected_range
+        return pts
 
     elapsed_to_now = (now_ts - h) / 86400.0
     b = 0.0
@@ -698,6 +691,87 @@ def render_forgetting_curve_svg(
                 "stability": s,
             }
         )
+    return pts
+
+
+def _curve_path(points: list, scale_x: Callable, scale_y: Callable) -> str:
+    if not points:
+        return ""
+    d_parts = [
+        f"M{scale_x(points[0]['time']):.3f},{scale_y(points[0]['retrievability']):.3f}"
+    ]
+    for p in points[1:]:
+        d_parts.append(f"L{scale_x(p['time']):.3f},{scale_y(p['retrievability']):.3f}")
+    return "".join(d_parts)
+
+
+def _curve_y_ticks(min_ret: float, scale_y: Callable) -> list[str]:
+    y_ticks_vals, y_fmt = d3_linear_ticks(min_ret, 100.0, 10)
+    y_ticks_svg = []
+    for yv in y_ticks_vals:
+        yp = scale_y(yv)
+        y_ticks_svg.append(
+            f'<g class="tick" opacity="1" transform="translate(0,{yp:.1f})">'
+            f'<line stroke="currentColor" x2="-6"></line>'
+            f'<text fill="currentColor" x="-9" dy="0.32em">{y_fmt.format(yv)}</text>'
+            f"</g>"
+        )
+    return y_ticks_svg
+
+
+def _curve_x_ticks(min_time: float, max_time: float, scale_x: Callable) -> list[str]:
+    dt_start = datetime.datetime.fromtimestamp(min_time, tz=datetime.UTC).astimezone()
+    dt_stop = datetime.datetime.fromtimestamp(max_time, tz=datetime.UTC).astimezone()
+    x_tick_dts = d3_time_ticks(dt_start, dt_stop, 5)
+    x_ticks_svg = []
+    for dt_tick in x_tick_dts:
+        xp = scale_x(dt_tick.timestamp())
+        fmt_str = d3_format_time(dt_tick)
+        x_ticks_svg.append(
+            f'<g class="tick" opacity="1" transform="translate({xp:.1f},0)">'
+            f'<line stroke="currentColor" y2="6"></line>'
+            f'<text fill="currentColor" y="9" dy="0.71em">{fmt_str}</text>'
+            f"</g>"
+        )
+    return x_ticks_svg
+
+
+def render_forgetting_curve_svg(
+    raw_revlogs: list,
+    desired_retention: float,
+    decay: float,
+    selected_range: int = -1,
+    bounds: dict | None = None,
+) -> tuple[str, float, int]:
+    if bounds is None:
+        bounds = {
+            "width": 600,
+            "height": 250,
+            "marginLeft": 70,
+            "marginRight": 70,
+            "marginTop": 20,
+            "marginBottom": 25,
+        }
+
+    e = _curve_revlogs(raw_revlogs)
+
+    if not e:
+        return "", 0.0, 0
+
+    now_ts = datetime.datetime.now(tz=datetime.UTC).astimezone().timestamp()
+    t_days = (now_ts - e[-1].time) / 86400.0
+    h_days = (now_ts - e[0].time) / 86400.0
+    s_days = e[0].interval / 86400.0
+    n_days = max(s_days * 1.5 - h_days, s_days * 0.5)
+    max_span = t_days + n_days
+
+    range_limits = {0: 7.0, 1: 30.0, 2: 365.0, 3: float("inf")}
+
+    selected_range = _curve_range(max_span, selected_range)
+
+    active_span = min(max_span, range_limits.get(selected_range, 7.0))
+
+    pts = _curve_points(e, active_span, now_ts, decay)
 
     pts = [p for p in pts if p["daysSinceFirstLearn"] <= active_span]
     if not pts:
@@ -729,50 +803,17 @@ def render_forgetting_curve_svg(
     past_pts = [p for p in pts if p["time"] <= now_ts]
     future_pts = [p for p in pts if p["time"] >= now_ts]
 
-    def build_path_d(points: list) -> str:
-        if not points:
-            return ""
-        d_parts = [
-            f"M{scale_x(points[0]['time']):.3f},{scale_y(points[0]['retrievability']):.3f}"
-        ]
-        for p in points[1:]:
-            d_parts.append(
-                f"L{scale_x(p['time']):.3f},{scale_y(p['retrievability']):.3f}"
-            )
-        return "".join(d_parts)
-
-    d_past = build_path_d(past_pts)
-    d_future = build_path_d(future_pts)
+    d_past = _curve_path(past_pts, scale_x, scale_y)
+    d_future = _curve_path(future_pts, scale_x, scale_y)
 
     m_desired = desired_retention * 100.0
     y_desired = scale_y(m_desired)
 
     # Ticks for Y matching D3 linear scale
-    y_ticks_vals, y_fmt = d3_linear_ticks(E_min, 100.0, 10)
-    y_ticks_svg = []
-    for yv in y_ticks_vals:
-        yp = scale_y(yv)
-        y_ticks_svg.append(
-            f'<g class="tick" opacity="1" transform="translate(0,{yp:.1f})">'
-            f'<line stroke="currentColor" x2="-6"></line>'
-            f'<text fill="currentColor" x="-9" dy="0.32em">{y_fmt.format(yv)}</text>'
-            f"</g>"
-        )
+    y_ticks_svg = _curve_y_ticks(E_min, scale_y)
 
     # Ticks for X matching D3 time scale
-    dt_start = datetime.datetime.fromtimestamp(min_time, tz=datetime.UTC).astimezone()
-    dt_stop = datetime.datetime.fromtimestamp(max_time, tz=datetime.UTC).astimezone()
-    x_tick_dts = d3_time_ticks(dt_start, dt_stop, 5)
-    x_ticks_svg = []
-    for dt_tick in x_tick_dts:
-        xp = scale_x(dt_tick.timestamp())
-        fmt_str = d3_format_time(dt_tick)
-        x_ticks_svg.append(
-            f'<g class="tick" opacity="1" transform="translate({xp:.1f},0)">'
-            f'<line stroke="currentColor" y2="6"></line>'
-            f'<text fill="currentColor" y="9" dy="0.71em">{fmt_str}</text>'
-            f"</g>"
-        )
+    x_ticks_svg = _curve_x_ticks(min_time, max_time, scale_x)
 
     desired_line_svg = ""
     if m_desired > E_min:
@@ -808,6 +849,86 @@ def render_forgetting_curve_svg(
     return svg_content, max_span, selected_range
 
 
+async def _render_card_comparison(
+    service, cids: list[int], show_revlog: bool, show_curve: bool
+) -> HTMLResponse:
+    curr_id = cids[0]
+    prev_id = cids[1]
+
+    def fetch_both(col):
+        c_p = col.card_stats_data(curr_id)
+        p_p = col.card_stats_data(prev_id)
+        return c_p, p_p
+
+    try:
+        c_proto, p_proto = await service.run(fetch_both)
+    except (NotFoundError, AnkiException):
+        # Determine which card failed
+        def check_which(col):
+            try:
+                col.card_stats_data(curr_id)
+            except (NotFoundError, AnkiException):
+                return curr_id
+            return prev_id
+
+        missing_id = await service.run(check_which)
+        inconsistent_msg = (
+            "Your database appears to be in an inconsistent state. "
+            f"Please use the Check Database action. No such card: '{missing_id}'"
+        )
+        return HTMLResponse(render_page("card-info", inconsistent_msg))
+
+    c_data = build_card_data(c_proto)
+    p_data = build_card_data(p_proto)
+    body = templating.render(
+        "pages/card_info.html.jinja",
+        is_multi=True,
+        current_title="Current",
+        previous_title="Previous",
+        current_card=c_data,
+        previous_card=p_data,
+        show_revlog=show_revlog,
+        show_curve=show_curve,
+    )
+    return HTMLResponse(render_page("card-info", body))
+
+
+async def _render_single_card(
+    service, cid: int, show_revlog: bool, show_curve: bool
+) -> HTMLResponse:
+    try:
+        stats_proto = await service.run(lambda col: col.card_stats_data(cid))
+    except (NotFoundError, AnkiException):
+        inconsistent_msg = (
+            "Your database appears to be in an inconsistent state. "
+            f"Please use the Check Database action. No such card: '{cid}'"
+        )
+        return HTMLResponse(render_page("card-info", inconsistent_msg))
+
+    card_data = build_card_data(stats_proto)
+    body = templating.render(
+        "pages/card_info.html.jinja",
+        is_multi=False,
+        current_card=card_data,
+        previous_card={},
+        show_revlog=show_revlog,
+        show_curve=show_curve,
+    )
+    return HTMLResponse(render_page("card-info", body))
+
+
+def _parse_card_info_ids(ids: str) -> list[int] | HTMLResponse:
+    parts = [p for p in ids.split("/") if p]
+    cids = []
+    for p in parts:
+        if p.isdigit():
+            if len(p) > 18:
+                # Huge int beyond 64-bit: legacy returns "int64 invalid: <p>"
+                return HTMLResponse(render_page("card-info", f"int64 invalid: {p}"))
+            cids.append(int(p))
+    return cids
+
+
 def make_router(get_service: Callable) -> APIRouter:
     router = APIRouter()
 
@@ -817,14 +938,9 @@ def make_router(get_service: Callable) -> APIRouter:
         show_revlog = request.query_params.get("revlog") != "0"
         show_curve = request.query_params.get("curve") != "0"
 
-        parts = [p for p in ids.split("/") if p]
-        cids = []
-        for p in parts:
-            if p.isdigit():
-                if len(p) > 18:
-                    # Huge int beyond 64-bit: legacy returns "int64 invalid: <p>"
-                    return HTMLResponse(render_page("card-info", f"int64 invalid: {p}"))
-                cids.append(int(p))
+        cids = _parse_card_info_ids(ids)
+        if isinstance(cids, HTMLResponse):
+            return cids
 
         if not cids:
             body = templating.render(
@@ -838,67 +954,9 @@ def make_router(get_service: Callable) -> APIRouter:
             return HTMLResponse(render_page("card-info", body))
 
         if len(cids) == 1:
-            cid = cids[0]
-            try:
-                stats_proto = await service.run(lambda col: col.card_stats_data(cid))
-            except (NotFoundError, AnkiException):
-                inconsistent_msg = (
-                    "Your database appears to be in an inconsistent state. "
-                    f"Please use the Check Database action. No such card: '{cid}'"
-                )
-                return HTMLResponse(render_page("card-info", inconsistent_msg))
+            return await _render_single_card(service, cids[0], show_revlog, show_curve)
 
-            card_data = build_card_data(stats_proto)
-            body = templating.render(
-                "pages/card_info.html.jinja",
-                is_multi=False,
-                current_card=card_data,
-                previous_card={},
-                show_revlog=show_revlog,
-                show_curve=show_curve,
-            )
-            return HTMLResponse(render_page("card-info", body))
-
-        curr_id = cids[0]
-        prev_id = cids[1]
-
-        def fetch_both(col):
-            c_p = col.card_stats_data(curr_id)
-            p_p = col.card_stats_data(prev_id)
-            return c_p, p_p
-
-        try:
-            c_proto, p_proto = await service.run(fetch_both)
-        except (NotFoundError, AnkiException):
-            # Determine which card failed
-            def check_which(col):
-                try:
-                    col.card_stats_data(curr_id)
-                except (NotFoundError, AnkiException):
-                    return curr_id
-                return prev_id
-
-            missing_id = await service.run(check_which)
-            inconsistent_msg = (
-                "Your database appears to be in an inconsistent state. "
-                f"Please use the Check Database action. No such card: '{missing_id}'"
-            )
-            return HTMLResponse(render_page("card-info", inconsistent_msg))
-
-        c_data = build_card_data(c_proto)
-        p_data = build_card_data(p_proto)
-
-        body = templating.render(
-            "pages/card_info.html.jinja",
-            is_multi=True,
-            current_title="Current",
-            previous_title="Previous",
-            current_card=c_data,
-            previous_card=p_data,
-            show_revlog=show_revlog,
-            show_curve=show_curve,
-        )
-        return HTMLResponse(render_page("card-info", body))
+        return await _render_card_comparison(service, cids, show_revlog, show_curve)
 
     @router.post("/card-info/curve/{cid}")
     async def update_curve(cid: int, request: Request):

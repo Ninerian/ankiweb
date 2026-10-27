@@ -63,6 +63,83 @@ def render_fields_html(col, ntid: int, *, return_url: str) -> str:
     )
 
 
+def _field_payload(p):
+    if "fieldDraft" in p and isinstance(p["fieldDraft"], dict):
+        draft = p["fieldDraft"]
+        rows = draft.get("rows", {}) or {}
+        order = draft.get("order", []) or []
+        sort_key = draft.get("sortKey")
+
+        payload_fields = []
+        for key in order:
+            if key in rows:
+                payload_fields.append(dict(rows[key]))
+
+        if sort_key in order:
+            sortf = order.index(sort_key)
+        elif payload_fields:
+            sortf = 0
+        else:
+            sortf = 0
+        return payload_fields, sortf
+    return p.get("fields", []), int(p.get("sortf", 0))
+
+
+def _remove_deleted_fields(col, m, payload_fields):
+    cur = list(m["flds"])
+    by_ord = {f["ord"]: f for f in cur}
+    kept = {f["orig"] for f in payload_fields if f.get("orig") is not None}
+    deletes = [f for f in cur if f["ord"] not in kept]
+    remaining = (
+        len(cur)
+        - len(deletes)
+        + sum(1 for f in payload_fields if f.get("orig") is None)
+    )
+    if len(payload_fields) == 0 or remaining < 1:
+        raise ValueError("a notetype needs at least one field")
+    for f in deletes:
+        col.models.remove_field(m, f)
+    return by_ord
+
+
+def _rename_and_add_fields(col, m, payload_fields, by_ord):
+    for fp in payload_fields:
+        if fp.get("orig") is not None:
+            fd = by_ord[fp["orig"]]
+            if fd["name"] != fp["name"]:
+                col.models.rename_field(m, fd, fp["name"])
+    for fp in payload_fields:
+        if fp.get("orig") is None:
+            col.models.add_field(m, col.models.new_field(fp["name"]))
+
+
+def _update_field_properties(col, m, payload_fields):
+    for i, fp in enumerate(payload_fields):
+        name = fp["name"]
+        fd = next(x for x in m["flds"] if x["name"] == name)
+        fd["font"] = fp.get("font", "Arial")
+        fd["size"] = int(fp.get("size", 20))
+        fd["rtl"] = bool(fp.get("rtl", False))
+        fd["description"] = fp.get("description", "")
+        col.models.reposition_field(m, fd, i)
+
+
+def _apply_field_changes(col, p, payload_fields, sortf):
+    ntid = int(p["notetypeId"])
+    m = col.models.get(ntid)
+    by_ord = _remove_deleted_fields(col, m, payload_fields)
+    _rename_and_add_fields(col, m, payload_fields, by_ord)
+    _update_field_properties(col, m, payload_fields)
+    col.models.set_sort_index(m, sortf)
+    changes = col.models.update_dict(m)
+    # If Anki's backend remapped sortf during field addition/removal, re-apply desired sortf
+    m_reloaded = col.models.get(ntid)
+    if m_reloaded["sortf"] != sortf:
+        col.models.set_sort_index(m_reloaded, sortf)
+        col.models.update_dict(m_reloaded)
+    return changes
+
+
 def make_fields_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/fields")
 
@@ -74,70 +151,10 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
         p = payload
 
         return_url = safe_return_url(p.get("returnUrl")) or "/notetypes"
-        if "fieldDraft" in p and isinstance(p["fieldDraft"], dict):
-            draft = p["fieldDraft"]
-            rows = draft.get("rows", {}) or {}
-            order = draft.get("order", []) or []
-            sort_key = draft.get("sortKey")
-
-            payload_fields = []
-            for key in order:
-                if key in rows:
-                    payload_fields.append(dict(rows[key]))
-
-            if sort_key in order:
-                sortf = order.index(sort_key)
-            elif payload_fields:
-                sortf = 0
-            else:
-                sortf = 0
-        else:
-            payload_fields = p.get("fields", [])
-            sortf = int(p.get("sortf", 0))
+        payload_fields, sortf = _field_payload(p)
 
         def apply(col):
-            ntid = int(p["notetypeId"])
-            m = col.models.get(ntid)
-            cur = list(m["flds"])
-            by_ord = {f["ord"]: f for f in cur}
-            kept = {f["orig"] for f in payload_fields if f.get("orig") is not None}
-            deletes = [f for f in cur if f["ord"] not in kept]
-            remaining = (
-                len(cur)
-                - len(deletes)
-                + sum(1 for f in payload_fields if f.get("orig") is None)
-            )
-            if len(payload_fields) == 0 or remaining < 1:
-                raise ValueError("a notetype needs at least one field")
-            for f in deletes:
-                col.models.remove_field(m, f)
-            for fp in payload_fields:
-                if fp.get("orig") is not None:
-                    fd = by_ord[fp["orig"]]
-                    if fd["name"] != fp["name"]:
-                        col.models.rename_field(m, fd, fp["name"])
-            for fp in payload_fields:
-                if fp.get("orig") is None:
-                    col.models.add_field(m, col.models.new_field(fp["name"]))
-
-            def by_name(nm):
-                return next(x for x in m["flds"] if x["name"] == nm)
-
-            for i, fp in enumerate(payload_fields):
-                fd = by_name(fp["name"])
-                fd["font"] = fp.get("font", "Arial")
-                fd["size"] = int(fp.get("size", 20))
-                fd["rtl"] = bool(fp.get("rtl", False))
-                fd["description"] = fp.get("description", "")
-                col.models.reposition_field(m, fd, i)
-            col.models.set_sort_index(m, sortf)
-            changes = col.models.update_dict(m)
-            # If Anki's backend remapped sortf during field addition/removal, re-apply desired sortf
-            m_reloaded = col.models.get(ntid)
-            if m_reloaded["sortf"] != sortf:
-                col.models.set_sort_index(m_reloaded, sortf)
-                col.models.update_dict(m_reloaded)
-            return changes
+            return _apply_field_changes(col, p, payload_fields, sortf)
 
         try:
             await service.run_op(apply, initiator="fields")
