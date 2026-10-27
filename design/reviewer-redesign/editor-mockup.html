@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AnkiWeb Card Creator — Playful Neo-Pop Edition</title>
+  <script>
+    const colorPreference = window.matchMedia('(prefers-color-scheme: dark)');
+    function applyColorPreference() {
+      document.documentElement.dataset.theme = colorPreference.matches ? 'dark' : 'light';
+    }
+    applyColorPreference();
+    colorPreference.addEventListener('change', applyColorPreference);
+  </script>
+  <style>
+    /* ==========================================================================
+       NEO-POP CARD CREATOR DESIGN SYSTEM
+       Identical tokens to mockup.html for seamless aesthetic continuity
+       ========================================================================== */
+
+    :root {
+      /* Typography System: punchy, geometric, impactful using platform fonts */
+      --font-display: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+
+      /* Light Theme Palette: vibrant, tactile, energetic */
+      --bg-base: #f4f3ed;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #ffffff;
+      --text-main: #18191f;
+      --text-muted: #5f6368;
+      --border-color: #18191f;
+      --border-width: 2.5px;
+      --shadow-offset: 4px;
+      --shadow-sm: 2px 2px 0px var(--border-color);
+      --shadow-card: 4px 4px 0px var(--border-color);
+      --shadow-button: 3px 3px 0px var(--border-color);
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-pill: 999px;
+
+      /* Accent & Gamification Colors */
+      --color-streak: #b53600;
+      --color-streak-bg: #fff0eb;
+      --color-streak-glow: rgba(255, 77, 0, 0.35);
+      --color-meter-track: #e5e3d8;
+      --color-meter-fill: #ffd13b;
+      --color-primary: #1971c2;
+      --color-primary-accent: #ffd13b;
+      --color-success: #237b36;
+      --color-success-bg: #d3f9d8;
+
+      /* Step indicator tokens */
+      --step-active: #ffd13b;
+      --step-done: #40c057;
+      --step-inactive: #e5e3d8;
+
+      --badge-bg: #e9ecef;
+      --badge-text: #212529;
+
+      /* Bottom sheet overlay / modal */
+      --sheet-backdrop: rgba(24, 25, 31, 0.65);
+    }
+
+    [data-theme="dark"] {
+      --bg-base: #121316;
+      --bg-surface: #1e2025;
+      --bg-surface-elevated: #282a30;
+      --text-main: #f8f9fa;
+      --text-muted: #a1a6b0;
+      --border-color: #f8f9fa;
+      --shadow-sm: 2px 2px 0px #000000;
+      --shadow-card: 4px 4px 0px #000000;
+      --shadow-button: 3px 3px 0px #000000;
+
+      --color-streak: #ff6b35;
+      --color-streak-bg: #2b170c;
+      --color-streak-glow: rgba(255, 107, 53, 0.45);
+      --color-meter-track: #2a2c33;
+      --color-meter-fill: #ffd13b;
+      --color-primary: #74c0fc;
+      --color-primary-accent: #ffd13b;
+      --color-success: #51cf66;
+      --color-success-bg: #0f361a;
+
+      --step-active: #ffd13b;
+      --step-done: #51cf66;
+      --step-inactive: #2a2c33;
+
+      --badge-bg: #2d3038;
+      --badge-text: #e9ecef;
+      --sheet-backdrop: rgba(0, 0, 0, 0.8);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      line-height: 1.4;
+      overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* Mobile Device Frame for Viewports */
+    .app-viewport {
+      width: 100%;
+      max-width: 430px;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background-color: var(--bg-base);
+      overflow: hidden;
+      border-left: 1px solid rgba(0,0,0,0.06);
+      border-right: 1px solid rgba(0,0,0,0.06);
+    }
+
+    /* ==========================================================================
+       TOP HUD (Back, Stack Pill, Deck, Mode and Finish)
+       ========================================================================== */
+    .top-hud {
+      padding: 12px 16px 8px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background-color: var(--bg-base);
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .hud-controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .deck-mode-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .deck-chip, .mode-switch {
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+      background: var(--bg-surface);
+      font-family: var(--font-display);
+      font-weight: 900;
+    }
+
+    .deck-chip {
+      flex: 1;
+      min-width: 0;
+      padding: 8px;
+      color: var(--text-main);
+      font-size: 0.78rem;
+      text-decoration: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mode-switch { display: flex; flex-shrink: 0; overflow: hidden; }
+    .mode-switch a {
+      padding: 8px 10px;
+      color: var(--text-main);
+      font-size: 0.78rem;
+      text-decoration: none;
+    }
+    .mode-switch a[aria-current="page"] { background: var(--color-meter-fill); color: #000; }
+
+    .btn-icon-neo {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-sm);
+      border: var(--border-width) solid var(--border-color);
+      background-color: var(--bg-surface);
+      color: var(--text-main);
+      box-shadow: var(--shadow-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .btn-icon-neo:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px var(--border-color);
+    }
+
+    .btn-icon-neo svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-finish-neo {
+      height: 42px;
+      padding: 0 14px;
+      border-radius: var(--radius-sm);
+      border: var(--border-width) solid var(--border-color);
+      background-color: var(--color-meter-fill);
+      color: #000000;
+      box-shadow: var(--shadow-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 0.88rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      flex-shrink: 0;
+    }
+
+    .btn-finish-neo:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px var(--border-color);
+    }
+
+    /* Stack Counter Pill with Pop Effect */
+    .stack-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background-color: var(--color-streak-bg);
+      border: var(--border-width) solid var(--color-streak);
+      box-shadow: 2px 2px 0px var(--color-streak);
+      padding: 6px 10px;
+      border-radius: var(--radius-pill);
+      color: var(--color-streak);
+      user-select: none;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: pointer;
+    }
+
+    .stack-pill-icon {
+      font-size: 1.15rem;
+      line-height: 1;
+      display: inline-block;
+    }
+
+    .stack-pill-label {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 0.8rem;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .stack-pill-number {
+      font-size: 1.15rem;
+      font-feature-settings: "tnum";
+    }
+
+    @keyframes stackPillPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.3) rotate(-3deg); box-shadow: 0 0 16px var(--color-streak-glow); }
+      75% { transform: scale(0.95) rotate(2deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    .animate-stack-pop {
+      animation: stackPillPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* Step Indicator Bar */
+    .step-indicator-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 4px 2px 2px 2px;
+    }
+
+    .step-pill-item {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 4px;
+      border-radius: var(--radius-pill);
+      border: 2px solid var(--border-color);
+      background-color: var(--bg-surface);
+      font-family: var(--font-display);
+      font-size: 0.75rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+    }
+
+    .step-pill-item.active {
+      background-color: var(--step-active);
+      color: #000000;
+      box-shadow: 2px 2px 0px var(--border-color);
+      transform: translateY(-1px);
+    }
+
+    .step-pill-item.completed {
+      background-color: var(--step-done);
+      color: #000000;
+      border-color: var(--border-color);
+    }
+
+    .step-pill-item .step-num {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-weight: 900;
+    }
+
+    /* ==========================================================================
+       CARD CREATOR STAGE & STACK METAPHOR
+       ========================================================================== */
+    .creator-stage {
+      flex: 1;
+      min-height: 0;
+      padding: 6px 16px 12px 16px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow-y: auto;
+      overflow-x: hidden;
+      perspective: 1000px;
+    }
+
+    /* Container holding the stacked cards pile and active card */
+    .cards-deck-container {
+      position: relative;
+      width: 100%;
+      flex-shrink: 0;
+      padding-bottom: var(--pile-space, 0px);
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 8px;
+    }
+
+    /* Stacked Cards Pile (Visual Cards Placed Behind & Under Active Card) */
+    .stack-pile-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* An individual card in the completed stack */
+    .stacked-card {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: var(--active-card-height, 330px);
+      background-color: var(--bg-surface);
+      border: 3px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, opacity 0.25s ease;
+      transform-origin: center top;
+      pointer-events: auto;
+      cursor: pointer;
+      font-family: var(--font-ui);
+      text-align: left;
+    }
+
+    .stacked-card:hover {
+      filter: brightness(0.96);
+    }
+
+    .stacked-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .stacked-card-badge {
+      background: var(--color-success-bg);
+      color: var(--color-success);
+      border: 1.5px solid var(--border-color);
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      font-weight: 900;
+      font-size: 0.68rem;
+    }
+
+    .stacked-card-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .stacked-card-front {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stacked-card-back {
+      font-size: 0.95rem;
+      color: var(--color-primary);
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stacked-card-footer {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-align: right;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Tap-to-edit cue banner on the topmost stacked card */
+    .stack-top-cue {
+      position: absolute;
+      bottom: 12px;
+      right: 14px;
+      background-color: var(--color-streak-bg);
+      border: 2px solid var(--color-streak);
+      box-shadow: 2px 2px 0px var(--color-streak);
+      color: var(--color-streak);
+      border-radius: var(--radius-pill);
+      padding: 3px 10px;
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      animation: cueBob 1.6s ease-in-out infinite;
+    }
+
+    @keyframes cueBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    /* Active Editing Flashcard */
+    .active-card {
+      position: relative;
+      z-index: 10;
+      background-color: var(--bg-surface);
+      border: 3px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: 5px 5px 0px var(--border-color);
+      padding: 18px 18px;
+      display: flex;
+      flex-direction: column;
+      min-height: 330px;
+      transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.25s ease, opacity 0.25s ease;
+    }
+
+    /* Slide-down-to-stack animation when card is confirmed */
+    @keyframes slideToStack {
+      0% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+        opacity: 1;
+      }
+      50% {
+        transform: translate(8px, 60px) scale(0.97) rotate(3deg);
+        opacity: 0.95;
+      }
+      100% {
+        transform: translate(var(--target-x, 0px), var(--target-y, 24px)) scale(var(--target-scale, 0.98)) rotate(var(--target-rot, -2deg));
+        opacity: 1;
+      }
+    }
+
+    .anim-slide-to-stack {
+      animation: slideToStack 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+
+    /* Fresh card pop-in animation */
+    @keyframes popInFreshCard {
+      0% {
+        opacity: 0;
+        transform: translateY(-24px) scale(0.94);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .anim-fresh-card {
+      animation: popInFreshCard 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* Popped card restoration animation */
+    @keyframes popCardUp {
+      0% {
+        transform: translateY(30px) scale(0.95);
+        opacity: 0.6;
+      }
+      100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    .anim-pop-up {
+      animation: popCardUp 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .card-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .deck-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: var(--badge-bg);
+      color: var(--badge-text);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      border: 1.5px solid var(--border-color);
+    }
+
+    .note-type-pill {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      color: var(--text-muted);
+      background-color: var(--bg-base);
+      border: 1.5px solid var(--border-color);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    /* Card Content / Step Viewports */
+    .card-content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .step-view {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      width: 100%;
+    }
+
+    .step-view.active-step {
+      display: flex;
+      animation: stepFadeIn 0.22s ease-out forwards;
+    }
+
+    @keyframes stepFadeIn {
+      0% { opacity: 0; transform: translateY(6px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .input-prompt-label {
+      font-size: 0.82rem;
+      font-family: var(--font-display);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 900;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .input-helper-tip {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    /* Neo-Pop Big Thumb Input Fields */
+    .neo-textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: 14px 16px;
+      background-color: var(--bg-base);
+      border: 2.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 800;
+      line-height: 1.3;
+      color: var(--text-main);
+      box-shadow: inset 2px 2px 0px rgba(0,0,0,0.06);
+      resize: none;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .neo-textarea:focus {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-sm);
+      background-color: var(--bg-surface);
+    }
+
+    .neo-textarea::placeholder {
+      color: var(--text-muted);
+      opacity: 1;
+      font-weight: 700;
+      font-size: 1.15rem;
+    }
+
+    .input-char-counter {
+      text-align: right;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* Quick helper chips for high school pupils */
+    .helper-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .helper-chip {
+      background-color: var(--bg-base);
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-pill);
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.08s ease, background-color 0.12s ease;
+    }
+
+    .helper-chip:active {
+      transform: scale(0.95);
+      background-color: var(--step-active);
+    }
+
+    .optional-field {
+      margin-top: 10px;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--bg-surface);
+    }
+
+    .optional-field summary {
+      padding: 8px 10px;
+      cursor: pointer;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .optional-field summary:focus-visible {
+      outline: 3px solid var(--color-primary);
+      outline-offset: 3px;
+    }
+
+    .optional-field-body { padding: 0 10px 10px; }
+    .optional-field .neo-textarea {
+      min-height: 76px;
+      padding: 10px;
+      font-size: 1rem;
+    }
+    .optional-field .neo-textarea::placeholder { font-size: 1rem; }
+    .optional-field .input-helper-tip { margin-bottom: 6px; }
+
+    .stacked-card-hint, .stacked-card-example {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .preview-optional-val { color: var(--text-main); white-space: pre-wrap; }
+    .preview-section[hidden] { display: none; }
+    mark { background: var(--color-primary-accent); color: #18191f; }
+
+    /* Step 3: Card Review / Preview Stage */
+    .preview-card-box {
+      background-color: var(--bg-base);
+      border: 2.5px dashed var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .preview-section {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .preview-tag {
+      font-family: var(--font-display);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .preview-front-val {
+      font-family: var(--font-display);
+      font-size: 1.55rem;
+      font-weight: 900;
+      line-height: 1.2;
+      color: var(--text-main);
+    }
+
+    .preview-back-val {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 900;
+      line-height: 1.2;
+      color: var(--color-primary);
+    }
+
+    .preview-divider {
+      height: 2px;
+      background: var(--border-color);
+      opacity: 0.18;
+      margin: 4px 0;
+    }
+
+    .preview-edit-link {
+      align-self: center;
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-decoration: underline;
+      margin-top: 4px;
+    }
+
+    /* Stack Empty State placeholder (shown when 0 cards in stack) */
+    .stack-empty-indicator {
+      border: 2px dashed rgba(0,0,0,0.18);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 800;
+      font-family: var(--font-display);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    [data-theme="dark"] .stack-empty-indicator {
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    /* ==========================================================================
+       BOTTOM CONTROLS BAR (Back / Advance / Add to Stack)
+       ========================================================================== */
+    .creator-bottom-bar {
+      padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px;
+      background-color: var(--bg-base);
+      z-index: 20;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bottom-btn-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .btn-step-back {
+      width: 58px;
+      height: 60px;
+      border-radius: var(--radius-md);
+      border: 2.5px solid var(--border-color);
+      background-color: var(--bg-surface);
+      color: var(--text-main);
+      box-shadow: var(--shadow-button);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      flex-shrink: 0;
+    }
+
+    .btn-step-back:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px var(--border-color);
+    }
+
+    .btn-step-back svg {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-step-primary {
+      flex: 1;
+      height: 60px;
+      border-radius: var(--radius-md);
+      border: 3px solid var(--border-color);
+      background-color: var(--color-meter-fill);
+      color: #000000;
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 900;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      box-shadow: var(--shadow-button);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-width: 0;
+      padding: 0 8px;
+      user-select: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+    }
+
+    .btn-step-primary:active {
+      transform: translate(3px, 3px);
+      box-shadow: 0px 0px 0px var(--border-color);
+    }
+
+    .btn-step-primary.btn-commit {
+      background-color: var(--color-success);
+      color: #ffffff;
+      box-shadow: 3px 3px 0px var(--border-color);
+    }
+
+    .btn-step-primary .key-shortcut {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 3px 7px;
+      background: rgba(0, 0, 0, 0.15);
+      border: 1.5px solid rgba(0, 0, 0, 0.25);
+      border-radius: 6px;
+      font-weight: 800;
+    }
+
+    [data-theme="dark"] .btn-step-primary.btn-commit {
+      color: #121316;
+    }
+
+    /* Stack Peek Bar (when cards > 0) */
+    .stack-peek-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      font-family: var(--font-ui);
+      background-color: var(--bg-surface);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--text-main);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+
+    .stack-peek-bar:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px var(--border-color);
+    }
+
+    .stack-peek-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .stack-peek-tag {
+      background: var(--color-streak-bg);
+      color: var(--color-streak);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 900;
+      font-size: 0.7rem;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ==========================================================================
+       COMPLETION / SUMMARY MODAL SHEET
+       ========================================================================== */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--sheet-backdrop);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+
+    .summary-card {
+      background-color: var(--bg-surface);
+      border: 3px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: 6px 6px 0px var(--border-color);
+      width: 100%;
+      max-width: 360px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+      animation: popModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes popModal {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .summary-icon {
+      font-size: 3rem;
+      line-height: 1;
+    }
+
+    .summary-title {
+      font-family: var(--font-display);
+      font-size: 1.65rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+
+    .summary-subtitle {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .summary-stats-box {
+      background-color: var(--bg-base);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    .stat-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-number {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--color-streak);
+    }
+
+    .stat-name {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .summary-actions-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Floating Toast Notification */
+    .toast-pill {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-50px);
+      background-color: var(--text-main);
+      color: var(--bg-base);
+      border: 2px solid var(--border-color);
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      box-shadow: var(--shadow-sm);
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      width: max-content;
+      max-width: calc(100% - 32px);
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    .toast-pill.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .input-prompt-label { flex-wrap: wrap; gap: 4px; }
+    .stack-peek-info > span:first-child, .stack-peek-bar > span:last-child { flex-shrink: 0; }
+    .helper-chip { color: var(--text-main); font-family: var(--font-ui); }
+    .preview-edit-link { background: none; border: 0; padding: 8px; }
+    .preview-front-val, .preview-back-val { white-space: pre-wrap; }
+    .step-pill-item { cursor: pointer; }
+    button:disabled { opacity: 0.65; cursor: wait; }
+    button:focus-visible, a:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+    .summary-card { max-height: 100%; overflow-y: auto; }
+    .summary-actions-row .btn-step-primary { flex: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-viewport">
+    <!-- Top Floating Toast Notification -->
+    <div id="toast" class="toast-pill">Card Added to Stack!</div>
+
+    <!-- TOP HUD -->
+    <header class="top-hud">
+      <div class="hud-controls-row">
+        <!-- Back Button -->
+        <button type="button" class="btn-icon-neo" id="btn-back" title="Exit Creator" onclick="handleExit()">
+          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+
+        <!-- Stack Counter Pill with Tap Action to pop last card -->
+        <button type="button" class="stack-pill" id="stack-pill" title="Tap to pop and edit last added card" onclick="popLastCardToEditor()">
+          <span class="stack-pill-icon">🗂️</span>
+          <span class="stack-pill-label">
+            <span id="stack-count" class="stack-pill-number">0</span>
+            <span id="stack-unit">CARDS ADDED</span>
+          </span>
+        </button>
+
+        <!-- Finish session -->
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" class="btn-finish-neo" id="btn-finish" title="Finish and Save All" onclick="finishSession()">
+            Done
+          </button>
+        </div>
+      </div>
+
+      <div class="deck-mode-row">
+        <a class="deck-chip" id="deck-chip" href="decks-mockup.html" onclick="return guardNavigation()">🇩🇪 German B1 Vocab</a>
+        <nav class="mode-switch" aria-label="Mode">
+          <a id="study-link" href="mockup.html?deck=german-b1" onclick="return guardNavigation()">Study</a>
+          <a id="add-link" href="editor-mockup.html?deck=german-b1" aria-current="page" onclick="return guardNavigation()">Add</a>
+        </nav>
+      </div>
+
+      <!-- Step Indicator Row (Step 1 Front -> Step 2 Back -> Step 3 Preview) -->
+      <div class="step-indicator-row">
+        <button type="button" class="step-pill-item active" id="step-pill-1" onclick="jumpToStep(1)">
+          <span class="step-num">1</span><span>Front</span>
+        </button>
+        <button type="button" class="step-pill-item" id="step-pill-2" onclick="jumpToStep(2)">
+          <span class="step-num">2</span><span>Back</span>
+        </button>
+        <button type="button" class="step-pill-item" id="step-pill-3" onclick="jumpToStep(3)">
+          <span class="step-num">3</span><span>Preview</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CARD CREATOR STAGE (With physical stacked cards pile) -->
+    <main class="creator-stage">
+      <div class="cards-deck-container">
+        <!-- Visual Stacked Cards Pile (behind active card) -->
+        <div class="stack-pile-layer" id="stack-pile-layer">
+          <!-- Stacked cards dynamically injected here -->
+        </div>
+
+        <!-- ACTIVE EDITING FLASHCARD -->
+        <article class="active-card" id="active-card">
+          <div class="card-top-bar">
+            <div class="deck-badge">
+              <span id="adding-to">Adding to German B1 Vocab</span>
+            </div>
+            <div class="note-type-pill">Basic (Front / Back)</div>
+          </div>
+
+          <div class="card-content-area">
+            <!-- STEP 1: FRONT FIELD -->
+            <section class="step-view active-step" id="step-view-1">
+              <label class="input-prompt-label" for="input-front">
+                <span>Front (Question / Prompt)</span>
+                <span class="input-helper-tip">What will you test?</span>
+              </label>
+              <textarea
+                id="input-front"
+                class="neo-textarea"
+                placeholder="e.g. die Herausforderung"
+                rows="4"
+                oninput="onInputChanged('front')"
+              ></textarea>
+              <div class="input-char-counter">
+                <span id="front-char-count">0</span> characters
+              </div>
+
+              <!-- Quick Helper Chips for High School Pupils -->
+              <div class="helper-chips-row">
+                <button type="button" class="helper-chip" onclick="insertHelper('front', 'der ')">der</button>
+                <button type="button" class="helper-chip" onclick="insertHelper('front', 'die ')">die</button>
+                <button type="button" class="helper-chip" onclick="insertHelper('front', 'das ')">das</button>
+                <button type="button" class="helper-chip" onclick="insertHelper('front', 'ä')">ä</button>
+                <button type="button" class="helper-chip" onclick="insertHelper('front', 'ö')">ö</button>
+                <button type="button" class="helper-chip" onclick="insertHelper('front', 'ü')">ü</button>
+                <button type="button" class="helper-chip" onclick="insertHelper('front', 'ß')">ß</button>
+              </div>
+            </section>
+
+            <!-- STEP 2: BACK FIELD -->
+            <section class="step-view" id="step-view-2">
+              <label class="input-prompt-label" for="input-back">
+                <span>Back (Answer / Meaning)</span>
+                <span class="input-helper-tip">The correct answer</span>
+              </label>
+              <textarea
+                id="input-back"
+                class="neo-textarea"
+                placeholder="e.g. the challenge"
+                rows="4"
+                oninput="onInputChanged('back')"
+              ></textarea>
+              <div class="input-char-counter">
+                <span id="back-char-count">0</span> characters
+              </div>
+
+              <details class="optional-field" id="hint-details">
+                <summary>Hint <span class="input-helper-tip">(optional)</span></summary>
+                <div class="optional-field-body">
+                  <textarea id="input-hint" class="neo-textarea" rows="2" aria-label="Hint" placeholder="e.g. noun, feminine" oninput="onInputChanged('hint')"></textarea>
+                  <div class="helper-chips-row">
+                    <button type="button" class="helper-chip" onclick="insertHelper('hint', 'Noun, ')">Noun</button>
+                    <button type="button" class="helper-chip" onclick="insertHelper('hint', 'Verb, ')">Verb</button>
+                    <button type="button" class="helper-chip" onclick="insertHelper('hint', 'Adj, ')">Adj</button>
+                    <button type="button" class="helper-chip" onclick="insertHelper('hint', '(Plural: ')">(Pl.)</button>
+                  </div>
+                </div>
+              </details>
+              <details class="optional-field" id="example-details">
+                <summary>Example sentence <span class="input-helper-tip">(optional)</span></summary>
+                <div class="optional-field-body">
+                  <p class="input-helper-tip" id="example-help">Wrap the key word in *asterisks* to highlight it.</p>
+                  <textarea id="input-example" class="neo-textarea" rows="2" aria-label="Example sentence" aria-describedby="example-help" placeholder="e.g. Das ist eine *Herausforderung*." oninput="onInputChanged('example')"></textarea>
+                </div>
+              </details>
+            </section>
+
+            <!-- STEP 3: PREVIEW & VERIFY -->
+            <section class="step-view" id="step-view-3">
+              <div class="input-prompt-label">
+                <span>Card Preview</span>
+                <span class="input-helper-tip">Ready to stack?</span>
+              </div>
+              <div class="preview-card-box">
+                <div class="preview-section">
+                  <div class="preview-tag">Front Prompt</div>
+                  <div class="preview-front-val" id="preview-front-text">—</div>
+                </div>
+                <div class="preview-section" id="preview-hint-section" hidden>
+                  <div class="preview-tag">Hint</div>
+                  <div class="preview-optional-val" id="preview-hint-text"></div>
+                </div>
+                <div class="preview-divider"></div>
+                <div class="preview-section">
+                  <div class="preview-tag">Back Answer</div>
+                  <div class="preview-back-val" id="preview-back-text">—</div>
+                </div>
+                <div class="preview-section" id="preview-example-section" hidden>
+                  <div class="preview-tag">Example sentence</div>
+                  <div class="preview-optional-val" id="preview-example-text"></div>
+                </div>
+                <button type="button" class="preview-edit-link" onclick="jumpToStep(1)">Edit text before stacking</button>
+              </div>
+            </section>
+          </div>
+        </article>
+      </div>
+
+      <!-- Empty Stack Cue or Quick Status -->
+      <div id="stack-status-area">
+        <div class="stack-empty-indicator" id="stack-empty-msg">
+          <span>✨</span>
+          <span>Stack is empty — add your first card above!</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- BOTTOM CONTROL BAR -->
+    <footer class="creator-bottom-bar">
+      <!-- Topmost card quick pop bar if stack has cards -->
+      <button type="button" id="stack-peek-bar" class="stack-peek-bar" style="display: none;" onclick="popLastCardToEditor()">
+        <span class="stack-peek-info">
+          <span>Top of stack:</span>
+          <span class="stack-peek-tag" id="peek-card-summary"></span>
+        </span>
+        <span style="font-size: 0.72rem; color: var(--color-streak); font-weight: 900;">EDIT ↩</span>
+      </button>
+
+      <div class="bottom-btn-row">
+        <!-- Back button (visible in steps 2 and 3) -->
+        <button
+          type="button"
+          class="btn-step-back"
+          id="btn-step-back"
+          style="display: none;"
+          title="Previous Step"
+          onclick="prevStep()"
+        >
+          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+
+        <!-- Primary Action Button (Next or Add to Stack) -->
+        <button
+          type="button"
+          class="btn-step-primary"
+          id="btn-step-primary"
+          onclick="handlePrimaryAction()"
+        >
+          <span id="btn-primary-label">Next: Back &rarr;</span>
+          <span class="key-shortcut" id="btn-primary-shortcut">&#x21B5;</span>
+        </button>
+      </div>
+    </footer>
+
+    <!-- COMPLETION / SUMMARY MODAL -->
+    <div class="modal-overlay" id="summary-modal" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+      <div class="summary-card">
+        <div class="summary-icon">🎉</div>
+        <h2 class="summary-title" id="summary-title">Cards Ready!</h2>
+        <p class="summary-subtitle">
+          Your practice stack is ready. This prototype keeps cards in this page only; Study opens the selected deck's sample cards.
+        </p>
+
+        <div class="summary-stats-box">
+          <div class="stat-col">
+            <span class="stat-number" id="modal-card-count">0</span>
+            <span class="stat-name">Cards Built</span>
+          </div>
+          <div class="stat-col">
+            <span class="stat-number">100%</span>
+            <span class="stat-name">Basic Cards</span>
+          </div>
+        </div>
+
+        <div class="summary-actions-row">
+          <button type="button" class="btn-step-primary" onclick="startStudying()">
+            <span>Study Deck →</span>
+          </button>
+          <button type="button" class="btn-icon-neo" style="width: 100%; font-size: 0.9rem;" onclick="closeSummaryModal()">
+            Keep Adding More Cards
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="card-render.js"></script>
+  <script>
+    /* ==========================================================================
+       CARD CREATOR APPLICATION STATE
+       ========================================================================== */
+    const state = {
+      currentStep: 1, // 1: Front, 2: Back, 3: Preview
+      frontText: '',
+      backText: '',
+      hintText: '',
+      exampleText: '',
+      cardStack: [],
+      isCommitting: false
+    };
+
+    // DOM Elements Cache
+    const el = {
+      stepPill1: document.getElementById('step-pill-1'),
+      stepPill2: document.getElementById('step-pill-2'),
+      stepPill3: document.getElementById('step-pill-3'),
+      stepView1: document.getElementById('step-view-1'),
+      stepView2: document.getElementById('step-view-2'),
+      stepView3: document.getElementById('step-view-3'),
+      inputFront: document.getElementById('input-front'),
+      inputBack: document.getElementById('input-back'),
+      inputHint: document.getElementById('input-hint'),
+      inputExample: document.getElementById('input-example'),
+      hintDetails: document.getElementById('hint-details'),
+      exampleDetails: document.getElementById('example-details'),
+      frontCharCount: document.getElementById('front-char-count'),
+      backCharCount: document.getElementById('back-char-count'),
+      previewFrontText: document.getElementById('preview-front-text'),
+      previewBackText: document.getElementById('preview-back-text'),
+      previewHintText: document.getElementById('preview-hint-text'),
+      previewExampleText: document.getElementById('preview-example-text'),
+      previewHintSection: document.getElementById('preview-hint-section'),
+      previewExampleSection: document.getElementById('preview-example-section'),
+      btnStepBack: document.getElementById('btn-step-back'),
+      btnStepPrimary: document.getElementById('btn-step-primary'),
+      btnPrimaryLabel: document.getElementById('btn-primary-label'),
+      activeCard: document.getElementById('active-card'),
+      stackPileLayer: document.getElementById('stack-pile-layer'),
+      stackCount: document.getElementById('stack-count'),
+      stackUnit: document.getElementById('stack-unit'),
+      stackPill: document.getElementById('stack-pill'),
+      stackEmptyMsg: document.getElementById('stack-empty-msg'),
+      stackPeekBar: document.getElementById('stack-peek-bar'),
+      peekCardSummary: document.getElementById('peek-card-summary'),
+      toast: document.getElementById('toast'),
+      summaryModal: document.getElementById('summary-modal'),
+      modalCardCount: document.getElementById('modal-card-count')
+    };
+
+    const decks = {
+      'german-b1': ['🇩🇪', 'German B1 Vocab'],
+      'spanish-a2': ['🇪🇸', 'Spanish A2'],
+      'biology': ['🧬', 'Biology Cells'],
+      'history': ['🏛️', 'History 1900s'],
+      'chemistry': ['⚗️', 'Chemistry Basics']
+    };
+    const requestedDeck = new URLSearchParams(location.search).get('deck');
+    const deckId = Object.hasOwn(decks, requestedDeck) ? requestedDeck : 'german-b1';
+    const [deckEmoji, deckName] = decks[deckId];
+    document.getElementById('deck-chip').textContent = `${deckEmoji} ${deckName}`;
+    document.getElementById('deck-chip').href = `decks-mockup.html?deck=${deckId}`;
+    document.getElementById('adding-to').textContent = `Adding to ${deckName}`;
+    document.getElementById('study-link').href = `mockup.html?deck=${deckId}`;
+    document.getElementById('add-link').href = `editor-mockup.html?deck=${deckId}`;
+
+    /* ==========================================================================
+       STEP NAVIGATION & WIZARD FLOW
+       ========================================================================== */
+    function updateWizardUI(focus = true) {
+      // 1. Update Step Indicator Pills
+      [el.stepPill1, el.stepPill2, el.stepPill3].forEach((pill, idx) => {
+        const stepNum = idx + 1;
+        pill.classList.remove('active', 'completed');
+        if (stepNum === state.currentStep) pill.setAttribute('aria-current', 'step');
+        else pill.removeAttribute('aria-current');
+        if (stepNum === state.currentStep) {
+          pill.classList.add('active');
+        } else if (stepNum < state.currentStep) {
+          pill.classList.add('completed');
+        }
+      });
+
+      // 2. Switch Active Step View
+      el.stepView1.classList.toggle('active-step', state.currentStep === 1);
+      el.stepView2.classList.toggle('active-step', state.currentStep === 2);
+      el.stepView3.classList.toggle('active-step', state.currentStep === 3);
+
+      // 3. Update Back Button Visibility
+      el.btnStepBack.style.display = state.currentStep > 1 ? 'inline-flex' : 'none';
+
+      // 4. Update Primary Button Label and Styling
+      if (state.currentStep === 1) {
+        el.btnPrimaryLabel.textContent = 'Next: Back →';
+        el.btnStepPrimary.classList.remove('btn-commit');
+      } else if (state.currentStep === 2) {
+        el.btnPrimaryLabel.textContent = 'Preview Card →';
+        el.btnStepPrimary.classList.remove('btn-commit');
+      } else if (state.currentStep === 3) {
+        el.btnPrimaryLabel.textContent = 'Add to Stack 📥';
+        el.btnStepPrimary.classList.add('btn-commit');
+        const rendered = CardRender.renderCard({
+          front: state.frontText.trim(),
+          hint: state.hintText.trim(),
+          back: state.backText.trim(),
+          example: state.exampleText.trim()
+        });
+        el.previewFrontText.innerHTML = rendered.front;
+        el.previewHintText.innerHTML = rendered.hint;
+        el.previewBackText.innerHTML = rendered.back;
+        el.previewExampleText.innerHTML = rendered.example;
+        el.previewHintSection.hidden = !rendered.hint;
+        el.previewExampleSection.hidden = !rendered.example;
+      }
+
+      if (focus) {
+        const target = state.currentStep === 1 ? el.inputFront : state.currentStep === 2 ? el.inputBack : el.btnStepPrimary;
+        target.focus({ preventScroll: true });
+      }
+    }
+
+    function jumpToStep(targetStep) {
+      if (state.isCommitting) return;
+      if (targetStep === 2 && !state.frontText.trim()) {
+        showToast('Please enter the Front first!');
+        el.inputFront.focus();
+        return;
+      }
+      if (targetStep === 3 && (!state.frontText.trim() || !state.backText.trim())) {
+        showToast('Please enter both Front & Back first!');
+        return;
+      }
+      state.currentStep = targetStep;
+      updateWizardUI();
+    }
+
+    function prevStep() {
+      if (state.isCommitting) return;
+      if (state.currentStep > 1) {
+        state.currentStep--;
+        updateWizardUI();
+      }
+    }
+
+    function handlePrimaryAction() {
+      if (state.isCommitting) return;
+      if (state.currentStep === 1) {
+        if (!state.frontText.trim()) {
+          showToast('⚠️ Front cannot be empty!');
+          el.inputFront.focus();
+          return;
+        }
+        state.currentStep = 2;
+        updateWizardUI();
+      } else if (state.currentStep === 2) {
+        if (!state.backText.trim()) {
+          showToast('⚠️ Back cannot be empty!');
+          el.inputBack.focus();
+          return;
+        }
+        state.currentStep = 3;
+        updateWizardUI();
+      } else if (state.currentStep === 3) {
+        commitCardToStack();
+      }
+    }
+
+    function onInputChanged(field) {
+      if (field === 'front') {
+        state.frontText = el.inputFront.value;
+        el.frontCharCount.textContent = state.frontText.length;
+      } else if (field === 'back') {
+        state.backText = el.inputBack.value;
+        el.backCharCount.textContent = state.backText.length;
+      } else if (field === 'hint') {
+        state.hintText = el.inputHint.value;
+      } else if (field === 'example') {
+        state.exampleText = el.inputExample.value;
+      }
+    }
+
+    function insertHelper(field, text) {
+      const textarea = field === 'front' ? el.inputFront : el.inputHint;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const val = textarea.value;
+      textarea.value = val.substring(0, start) + text + val.substring(end);
+      textarea.focus();
+      textarea.setSelectionRange(start + text.length, start + text.length);
+      onInputChanged(field);
+    }
+
+    /* ==========================================================================
+       STACKING MECHANICS & ANIMATIONS
+       ========================================================================== */
+    // Deterministic pleasant offsets/rotations for cards in the stack pile below
+    // Stepped downward offsets (+32px, +60px, +88px) so cards peek clearly beneath active card
+    const STACK_PRESETS = [
+      { rot: -3.2, x: -6, y: 32 },
+      { rot: 2.8,  x: 8,  y: 60 },
+      { rot: -2.0, x: -5, y: 88 },
+      { rot: 3.0,  x: 7,  y: 112 },
+      { rot: -1.5, x: -4, y: 132 }
+    ];
+
+    function commitCardToStack() {
+      if (state.isCommitting) return;
+      const front = state.frontText.trim();
+      const back = state.backText.trim();
+      if (!front || !back) return;
+      state.isCommitting = true;
+      el.btnStepPrimary.disabled = true;
+
+      const cardIndex = state.cardStack.length;
+      const preset = STACK_PRESETS[cardIndex % STACK_PRESETS.length];
+
+      // Add to stack array
+      const newCard = {
+        id: Date.now(),
+        front: front,
+        hint: state.hintText.trim(),
+        back: back,
+        example: state.exampleText.trim(),
+        rot: preset.rot,
+        x: preset.x,
+        y: preset.y
+      };
+
+      // Set target CSS custom properties for the slide animation
+      el.activeCard.style.setProperty('--target-x', `${newCard.x}px`);
+      el.activeCard.style.setProperty('--target-y', `${newCard.y}px`);
+      el.activeCard.style.setProperty('--target-rot', `${newCard.rot}deg`);
+      el.activeCard.classList.remove('anim-pop-up', 'anim-fresh-card');
+      el.activeCard.classList.add('anim-slide-to-stack');
+
+      // After slide animation completes:
+      setTimeout(() => {
+        state.cardStack.push(newCard);
+        renderStackPile();
+        updateStackHUD();
+
+        // Reset editor state
+        resetEditor();
+
+        // Clear animation classes and reset position for fresh card
+        el.activeCard.classList.remove('anim-slide-to-stack');
+        el.activeCard.classList.add('anim-fresh-card');
+
+        // Reset wizard to Step 1
+        state.currentStep = 1;
+        updateWizardUI();
+        state.isCommitting = false;
+        el.btnStepPrimary.disabled = false;
+
+        showToast(`Card #${state.cardStack.length} added to stack! 🗂️`);
+
+        setTimeout(() => {
+          el.activeCard.classList.remove('anim-fresh-card');
+        }, 360);
+      }, 420);
+    }
+
+    function renderStackPile() {
+      el.stackPileLayer.innerHTML = '';
+      const total = state.cardStack.length;
+      el.activeCard.parentElement.style.setProperty('--pile-space', total ? `${Math.min(total, 5) * 32 + 28}px` : '0px');
+
+      if (total === 0) {
+        el.stackEmptyMsg.style.display = 'flex';
+        el.stackPeekBar.style.display = 'none';
+        return;
+      }
+
+      el.stackEmptyMsg.style.display = 'none';
+      el.stackPeekBar.style.display = 'flex';
+
+      const topCard = state.cardStack[total - 1];
+      el.peekCardSummary.textContent = topCard.front;
+
+      // Render cards from bottom to top (max 5 visible in DOM for optimal performance)
+      const renderCount = Math.min(total, 5);
+      const startIndex = total - renderCount;
+
+      for (let i = startIndex; i < total; i++) {
+        const card = state.cardStack[i];
+        const isTop = i === total - 1;
+        const depth = total - 1 - i; // 0 for top/most recent, 1 for older...
+
+        const cardElem = document.createElement('button');
+        cardElem.type = 'button';
+        cardElem.setAttribute('aria-label', `Edit card ${i + 1}: ${card.front}`);
+        cardElem.className = 'stacked-card';
+        cardElem.id = `stacked-card-${card.id}`;
+
+        // The most recent card sits directly beneath active card at its preset offset
+        // Older cards are pushed further down and scaled down slightly
+        const preset = STACK_PRESETS[(total - 1 - depth) % STACK_PRESETS.length];
+        const offsetY = (depth + 1) * 32;
+        const offsetX = preset.x;
+        const rot = preset.rot;
+        const scale = 1 - (depth * 0.02);
+
+        cardElem.style.transform = `translate(${offsetX}px, ${offsetY}px) rotate(${rot}deg) scale(${scale})`;
+        cardElem.style.zIndex = 5 - depth;
+        cardElem.style.opacity = Math.max(0.7, 1 - (depth * 0.1));
+
+        // Click handler to pop
+        cardElem.onclick = (e) => {
+          e.stopPropagation();
+          popSpecificCardToEditor(i);
+        };
+
+        const rendered = CardRender.renderCard(card);
+        cardElem.innerHTML = `
+          <div class="stacked-card-header" style="position: absolute; top: 12px; left: 16px; right: 16px;">
+            <span>Card #${i + 1}</span>
+            <span class="stacked-card-badge">Stacked</span>
+          </div>
+          <div class="stacked-card-content" style="padding-bottom: 24px;">
+            <div class="stacked-card-front">${rendered.front}</div>
+            ${rendered.hint ? `<div class="stacked-card-hint">${rendered.hint}</div>` : ''}
+            <div class="stacked-card-back">${rendered.back}</div>
+            ${rendered.example ? `<div class="stacked-card-example">${rendered.example}</div>` : ''}
+          </div>
+          <div class="stacked-card-footer">Basic Note &bull; Tap to edit ↩</div>
+          ${isTop ? `<div class="stack-top-cue"><span>Top Card</span> <span>↩</span></div>` : ''}
+        `;
+
+        el.stackPileLayer.appendChild(cardElem);
+      }
+    }
+
+    function updateStackHUD() {
+      const count = state.cardStack.length;
+      el.stackCount.textContent = count;
+      el.stackUnit.textContent = count === 1 ? 'CARD ADDED' : 'CARDS ADDED';
+
+      // Trigger bounce pop on stack pill
+      el.stackPill.classList.remove('animate-stack-pop');
+      void el.stackPill.offsetWidth; // reflow
+      el.stackPill.classList.add('animate-stack-pop');
+    }
+
+    /* ==========================================================================
+       EDIT-LAST-CARD / POP AFFORDANCE
+       ========================================================================== */
+    function popLastCardToEditor() {
+      if (state.cardStack.length === 0) {
+        showToast('Stack is empty! Add cards first.');
+        return;
+      }
+      popSpecificCardToEditor(state.cardStack.length - 1);
+    }
+
+    function popSpecificCardToEditor(index) {
+      if (state.isCommitting) return;
+      if (index < 0 || index >= state.cardStack.length) return;
+
+      if (!confirmDiscard('Discard and edit the card from the stack?')) return;
+
+      // Pop the card from stack
+      const popped = state.cardStack.splice(index, 1)[0];
+
+      // Re-populate editor state
+      state.frontText = popped.front;
+      state.backText = popped.back;
+      state.hintText = popped.hint || '';
+      state.exampleText = popped.example || '';
+      el.inputFront.value = popped.front;
+      el.inputBack.value = popped.back;
+      el.inputHint.value = state.hintText;
+      el.inputExample.value = state.exampleText;
+      el.hintDetails.open = CardRender.hasText(state.hintText);
+      el.exampleDetails.open = CardRender.hasText(state.exampleText);
+      el.frontCharCount.textContent = popped.front.length;
+      el.backCharCount.textContent = popped.back.length;
+
+      // Update UI
+      renderStackPile();
+      updateStackHUD();
+
+      // Animate active card popping back up
+      el.activeCard.classList.remove('anim-pop-up', 'anim-fresh-card');
+      void el.activeCard.offsetWidth;
+      el.activeCard.classList.add('anim-pop-up');
+
+      state.currentStep = 1;
+      updateWizardUI();
+
+      showToast(`Popped "${popped.front.substring(0, 16)}..." for editing! ✏️`);
+    }
+
+    /* ==========================================================================
+       SESSION HANDLING
+       ========================================================================== */
+    function confirmDiscard(action) {
+      return !(state.frontText || state.backText || state.hintText || state.exampleText) ||
+        confirm(`You have unsaved text in your current card. ${action}`);
+    }
+
+    function guardNavigation() {
+      return !state.isCommitting && confirmDiscard('Discard it and leave?');
+    }
+
+    function showToast(msg) {
+      el.toast.textContent = msg;
+      el.toast.classList.add('show');
+      clearTimeout(el.toast._timer);
+      el.toast._timer = setTimeout(() => {
+        el.toast.classList.remove('show');
+      }, 2000);
+    }
+
+    function resetEditor() {
+      state.frontText = '';
+      state.backText = '';
+      state.hintText = '';
+      state.exampleText = '';
+      el.inputFront.value = '';
+      el.inputBack.value = '';
+      el.inputHint.value = '';
+      el.inputExample.value = '';
+      el.hintDetails.open = false;
+      el.exampleDetails.open = false;
+      el.frontCharCount.textContent = '0';
+      el.backCharCount.textContent = '0';
+    }
+
+    function finishSession() {
+      if (state.isCommitting) return;
+      if (!state.cardStack.length) {
+        showToast('Add a card to your stack first.');
+        return;
+      }
+      if (!confirmDiscard('Discard it and finish?')) return;
+      resetEditor();
+      state.currentStep = 1;
+      updateWizardUI(false);
+      const count = state.cardStack.length;
+      el.modalCardCount.textContent = count;
+      el.summaryModal.classList.add('open');
+      el.summaryModal.querySelector('button').focus();
+    }
+
+    function closeSummaryModal() {
+      el.summaryModal.classList.remove('open');
+      updateWizardUI();
+    }
+
+    function startStudying() {
+      if (guardNavigation()) window.location.href = `mockup.html?deck=${deckId}`;
+    }
+
+    function handleExit() {
+      if (guardNavigation()) window.location.href = 'decks-mockup.html';
+    }
+
+
+    // Keyboard shortcuts (Enter to advance / commit)
+    document.addEventListener('keydown', (e) => {
+      if (e.isComposing) return;
+      if (el.summaryModal.classList.contains('open')) {
+        if (e.key === 'Escape') closeSummaryModal();
+        if (e.key === 'Tab') {
+          const buttons = el.summaryModal.querySelectorAll('button');
+          const first = buttons[0];
+          const last = buttons[buttons.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault(); last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault(); first.focus();
+          }
+        }
+        return;
+      }
+      // Enter without shift key advances
+      if (e.key === 'Enter' && !e.shiftKey && (document.activeElement === el.inputFront || document.activeElement === el.inputBack)) {
+        e.preventDefault();
+        handlePrimaryAction();
+      }
+    });
+
+    // Initial Setup
+    new ResizeObserver(() => {
+      el.activeCard.parentElement.style.setProperty('--active-card-height', `${el.activeCard.offsetHeight}px`);
+    }).observe(el.activeCard);
+    updateWizardUI(false);
+    renderStackPile();
+  </script>
+</body>
+</html>

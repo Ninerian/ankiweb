@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>My Decks — AnkiWeb</title>
+  <script>
+    const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      document.documentElement.dataset.theme = colorScheme.matches ? 'dark' : 'light';
+    };
+    applyTheme();
+    colorScheme.addEventListener('change', applyTheme);
+  </script>
+  <style>
+    :root {
+      --font-display: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+      --bg-base: #f4f3ed;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #ffffff;
+      --text-main: #18191f;
+      --text-muted: #5f6368;
+      --border-color: #18191f;
+      --border-width: 2.5px;
+      --shadow-offset: 4px;
+      --shadow-sm: 2px 2px 0px var(--border-color);
+      --shadow-card: 4px 4px 0px var(--border-color);
+      --shadow-button: 3px 3px 0px var(--border-color);
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-pill: 999px;
+      --color-streak: #ff4d00;
+      --color-streak-bg: #fff0eb;
+      --color-streak-glow: rgba(255, 77, 0, 0.35);
+      --color-meter-track: #e5e3d8;
+      --color-meter-fill: #ffd13b;
+      --color-primary: #1971c2;
+      --color-primary-accent: #ffd13b;
+      --ease-again-bg: #ffe3e3;
+      --ease-again-border: #fa5252;
+      --ease-again-text: #c92a2a;
+      --ease-again-shadow: #c92a2a;
+      --ease-hard-bg: #fff3bf;
+      --ease-hard-border: #fab005;
+      --ease-hard-text: #a5320c;
+      --ease-hard-shadow: #e67700;
+      --ease-good-bg: #d3f9d8;
+      --ease-good-border: #40c057;
+      --ease-good-text: #2b8a3e;
+      --ease-good-shadow: #2b8a3e;
+      --ease-easy-bg: #d0ebff;
+      --ease-easy-border: #228be6;
+      --ease-easy-text: #1864ab;
+      --ease-easy-shadow: #1864ab;
+      --badge-bg: #e9ecef;
+      --badge-text: #212529;
+      --sheet-backdrop: rgba(24, 25, 31, 0.65);
+    }
+
+    [data-theme="dark"] {
+      --bg-base: #121316;
+      --bg-surface: #1e2025;
+      --bg-surface-elevated: #282a30;
+      --text-main: #f8f9fa;
+      --text-muted: #a1a6b0;
+      --border-color: #f8f9fa;
+      --shadow-sm: 2px 2px 0px #000000;
+      --shadow-card: 4px 4px 0px #000000;
+      --shadow-button: 3px 3px 0px #000000;
+      --color-streak: #ff6b35;
+      --color-streak-bg: #2b170c;
+      --color-streak-glow: rgba(255, 107, 53, 0.45);
+      --color-meter-track: #2a2c33;
+      --color-meter-fill: #ffd13b;
+      --ease-again-bg: #381519;
+      --ease-again-border: #ff6b6b;
+      --ease-again-text: #ffa8a8;
+      --ease-again-shadow: #1a080a;
+      --ease-hard-bg: #382c0b;
+      --ease-hard-border: #fcc419;
+      --ease-hard-text: #ffe066;
+      --ease-hard-shadow: #1a1402;
+      --ease-good-bg: #0f361a;
+      --ease-good-border: #51cf66;
+      --ease-good-text: #8ce99a;
+      --ease-good-shadow: #051408;
+      --ease-easy-bg: #0c2b45;
+      --ease-easy-border: #4dabf7;
+      --ease-easy-text: #74c0fc;
+      --ease-easy-shadow: #04121e;
+      --badge-bg: #2d3038;
+      --badge-text: #e9ecef;
+      --sheet-backdrop: rgba(0, 0, 0, 0.8);
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      line-height: 1.4;
+    }
+
+    .app-viewport {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: 24px 20px 36px 16px;
+    }
+
+    .top-hud { margin-bottom: 24px; }
+    .eyebrow, .section-label, .progress-labels {
+      font-family: var(--font-display);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .eyebrow { margin: 0 0 5px; }
+    h1 {
+      margin: 0 0 18px;
+      font-family: var(--font-display);
+      font-size: 2.35rem;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      font-weight: 900;
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 50px;
+      padding: 0 14px;
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-button);
+    }
+    .search-box:focus-within { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+    .search-box svg { width: 20px; height: 20px; flex: none; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; }
+    .search-box input {
+      min-width: 0;
+      width: 100%;
+      padding: 12px 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text-main);
+      font: 700 1rem var(--font-ui);
+    }
+    .search-box input::placeholder { color: var(--text-muted); opacity: 1; }
+    .section-label { margin: 0 0 10px 2px; }
+    .deck-list { display: grid; gap: 14px; }
+    .deck-card {
+      padding: 16px;
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+    .deck-heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .deck-emoji {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      flex: none;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--badge-bg);
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+    .deck-heading h2 {
+      min-width: 0;
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.18rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+    .deck-counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+    .count {
+      padding: 3px 9px;
+      border: 1.5px solid currentColor;
+      border-radius: var(--radius-pill);
+      font-size: 0.73rem;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+    .count-due { color: var(--ease-hard-text); background: var(--ease-hard-bg); }
+    .count-new { color: var(--ease-easy-text); background: var(--ease-easy-bg); }
+    .progress-labels { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+    .meter-track { height: 12px; overflow: hidden; background: var(--color-meter-track); border: 2px solid var(--border-color); border-radius: var(--radius-pill); }
+    .meter-fill {
+      height: 100%;
+      background-color: var(--color-meter-fill);
+      background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08) 8px, transparent 8px, transparent 16px);
+      border-right: 2px solid var(--border-color);
+      border-radius: var(--radius-pill);
+    }
+    .deck-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; padding-right: 3px; padding-bottom: 3px; }
+    .deck-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 8px;
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-button);
+      color: var(--text-main);
+      background: var(--bg-surface-elevated);
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      font-weight: 900;
+      text-align: center;
+      text-decoration: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .deck-action-primary { background: var(--color-primary-accent); color: #18191f; }
+    .deck-action:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--border-color); }
+    .deck-action:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+    .empty-state {
+      margin: 0;
+      padding: 28px 20px;
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      font-weight: 700;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .empty-state strong { display: block; margin-bottom: 4px; color: var(--text-main); font-family: var(--font-display); font-size: 1.1rem; font-weight: 900; }
+  </style>
+</head>
+<body>
+  <div class="app-viewport">
+    <header class="top-hud">
+      <p class="eyebrow">Your study space</p>
+      <h1>My Decks</h1>
+      <label class="search-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
+        <input id="deck-search" type="search" placeholder="Search decks" aria-label="Search decks" autocomplete="off">
+      </label>
+    </header>
+
+    <main>
+      <p class="section-label">Your decks</p>
+      <div class="deck-list" id="deck-list">
+        <article class="deck-card" data-name="German B1 Vocab">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🇩🇪</span><h2>German B1 Vocab</h2></div>
+          <div class="deck-counts"><span class="count count-due">20 due</span><span class="count count-new">8 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>70%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="German B1 Vocab study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="70"><div class="meter-fill" style="width: 70%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=german-b1">Learn</a><a class="deck-action" href="editor-mockup.html?deck=german-b1">Edit / Add</a></div>
+        </article>
+        <article class="deck-card" data-name="Spanish A2">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🇪🇸</span><h2>Spanish A2</h2></div>
+          <div class="deck-counts"><span class="count count-due">12 due</span><span class="count count-new">6 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>55%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="Spanish A2 study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="55"><div class="meter-fill" style="width: 55%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=spanish-a2">Learn</a><a class="deck-action" href="editor-mockup.html?deck=spanish-a2">Edit / Add</a></div>
+        </article>
+        <article class="deck-card" data-name="Biology Cells">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🧬</span><h2>Biology Cells</h2></div>
+          <div class="deck-counts"><span class="count count-due">9 due</span><span class="count count-new">4 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>80%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="Biology Cells study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80"><div class="meter-fill" style="width: 80%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=biology">Learn</a><a class="deck-action" href="editor-mockup.html?deck=biology">Edit / Add</a></div>
+        </article>
+        <article class="deck-card" data-name="History 1900s">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🏛️</span><h2>History 1900s</h2></div>
+          <div class="deck-counts"><span class="count count-due">15 due</span><span class="count count-new">5 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>40%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="History 1900s study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="40"><div class="meter-fill" style="width: 40%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=history">Learn</a><a class="deck-action" href="editor-mockup.html?deck=history">Edit / Add</a></div>
+        </article>
+        <article class="deck-card" data-name="Chemistry Basics">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">⚗️</span><h2>Chemistry Basics</h2></div>
+          <div class="deck-counts"><span class="count count-due">7 due</span><span class="count count-new">10 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>25%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="Chemistry Basics study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25"><div class="meter-fill" style="width: 25%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=chemistry">Learn</a><a class="deck-action" href="editor-mockup.html?deck=chemistry">Edit / Add</a></div>
+        </article>
+      </div>
+      <p class="empty-state" id="empty-state" role="status" hidden><strong>No decks found</strong>Try a different search.</p>
+    </main>
+  </div>
+  <script>
+    const search = document.getElementById('deck-search');
+    const decks = document.querySelectorAll('.deck-card');
+    const emptyState = document.getElementById('empty-state');
+
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLocaleLowerCase();
+      let matches = 0;
+      decks.forEach((deck) => {
+        const visible = deck.dataset.name.toLocaleLowerCase().includes(query);
+        deck.hidden = !visible;
+        if (visible) matches += 1;
+      });
+      emptyState.hidden = matches !== 0;
+    });
+  </script>
+</body>
+</html>

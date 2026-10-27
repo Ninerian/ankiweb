@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>AnkiWeb Reviewer — Playful Neo-Pop Edition</title>
+  <script>
+    const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyColorScheme = () => {
+      document.documentElement.dataset.theme = colorScheme.matches ? 'dark' : 'light';
+    };
+    applyColorScheme();
+    colorScheme.addEventListener('change', applyColorScheme);
+  </script>
   <style>
     /* ==========================================================================
        NEO-POP HIGH SCHOOL REVIEWER DESIGN SYSTEM
@@ -35,6 +43,7 @@
 
       /* Accent & Gamification Colors */
       --color-streak: #ff4d00;
+      --color-streak-text: #a83200;
       --color-streak-bg: #fff0eb;
       --color-streak-glow: rgba(255, 77, 0, 0.35);
       --color-meter-track: #e5e3d8;
@@ -45,22 +54,22 @@
       /* Ease Button Colors (Neo-Pop Vibrant) */
       --ease-again-bg: #ffe3e3;
       --ease-again-border: #fa5252;
-      --ease-again-text: #c92a2a;
+      --ease-again-text: #a62222;
       --ease-again-shadow: #c92a2a;
 
       --ease-hard-bg: #fff3bf;
       --ease-hard-border: #fab005;
-      --ease-hard-text: #d9480f;
+      --ease-hard-text: #8f300b;
       --ease-hard-shadow: #e67700;
 
       --ease-good-bg: #d3f9d8;
       --ease-good-border: #40c057;
-      --ease-good-text: #2b8a3e;
+      --ease-good-text: #145b24;
       --ease-good-shadow: #2b8a3e;
 
       --ease-easy-bg: #d0ebff;
       --ease-easy-border: #228be6;
-      --ease-easy-text: #1864ab;
+      --ease-easy-text: #135087;
       --ease-easy-shadow: #1864ab;
 
       --badge-bg: #e9ecef;
@@ -82,6 +91,7 @@
       --shadow-button: 3px 3px 0px #000000;
 
       --color-streak: #ff6b35;
+      --color-streak-text: #ff6b35;
       --color-streak-bg: #2b170c;
       --color-streak-glow: rgba(255, 107, 53, 0.45);
       --color-meter-track: #2a2c33;
@@ -89,7 +99,7 @@
 
       --ease-again-bg: #381519;
       --ease-again-border: #ff6b6b;
-      --ease-again-text: #ffa8a8;
+      --ease-again-text: #ffbdbd;
       --ease-again-shadow: #1a080a;
 
       --ease-hard-bg: #382c0b;
@@ -104,7 +114,7 @@
 
       --ease-easy-bg: #0c2b45;
       --ease-easy-border: #4dabf7;
-      --ease-easy-text: #74c0fc;
+      --ease-easy-text: #a4d5ff;
       --ease-easy-shadow: #04121e;
 
       --badge-bg: #2d3038;
@@ -148,7 +158,7 @@
     }
 
     /* ==========================================================================
-       TOP HUD (Header, Progress Meter, Streak, Theme Toggle, Actions)
+       TOP HUD (Header, Progress Meter, Streak, Actions)
        ========================================================================== */
     .top-hud {
       padding: 12px 16px 8px 16px;
@@ -165,6 +175,31 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+    }
+
+    .mode-switch {
+      display: flex;
+      flex-shrink: 0;
+      padding: 2px;
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .mode-switch a {
+      padding: 5px 9px;
+      border-radius: 6px;
+      color: var(--text-main);
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .mode-switch a[aria-current="page"] {
+      background: var(--color-meter-fill);
+      color: #000;
     }
 
     .btn-icon-neo {
@@ -212,7 +247,7 @@
       box-shadow: 2px 2px 0px var(--color-streak);
       padding: 6px 14px;
       border-radius: var(--radius-pill);
-      color: var(--color-streak);
+      color: var(--color-streak-text);
       user-select: none;
       transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
@@ -319,7 +354,7 @@
       padding: 8px 16px 12px 16px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      min-height: 0;
       overflow-y: auto;
       perspective: 1000px;
     }
@@ -333,7 +368,8 @@
       display: flex;
       flex-direction: column;
       min-height: 280px;
-      max-height: 100%;
+      flex-shrink: 0;
+      margin: auto 0;
       position: relative;
       transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.25s ease;
     }
@@ -593,7 +629,6 @@
       font-size: 0.65rem;
       font-family: var(--font-mono);
       font-weight: 800;
-      opacity: 0.75;
       padding: 1px 4px;
       border-radius: 4px;
       background: rgba(0, 0, 0, 0.08);
@@ -616,7 +651,6 @@
       font-size: 0.72rem;
       font-weight: 800;
       font-family: var(--font-mono);
-      opacity: 0.85;
       margin-top: 2px;
     }
 
@@ -718,7 +752,7 @@
 
     .btn-action-tile.danger {
       border-color: #fa5252;
-      color: #fa5252;
+      color: var(--ease-again-text);
       box-shadow: 2px 2px 0px #fa5252;
     }
 
@@ -782,7 +816,7 @@
     <header class="top-hud">
       <div class="hud-controls-row">
         <!-- Back to Decks Button -->
-        <a href="#decks" class="btn-icon-neo" id="btn-back" title="Decks" onclick="showToast('Navigating to Decks...'); return false;">
+        <a href="decks-mockup.html" class="btn-icon-neo" id="btn-back" title="Decks" aria-label="Back to decks">
           <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
         </a>
 
@@ -795,16 +829,12 @@
           </div>
         </div>
 
-        <!-- Right Quick Controls: Theme Toggle + Action Menu Trigger -->
-        <div style="display: flex; gap: 8px;">
-          <button type="button" class="btn-icon-neo" id="btn-theme" title="Toggle Dark/Light Mode" onclick="toggleTheme()">
-            <span id="theme-icon">🌙</span>
-          </button>
-          <button type="button" class="btn-icon-neo" id="btn-actions-sheet" title="More Actions" onclick="openActionsSheet()">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
-          </button>
-        </div>
+        <!-- Action Menu Trigger -->
+        <button type="button" class="btn-icon-neo" id="btn-actions-sheet" title="More Actions" aria-label="More actions" onclick="openActionsSheet()">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+        </button>
       </div>
+
 
       <!-- Session Progress Bar -->
       <div class="hud-progress-row">
@@ -824,7 +854,7 @@
         <!-- Deck Badge & Status Indicators -->
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <div class="deck-badge">
-            <span>🇩🇪 German B1 Vocab</span>
+            <span id="card-deck">🇩🇪 German B1 Vocab</span>
           </div>
           <div class="card-status-tags">
             <span id="mark-icon" class="tag-icon" title="Marked">⭐</span>
@@ -896,6 +926,11 @@
           <button type="button" class="btn-icon-neo" style="width: 32px; height: 32px;" onclick="closeActionsSheet()">✕</button>
         </div>
 
+        <nav class="mode-switch" aria-label="Card mode">
+          <a href="mockup.html?deck=german-b1" id="study-link" aria-current="page">Study</a>
+          <a href="editor-mockup.html?deck=german-b1" id="add-link">Add</a>
+        </nav>
+
         <div class="actions-grid">
           <button type="button" class="btn-action-tile" onclick="triggerCardAction('toggleMark')">
             <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -943,33 +978,52 @@
     </div>
   </div>
 
+  <script src="card-render.js"></script>
   <!-- SCRIPT SIMULATING INTERACTION, GAMIFICATION & STATE -->
   <script>
+    const decks = new Map([
+      ['german-b1', '🇩🇪 German B1 Vocab'],
+      ['spanish-a2', '🇪🇸 Spanish A2'],
+      ['biology', '🧬 Biology Cells'],
+      ['history', '🏛️ History 1900s'],
+      ['chemistry', '⚗️ Chemistry Basics']
+    ]);
+    const requestedDeck = new URLSearchParams(window.location.search).get('deck');
+    const deckId = decks.has(requestedDeck) ? requestedDeck : 'german-b1';
+    const deckName = decks.get(deckId);
+    document.getElementById('card-deck').textContent = deckName;
+    document.getElementById('study-link').href = `mockup.html?deck=${deckId}`;
+    document.getElementById('add-link').href = `editor-mockup.html?deck=${deckId}`;
+
     // Sample flashcard deck data
     const sampleCards = [
       {
         front: "die Sehnsucht",
         hint: "Noun, feminine (Plural: die Sehnsüchte)",
         back: "yearning, longing, nostalgia",
-        example: "„Er verspürte eine tiefe <mark>Sehnsucht</mark> nach seiner Heimat.“"
+        example: "„Er verspürte eine tiefe *Sehnsucht* nach seiner Heimat.“"
       },
       {
         front: "das Fingerspitzengefühl",
         hint: "Noun, neuter (Literally: finger-tip feeling)",
         back: "tact, finesse, intuition",
-        example: "„Für diese Verhandlung braucht man viel <mark>Fingerspitzengefühl</mark>.“"
+        example: "„Für diese Verhandlung braucht man viel *Fingerspitzengefühl*.“"
       },
       {
         front: "die Schadenfreude",
         hint: "Noun, feminine (Schaden + Freude)",
         back: "pleasure derived from another's misfortune",
-        example: "„Ein Anflug von <mark>Schadenfreude</mark> war nicht zu leugnen.“"
+        example: "„Ein Anflug von *Schadenfreude* war nicht zu leugnen.“"
       },
       {
         front: "das Fernweh",
         hint: "Noun, neuter (Opposite of Heimweh)",
         back: "wanderlust, ache for distant places",
-        example: "„Im grauen Winter packt mich immer das <mark>Fernweh</mark>.“"
+        example: "„Im grauen Winter packt mich immer das *Fernweh*.“"
+      },
+      {
+        front: "die Zeit",
+        back: "time"
       }
     ];
 
@@ -981,6 +1035,20 @@
     let isMarked = false;
     let isFlagged = false;
 
+    function renderCurrentCard() {
+      const card = CardRender.renderCard(sampleCards[currentCardIndex]);
+      const hint = document.querySelector('.card-hint-text');
+      const example = document.querySelector('.card-example-sentence');
+      document.getElementById('card-q').innerHTML = card.front;
+      hint.innerHTML = card.hint;
+      hint.hidden = !card.hint;
+      document.getElementById('card-a').innerHTML = card.back;
+      example.innerHTML = card.example;
+      example.hidden = !card.example;
+    }
+
+    renderCurrentCard();
+
     // Toast helper
     function showToast(msg) {
       const toast = document.getElementById('toast');
@@ -991,15 +1059,6 @@
       }, 1800);
     }
 
-    // Toggle Theme (Dark / Light)
-    function toggleTheme() {
-      const html = document.documentElement;
-      const currentTheme = html.getAttribute('data-theme');
-      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      html.setAttribute('data-theme', nextTheme);
-      document.getElementById('theme-icon').textContent = nextTheme === 'dark' ? '☀️' : '🌙';
-      showToast(nextTheme === 'dark' ? 'Dark Mode Activated' : 'Light Mode Activated');
-    }
 
     // Reveal Answer
     function revealAnswer() {
@@ -1056,17 +1115,12 @@
 
     function loadNextCard() {
       currentCardIndex = (currentCardIndex + 1) % sampleCards.length;
-      const card = sampleCards[currentCardIndex];
-
       isAnswerRevealed = false;
       const answerBox = document.getElementById('answer-box');
       answerBox.classList.remove('revealed');
       answerBox.classList.add('hidden');
 
-      document.getElementById('card-q').textContent = card.front;
-      document.querySelector('.card-hint-text').textContent = card.hint;
-      document.getElementById('card-a').textContent = card.back;
-      document.querySelector('.card-example-sentence').innerHTML = card.example;
+      renderCurrentCard();
 
       document.getElementById('bar-show-answer').style.display = 'block';
       document.getElementById('bar-ease-buttons').style.display = 'none';
@@ -1119,6 +1173,7 @@
 
     // Keyboard Shortcuts (Space for Show Answer, 1-4 for Ease)
     window.addEventListener('keydown', (e) => {
+      if (e.target instanceof Element && e.target.closest('a, button, input, textarea, select, [contenteditable="true"]')) return;
       if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
         if (!isAnswerRevealed) {
