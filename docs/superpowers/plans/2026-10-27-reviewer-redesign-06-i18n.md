@@ -82,7 +82,14 @@ Regel: **Schlüssel nie raten.** Jeder Anki-Schlüssel wird im Test per `getattr
 
 ## 5. Dokument-Sprache, Richtung, PWA
 
-- `<html lang="{{ html_lang }}" dir="{{ html_dir }}">` im `/app/*`-Layout. `html_lang` aus `anki.lang.current_lang` (z. B. `zh_CN` → `zh-CN`; BCP-47 mit Bindestrich). `html_dir = "rtl"` wenn `anki.lang.is_rtl(base)` mit **Basissprache** (`lang.split("_")[0]`). Belegt: `is_rtl` vergleicht den vollen Code gegen `he, ar, fa, ug, yi`, also ist `is_rtl("ar")` wahr, `is_rtl("ar_SA")` aber **falsch**; ohne Basissprache bliebe `ar_SA` fälschlich LTR. Das alte `shell.html.jinja`/`login.html.jinja` (fest `en`) bleibt unberührt.
+- `<html lang="{{ html_lang }}" dir="{{ html_dir }}">` im `/app/*`-Layout (Plan 1 Basis-Template). **Quelle der Wahrheit ist `Settings.lang`, nicht `anki.lang.current_lang`.** Belegt: `set_lang("xx")` lässt `current_lang == "xx"`, die Texte sind aber Englisch; aus `current_lang` käme `<html lang="xx">` über englischem Inhalt. `set_lang` selbst prüft nichts, und `tr_legacyglobal` hat keinen Getter für die wirksame Sprache.
+- Ableitung in `core/app_client/lang.py` (reine Funktion, nur `anki.lang`):
+  1. `disk = anki.lang.lang_to_disk_lang(settings.lang or "en")` normalisiert `_`/`-` und Aliase (belegt: `zh_CN`→`zh-CN`, `de_DE`→`de`, `ar_SA`→`ar`, `pt_BR`→`pt-BR`, `no`→`nb`).
+  2. Bekannt nur, wenn `disk in {lang_to_disk_lang(c) for _, c in anki.lang.langs}`. Belegt: das erkennt `de_DE`, `nb_NO`, `ar_SA` und verwirft `xx`. **Nicht** gegen die Rohcodes prüfen (`"de" in {c}` ist falsch, die Liste führt `de_DE`) und **nicht** gegen `lang_to_disk_lang`-Ausgabe allein (`nb` fehlt dort, obwohl `no` darauf zeigt).
+  3. Unbekannt → `html_lang = "en"`, `html_dir = "ltr"` (deckungsgleich mit dem tatsächlich englischen Text).
+  4. `html_lang = disk` (BCP-47 mit Bindestrich, direkt als `lang=` gültig).
+  5. `html_dir = "rtl"` wenn `anki.lang.is_rtl(disk.split("_")[0].split("-")[0])`.
+- Eine Funktion `resolve_lang(settings) -> ResolvedLang(html_lang, html_dir, catalog_lang)` liefert alle drei Werte; `catalog_lang` (Basissprache, z. B. `de`) wählt den Block in `strings.py`. Genau eine Stelle, die Sprache deutet. `html_dir = "rtl"` wenn `anki.lang.is_rtl(base)` mit **Basissprache** (`lang.split("_")[0]`). Belegt: `is_rtl` vergleicht den vollen Code gegen `he, ar, fa, ug, yi`, also ist `is_rtl("ar")` wahr, `is_rtl("ar_SA")` aber **falsch**; ohne Basissprache bliebe `ar_SA` fälschlich LTR. Das alte `shell.html.jinja`/`login.html.jinja` (fest `en`) bleibt unberührt.
 - RTL und Layout: Das Mockup nutzt physische Richtungen (`left/right`, `translateX`). Für RTL **logische** Tailwind-Klassen (`ms-*`, `me-*`, `ps-*`, `text-start`, `start-0`) und `rtl:`-Varianten bei Pfeilen ("Next →", "Back ←" spiegeln). *Ungeprüft:* wie `daisyUI 5` `join`, `steps`, `modal-bottom` unter `dir=rtl` aussehen.
 - Manifest (Plan 5): `name`/`short_name`/`description` sind bisher fest ("AnkiWeb"). Pro Start-Sprache ableiten, `lang` und `dir` im Manifest setzen. `name` bleibt Markenname und wird **nicht** übersetzt; `description` ja (eigener String).
 - Service Worker/Offline-Seite (Plan 5): Die precachte Offline-Seite wird in der Start-Sprache gerendert. Da die Sprache beim Start fest ist, genügt ein Cache-Name ohne Sprachanteil; **ändert sich `ANKIWEB_LANG`, ändert sich die Offline-Seite → Cache-Hash muss `lang` einschließen** (Plan 5, 5.1 ergänzen).
@@ -98,7 +105,7 @@ Jede Aufgabe: Test zuerst, dann Code, dann Commit.
 
 ### 6.1 `core/app_client/strings.py` und Jinja-Funktion `s`
 - [ ] `STRINGS: dict[str, dict[str, str]] = {"en": {...}, "de": {...}}`. Schlüssel `snake_case`, Namensraum `app_*`.
-- [ ] `def s(key: str, **fmt: object) -> str`: liest `anki.lang.current_lang` **zur Aufrufzeit** (nicht beim Import, sonst eingefroren, siehe I2 `_TOOLBAR_HTML`-Fehler); normalisiert `zh-CN`/`zh_CN`; Fallback: Sprachcode → Basissprache (`de_DE`→`de`) → `en`; unbekannter Schlüssel → `KeyError` (kein stilles Durchreichen).
+- [ ] `def s(key: str, **fmt: object) -> str`: Sprache aus `resolve_lang(settings).catalog_lang` (siehe §5), **nicht** aus `anki.lang.current_lang` (kann bei unbekanntem Code `xx` stehen, Texte sind dann Englisch). Wird zur Aufrufzeit aufgelöst, nicht beim Import (sonst eingefroren, I2-Fehler `_TOOLBAR_HTML`). Fallback: Block `catalog_lang` → `en`; unbekannter Schlüssel → `KeyError` (kein stilles Durchreichen).
 - [ ] In `templating.py` als Global `s` registrieren, daneben `tr`, `tr_clean`. **Architekturregel:** `core/app_client/strings.py` importiert nur `anki.lang`, nichts aus `adapters` (`tests/test_architecture_boundaries.py`).
 - [ ] Tests: Fallback-Kette, `KeyError`, Platzhalter, Sprachwechsel zur Laufzeit wirkt (`set_lang("de")` dann Aufruf).
 
@@ -114,8 +121,9 @@ Jede Aufgabe: Test zuerst, dann Code, dann Commit.
 - [ ] Beispieltexte im Editor-Placeholder ("e.g. die Herausforderung") sind **Beispiele für Deutsch-Vokabeln**, keine UI-Texte: Entscheidung offen (§8), bis dahin eigener String pro Sprache.
 
 ### 6.4 `<html lang/dir>` und Layout
-- [ ] `app/layout.html.jinja`: `lang`/`dir` aus Kontext; Helper `html_lang()`/`html_dir()` in `core/app_client/` (reine Funktionen auf `anki.lang`).
-- [ ] Tests: `en`→`lang="en" dir="ltr"`; `zh_CN`→`lang="zh-CN"`; `ar`→`dir="rtl"` **und `ar_SA`→`dir="rtl"`** (Regressionsfall, s. o.); `he`/`fa` ebenso; unbekannt → `en`. Belegt: `set_lang("de_DE")` lässt `current_lang == "de_DE"`, die Normalisierung in `s()` und `html_lang()` ist also nötig.
+- [ ] `app/layout.html.jinja` (Plan 1 Basis-Template, **nicht** das alte `shell.html.jinja:2`/`login.html.jinja:2`): `<html lang="{{ html_lang }}" dir="{{ html_dir }}">`. Werte aus `resolve_lang(settings)` in `core/app_client/lang.py`, als Jinja-Globals bzw. Render-Kontext gesetzt. Auch die Offline-Seite und die Login-Weiterleitung nutzen dasselbe Layout.
+- [ ] Tests `tests/test_app_lang.py` (Tabelle, alle belegt): `""`→`en/ltr`; `en`→`en/ltr`; `zh_CN` und `zh-CN`→`zh-CN/ltr`; `de_DE`→`de/ltr`; `pt_BR`→`pt-BR/ltr`; `nb_NO` und `no`→`nb/ltr` (Aliaskette); `ar`→`ar/rtl`; **`ar_SA`→`ar/rtl`** (Regression: `is_rtl("ar_SA")` ist falsch, Basissprache nötig); `he`, `fa`→`rtl`; **`xx`→`en/ltr`** (Regression: `current_lang` würde `xx` liefern).
+- [ ] Test `test_html_lang_matches_rendered_text`: für jede der 55 Sprachen `ANKIWEB_LANG` setzen, rendern, `lang=` gegen `lang_to_disk_lang` prüfen und sicherstellen, dass bei bekannter Sprache der Titel nicht dem englischen entspricht (außer `en`). Fängt Abweichung zwischen `lang`-Attribut und Inhalt.
 - [ ] Logische Tailwind-Klassen statt `left/right` (Review-Review beim Template-Umbau in den Plänen 2 bis 4), Pfeilzeichen per `rtl:`-Variante spiegeln.
 
 ### 6.5 Manifest, Offline, Cache-Hash
