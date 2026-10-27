@@ -73,11 +73,9 @@
     modalTitle.textContent = (options && options.title) || labels.title;
     modalBody.textContent = message || '';
 
-    // Reset button styling
-    modalOkBtn.className = 'btn btn-primary';
-    if (options && options.danger) {
-      modalOkBtn.className = 'btn btn-error';
-    }
+    // Ok button variant: toggle on the base .btn, do not overwrite it
+    modalOkBtn.classList.toggle('btn-error', !!(options && options.danger));
+    modalOkBtn.classList.toggle('btn-primary', !(options && options.danger));
 
     const okLabel = (options && options.okLabel) || labels.ok;
     const cancelLabel = (options && options.cancelLabel) || labels.cancel;
@@ -85,15 +83,15 @@
     modalCancelBtn.textContent = cancelLabel;
 
     if (type === 'alert') {
-      modalInput.style.display = 'none';
-      modalCancelBtn.style.display = 'none';
+      modalInput.hidden = true;
+      modalCancelBtn.hidden = true;
     } else if (type === 'confirm') {
-      modalInput.style.display = 'none';
-      modalCancelBtn.style.display = '';
+      modalInput.hidden = true;
+      modalCancelBtn.hidden = false;
     } else if (type === 'prompt') {
-      modalInput.style.display = '';
+      modalInput.hidden = false;
       modalInput.value = defaultValue != null ? String(defaultValue) : '';
-      modalCancelBtn.style.display = '';
+      modalCancelBtn.hidden = false;
     }
 
     function cleanup() {
