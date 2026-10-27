@@ -468,17 +468,23 @@ for the migration that built it.
 ## Test
 
 ```bash
-uv sync --extra dev      # project dependencies and test tools in .venv
-uvx ruff check .         # lint all Python sources and tests
-uvx pyright              # type-check using the project's .venv
-uv run pytest            # full suite (Playwright tests skip if chromium absent)
+uv sync --extra dev
+uv run ruff check .
+uv run ruff format --check .
+uv run ty check
+uv run pytest
 ```
 
-Integration tests use Playwright + real Chromium against a live uvicorn server; install the
-browser once with `python -m playwright install chromium`.
+The project configuration for Ruff and ty is in `pyproject.toml`. ty automatically discovers the
+repository's `.venv`; run these commands from the repository root so it can resolve the project
+and its installed dependencies. For migration guidance, see [ty's guide for users coming from
+mypy or Pyright](https://docs.astral.sh/ty/coming-from-mypy-or-pyright/).
 
-Pyright's Python 3.12 environment is configured in `pyproject.toml`; run these commands
-from the repository root so imports resolve against the installed project dependencies.
+For VS Code, install the `astral-sh.ty` and `charliermarsh.ruff` extensions. Workspace settings
+use ty instead of Pylance, with Ruff formatting and lint fixes on explicit save.
+
+Playwright integration tests use real Chromium against a live uvicorn server. Install the browser
+once with `uv run python -m playwright install chromium`.
 
 ## Project layout
 
