@@ -196,7 +196,9 @@ def create_app(
     )  # WS /ws
     app.include_router(
         build_screen_router(
-            lambda: app.state.service, lambda: app.state.notifier, lambda: app.state.hub,
+            lambda: app.state.service,
+            lambda: app.state.notifier,
+            lambda: app.state.hub,
             settings=settings,
         )
     )  # GET / + /notify

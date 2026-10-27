@@ -134,6 +134,7 @@ class BackendRpcPort(Protocol):
 """Static-typing proof that today's classes already satisfy ankiweb.core.ports Protocols,
 with ZERO shape changes. `ty check` is the real verifier here; pytest only guards against the
 module being deleted or the imports rotting."""
+
 from __future__ import annotations
 from ankiweb.core.ports import (
     CollectionPort,
@@ -212,6 +213,7 @@ def test_state_update_persists_via_injected_store(tmp_path):
 ```python
 # ankiweb/adapters/outbound/httpx_notification_adapter.py
 """httpx implementation of ankiweb.core.ports.NotificationTransportPort."""
+
 from __future__ import annotations
 from typing import Any
 import httpx
@@ -232,10 +234,13 @@ async def post(url: str, headers: dict[str, str], json: dict) -> tuple[int, Any]
 """Filesystem-JSON implementation of ankiweb.core.ports.ConfigStorePort, for NotifyConfig.
 Module-level `load`/`save` functions structurally satisfy ConfigStorePort (a module is a valid
 Protocol instance) — no wrapper class needed."""
+
 from __future__ import annotations
 import json
 from pathlib import Path
-from ankiweb.notifier import NotifyConfig  # moves to ankiweb.core.notify.engine in Task 7
+from ankiweb.notifier import (
+    NotifyConfig,
+)  # moves to ankiweb.core.notify.engine in Task 7
 
 
 def load(path: Path) -> NotifyConfig:
@@ -292,6 +297,7 @@ def save(value: NotifyConfig, path: Path) -> None:
       self.changed = asyncio.Event()
       self.resync_pending = False
 
+
   def update(self, config: NotifyConfig) -> None:
       self.config = config
       if self._store is not None:
@@ -305,6 +311,7 @@ def save(value: NotifyConfig, path: Path) -> None:
   ```python
   from ankiweb.adapters.outbound import json_config_store
   from ankiweb.adapters.outbound.httpx_notification_adapter import post as http_post
+
   ...
   notifier_state = NotifierState(
       settings.collection_path.parent / "notify.json", store=json_config_store
@@ -448,7 +455,9 @@ routing logic with no framework dependency once extracted.
       from ankiweb.core.rpc.dispatch import dispatch_backend_rpc
 
       with pytest.raises(LookupError):
-          await dispatch_backend_rpc("totallyUnknownMethod", b"", hub=None, service=service)
+          await dispatch_backend_rpc(
+              "totallyUnknownMethod", b"", hub=None, service=service
+          )
   ```
 - [ ] **Step 2 — run** → FAIL (`ModuleNotFoundError: ankiweb.core.rpc`).
 - [ ] **Step 3 — implement** `ankiweb/core/rpc/dispatch.py` (the branch logic extracted verbatim
@@ -560,6 +569,7 @@ splits into `core/notify/engine.py` + `core/notify/config.py` per the spec's tar
   """Architecture fitness test: ankiweb.core must never import ankiweb.adapters. This is the
   automated enforcement of the hexagonal dependency rule from
   docs/superpowers/specs/2026-09-12-ankiweb-hexagonal-architecture-design.md."""
+
   from __future__ import annotations
   import ast
   from pathlib import Path
@@ -583,7 +593,9 @@ splits into `core/notify/engine.py` + `core/notify/config.py` per the spec's tar
       for py_file in CORE.rglob("*.py"):
           for mod in _imported_top_level_modules(py_file):
               if mod.startswith("ankiweb.adapters") or mod == "ankiweb.adapters":
-                  violations.append(f"{py_file.relative_to(CORE.parent.parent)} imports {mod}")
+                  violations.append(
+                      f"{py_file.relative_to(CORE.parent.parent)} imports {mod}"
+                  )
       assert not violations, "core -> adapters import(s) found:\n" + "\n".join(violations)
   ```
   Run: `uv run pytest tests/test_architecture_boundaries.py -v` → PASS (proves Tasks 1–7 actually

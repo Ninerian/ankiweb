@@ -488,6 +488,9 @@ repository's `.venv`; run these commands from the repository root so it can reso
 and its installed dependencies. For migration guidance, see [ty's guide for users coming from
 mypy or Pyright](https://docs.astral.sh/ty/coming-from-mypy-or-pyright/).
 
+Apply Python formatting with `uv run ruff format .`. Before committing Python changes, run
+the lint, formatting, and type checks above against the whole repository.
+
 For VS Code, install the `astral-sh.ty` and `charliermarsh.ruff` extensions. Workspace settings
 use ty instead of Pylance, with Ruff formatting and lint fixes on explicit save.
 

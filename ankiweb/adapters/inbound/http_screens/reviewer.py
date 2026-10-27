@@ -10,6 +10,7 @@ Transport boundary:
 - Audio playback and MathJax rendering are client runtime side effects; no audio or
   typesetting runs over WebSocket frames.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,6 +23,7 @@ from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
+
 
 def render_av_buttons(text: str) -> str:
     """Replace [anki:play:<side>:<N>] refs with inline replay buttons (pycmd('play:..'))."""

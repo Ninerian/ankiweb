@@ -150,9 +150,7 @@ class ModelTemplateAddTemplate(ACBaseModel):
     Front: str | None = Field(
         default=None, description="Front (question) HTML template."
     )
-    Back: str | None = Field(
-        default=None, description="Back (answer) HTML template."
-    )
+    Back: str | None = Field(default=None, description="Back (answer) HTML template.")
 
 
 class ModelTemplateAddParams(ACBaseModel):
@@ -180,18 +178,14 @@ class ModelTemplateRenameParams(ACBaseModel):
     oldTemplateName: str | None = Field(
         default=None, description="Current template name."
     )
-    newTemplateName: str | None = Field(
-        default=None, description="New template name."
-    )
+    newTemplateName: str | None = Field(default=None, description="New template name.")
 
 
 class ModelTemplateRepositionParams(ACBaseModel):
     """Move a template to a new position within a note type."""
 
     modelName: str | None = Field(default=None, description="Note type name.")
-    templateName: str | None = Field(
-        default=None, description="Template name to move."
-    )
+    templateName: str | None = Field(default=None, description="Template name to move.")
     index: int | None = Field(default=None, description="New zero-based position.")
 
 
@@ -199,12 +193,8 @@ class ModelFieldAddParams(ACBaseModel):
     """Add a field to a note type, optionally at a position."""
 
     modelName: str | None = Field(default=None, description="Note type name.")
-    fieldName: str | None = Field(
-        default=None, description="Name of the field to add."
-    )
-    index: int | None = Field(
-        default=None, description="Optional zero-based position."
-    )
+    fieldName: str | None = Field(default=None, description="Name of the field to add.")
+    index: int | None = Field(default=None, description="Optional zero-based position.")
 
 
 class ModelFieldRemoveParams(ACBaseModel):
@@ -253,6 +243,4 @@ class ModelFieldSetDescriptionParams(ACBaseModel):
 
     modelName: str | None = Field(default=None, description="Note type name.")
     fieldName: str | None = Field(default=None, description="Field name.")
-    description: str | None = Field(
-        default=None, description="Field description text."
-    )
+    description: str | None = Field(default=None, description="Field description text.")

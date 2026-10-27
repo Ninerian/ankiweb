@@ -135,6 +135,7 @@ def test_custom_study_direct_signals_cram(client):
     fronts = client.portal.call(client.app.state.service.run, check_cards)
     assert fronts == ["front_inc"]
 
+
 def test_custom_study_error_when_no_cards_match(client):
     from conftest import parse_datastar_events
 
@@ -150,5 +151,3 @@ def test_custom_study_error_when_no_cards_match(client):
         "matched" in data.lower() or "card" in data.lower() for _, data in events
     )
     assert not any("window.location = '/overview'" in data for _, data in events)
-
-

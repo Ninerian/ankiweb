@@ -34,6 +34,7 @@ def test_root_serves_deckbrowser(client):
     assert "/shell/static/deckbrowser.css" not in r.text
     assert "/_anki/css/deckbrowser.css" not in r.text
 
+
 def test_deckbrowser_route(client):
     r = client.get("/deckbrowser")
     assert r.status_code == 200
@@ -42,6 +43,7 @@ def test_deckbrowser_route(client):
 
 def test_open_command_sets_current_and_navigates(client):
     from conftest import parse_datastar_events
+
     assert client.portal is not None
 
     did = client.portal.call(
@@ -77,8 +79,6 @@ def test_overview_study_navigates_to_reviewer(client):
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location = '/reviewer'" in data for _, data in events)
-
-
 
 
 def test_reviewer_route_serves_real_page(client):
@@ -158,5 +158,3 @@ def test_reviewer_ans_before_show_does_not_crash_socket(client):
                 got_question = True
                 break
         assert got_question
-
-

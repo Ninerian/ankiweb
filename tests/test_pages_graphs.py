@@ -40,7 +40,9 @@ def test_col(tmp_path: Path):
         for qc in queued.cards:
             card = col.get_card(CardId(qc.card.id))
             card.start_timer()
-            ans = col.sched.build_answer(card=card, states=qc.states, rating=CardAnswer.Rating.GOOD)
+            ans = col.sched.build_answer(
+                card=card, states=qc.states, rating=CardAnswer.Rating.GOOD
+            )
             col.sched.answer_card(ans)
     finally:
         col.close()
@@ -108,7 +110,12 @@ def test_graphs_update_endpoint_datastar_sse(client):
     r = client.post(
         "/graphs/update",
         headers={"Datastar-Request": "true"},
-        json={"search": "deck:current", "scope": "deck", "days": 30, "separate_inactive": True},
+        json={
+            "search": "deck:current",
+            "scope": "deck",
+            "days": 30,
+            "separate_inactive": True,
+        },
     )
     assert r.status_code == 200
     assert "text/event-stream" in r.headers["content-type"]
@@ -124,7 +131,12 @@ def test_graphs_preferences_persistence(client):
     r1 = client.post(
         "/graphs/update",
         headers={"Datastar-Request": "true"},
-        json={"search": "deck:current", "scope": "deck", "days": 30, "separate_inactive": False},
+        json={
+            "search": "deck:current",
+            "scope": "deck",
+            "days": 30,
+            "separate_inactive": False,
+        },
     )
     assert r1.status_code == 200
 

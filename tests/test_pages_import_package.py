@@ -25,7 +25,9 @@ def client_and_settings(tmp_path: Path):
         yield c, settings
 
 
-def _create_test_apkg(out_path: str, front: str = "Test Front", back: str = "Test Back"):
+def _create_test_apkg(
+    out_path: str, front: str = "Test Front", back: str = "Test Back"
+):
     with tempfile.TemporaryDirectory() as tmp:
         src_col_path = os.path.join(tmp, "src.anki2")
         col = Collection(src_col_path)
@@ -120,6 +122,7 @@ def test_next_import_anki_package_rejects_path_outside_tmp(client_and_settings):
     html_content = "".join(data for _, data in events)
     assert "Import path not allowed" in html_content
     assert "error-box" in html_content
+
 
 def test_next_import_anki_package_corrupt_file_displays_error(client_and_settings):
     client, settings = client_and_settings
@@ -251,6 +254,7 @@ def test_next_import_page_browse_search_query_generation(client_and_settings):
     from ankiweb.adapters.inbound.http_pages.import_package import (
         _build_log_summary_and_rows,
     )
+
     resp_pb = ie.ImportResponse()
     log = resp_pb.log
     log.found_notes = 3

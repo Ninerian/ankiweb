@@ -32,6 +32,7 @@ from ankiweb.ankiconnect.schemas.notes import (
 from ankiweb.core.ankiconnect_actions.actions._helpers import (
     build_note,
     check_addable,
+    note_to_info,
     run_emit,
 )
 from ankiweb.core.ankiconnect_actions.actions.media import attach_media
@@ -173,9 +174,6 @@ async def can_add_notes_with_error_detail(rt, notes=None):
 )
 async def find_notes(rt, query=None):
     return await rt.service.run(lambda col: list(col.find_notes(query or "")))
-
-
-from ankiweb.core.ankiconnect_actions.actions._helpers import note_to_info
 
 
 @action("notesInfo", params=NotesInfoParams, summary="Full info for each note")

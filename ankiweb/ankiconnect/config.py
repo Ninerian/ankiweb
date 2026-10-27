@@ -29,9 +29,7 @@ class AnkiConnectConfig:
                 or str(data.get("webBindAddress") or "127.0.0.1")
             ),
             bind_port=int(
-                os.environ.get("ANKIWEB_AC_PORT")
-                or data.get("webBindPort")
-                or 8765
+                os.environ.get("ANKIWEB_AC_PORT") or data.get("webBindPort") or 8765
             ),
             ignore_origin_list=data.get("ignoreOriginList", []),
         )

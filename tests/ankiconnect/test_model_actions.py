@@ -41,6 +41,7 @@ def test_model_templates(client):
     name = next(iter(tmpls.keys()))
     assert "Front" in tmpls[name] and "Back" in tmpls[name]
 
+
 def test_model_styling(client):
     assert "css" in _call(client, "modelStyling", modelName="Basic")
 
@@ -64,6 +65,7 @@ def test_model_fields_on_templates(client):
     # Card 1: front refs == ["Front"]; back side strips FrontSide and de-dupes Front -> []
     assert res[name][0] == ["Front"]
     assert "FrontSide" not in res[name][1]
+
 
 def test_find_models_missing_raises(client):
     # reference RAISES on a missing model (never returns null entries)
@@ -270,6 +272,7 @@ def test_template_mutators(client):
     assert next(iter(_call(client, "modelTemplates", modelName=m).keys())) == "C3"
     assert _call(client, "modelTemplateRemove", modelName=m, templateName="C3") is None
     assert "C3" not in _call(client, "modelTemplates", modelName=m)
+
 
 def test_field_set_type_validation(client):
     m = _mk(client, "MV")

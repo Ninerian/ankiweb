@@ -63,6 +63,8 @@ async def _serve() -> None:
         except asyncio.CancelledError:
             pass
         await service.close()
+
+
 def main() -> None:
     try:
         asyncio.run(_serve())

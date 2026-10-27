@@ -10,7 +10,7 @@ from ankiweb.app import create_app
 from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import ViewportSize, sync_playwright
 
 
 def _observe_browser_refreshes(page):
@@ -24,6 +24,7 @@ def _observe_browser_refreshes(page):
         }
         """
     )
+
 
 @pytest.fixture
 def live_server_browse(tmp_path: Path):
@@ -124,12 +125,8 @@ def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
         iframe_selector = "#detail iframe#editor-frame.editor-frame"
         page.locator(iframe_selector).wait_for(state="visible", timeout=6000)
         frame = page.frame_locator(iframe_selector)
-        field0 = frame.locator(
-            '#editor-field-0 .rich-text-input[data-ankiweb-rich]'
-        )
-        field1 = frame.locator(
-            '#editor-field-1 .rich-text-input[data-ankiweb-rich]'
-        )
+        field0 = frame.locator("#editor-field-0 .rich-text-input[data-ankiweb-rich]")
+        field1 = frame.locator("#editor-field-1 .rich-text-input[data-ankiweb-rich]")
         field0.wait_for(state="visible", timeout=8000)
         field1.wait_for(state="visible", timeout=8000)
 
@@ -177,8 +174,10 @@ def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
 
         def expect_refresh_on_click(locator):
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and response.url.endswith("/browse/refresh"),
+                lambda response: (
+                    response.request.method == "POST"
+                    and response.url.endswith("/browse/refresh")
+                ),
                 timeout=10000,
             ) as refresh_info:
                 locator.click()
@@ -220,13 +219,17 @@ def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
         assert second_value in saved_editor.text()
         tag_add_button = frame.locator(".tag-add-button")
         with page.expect_response(
-            lambda response: response.request.method == "POST"
-            and response.url.endswith("/editor/blur-field"),
+            lambda response: (
+                response.request.method == "POST"
+                and response.url.endswith("/editor/blur-field")
+            ),
             timeout=10000,
         ) as tag_button_blur:
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and response.url.endswith("/browse/refresh"),
+                lambda response: (
+                    response.request.method == "POST"
+                    and response.url.endswith("/browse/refresh")
+                ),
                 timeout=10000,
             ) as tag_button_refresh:
                 tag_add_button.click()
@@ -236,13 +239,17 @@ def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
         tag_input = frame.locator(".tag-input")
         tag_input.fill("same-tab-editor-tag")
         with page.expect_response(
-            lambda response: response.request.method == "POST"
-            and response.url.endswith("/editor/save-tags"),
+            lambda response: (
+                response.request.method == "POST"
+                and response.url.endswith("/editor/save-tags")
+            ),
             timeout=10000,
         ) as tag_save_info:
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and response.url.endswith("/browse/refresh"),
+                lambda response: (
+                    response.request.method == "POST"
+                    and response.url.endswith("/browse/refresh")
+                ),
                 timeout=10000,
             ) as tag_refresh_info:
                 tag_input.press("Enter")
@@ -266,8 +273,10 @@ def test_editor_blur_refresh_preserves_iframe_focus_and_saves_fields(
         failed_tag_input = frame.locator(".tag-input")
         failed_tag_input.fill("failed-editor-tag")
         with page.expect_response(
-            lambda response: response.request.method == "POST"
-            and response.url.endswith("/editor/save-tags"),
+            lambda response: (
+                response.request.method == "POST"
+                and response.url.endswith("/editor/save-tags")
+            ),
             timeout=10000,
         ) as failed_tag_save:
             failed_tag_input.press("Enter")
@@ -346,7 +355,7 @@ def test_due_dialog_validation_preserves_selection_and_retries(live_server_brows
         assert dialog.is_visible()
         assert dialog.get_attribute("open") is not None
         assert due_input.input_value() == "not-a-valid-due"
-        selected_row = page.locator(f'#browser-row-{cid}')
+        selected_row = page.locator(f"#browser-row-{cid}")
         assert selected_row.get_attribute("aria-selected") == "true"
         assert selected_row.locator('input[type="checkbox"]').is_checked()
         assert dialog.locator('input[name="selectedCids"]').input_value() == cid
@@ -381,8 +390,7 @@ def test_change_deck_dialog_cancels_without_saving(live_server_browse):
 
         rows = page.locator("#results-body tr[data-cid]")
         initial_cids = [
-            rows.nth(index).get_attribute("data-cid")
-            for index in range(rows.count())
+            rows.nth(index).get_attribute("data-cid") for index in range(rows.count())
         ]
         assert all(initial_cids)
         row = rows.first
@@ -404,7 +412,10 @@ def test_change_deck_dialog_cancels_without_saving(live_server_browse):
         page.keyboard.press("Escape")
         dialog.wait_for(state="hidden", timeout=6000)
         assert row.get_attribute("aria-selected") == "true"
-        assert page.locator('#browser-state input[name="selectedCids"]').input_value() == cid
+        assert (
+            page.locator('#browser-state input[name="selectedCids"]').input_value()
+            == cid
+        )
 
         page.locator("#btn-actions-organize").click()
         page.locator("#btn-changedeck").click()
@@ -414,7 +425,10 @@ def test_change_deck_dialog_cancels_without_saving(live_server_browse):
         dialog.locator('form button[type="button"]').click()
         dialog.wait_for(state="hidden", timeout=6000)
         assert row.get_attribute("aria-selected") == "true"
-        assert page.locator('#browser-state input[name="selectedCids"]').input_value() == cid
+        assert (
+            page.locator('#browser-state input[name="selectedCids"]').input_value()
+            == cid
+        )
 
         page.goto(f"{live_server_browse}/browse")
         page.wait_for_function(
@@ -456,20 +470,26 @@ def test_selection_request_finishes_before_pending_browser_refresh(live_server_b
 
         page.route("**/browse/select*", hold_select)
         with page.expect_request(
-            lambda request: request.method == "POST"
-            and request.url.split("?", 1)[0].endswith("/browse/select"),
+            lambda request: (
+                request.method == "POST"
+                and request.url.split("?", 1)[0].endswith("/browse/select")
+            ),
             timeout=6000,
         ):
             row.click()
 
         with page.expect_response(
-            lambda response: response.request.method == "POST"
-            and response.url.split("?", 1)[0].endswith("/browse/refresh"),
+            lambda response: (
+                response.request.method == "POST"
+                and response.url.split("?", 1)[0].endswith("/browse/refresh")
+            ),
             timeout=6000,
         ) as refresh_info:
             with page.expect_request(
-                lambda request: request.method == "POST"
-                and request.url.split("?", 1)[0].endswith("/browse/refresh"),
+                lambda request: (
+                    request.method == "POST"
+                    and request.url.split("?", 1)[0].endswith("/browse/refresh")
+                ),
                 timeout=6000,
             ) as refresh_request_info:
                 page.evaluate(
@@ -541,7 +561,7 @@ def test_browser_row_and_checkbox_selection_regression(live_server_browse):
         assert "selected" in (second_row.get_attribute("class") or "")
         assert second_row.locator("input[type='checkbox']").is_checked()
         assert not first_row.locator("input[type='checkbox']").is_checked()
-        assert not ("selected" in (first_row.get_attribute("class") or ""))
+        assert "selected" not in (first_row.get_attribute("class") or "")
 
         # Action buttons are enabled for single selection
         assert not page.locator("#btn-suspend").is_disabled()
@@ -626,23 +646,25 @@ def test_categorized_browser_actions_menu_states_and_links(live_server_browse):
         action_requests = []
         page.on(
             "request",
-            lambda req: action_requests.append(req.url)
-            if any(
-                x in req.url
-                for x in (
-                    "/browse/suspend",
-                    "/browse/unsuspend",
-                    "/browse/forget",
-                    "/browse/setdue",
-                    "/browse/changedeck",
-                    "/browse/addtag",
-                    "/browse/removetag",
-                    "/browse/delete",
-                    "/card-info",
-                    "/change-notetype",
+            lambda req: (
+                action_requests.append(req.url)
+                if any(
+                    x in req.url
+                    for x in (
+                        "/browse/suspend",
+                        "/browse/unsuspend",
+                        "/browse/forget",
+                        "/browse/setdue",
+                        "/browse/changedeck",
+                        "/browse/addtag",
+                        "/browse/removetag",
+                        "/browse/delete",
+                        "/card-info",
+                        "/change-notetype",
+                    )
                 )
-            )
-            else None,
+                else None
+            ),
         )
 
         page.goto(f"{live_server_browse}/browse")
@@ -749,7 +771,10 @@ def test_categorized_browser_actions_menu_states_and_links(live_server_browse):
 
         assert link_changenotetype.get_attribute("aria-disabled") == "false"
         assert link_changenotetype.get_attribute("tabindex") == "0"
-        assert link_changenotetype.get_attribute("href") == f"/change-notetype?cids={first_cid}"
+        assert (
+            link_changenotetype.get_attribute("href")
+            == f"/change-notetype?cids={first_cid}"
+        )
 
         # 3. Multi-selection: Card Info disabled & safe from keyboard, Change Note Type enabled
         second_row = rows.nth(1)
@@ -807,12 +832,17 @@ def test_categorized_browser_actions_menu_states_and_links(live_server_browse):
         assert len(paused_route) == 1, "Expected pending /browse/suspend route"
 
         # While request is in flight, all action controls must be disabled due to $_busy
-        page.wait_for_function("() => document.querySelector('#btn-suspend')?.disabled === true", timeout=6000)
+        page.wait_for_function(
+            "() => document.querySelector('#btn-suspend')?.disabled === true",
+            timeout=6000,
+        )
         assert page.locator("#btn-suspend").is_disabled()
         assert page.locator("#btn-changedeck").is_disabled()
         assert page.locator("#btn-delete").is_disabled()
         assert page.locator("#btn-cardinfo").get_attribute("aria-disabled") == "true"
-        assert page.locator("#btn-changenotetype").get_attribute("aria-disabled") == "true"
+        assert (
+            page.locator("#btn-changenotetype").get_attribute("aria-disabled") == "true"
+        )
 
         # Release route and unroute handler
         paused_route[0].continue_()
@@ -889,6 +919,7 @@ def test_browse_sidebar_long_name_truncated(live_server_longdeck):
         assert geo["whiteSpace"] == "nowrap"
         browser.close()
 
+
 @pytest.fixture
 def live_server_sidebar_search(tmp_path: Path):
     col_path = tmp_path / "sidebar_search.anki2"
@@ -945,7 +976,9 @@ def live_server_sidebar_search(tmp_path: Path):
     t.join(timeout=5)
 
 
-def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sidebar_search):
+def test_browse_sidebar_native_navigation_history_and_new_tabs(
+    live_server_sidebar_search,
+):
     from urllib.parse import parse_qs, urlparse
 
     base, special_deck, special_tag = live_server_sidebar_search
@@ -964,7 +997,9 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sideb
         tag_item = page.get_by_role("link", name=special_tag, exact=True)
         deck_href = deck_item.get_attribute("href")
         tag_href = tag_item.get_attribute("href")
-        expected_deck_query = parse_qs(urlparse(deck_href or "").query).get("q", [""])[0]
+        expected_deck_query = parse_qs(urlparse(deck_href or "").query).get("q", [""])[
+            0
+        ]
         expected_tag_query = parse_qs(urlparse(tag_href or "").query).get("q", [""])[0]
         assert expected_deck_query
         assert expected_tag_query
@@ -973,9 +1008,7 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sideb
         page.fill("#search", "original page draft")
         original_url = page.url
         original_results = page.inner_text("#results-body")
-        assert page.eval_on_selector(
-            "#results-body", "el => el.children.length"
-        ) == 3
+        assert page.eval_on_selector("#results-body", "el => el.children.length") == 3
         assert "special deck front" in original_results
         assert "special tag front" in original_results
         assert "decoy tag front" in original_results
@@ -996,9 +1029,9 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sideb
         assert parse_qs(parsed_new_url.query).get("q") == [expected_tag_query]
         assert new_page.input_value("#search") == expected_tag_query
         new_results = new_page.inner_text("#results-body")
-        assert new_page.eval_on_selector(
-            "#results-body", "el => el.children.length"
-        ) == 1
+        assert (
+            new_page.eval_on_selector("#results-body", "el => el.children.length") == 1
+        )
         assert "special tag front" in new_results
         assert "special deck front" not in new_results
         assert "decoy tag front" not in new_results
@@ -1024,9 +1057,10 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sideb
         assert parse_qs(parsed_middle_url.query).get("q") == [expected_deck_query]
         assert middle_page.input_value("#search") == expected_deck_query
         middle_results = middle_page.inner_text("#results-body")
-        assert middle_page.eval_on_selector(
-            "#results-body", "el => el.children.length"
-        ) == 1
+        assert (
+            middle_page.eval_on_selector("#results-body", "el => el.children.length")
+            == 1
+        )
         assert "special deck front" in middle_results
         assert "special tag front" not in middle_results
         assert "decoy tag front" not in middle_results
@@ -1052,9 +1086,7 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sideb
         assert parse_qs(parsed_deck_url.query).get("q") == [expected_deck_query]
         assert page.input_value("#search") == expected_deck_query
         deck_results = page.inner_text("#results-body")
-        assert page.eval_on_selector(
-            "#results-body", "el => el.children.length"
-        ) == 1
+        assert page.eval_on_selector("#results-body", "el => el.children.length") == 1
         assert "special deck front" in deck_results
         assert "special tag front" not in deck_results
         assert "decoy tag front" not in deck_results
@@ -1075,9 +1107,7 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sideb
         assert parse_qs(parsed_tag_url.query).get("q") == [expected_tag_query]
         assert page.input_value("#search") == expected_tag_query
         tag_results = page.inner_text("#results-body")
-        assert page.eval_on_selector(
-            "#results-body", "el => el.children.length"
-        ) == 1
+        assert page.eval_on_selector("#results-body", "el => el.children.length") == 1
         assert "special tag front" in tag_results
         assert "special deck front" not in tag_results
         assert "decoy tag front" not in tag_results
@@ -1095,9 +1125,7 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sideb
         assert parse_qs(urlparse(page.url).query).get("q") == [expected_deck_query]
         assert page.input_value("#search") == expected_deck_query
         back_results = page.inner_text("#results-body")
-        assert page.eval_on_selector(
-            "#results-body", "el => el.children.length"
-        ) == 1
+        assert page.eval_on_selector("#results-body", "el => el.children.length") == 1
         assert "special deck front" in back_results
         assert "special tag front" not in back_results
         assert "decoy tag front" not in back_results
@@ -1115,14 +1143,13 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(live_server_sideb
         assert parse_qs(urlparse(page.url).query).get("q") == [expected_tag_query]
         assert page.input_value("#search") == expected_tag_query
         forward_results = page.inner_text("#results-body")
-        assert page.eval_on_selector(
-            "#results-body", "el => el.children.length"
-        ) == 1
+        assert page.eval_on_selector("#results-body", "el => el.children.length") == 1
         assert "special tag front" in forward_results
         assert "special deck front" not in forward_results
         assert "decoy tag front" not in forward_results
 
         browser.close()
+
 
 def test_browse_sidebar_sections_fold_independently_and_filter(
     live_server_sidebar_search,
@@ -1297,8 +1324,14 @@ def test_browse_mobile_touch_checkbox_selection_and_remorphed_row(live_server_br
                 timeout=6000,
             )
 
-        assert first_box.is_visible() and second_box.is_visible() and header.is_visible()
-        assert first_target.is_visible() and second_target.is_visible() and header_target.is_visible()
+        assert (
+            first_box.is_visible() and second_box.is_visible() and header.is_visible()
+        )
+        assert (
+            first_target.is_visible()
+            and second_target.is_visible()
+            and header_target.is_visible()
+        )
         header_label = header.get_attribute("aria-label")
         row_label = first_box.get_attribute("aria-label")
         assert header_label and row_label and header_label != row_label
@@ -1353,7 +1386,6 @@ def test_browse_mobile_touch_checkbox_selection_and_remorphed_row(live_server_br
         assert not suspend.is_disabled()
         assert detail_dialog.get_attribute("open") is None
 
-
         second_target.tap()
         page.wait_for_function(
             "document.querySelectorAll('#results-body input[type=checkbox]:checked').length===1",
@@ -1370,7 +1402,6 @@ def test_browse_mobile_touch_checkbox_selection_and_remorphed_row(live_server_br
         wait_for_badge_counts([1, 2])
         assert not suspend.is_disabled()
         assert detail_dialog.get_attribute("open") is None
-
 
         page.locator("#search").fill("dogword")
         page.locator("#search").press("Enter")
@@ -1426,7 +1457,7 @@ def test_browser_selected_status_reserves_layout_across_selection(live_server_br
     with sync_playwright() as p:
         browser = p.chromium.launch()
         # Reserved status row is desktop-only; mobile renders compact badge in the table header.
-        viewports = (
+        viewports: tuple[tuple[ViewportSize, bool, bool, str], ...] = (
             ({"width": 1440, "height": 900}, False, False, "desktop"),
         )
         for viewport, is_mobile, has_touch, label in viewports:
@@ -1457,14 +1488,12 @@ def test_browser_selected_status_reserves_layout_across_selection(live_server_br
 
             def wait_for_count(expected):
                 page.wait_for_function(
-                    "(expected) => document.querySelectorAll(" 
+                    "(expected) => document.querySelectorAll("
                     "'#results-body input[type=checkbox]:checked').length === expected",
                     arg=expected,
                     timeout=6000,
                 )
-                status.wait_for(
-                    state="visible" if expected else "hidden", timeout=6000
-                )
+                status.wait_for(state="visible" if expected else "hidden", timeout=6000)
 
             def geometry():
                 return page.evaluate(

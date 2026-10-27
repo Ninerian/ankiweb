@@ -11,13 +11,17 @@ def make_router(get_service: Callable) -> APIRouter:
     @router.get("/api/tags/complete")
     async def complete_tag(
         input: str = Query("", description="Tag prefix or search string"),
-        match_limit: int = Query(500, alias="matchLimit", description="Max tags to return"),
+        match_limit: int = Query(
+            500, alias="matchLimit", description="Max tags to return"
+        ),
     ):
         service = get_service()
 
         def _complete(col):
             clean_input = input.strip().strip(":")
-            return list(col._backend.complete_tag(input=clean_input, match_limit=match_limit))
+            return list(
+                col._backend.complete_tag(input=clean_input, match_limit=match_limit)
+            )
 
         tags = await service.run(_complete)
         return {"tags": tags}

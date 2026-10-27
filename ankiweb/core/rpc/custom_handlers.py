@@ -6,6 +6,8 @@ from collections.abc import Awaitable, Callable
 from google.protobuf.message import DecodeError
 
 logger = logging.getLogger(__name__)
+
+
 async def _emit_best_effort(service, flags: dict, initiator: str) -> None:
     try:
         await service.emit(flags, initiator)
@@ -219,8 +221,10 @@ CUSTOM["getImageForOcclusion"] = get_image_for_occlusion
 CUSTOM["addImageOcclusionNote"] = add_image_occlusion_note
 CUSTOM["updateImageOcclusionNote"] = update_image_occlusion_note
 
+
 async def get_profile_config_json(service, body: bytes, hub=None) -> bytes:
     from anki import generic_pb2
+
     return generic_pb2.Json(json=b"null").SerializeToString()
 
 

@@ -73,7 +73,6 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             )
         return DatastarResponse()
 
-
     @router.post("/setdesc")
     async def setdesc(payload: ReadSignals):
         service = get_service()

@@ -6,6 +6,7 @@ Transport boundary:
 - Broadcasts opchanges flags across connected sessions for cross-screen sync.
 - Modern Datastar in-page actions, field saves, and queries use HTTP/SSE, not this socket.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,8 +55,16 @@ def build_router(get_hub, allowed_hosts=(), password="") -> APIRouter:
                 if mtype == "cmd":
                     try:
                         result = await hub.dispatch_cmd(context, msg.get("arg", ""))
-                    except (AnkiException, OSError, RuntimeError, TypeError, ValueError):
-                        logger.exception("WebSocket command dispatch failed for context %s", context)
+                    except (
+                        AnkiException,
+                        OSError,
+                        RuntimeError,
+                        TypeError,
+                        ValueError,
+                    ):
+                        logger.exception(
+                            "WebSocket command dispatch failed for context %s", context
+                        )
                         result = None  # a handler error must not drop the session
                     if msg.get("id") is not None:
                         await websocket.send_json(

@@ -119,5 +119,3 @@ def test_reviewer_body_has_shortcuts_guarded():
     assert "keydown" in body
     assert "typeans" in body  # the input guard
     assert "ease" in body  # digit -> ease mapping
-
-

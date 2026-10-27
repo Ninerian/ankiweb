@@ -18,7 +18,9 @@ class ActionSpec:
 
     name: str
     handler: Callable[..., Awaitable]
-    params_model: type[BaseModel] | None = None  # a pydantic BaseModel subclass, or None (loose)
+    params_model: type[BaseModel] | None = (
+        None  # a pydantic BaseModel subclass, or None (loose)
+    )
     result_type: Any = None  # python type for the response `result` field, or None
     summary: str = ""
     description: str = ""

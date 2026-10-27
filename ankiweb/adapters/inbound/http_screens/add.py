@@ -6,6 +6,7 @@ Transport boundary:
 - Modern note additions in the web app utilize Datastar routes in
   `ankiweb/adapters/inbound/http_pages/editor.py` (`GET /add`).
 """
+
 from __future__ import annotations
 
 import json
@@ -68,7 +69,9 @@ def make_add_handler(service, hub):
             ntid = int(rest)
             state["notetype_id"] = ntid
             state["tags"] = []
-            data = await service.run(lambda col: empty_add_payload(col, ntid, state["deck_id"]))
+            data = await service.run(
+                lambda col: empty_add_payload(col, ntid, state["deck_id"])
+            )
             await hub.push_call("add", "ankiwebLoadNote", [data])
         elif head == "setdeck":
             state["deck_id"] = int(rest)

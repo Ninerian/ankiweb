@@ -98,9 +98,10 @@ def _return_url(request: Request) -> str:
     return referer or "/notetypes"
 
 
-def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=None) -> APIRouter:
+def build_screen_router(
+    get_service, get_notifier=None, get_hub=None, settings=None
+) -> APIRouter:
     router = APIRouter()
-
 
     router.include_router(make_deckbrowser_routes(get_service))
     router.include_router(make_overview_routes(get_service))
@@ -262,12 +263,16 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=N
         return HTMLResponse(
             render_page("about", render_about_html(get_service().settings))
         )
+
     is_dev = settings.dev if settings is not None else False
     if is_dev:
+
         @router.get("/dev/components", response_class=HTMLResponse)
         async def component_gallery_page():
             # Dev harness for the ts/ -> Jinja component migration; needs no collection.
-            return HTMLResponse(render_page("components", render_component_gallery_html()))
+            return HTMLResponse(
+                render_page("components", render_component_gallery_html())
+            )
 
         # Dev-only simulated backend progress stream for the BackendProgressIndicator demo.
         router.include_router(dev_progress_router)
@@ -387,7 +392,8 @@ def build_screen_router(get_service, get_notifier=None, get_hub=None, settings=N
             return HTMLResponse(
                 render_page(
                     "export",
-                    f"<div id='err' class='text-error text-sm font-semibold mt-2'>Export failed: {exc}</div>" + body,
+                    f"<div id='err' class='text-error text-sm font-semibold mt-2'>Export failed: {exc}</div>"
+                    + body,
                 )
             )
         return FileResponse(

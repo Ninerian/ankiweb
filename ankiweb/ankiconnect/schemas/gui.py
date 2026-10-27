@@ -101,9 +101,7 @@ class GuiAddNoteSetDataNote(BaseModel):
     """Note spec used to prefill the open Add Note dialog."""
 
     deckName: str | None = Field(default=None, description="Target deck name.")
-    modelName: str | None = Field(
-        default=None, description="Note type (model) name."
-    )
+    modelName: str | None = Field(default=None, description="Note type (model) name.")
     fields: dict[str, str] = Field(
         default_factory=dict, description="Field name -> value mapping."
     )
@@ -115,9 +113,7 @@ class GuiAddNoteSetDataNote(BaseModel):
 class GuiAddNoteSetDataParams(ACBaseModel):
     """Prefill the open Add Note dialog with deck/model/fields/tags."""
 
-    note: GuiAddNoteSetDataNote | None = Field(
-        default=None, description="Note spec."
-    )
+    note: GuiAddNoteSetDataNote | None = Field(default=None, description="Note spec.")
     append: bool = Field(
         default=False, description="Append to fields/tags instead of replacing."
     )
@@ -133,9 +129,7 @@ class GuiAddCardsNote(BaseModel):
     """Note spec used to preset the Add Cards dialog."""
 
     deckName: str | None = Field(default=None, description="Target deck name.")
-    modelName: str | None = Field(
-        default=None, description="Note type (model) name."
-    )
+    modelName: str | None = Field(default=None, description="Note type (model) name.")
     fields: dict[str, str] = Field(
         default_factory=dict, description="Field name -> value mapping."
     )

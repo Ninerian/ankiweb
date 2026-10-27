@@ -77,17 +77,13 @@ class SetDeckConfigIdParams(ACBaseModel):
     """Assign an existing config group to the given decks; False if any is unknown."""
 
     decks: list[str] = Field(default_factory=list, description="Deck names to update.")
-    configId: int | None = Field(
-        default=None, description="Existing config-group id."
-    )
+    configId: int | None = Field(default=None, description="Existing config-group id.")
 
 
 class CloneDeckConfigIdParams(ACBaseModel):
     """Clone a config group under a new name; returns the new id or False."""
 
-    name: str | None = Field(
-        default=None, description="Name for the new config group."
-    )
+    name: str | None = Field(default=None, description="Name for the new config group.")
     cloneFrom: str = Field(
         default="1", description="Source config-group id to clone (default '1')."
     )
@@ -96,9 +92,7 @@ class CloneDeckConfigIdParams(ACBaseModel):
 class RemoveDeckConfigIdParams(ACBaseModel):
     """Remove a config group by id; False for id 1 (Default) or an unknown id."""
 
-    configId: int | None = Field(
-        default=None, description="Config-group id to remove."
-    )
+    configId: int | None = Field(default=None, description="Config-group id to remove.")
 
 
 class GetDeckStatsParams(ACBaseModel):

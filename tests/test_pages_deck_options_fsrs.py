@@ -31,16 +31,24 @@ def _populate_test_reviews(col_path: Path):
         for idx, cid in enumerate(cards):
             t = base_time + idx * 60000
             # Review 1: Learn
-            col.db.execute("INSERT INTO revlog VALUES (?, ?, -1, 3, 1, 0, 2500, 10000, 0)", t, cid)
+            col.db.execute(
+                "INSERT INTO revlog VALUES (?, ?, -1, 3, 1, 0, 2500, 10000, 0)", t, cid
+            )
             # Review 2: 1 day later
             t += 86400 * 1000
-            col.db.execute("INSERT INTO revlog VALUES (?, ?, -1, 3, 3, 1, 2500, 8000, 1)", t, cid)
+            col.db.execute(
+                "INSERT INTO revlog VALUES (?, ?, -1, 3, 3, 1, 2500, 8000, 1)", t, cid
+            )
             # Review 3: 3 days later
             t += 3 * 86400 * 1000
-            col.db.execute("INSERT INTO revlog VALUES (?, ?, -1, 3, 7, 3, 2500, 7000, 1)", t, cid)
+            col.db.execute(
+                "INSERT INTO revlog VALUES (?, ?, -1, 3, 7, 3, 2500, 7000, 1)", t, cid
+            )
             # Review 4: 7 days later
             t += 7 * 86400 * 1000
-            col.db.execute("INSERT INTO revlog VALUES (?, ?, -1, 3, 16, 7, 2500, 6000, 1)", t, cid)
+            col.db.execute(
+                "INSERT INTO revlog VALUES (?, ?, -1, 3, 16, 7, 2500, 6000, 1)", t, cid
+            )
         col.save()
     finally:
         col.close()
@@ -80,7 +88,27 @@ def test_optimize_endpoint(client: TestClient):
 
 def test_evaluate_endpoint(client: TestClient):
     # First get default params
-    defaults = [0.4, 1.2, 3.1, 15.6, 7.1, 0.5, 1.0, 0.0, 1.5, 0.1, 1.0, 2.0, 0.0, 0.3, 1.5, 0.2, 2.8, 0.2, 0.2]
+    defaults = [
+        0.4,
+        1.2,
+        3.1,
+        15.6,
+        7.1,
+        0.5,
+        1.0,
+        0.0,
+        1.5,
+        0.1,
+        1.0,
+        2.0,
+        0.0,
+        0.3,
+        1.5,
+        0.2,
+        2.8,
+        0.2,
+        0.2,
+    ]
     payload = {
         "cfg": {
             "desired_retention": 0.9,
@@ -100,7 +128,27 @@ def test_evaluate_endpoint(client: TestClient):
 
 
 def test_calculate_retention_endpoint(client: TestClient):
-    defaults = [0.4, 1.2, 3.1, 15.6, 7.1, 0.5, 1.0, 0.0, 1.5, 0.1, 1.0, 2.0, 0.0, 0.3, 1.5, 0.2, 2.8, 0.2, 0.2]
+    defaults = [
+        0.4,
+        1.2,
+        3.1,
+        15.6,
+        7.1,
+        0.5,
+        1.0,
+        0.0,
+        1.5,
+        0.1,
+        1.0,
+        2.0,
+        0.0,
+        0.3,
+        1.5,
+        0.2,
+        2.8,
+        0.2,
+        0.2,
+    ]
     payload = {
         "cfg": {
             "desired_retention": 0.9,
@@ -124,7 +172,27 @@ def test_calculate_retention_endpoint(client: TestClient):
 
 
 def test_workload_endpoint(client: TestClient):
-    defaults = [0.4, 1.2, 3.1, 15.6, 7.1, 0.5, 1.0, 0.0, 1.5, 0.1, 1.0, 2.0, 0.0, 0.3, 1.5, 0.2, 2.8, 0.2, 0.2]
+    defaults = [
+        0.4,
+        1.2,
+        3.1,
+        15.6,
+        7.1,
+        0.5,
+        1.0,
+        0.0,
+        1.5,
+        0.1,
+        1.0,
+        2.0,
+        0.0,
+        0.3,
+        1.5,
+        0.2,
+        2.8,
+        0.2,
+        0.2,
+    ]
     payload = {
         "cfg": {
             "desired_retention": 0.85,

@@ -14,15 +14,11 @@ class StoreMediaFileParams(ACBaseModel):
         default=None,
         description="Target media filename; prefix with '_' to keep it unused-safe.",
     )
-    data: str | None = Field(
-        default=None, description="Base64-encoded file contents."
-    )
+    data: str | None = Field(default=None, description="Base64-encoded file contents.")
     path: str | None = Field(
         default=None, description="Absolute path to a local file to read."
     )
-    url: str | None = Field(
-        default=None, description="URL to download the file from."
-    )
+    url: str | None = Field(default=None, description="URL to download the file from.")
     skipHash: str | None = Field(
         default=None,
         description="MD5 hex; skip storing if the source matches this hash.",
@@ -55,6 +51,4 @@ class GetMediaDirPathParams(ACBaseModel):
 class DeleteMediaFileParams(ACBaseModel):
     """Delete a media file from the media folder."""
 
-    filename: str | None = Field(
-        default=None, description="Media filename to delete."
-    )
+    filename: str | None = Field(default=None, description="Media filename to delete.")

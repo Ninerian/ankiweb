@@ -13,14 +13,24 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-ICONS_TS_URL = "https://raw.githubusercontent.com/ankitects/anki/main/ts/lib/components/icons.ts"
+ICONS_TS_URL = (
+    "https://raw.githubusercontent.com/ankitects/anki/main/ts/lib/components/icons.ts"
+)
 MDI_RAW = "https://raw.githubusercontent.com/Templarian/MaterialDesign-SVG/master/svg/"
 BS_RAW = "https://raw.githubusercontent.com/twbs/icons/main/icons/"
 TS_ICONS_RAW = "https://raw.githubusercontent.com/ankitects/anki/main/ts/icons/"
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC_ICONS_DIR = ROOT / "ankiweb" / "shell" / "static" / "icons"
-COMPONENTS_DIR = ROOT / "ankiweb" / "adapters" / "inbound" / "http_shared" / "templates" / "components"
+COMPONENTS_DIR = (
+    ROOT
+    / "ankiweb"
+    / "adapters"
+    / "inbound"
+    / "http_shared"
+    / "templates"
+    / "components"
+)
 
 
 def fetch_icons():
@@ -29,7 +39,9 @@ def fetch_icons():
         icons_ts = resp.read().decode()
 
     imports = dict(re.findall(r'import (\w+) from "([^"]+)";', icons_ts))
-    exports = re.findall(r'export const (\w+) = \{ url: (\w+), component: (\w+) \};', icons_ts)
+    exports = re.findall(
+        r"export const (\w+) = \{ url: (\w+), component: (\w+) \};", icons_ts
+    )
 
     icons = {}
     for exp, url_name, comp_name in exports:
@@ -48,7 +60,9 @@ def fetch_icons():
             continue
 
         try:
-            req = urllib.request.Request(fetch_url, headers={"User-Agent": "Mozilla/5.0"})
+            req = urllib.request.Request(
+                fetch_url, headers={"User-Agent": "Mozilla/5.0"}
+            )
             with urllib.request.urlopen(req) as resp:
                 raw_svg = resp.read().decode()
                 s = re.sub(r"<\?xml[^>]*\?>", "", raw_svg)
@@ -72,14 +86,20 @@ def build_jinja(icons: dict[str, str]) -> str:
 
     lines.append("} %}")
     lines.append("")
-    lines.append("{% macro icon(name, size=none, class_=\"\") %}")
+    lines.append('{% macro icon(name, size=none, class_="") %}')
     lines.append("  {% set svg = icon_data.get(name, '') %}")
     lines.append("  {% if svg %}")
     lines.append("    {% set extra_attrs = '' %}")
-    lines.append("    {% if size %}{% set extra_attrs = extra_attrs ~ ' width=\"' ~ size ~ '\" height=\"' ~ size ~ '\"' %}{% endif %}")
-    lines.append("    {% if class_ %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon ' ~ class_ ~ '\"' %}{% else %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon\"' %}{% endif %}")
+    lines.append(
+        "    {% if size %}{% set extra_attrs = extra_attrs ~ ' width=\"' ~ size ~ '\" height=\"' ~ size ~ '\"' %}{% endif %}"
+    )
+    lines.append(
+        "    {% if class_ %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon ' ~ class_ ~ '\"' %}{% else %}{% set extra_attrs = extra_attrs ~ ' class=\"anki-icon\"' %}{% endif %}"
+    )
     lines.append("    {% for k, v in kwargs.items() %}")
-    lines.append("      {% set extra_attrs = extra_attrs ~ ' ' ~ k ~ '=\"' ~ v ~ '\"' %}")
+    lines.append(
+        "      {% set extra_attrs = extra_attrs ~ ' ' ~ k ~ '=\"' ~ v ~ '\"' %}"
+    )
     lines.append("    {% endfor %}")
     lines.append("    {# Inject extra_attrs into the first <svg tag #}")
     lines.append("    {{ svg | replace('<svg', '<svg ' ~ extra_attrs, 1) | safe }}")

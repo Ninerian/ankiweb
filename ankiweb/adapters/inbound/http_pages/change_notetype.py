@@ -70,10 +70,10 @@ def _prepare_template_context(
     old_template_names = list(info.old_template_names)
     new_template_names = list(info.new_template_names)
 
-    default_fields = [
-        None if val == -1 else val for val in info.input.new_fields
-    ]
-    if current_fields_map is not None and len(current_fields_map) == len(new_field_names):
+    default_fields = [None if val == -1 else val for val in info.input.new_fields]
+    if current_fields_map is not None and len(current_fields_map) == len(
+        new_field_names
+    ):
         fields_map = current_fields_map
     else:
         fields_map = default_fields
@@ -83,7 +83,9 @@ def _prepare_template_context(
         default_templates = [
             None if val == -1 else val for val in info.input.new_templates
         ]
-        if current_templates_map is not None and len(current_templates_map) == len(new_template_names):
+        if current_templates_map is not None and len(current_templates_map) == len(
+            new_template_names
+        ):
             templates_map = current_templates_map
         else:
             templates_map = default_templates
@@ -109,17 +111,25 @@ def _prepare_template_context(
         for idx, name in enumerate(new_field_names)
     ]
 
-    template_rows = [
-        {
-            "new_index": idx,
-            "new_name": name,
-            "selected_value": -1 if templates_map[idx] is None else templates_map[idx],
-        }
-        for idx, name in enumerate(new_template_names)
-    ] if has_templates else []
+    template_rows = (
+        [
+            {
+                "new_index": idx,
+                "new_name": name,
+                "selected_value": -1
+                if templates_map[idx] is None
+                else templates_map[idx],
+            }
+            for idx, name in enumerate(new_template_names)
+        ]
+        if has_templates
+        else []
+    )
 
     unused_fields = _compute_unused(old_field_names, fields_map)
-    unused_templates = _compute_unused(old_template_names, templates_map) if has_templates else []
+    unused_templates = (
+        _compute_unused(old_template_names, templates_map) if has_templates else []
+    )
 
     initial_signals = {
         "old_notetype_id": old_ntid,
@@ -242,17 +252,25 @@ def _resolve_card_selection(col, card_ids: list[int]) -> tuple[int, list[int]]:
 
 def _parse_note_ids(raw_note_ids: Any) -> list[int]:
     if not isinstance(raw_note_ids, list):
-        raise _SelectionError("Invalid note selection: note IDs must be provided as a list.")
+        raise _SelectionError(
+            "Invalid note selection: note IDs must be provided as a list."
+        )
     if not raw_note_ids:
         raise _SelectionError("Invalid note selection: select at least one note.")
 
     note_ids: list[int] = []
     for raw_note_id in raw_note_ids:
         if isinstance(raw_note_id, bool):
-            raise _SelectionError("Invalid note selection: note IDs must be positive integers.")
+            raise _SelectionError(
+                "Invalid note selection: note IDs must be positive integers."
+            )
         if isinstance(raw_note_id, int):
             note_id = raw_note_id
-        elif isinstance(raw_note_id, str) and raw_note_id.isascii() and raw_note_id.isdigit():
+        elif (
+            isinstance(raw_note_id, str)
+            and raw_note_id.isascii()
+            and raw_note_id.isdigit()
+        ):
             try:
                 note_id = int(raw_note_id)
             except ValueError as exc:
@@ -260,10 +278,14 @@ def _parse_note_ids(raw_note_ids: Any) -> list[int]:
                     "Invalid note selection: note IDs must be positive integers."
                 ) from exc
         else:
-            raise _SelectionError("Invalid note selection: note IDs must be positive integers.")
+            raise _SelectionError(
+                "Invalid note selection: note IDs must be positive integers."
+            )
 
         if note_id <= 0:
-            raise _SelectionError("Invalid note selection: note IDs must be positive integers.")
+            raise _SelectionError(
+                "Invalid note selection: note IDs must be positive integers."
+            )
         note_ids.append(note_id)
     return note_ids
 
@@ -283,10 +305,7 @@ def _validate_note_ids(col, note_ids: list[int], old_ntid: int) -> None:
 
 
 def _selection_error_html(message: str) -> str:
-    return (
-        '<div class="alert alert-error py-2 px-3 mb-3">'
-        f"{html.escape(message)}</div>"
-    )
+    return f'<div class="alert alert-error py-2 px-3 mb-3">{html.escape(message)}</div>'
 
 
 def _selection_error_response(message: str):
@@ -346,7 +365,9 @@ def make_router(get_service: Callable) -> APIRouter:
     async def select_target(payload: ReadSignals):
         service = get_service()
         if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
+            err_html = (
+                '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
+            )
             return elements_response(err_html, selector="#change-notetype-alert-area")
 
         try:
@@ -387,7 +408,9 @@ def make_router(get_service: Callable) -> APIRouter:
     ):
         service = get_service()
         if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
+            err_html = (
+                '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
+            )
             return elements_response(err_html, selector="#change-notetype-alert-area")
 
         try:
@@ -459,7 +482,9 @@ def make_router(get_service: Callable) -> APIRouter:
     ):
         service = get_service()
         if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
+            err_html = (
+                '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
+            )
             return elements_response(err_html, selector="#change-notetype-alert-area")
 
         try:
@@ -542,7 +567,9 @@ def make_router(get_service: Callable) -> APIRouter:
     async def save(payload: ReadSignals):
         service = get_service()
         if not payload or not isinstance(payload, dict):
-            err_html = '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
+            err_html = (
+                '<div class="alert alert-error py-2 px-3 mb-3">Invalid payload</div>'
+            )
             return elements_response(err_html, selector="#change-notetype-alert-area")
 
         try:
@@ -594,23 +621,29 @@ def make_router(get_service: Callable) -> APIRouter:
                 templates_map.append(None if val == -1 else val)
 
         # Check unchanged
-        if _is_unchanged(old_id, new_id, fields_map, templates_map if has_templates else None):
-            return DatastarResponse(
-                SSE.execute_script("alert('No changes to save')")
-            )
+        if _is_unchanged(
+            old_id, new_id, fields_map, templates_map if has_templates else None
+        ):
+            return DatastarResponse(SSE.execute_script("alert('No changes to save')"))
 
         req = nt.ChangeNotetypeRequest()
         req.old_notetype_id = old_id
         req.new_notetype_id = new_id
         try:
-            req.current_schema = int(payload.get("current_schema", info.input.current_schema))
+            req.current_schema = int(
+                payload.get("current_schema", info.input.current_schema)
+            )
         except (ValueError, TypeError):
             req.current_schema = int(info.input.current_schema)
-        req.old_notetype_name = str(payload.get("old_notetype_name", info.input.old_notetype_name))
+        req.old_notetype_name = str(
+            payload.get("old_notetype_name", info.input.old_notetype_name)
+        )
         req.is_cloze = bool(payload.get("is_cloze", info.input.is_cloze))
         req.new_fields.extend([-1 if val is None else val for val in fields_map])
         if has_templates:
-            req.new_templates.extend([-1 if val is None else val for val in templates_map])
+            req.new_templates.extend(
+                [-1 if val is None else val for val in templates_map]
+            )
 
         def execute_change(col):
             _validate_note_ids(col, note_ids, old_id)

@@ -55,7 +55,6 @@ def test_upload_unknown_extension_400(client):
     assert r.status_code == 400
 
 
-
 def test_gc_removes_old_files(client, tmp_path):
     import os
     import time

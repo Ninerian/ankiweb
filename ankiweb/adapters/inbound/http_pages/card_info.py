@@ -182,27 +182,54 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
     rows = []
 
     # 1. Added
-    rows.append({"label": tr.card_stats_added(), "value": format_date(stats_proto.added)})
+    rows.append(
+        {"label": tr.card_stats_added(), "value": format_date(stats_proto.added)}
+    )
 
     # 2. First review
     if stats_proto.HasField("first_review"):
-        rows.append({"label": tr.card_stats_first_review(), "value": format_date(stats_proto.first_review)})
+        rows.append(
+            {
+                "label": tr.card_stats_first_review(),
+                "value": format_date(stats_proto.first_review),
+            }
+        )
 
     # 3. Latest review
     if stats_proto.HasField("latest_review"):
-        rows.append({"label": tr.card_stats_latest_review(), "value": format_date(stats_proto.latest_review)})
+        rows.append(
+            {
+                "label": tr.card_stats_latest_review(),
+                "value": format_date(stats_proto.latest_review),
+            }
+        )
 
     # 4. Due date
     if stats_proto.HasField("due_date"):
-        rows.append({"label": tr.statistics_due_date(), "value": format_date(stats_proto.due_date)})
+        rows.append(
+            {
+                "label": tr.statistics_due_date(),
+                "value": format_date(stats_proto.due_date),
+            }
+        )
 
     # 5. Due position
     if stats_proto.HasField("due_position"):
-        rows.append({"label": tr.card_stats_new_card_position(), "value": stats_proto.due_position})
+        rows.append(
+            {
+                "label": tr.card_stats_new_card_position(),
+                "value": stats_proto.due_position,
+            }
+        )
 
     # 6. Interval
     if stats_proto.interval:
-        rows.append({"label": tr.card_stats_interval(), "value": format_timespan(stats_proto.interval * 86400)})
+        rows.append(
+            {
+                "label": tr.card_stats_interval(),
+                "value": format_timespan(stats_proto.interval * 86400),
+            }
+        )
 
     # 7. Memory state vs Ease
     has_memory_state = stats_proto.HasField("memory_state")
@@ -210,20 +237,32 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
         stab = stats_proto.memory_state.stability
         val_stab = format_timespan(stab * 86400, short=False, exact=False)
         if stab > 31:
-            val_days = format_timespan(stab * 86400, short=False, exact=False, max_unit=DAYS)
+            val_days = format_timespan(
+                stab * 86400, short=False, exact=False, max_unit=DAYS
+            )
             val_stab += f" ({val_days})"
         rows.append({"label": tr.card_stats_fsrs_stability(), "value": val_stab})
 
-        diff = ((stats_proto.memory_state.difficulty - 1.0) / 9.0 * 100.0)
+        diff = (stats_proto.memory_state.difficulty - 1.0) / 9.0 * 100.0
         rows.append({"label": tr.card_stats_fsrs_difficulty(), "value": f"{diff:.0f}%"})
 
         # Retrievability row: shown when fsrs_retrievability is set by backend
-        if stats_proto.HasField("fsrs_retrievability") and stats_proto.fsrs_retrievability > 0:
+        if (
+            stats_proto.HasField("fsrs_retrievability")
+            and stats_proto.fsrs_retrievability > 0
+        ):
             ret = stats_proto.fsrs_retrievability * 100.0
-            rows.append({"label": tr.card_stats_fsrs_retrievability(), "value": f"{ret:.0f}%"})
+            rows.append(
+                {"label": tr.card_stats_fsrs_retrievability(), "value": f"{ret:.0f}%"}
+            )
     else:
         if stats_proto.ease and not stats_proto.HasField("desired_retention"):
-            rows.append({"label": tr.card_stats_ease(), "value": f"{stats_proto.ease / 10.0:.0f}%"})
+            rows.append(
+                {
+                    "label": tr.card_stats_ease(),
+                    "value": f"{stats_proto.ease / 10.0:.0f}%",
+                }
+            )
 
     # 8. Reviews & Lapses
     rows.append({"label": tr.card_stats_review_count(), "value": stats_proto.reviews})
@@ -231,11 +270,23 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
 
     # 9. Times
     if stats_proto.total_secs:
-        rows.append({"label": tr.card_stats_average_time(), "value": format_timespan(stats_proto.average_secs)})
-        rows.append({"label": tr.card_stats_total_time(), "value": format_timespan(stats_proto.total_secs)})
+        rows.append(
+            {
+                "label": tr.card_stats_average_time(),
+                "value": format_timespan(stats_proto.average_secs),
+            }
+        )
+        rows.append(
+            {
+                "label": tr.card_stats_total_time(),
+                "value": format_timespan(stats_proto.total_secs),
+            }
+        )
 
     # 10. Card type & Notetype
-    rows.append({"label": tr.card_stats_card_template(), "value": stats_proto.card_type})
+    rows.append(
+        {"label": tr.card_stats_card_template(), "value": stats_proto.card_type}
+    )
     rows.append({"label": tr.card_stats_note_type(), "value": stats_proto.notetype})
 
     # 11. Deck
@@ -265,7 +316,9 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
     for u, log in enumerate(raw_revlogs):
         m = None
         for s_idx in range(u + 1, len(raw_revlogs)):
-            if _is_revlog_counted(raw_revlogs[s_idx].review_kind, raw_revlogs[s_idx].ease):
+            if _is_revlog_counted(
+                raw_revlogs[s_idx].review_kind, raw_revlogs[s_idx].ease
+            ):
                 m = raw_revlogs[s_idx]
                 break
         elapsed = "N/A"
@@ -273,23 +326,31 @@ def build_card_data(stats_proto, selected_range: int = -1) -> dict[str, Any]:
             elapsed = format_timespan(log.time - m.time) if m else "0"
 
         rating_class = "revlog-ease1" if log.button_chosen == 1 else ""
-        revlog_rows.append({
-            "date": format_date(log.time),
-            "time": format_time(log.time),
-            "review_kind": _review_kind_text(log.review_kind),
-            "review_kind_class": _review_kind_class(log.review_kind),
-            "rating": log.button_chosen,
-            "rating_class": rating_class,
-            "interval": format_timespan(log.interval),
-            "ease": _ease_text(log.ease),
-            "taken_secs": format_timespan(log.taken_secs, short=True),
-            "elapsed_time": elapsed,
-        })
+        revlog_rows.append(
+            {
+                "date": format_date(log.time),
+                "time": format_time(log.time),
+                "review_kind": _review_kind_text(log.review_kind),
+                "review_kind_class": _review_kind_class(log.review_kind),
+                "rating": log.button_chosen,
+                "rating_class": rating_class,
+                "interval": format_timespan(log.interval),
+                "ease": _ease_text(log.ease),
+                "taken_secs": format_timespan(log.taken_secs, short=True),
+                "elapsed_time": elapsed,
+            }
+        )
 
     # Forgetting curve SVG
     decay = _fsrs_decay(stats_proto)
-    desired_retention = stats_proto.desired_retention if stats_proto.HasField("desired_retention") else 0.9
-    curve_svg, max_span, sel_range = render_forgetting_curve_svg(raw_revlogs, desired_retention, decay, selected_range)
+    desired_retention = (
+        stats_proto.desired_retention
+        if stats_proto.HasField("desired_retention")
+        else 0.9
+    )
+    curve_svg, max_span, sel_range = render_forgetting_curve_svg(
+        raw_revlogs, desired_retention, decay, selected_range
+    )
 
     return {
         "card_id": card_id,
@@ -345,7 +406,9 @@ _D3_TIME_INTERVALS = [
 ]
 
 
-def d3_time_ticks(start_dt: datetime.datetime, stop_dt: datetime.datetime, count: int = 5) -> list[datetime.datetime]:
+def d3_time_ticks(
+    start_dt: datetime.datetime, stop_dt: datetime.datetime, count: int = 5
+) -> list[datetime.datetime]:
     span_ms = (stop_dt.timestamp() - start_dt.timestamp()) * 1000.0
     if span_ms <= 0:
         return [start_dt]
@@ -366,23 +429,50 @@ def d3_time_ticks(start_dt: datetime.datetime, stop_dt: datetime.datetime, count
         curr = start_dt.replace(second=(start_dt.second // step) * step, microsecond=0)
         delta = datetime.timedelta(seconds=step)
     elif unit == "minute":
-        curr = start_dt.replace(minute=(start_dt.minute // step) * step, second=0, microsecond=0)
+        curr = start_dt.replace(
+            minute=(start_dt.minute // step) * step, second=0, microsecond=0
+        )
         delta = datetime.timedelta(minutes=step)
     elif unit == "hour":
-        curr = start_dt.replace(hour=(start_dt.hour // step) * step, minute=0, second=0, microsecond=0)
+        curr = start_dt.replace(
+            hour=(start_dt.hour // step) * step, minute=0, second=0, microsecond=0
+        )
         delta = datetime.timedelta(hours=step)
     elif unit == "day":
-        curr = start_dt.replace(day=((start_dt.day - 1) // step) * step + 1, hour=0, minute=0, second=0, microsecond=0)
+        curr = start_dt.replace(
+            day=((start_dt.day - 1) // step) * step + 1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
         delta = datetime.timedelta(days=step)
     elif unit == "week":
         days_since_sunday = (start_dt.weekday() + 1) % 7
-        curr = (start_dt - datetime.timedelta(days=days_since_sunday)).replace(hour=0, minute=0, second=0, microsecond=0)
+        curr = (start_dt - datetime.timedelta(days=days_since_sunday)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
         delta = datetime.timedelta(weeks=step)
     elif unit == "month":
-        curr = start_dt.replace(month=((start_dt.month - 1) // step) * step + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        curr = start_dt.replace(
+            month=((start_dt.month - 1) // step) * step + 1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
         delta = None
     else:
-        curr = start_dt.replace(year=(start_dt.year // step) * step, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        curr = start_dt.replace(
+            year=(start_dt.year // step) * step,
+            month=1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
         delta = None
 
     if curr < start_dt:
@@ -426,11 +516,13 @@ def d3_format_time(d: datetime.datetime) -> str:
     return d.strftime("%Y")
 
 
-def d3_linear_ticks(start: float, stop: float, count: int = 10) -> tuple[list[float], str]:
+def d3_linear_ticks(
+    start: float, stop: float, count: int = 10
+) -> tuple[list[float], str]:
     """Matches d3.ticks and d3.tickFormat for scaleLinear."""
     step = (stop - start) / max(1, count)
     power = math.floor(math.log10(step))
-    error = step / (10 ** power)
+    error = step / (10**power)
     if error >= math.sqrt(50):
         factor = 10
     elif error >= math.sqrt(10):
@@ -439,7 +531,7 @@ def d3_linear_ticks(start: float, stop: float, count: int = 10) -> tuple[list[fl
         factor = 2
     else:
         factor = 1
-    inc = factor * (10 ** power)
+    inc = factor * (10**power)
     precision = max(0, -math.floor(math.log10(inc)))
 
     nstart = math.ceil(start / inc) * inc
@@ -462,7 +554,14 @@ def render_forgetting_curve_svg(
     bounds: dict | None = None,
 ) -> tuple[str, float, int]:
     if bounds is None:
-        bounds = {"width": 600, "height": 250, "marginLeft": 70, "marginRight": 70, "marginTop": 20, "marginBottom": 25}
+        bounds = {
+            "width": 600,
+            "height": 250,
+            "marginLeft": 70,
+            "marginRight": 70,
+            "marginTop": 20,
+            "marginBottom": 25,
+        }
 
     e = []
     for r in raw_revlogs:
@@ -510,13 +609,15 @@ def render_forgetting_curve_svg(
         if m == 0:
             h = S
             s = stab
-            pts.append({
-                "time": S,
-                "daysSinceFirstLearn": 0.0,
-                "elapsedDaysSinceLastReview": 0.0,
-                "retrievability": 100.0,
-                "stability": s,
-            })
+            pts.append(
+                {
+                    "time": S,
+                    "daysSinceFirstLearn": 0.0,
+                    "elapsedDaysSinceLastReview": 0.0,
+                    "retrievability": 100.0,
+                    "stability": s,
+                }
+            )
             continue
 
         M = (S - h) / 86400.0
@@ -524,21 +625,25 @@ def render_forgetting_curve_svg(
         while elapsed_days < M - step:
             elapsed_days += step
             ret = _fsrs_retrievability(s, elapsed_days, decay)
-            pts.append({
-                "time": h + elapsed_days * 86400.0,
-                "daysSinceFirstLearn": pts[-1]["daysSinceFirstLearn"] + step,
-                "elapsedDaysSinceLastReview": elapsed_days,
-                "retrievability": ret * 100.0,
-                "stability": s,
-            })
+            pts.append(
+                {
+                    "time": h + elapsed_days * 86400.0,
+                    "daysSinceFirstLearn": pts[-1]["daysSinceFirstLearn"] + step,
+                    "elapsedDaysSinceLastReview": elapsed_days,
+                    "retrievability": ret * 100.0,
+                    "stability": s,
+                }
+            )
         D += M
-        pts.append({
-            "time": h + M * 86400.0,
-            "daysSinceFirstLearn": D,
-            "retrievability": 100.0,
-            "elapsedDaysSinceLastReview": 0.0,
-            "stability": s,
-        })
+        pts.append(
+            {
+                "time": h + M * 86400.0,
+                "daysSinceFirstLearn": D,
+                "retrievability": 100.0,
+                "elapsedDaysSinceLastReview": 0.0,
+                "stability": s,
+            }
+        )
         h = S
         s = stab
 
@@ -550,35 +655,41 @@ def render_forgetting_curve_svg(
     while b < elapsed_to_now - step:
         b += step
         ret = _fsrs_retrievability(s, b, decay)
-        pts.append({
-            "time": h + b * 86400.0,
-            "daysSinceFirstLearn": pts[-1]["daysSinceFirstLearn"] + step,
-            "elapsedDaysSinceLastReview": b,
-            "retrievability": ret * 100.0,
-            "stability": s,
-        })
+        pts.append(
+            {
+                "time": h + b * 86400.0,
+                "daysSinceFirstLearn": pts[-1]["daysSinceFirstLearn"] + step,
+                "elapsedDaysSinceLastReview": b,
+                "retrievability": ret * 100.0,
+                "stability": s,
+            }
+        )
     D += elapsed_to_now
     ret_now = _fsrs_retrievability(s, elapsed_to_now, decay)
-    pts.append({
-        "time": now_ts,
-        "daysSinceFirstLearn": D,
-        "elapsedDaysSinceLastReview": elapsed_to_now,
-        "retrievability": ret_now * 100.0,
-        "stability": s,
-    })
+    pts.append(
+        {
+            "time": now_ts,
+            "daysSinceFirstLearn": D,
+            "elapsedDaysSinceLastReview": elapsed_to_now,
+            "retrievability": ret_now * 100.0,
+            "stability": s,
+        }
+    )
 
     x_future = active_span - elapsed_to_now
     E = 0.0
     while E < x_future:
         E += step
         ret = _fsrs_retrievability(s, b + E, decay)
-        pts.append({
-            "time": now_ts + E * 86400.0,
-            "daysSinceFirstLearn": pts[-1]["daysSinceFirstLearn"] + step,
-            "elapsedDaysSinceLastReview": elapsed_to_now + E,
-            "retrievability": ret * 100.0,
-            "stability": s,
-        })
+        pts.append(
+            {
+                "time": now_ts + E * 86400.0,
+                "daysSinceFirstLearn": pts[-1]["daysSinceFirstLearn"] + step,
+                "elapsedDaysSinceLastReview": elapsed_to_now + E,
+                "retrievability": ret * 100.0,
+                "stability": s,
+            }
+        )
 
     pts = [p for p in pts if p["daysSinceFirstLearn"] <= active_span]
     if not pts:
@@ -613,9 +724,13 @@ def render_forgetting_curve_svg(
     def build_path_d(points: list) -> str:
         if not points:
             return ""
-        d_parts = [f"M{scale_x(points[0]['time']):.3f},{scale_y(points[0]['retrievability']):.3f}"]
+        d_parts = [
+            f"M{scale_x(points[0]['time']):.3f},{scale_y(points[0]['retrievability']):.3f}"
+        ]
         for p in points[1:]:
-            d_parts.append(f"L{scale_x(p['time']):.3f},{scale_y(p['retrievability']):.3f}")
+            d_parts.append(
+                f"L{scale_x(p['time']):.3f},{scale_y(p['retrievability']):.3f}"
+            )
         return "".join(d_parts)
 
     d_past = build_path_d(past_pts)
@@ -633,7 +748,7 @@ def render_forgetting_curve_svg(
             f'<g class="tick" opacity="1" transform="translate(0,{yp:.1f})">'
             f'<line stroke="currentColor" x2="-6"></line>'
             f'<text fill="currentColor" x="-9" dy="0.32em">{y_fmt.format(yv)}</text>'
-            f'</g>'
+            f"</g>"
         )
 
     # Ticks for X matching D3 time scale
@@ -648,7 +763,7 @@ def render_forgetting_curve_svg(
             f'<g class="tick" opacity="1" transform="translate({xp:.1f},0)">'
             f'<line stroke="currentColor" y2="6"></line>'
             f'<text fill="currentColor" y="9" dy="0.71em">{fmt_str}</text>'
-            f'</g>'
+            f"</g>"
         )
 
     desired_line_svg = ""
@@ -658,12 +773,12 @@ def render_forgetting_curve_svg(
     svg_content = f"""<svg viewBox="0 0 {w} {h_svg}">
   <g class="x-ticks svelte-2itjvo" transform="translate(0, {h_svg - mb})" fill="none" font-size="10" font-family="sans-serif" text-anchor="middle" direction="ltr">
     <path class="domain" stroke="currentColor" d="M{ml + 0.5},0.5H{w - mr + 0.5}"></path>
-    {''.join(x_ticks_svg)}
+    {"".join(x_ticks_svg)}
   </g>
   <g class="y-ticks svelte-2itjvo" transform="translate({ml},0)" fill="none" font-size="10" font-family="sans-serif" text-anchor="end" direction="ltr">
     <path class="domain" stroke="currentColor" d="M0.5,{h_svg - mb + 0.5}V{mt + 0.5}"></path>
     <text class="y-axis-title" transform="rotate(-90)" y="{-ml}" x="{-h_svg / 2}" font-size="1rem" dy="1.1em" fill="currentColor"></text>
-    {''.join(y_ticks_svg)}
+    {"".join(y_ticks_svg)}
   </g>
   <g class="y2-ticks svelte-2itjvo" transform="translate({w - mr}, 0)"></g>
   <g class="no-data svelte-adkmdc" opacity="0">
@@ -675,8 +790,8 @@ def render_forgetting_curve_svg(
     <stop offset="{m_desired:.1f}%" stop-color="steelblue"></stop>
     <stop offset="100%" stop-color="green"></stop>
   </linearGradient>
-  {f'<path class="forgetting-curve-line" fill="none" stroke="url(#line-gradient)" stroke-width="1.5" d="{d_past}"></path>' if d_past else ''}
-  {f'<path class="forgetting-curve-line" fill="none" stroke="url(#line-gradient)" stroke-width="1.5" stroke-dasharray="4 4" d="{d_future}"></path>' if d_future else ''}
+  {f'<path class="forgetting-curve-line" fill="none" stroke="url(#line-gradient)" stroke-width="1.5" d="{d_past}"></path>' if d_past else ""}
+  {f'<path class="forgetting-curve-line" fill="none" stroke="url(#line-gradient)" stroke-width="1.5" stroke-dasharray="4 4" d="{d_future}"></path>' if d_future else ""}
   {desired_line_svg}
   <line class="focus-line" y1="{mt}" y2="{h_svg - mb}" stroke="black" stroke-width="1" style="opacity: 0;"></line>
   <g class="hover-columns"></g>
@@ -700,9 +815,7 @@ def make_router(get_service: Callable) -> APIRouter:
             if p.isdigit():
                 if len(p) > 18:
                     # Huge int beyond 64-bit: legacy returns "int64 invalid: <p>"
-                    return HTMLResponse(
-                        render_page("card-info", f"int64 invalid: {p}")
-                    )
+                    return HTMLResponse(render_page("card-info", f"int64 invalid: {p}"))
                 cids.append(int(p))
 
         if not cids:

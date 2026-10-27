@@ -3,21 +3,65 @@ import re
 from html.parser import HTMLParser
 
 # Allowed HTML tags
-ALLOWED_TAGS = frozenset({
-    "a", "b", "i", "u", "em", "strong", "br", "p", "div", "span",
-    "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6",
-    "code", "pre", "blockquote", "img",
-    "table", "thead", "tbody", "tfoot", "tr", "th", "td",
-})
+ALLOWED_TAGS = frozenset(
+    {
+        "a",
+        "b",
+        "i",
+        "u",
+        "em",
+        "strong",
+        "br",
+        "p",
+        "div",
+        "span",
+        "ul",
+        "ol",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "code",
+        "pre",
+        "blockquote",
+        "img",
+        "table",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "th",
+        "td",
+    }
+)
 
 # Void tags (self-closing in HTML)
-VOID_TAGS = frozenset({
-    "area", "base", "br", "col", "embed", "hr", "img", "input",
-    "link", "meta", "param", "source", "track", "wbr",
-})
+VOID_TAGS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+)
 
 # Tags whose content should be dropped completely when stripped
-DROP_CONTENT_TAGS = frozenset({"script", "style", "iframe", "noscript", "template", "object", "embed"})
+DROP_CONTENT_TAGS = frozenset(
+    {"script", "style", "iframe", "noscript", "template", "object", "embed"}
+)
 
 # Allowed URL schemes for links and images
 ALLOWED_LINK_SCHEMES = frozenset({"http", "https", "mailto"})
@@ -94,7 +138,9 @@ class _HTMLSanitizer(HTMLParser):
             self.tag_stack.append(tag_lower)
 
         # Build start tag
-        attr_str = "".join(f' {k}="{html.escape(v, quote=True)}"' for k, v in cleaned_attrs)
+        attr_str = "".join(
+            f' {k}="{html.escape(v, quote=True)}"' for k, v in cleaned_attrs
+        )
         self.result.append(f"<{tag_lower}{attr_str}>")
 
     def handle_endtag(self, tag: str):

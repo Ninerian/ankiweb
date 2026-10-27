@@ -71,6 +71,7 @@ def test_get_deck_stats(client):
     assert entry["name"] == "Default"
     assert "new_count" in entry and "total_in_deck" in entry
 
+
 def test_remove_unknown_or_default_config_returns_false(client):
     assert _call(client, "removeDeckConfigId", configId=999999) is False
     assert _call(client, "removeDeckConfigId", configId=1) is False

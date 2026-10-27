@@ -11,13 +11,14 @@ def test_virtual_table_macro_renders_expected_markup():
     html = template.render()
     assert 'class="outer vt-outer"' in html
     assert 'id="test-vt"' in html
-    assert 'data-virtual-table' in html
+    assert "data-virtual-table" in html
     assert 'data-items-count="1000"' in html
     assert 'data-item-height="30"' in html
     assert '<table class="table vt-table' in html
-    assert '<thead>' in html
-    assert '<tbody>' in html
-    assert '/shell/static/bundles/tables.js' in html
+    assert "<thead>" in html
+    assert "<tbody>" in html
+    assert "/shell/static/bundles/tables.js" in html
+
 
 def test_scroll_area_macro_renders_expected_markup():
     template = templating._env.from_string(
@@ -30,9 +31,9 @@ def test_scroll_area_macro_renders_expected_markup():
     )
     html = template.render()
     assert 'class="scroll-area-relative"' in html
-    assert '--height: 250px;' in html
+    assert "--height: 250px;" in html
     assert 'id="test-sa"' in html
-    assert 'data-scroll-area-wrapper' in html
+    assert "data-scroll-area-wrapper" in html
     assert 'data-scroll-x="true"' in html
     assert 'data-scroll-y="true"' in html
     assert 'class="scroll-area measuring scroll-x scroll-y"' in html
@@ -40,12 +41,13 @@ def test_scroll_area_macro_renders_expected_markup():
     assert 'data-edge="bottom"' in html
     assert 'data-edge="left"' in html
     assert 'data-edge="right"' in html
-    assert 'scroll-shadow top-0' in html
-    assert 'scroll-shadow bottom-0' in html
-    assert 'scroll-shadow start-0' in html
-    assert 'scroll-shadow end-0' in html
-    assert '<p>Content inside</p>' in html
-    assert '/shell/static/bundles/tables.js' in html
+    assert "scroll-shadow top-0" in html
+    assert "scroll-shadow bottom-0" in html
+    assert "scroll-shadow start-0" in html
+    assert "scroll-shadow end-0" in html
+    assert "<p>Content inside</p>" in html
+    assert "/shell/static/bundles/tables.js" in html
+
 
 def test_demos_render_cleanly_without_unresolved_syntax():
     vt_demo = templating.render("components/_demo_virtual_table.html.jinja")

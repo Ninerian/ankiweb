@@ -46,7 +46,7 @@ def make_router(get_service: Callable) -> APIRouter:
             if preset_name:
                 search = f'preset:"{preset_name}" -is:suspended'
             else:
-                search = '-is:suspended'
+                search = "-is:suspended"
 
         # Current params
         current_params = (
@@ -57,7 +57,9 @@ def make_router(get_service: Callable) -> APIRouter:
         )
         if isinstance(current_params, str):
             try:
-                current_params = [float(x.strip()) for x in current_params.split(",") if x.strip()]
+                current_params = [
+                    float(x.strip()) for x in current_params.split(",") if x.strip()
+                ]
             except (ValueError, TypeError, AttributeError):
                 current_params = []
 
@@ -84,11 +86,17 @@ def make_router(get_service: Callable) -> APIRouter:
 
         async def _run_optimize():
             # Emit running signal
-            yield SSE.patch_signals({
-                "fsrsComputing": True,
-                "fsrsProgressLabel": tr.deck_config_optimizing_preset(current_count=1, total_count=1) if hasattr(tr, "deck_config_optimizing_preset") else "Optimizing...",
-                "fsrsProgressPercent": 50,
-            })
+            yield SSE.patch_signals(
+                {
+                    "fsrsComputing": True,
+                    "fsrsProgressLabel": tr.deck_config_optimizing_preset(
+                        current_count=1, total_count=1
+                    )
+                    if hasattr(tr, "deck_config_optimizing_preset")
+                    else "Optimizing...",
+                    "fsrsProgressPercent": 50,
+                }
+            )
 
             try:
                 raw_bytes = await service.backend_raw_concurrent(
@@ -101,7 +109,10 @@ def make_router(get_service: Callable) -> APIRouter:
                 is_identical = (
                     len(current_params) > 0
                     and len(current_params) == len(params_list)
-                    and all(round(a, 4) == round(b, 4) for a, b in zip(current_params, params_list))
+                    and all(
+                        round(a, 4) == round(b, 4)
+                        for a, b in zip(current_params, params_list)
+                    )
                 ) or len(params_list) == 0
 
                 messages = []
@@ -136,11 +147,13 @@ def make_router(get_service: Callable) -> APIRouter:
 
             except Exception as exc:
                 logger.exception("FSRS parameter optimization failed")
-                yield SSE.patch_signals({
-                    "fsrsComputing": False,
-                    "fsrsProgressLabel": "",
-                    "fsrsProgressPercent": 0,
-                })
+                yield SSE.patch_signals(
+                    {
+                        "fsrsComputing": False,
+                        "fsrsProgressLabel": "",
+                        "fsrsProgressPercent": 0,
+                    }
+                )
                 yield SSE.execute_script(f"alert({json.dumps(str(exc))});")
 
         return DatastarResponse(_run_optimize())
@@ -165,7 +178,7 @@ def make_router(get_service: Callable) -> APIRouter:
             if preset_name:
                 search = f'preset:"{preset_name}" -is:suspended'
             else:
-                search = '-is:suspended'
+                search = "-is:suspended"
 
         params = (
             cfg.get("fsrs_params_6")
@@ -186,34 +199,44 @@ def make_router(get_service: Callable) -> APIRouter:
         )
 
         async def _run_eval():
-            yield SSE.patch_signals({
-                "fsrsEvaluating": True,
-                "fsrsProgressLabel": "Evaluating...",
-                "fsrsProgressPercent": 50,
-            })
+            yield SSE.patch_signals(
+                {
+                    "fsrsEvaluating": True,
+                    "fsrsProgressLabel": "Evaluating...",
+                    "fsrsProgressPercent": 50,
+                }
+            )
             try:
                 raw_bytes = await service.backend_raw_concurrent(
                     "evaluate_params_legacy", req.SerializeToString()
                 )
                 resp = sched_pb.EvaluateParamsResponse.FromString(raw_bytes)
-                smaller_better = tr.deck_config_smaller_is_better() if hasattr(tr, "deck_config_smaller_is_better") else "Smaller is better"
+                smaller_better = (
+                    tr.deck_config_smaller_is_better()
+                    if hasattr(tr, "deck_config_smaller_is_better")
+                    else "Smaller is better"
+                )
                 eval_msg = f"Log loss: {resp.log_loss:.4f}, RMSE(bins): {resp.rmse_bins * 100:.2f}%. {smaller_better}"
 
-                yield SSE.patch_signals({
-                    "fsrsEvaluating": False,
-                    "fsrsProgressLabel": "",
-                    "fsrsProgressPercent": 100,
-                    "fsrsEvalLogLoss": resp.log_loss,
-                    "fsrsEvalRmse": resp.rmse_bins,
-                })
+                yield SSE.patch_signals(
+                    {
+                        "fsrsEvaluating": False,
+                        "fsrsProgressLabel": "",
+                        "fsrsProgressPercent": 100,
+                        "fsrsEvalLogLoss": resp.log_loss,
+                        "fsrsEvalRmse": resp.rmse_bins,
+                    }
+                )
                 yield SSE.execute_script(f"alert({json.dumps(eval_msg)});")
             except Exception as exc:
                 logger.exception("FSRS evaluation failed")
-                yield SSE.patch_signals({
-                    "fsrsEvaluating": False,
-                    "fsrsProgressLabel": "",
-                    "fsrsProgressPercent": 0,
-                })
+                yield SSE.patch_signals(
+                    {
+                        "fsrsEvaluating": False,
+                        "fsrsProgressLabel": "",
+                        "fsrsProgressPercent": 0,
+                    }
+                )
                 yield SSE.execute_script(f"alert({json.dumps(str(exc))});")
 
         return DatastarResponse(_run_eval())
@@ -250,7 +273,7 @@ def make_router(get_service: Callable) -> APIRouter:
             if preset_name:
                 search = f'preset:"{preset_name}" -is:suspended'
             else:
-                search = '-is:suspended'
+                search = "-is:suspended"
 
         req = sched_pb.SimulateFsrsReviewRequest(
             params=params,
@@ -261,9 +284,14 @@ def make_router(get_service: Callable) -> APIRouter:
             review_limit=int(cfg.get("reviews_per_day", 200)),
             max_interval=int(cfg.get("maximum_review_interval", 36500)),
             search=search,
-            new_cards_ignore_review_limit=bool(payload.get("new_cards_ignore_review_limit", False)),
+            new_cards_ignore_review_limit=bool(
+                payload.get("new_cards_ignore_review_limit", False)
+            ),
             easy_days_percentages=cfg.get("easy_days_percentages") or [1.0] * 7,
-            review_order=cast(deck_cfg_pb.DeckConfig.Config.ReviewCardOrder.ValueType, int(cfg.get("review_order", 0))),
+            review_order=cast(
+                deck_cfg_pb.DeckConfig.Config.ReviewCardOrder.ValueType,
+                int(cfg.get("review_order", 0)),
+            ),
             suspend_after_lapse_count=0,
             historical_retention=float(cfg.get("historical_retention", 0.9)),
             learning_step_count=len(cfg.get("learn_steps") or [1, 10]),
@@ -271,11 +299,13 @@ def make_router(get_service: Callable) -> APIRouter:
         )
 
         async def _run_calc():
-            yield SSE.patch_signals({
-                "fsrsComputingRetention": True,
-                "fsrsProgressLabel": "Computing optimal retention...",
-                "fsrsProgressPercent": 50,
-            })
+            yield SSE.patch_signals(
+                {
+                    "fsrsComputingRetention": True,
+                    "fsrsProgressLabel": "Computing optimal retention...",
+                    "fsrsProgressPercent": 50,
+                }
+            )
             try:
                 raw_bytes = await service.backend_raw_concurrent(
                     "compute_optimal_retention", req.SerializeToString()
@@ -283,19 +313,23 @@ def make_router(get_service: Callable) -> APIRouter:
                 resp = sched_pb.ComputeOptimalRetentionResponse.FromString(raw_bytes)
                 opt_ret = round(resp.optimal_retention, 4)
 
-                yield SSE.patch_signals({
-                    "fsrsComputingRetention": False,
-                    "fsrsProgressLabel": "",
-                    "fsrsProgressPercent": 100,
-                    "fsrsOptimalRetention": opt_ret,
-                })
+                yield SSE.patch_signals(
+                    {
+                        "fsrsComputingRetention": False,
+                        "fsrsProgressLabel": "",
+                        "fsrsProgressPercent": 100,
+                        "fsrsOptimalRetention": opt_ret,
+                    }
+                )
             except Exception as exc:
                 logger.exception("Computing optimal retention failed")
-                yield SSE.patch_signals({
-                    "fsrsComputingRetention": False,
-                    "fsrsProgressLabel": "",
-                    "fsrsProgressPercent": 0,
-                })
+                yield SSE.patch_signals(
+                    {
+                        "fsrsComputingRetention": False,
+                        "fsrsProgressLabel": "",
+                        "fsrsProgressPercent": 0,
+                    }
+                )
                 yield SSE.execute_script(f"alert({json.dumps(str(exc))});")
 
         return DatastarResponse(_run_calc())
@@ -332,7 +366,7 @@ def make_router(get_service: Callable) -> APIRouter:
             if preset_name:
                 search = f'preset:"{preset_name}" -is:suspended'
             else:
-                search = '-is:suspended'
+                search = "-is:suspended"
 
         cur_dr = float(cfg.get("desired_retention", 0.9))
         prev_dr = float(payload.get("previous_dr", cur_dr))
@@ -354,14 +388,26 @@ def make_router(get_service: Callable) -> APIRouter:
             factor = round(cur_cost / prev_cost, 2) if prev_cost else 1.0
 
             if round(cur_dr, 2) == round(prev_dr, 2) or factor == 1.0:
-                workload_msg = tr.deck_config_workload_factor_unchanged() if hasattr(tr, "deck_config_workload_factor_unchanged") else ""
+                workload_msg = (
+                    tr.deck_config_workload_factor_unchanged()
+                    if hasattr(tr, "deck_config_workload_factor_unchanged")
+                    else ""
+                )
             else:
-                workload_msg = tr.deck_config_workload_factor_change(factor=f"{factor:.2f}", previous_dr=str(prev_key)) if hasattr(tr, "deck_config_workload_factor_change") else f"Workload factor: {factor:.2f}"
+                workload_msg = (
+                    tr.deck_config_workload_factor_change(
+                        factor=f"{factor:.2f}", previous_dr=str(prev_key)
+                    )
+                    if hasattr(tr, "deck_config_workload_factor_change")
+                    else f"Workload factor: {factor:.2f}"
+                )
 
-            return signals_response({
-                "fsrsWorkloadMsg": workload_msg,
-                "fsrsWorkloadFactor": factor,
-            })
+            return signals_response(
+                {
+                    "fsrsWorkloadMsg": workload_msg,
+                    "fsrsWorkloadFactor": factor,
+                }
+            )
         except Exception:
             logger.exception("Failed to get retention workload")
             return DatastarResponse()
@@ -374,12 +420,14 @@ def make_router(get_service: Callable) -> APIRouter:
             await service.backend_raw_concurrent("set_wants_abort", b"")
         except Exception:
             logger.exception("Failed to set abort flag")
-        return signals_response({
-            "fsrsComputing": False,
-            "fsrsEvaluating": False,
-            "fsrsComputingRetention": False,
-            "fsrsProgressLabel": "Aborted",
-            "fsrsProgressPercent": 0,
-        })
+        return signals_response(
+            {
+                "fsrsComputing": False,
+                "fsrsEvaluating": False,
+                "fsrsComputingRetention": False,
+                "fsrsProgressLabel": "Aborted",
+                "fsrsProgressPercent": 0,
+            }
+        )
 
     return router

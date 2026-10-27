@@ -13,15 +13,11 @@ class AddNoteMedia(ACBaseModel):
     """A single audio/video/picture media item to download and embed in a new note."""
 
     filename: str = Field(description="Target filename in the media folder.")
-    data: str | None = Field(
-        default=None, description="Base64-encoded file contents."
-    )
+    data: str | None = Field(default=None, description="Base64-encoded file contents.")
     path: str | None = Field(
         default=None, description="Absolute path to read the file from."
     )
-    url: str | None = Field(
-        default=None, description="URL to download the file from."
-    )
+    url: str | None = Field(default=None, description="URL to download the file from.")
     skipHash: str | None = Field(
         default=None, description="Skip the file if its MD5 hash matches this value."
     )
@@ -183,9 +179,7 @@ class UpdateNoteSpec(ACBaseModel):
     fields: dict[str, str] | None = Field(
         default=None, description="Field name -> new value map."
     )
-    tags: list[str] | None = Field(
-        default=None, description="New complete tag list."
-    )
+    tags: list[str] | None = Field(default=None, description="New complete tag list.")
     audio: list[AddNoteMedia] = Field(
         default_factory=list, description="Audio media to attach."
     )
@@ -211,9 +205,7 @@ class UpdateNoteModelSpec(ACBaseModel):
     fields: dict[str, str] = Field(
         default_factory=dict, description="Field name -> new value map."
     )
-    tags: list[str] | None = Field(
-        default=None, description="New complete tag list."
-    )
+    tags: list[str] | None = Field(default=None, description="New complete tag list.")
 
 
 class UpdateNoteModelParams(ACBaseModel):
@@ -228,9 +220,7 @@ class AddTagsParams(ACBaseModel):
     """Add tags to the given notes."""
 
     notes: list[int] = Field(default_factory=list, description="Note ids.")
-    tags: str | None = Field(
-        default=None, description="Space-separated tags to add."
-    )
+    tags: str | None = Field(default=None, description="Space-separated tags to add.")
     add: bool = Field(default=True, description="Reserved flag; tags are always added.")
 
 
@@ -258,9 +248,7 @@ class ReplaceTagsParams(ACBaseModel):
     tag_to_replace: str | None = Field(
         default=None, description="Existing tag to replace."
     )
-    replace_with_tag: str | None = Field(
-        default=None, description="Replacement tag."
-    )
+    replace_with_tag: str | None = Field(default=None, description="Replacement tag.")
 
 
 class ReplaceTagsInAllNotesParams(ACBaseModel):
@@ -269,9 +257,7 @@ class ReplaceTagsInAllNotesParams(ACBaseModel):
     tag_to_replace: str | None = Field(
         default=None, description="Existing tag to replace."
     )
-    replace_with_tag: str | None = Field(
-        default=None, description="Replacement tag."
-    )
+    replace_with_tag: str | None = Field(default=None, description="Replacement tag.")
 
 
 class NotesModTimeParams(ACBaseModel):

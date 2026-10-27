@@ -228,7 +228,12 @@ class DeckNotifier:
                     self.state.resync_pending = False
                 try:
                     delay = await self._tick(cfg)
-                except (OSError, RuntimeError, TypeError, ValueError) as exc:  # a fetch/backend error must NOT kill the task
+                except (
+                    OSError,
+                    RuntimeError,
+                    TypeError,
+                    ValueError,
+                ) as exc:  # a fetch/backend error must NOT kill the task
                     logger.warning("DeckNotifier tick failed: %s", exc)
                     self.state.status.last_error = str(exc)
                     delay = cfg.retry_sec
@@ -295,7 +300,12 @@ class DeckNotifier:
     async def _safe_post(self, cfg: NotifyConfig, payload: dict) -> tuple:
         try:
             return await self._post(cfg, payload)
-        except (OSError, RuntimeError, TypeError, ValueError) as exc:  # connection error, timeout, etc. -> retry
+        except (
+            OSError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ) as exc:  # connection error, timeout, etc. -> retry
             logger.warning("DeckNotifier POST failed: %s", exc)
             return False, str(exc)
 

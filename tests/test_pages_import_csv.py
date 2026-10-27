@@ -75,7 +75,9 @@ def test_next_import_csv_semicolon_separated(test_setup):
 def test_next_import_csv_header_directives(test_setup):
     client, tmp_dir = test_setup
     csv_file = tmp_dir / "headers.csv"
-    csv_file.write_text("#separator:Semicolon\n#html:true\n#deck:CustomDeck\nFront;Back\nF1;<b>B1</b>\n")
+    csv_file.write_text(
+        "#separator:Semicolon\n#html:true\n#deck:CustomDeck\nFront;Back\nF1;<b>B1</b>\n"
+    )
 
     r = client.get(f"/import-csv/{csv_file}")
     assert r.status_code == 200

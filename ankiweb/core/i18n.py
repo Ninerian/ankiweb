@@ -30,6 +30,6 @@ def _ensure_lang() -> None:
 
 _ensure_lang()
 
-from anki.lang import tr_legacyglobal as tr
+tr = anki.lang.tr_legacyglobal
 
 __all__ = ["tr"]

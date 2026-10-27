@@ -60,6 +60,7 @@ def test_addnote_creates_note(client):
     note = _run(client, lambda col: col.get_note(next(iter(col.find_notes("Hello")))))
     assert note.fields == ["Hello", "World"]
 
+
 def test_addnote_empty_rejected(client):
     before = _run(client, lambda col: len(col.find_notes("")))
     with client.websocket_connect("/ws?context=add") as ws:

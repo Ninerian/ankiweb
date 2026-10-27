@@ -99,6 +99,7 @@ def test_login_datastar_correct_unlocks(tmp_path: Path):
         assert r.cookies.get(COOKIE) == auth_token("secret")
         assert c.get("/deckbrowser", follow_redirects=False).status_code == 200
 
+
 def test_bad_cookie_still_gated(tmp_path: Path):
     with _client(tmp_path, "secret") as c:
         c.cookies.set(COOKIE, "garbage")
@@ -120,6 +121,7 @@ def test_ws_rejected_without_cookie(tmp_path: Path):
         c.websocket_connect("/ws?context=browser") as ws,
     ):
         ws.receive_json()
+
 
 def test_ws_ok_with_cookie(tmp_path: Path):
     with _client(tmp_path, "secret") as c:

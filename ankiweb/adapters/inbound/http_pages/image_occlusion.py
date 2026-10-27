@@ -43,7 +43,10 @@ def make_router(get_service: Callable) -> APIRouter:
         service = get_service()
         # Check if it's within import_tmp
         resolved_path = Path(path).resolve()
-        if import_tmp.is_within(service.settings, str(resolved_path)) and resolved_path.is_file():
+        if (
+            import_tmp.is_within(service.settings, str(resolved_path))
+            and resolved_path.is_file()
+        ):
             # touch on read
             try:
                 os.utime(resolved_path, None)
@@ -85,7 +88,9 @@ def make_router(get_service: Callable) -> APIRouter:
             if not io_nt:
                 col.add_image_occlusion_notetype()
                 io_nt = col.models.by_name("Image Occlusion")
-            default_nt_id = io_nt["id"] if io_nt else (notetypes[0]["id"] if notetypes else 0)
+            default_nt_id = (
+                io_nt["id"] if io_nt else (notetypes[0]["id"] if notetypes else 0)
+            )
 
             # Selected deck id
             selected_deck_id = col.decks.get_current_id()
@@ -128,7 +133,9 @@ def make_router(get_service: Callable) -> APIRouter:
                         props_str = "".join(f":{k}={v}" for k, v in props.items())
                         if hide_all and "oi" not in props:
                             props_str += ":oi=1"
-                        cloze_parts.append(f"{{{{c{ord_num}::image-occlusion:{sh_type}{props_str}}}}}")
+                        cloze_parts.append(
+                            f"{{{{c{ord_num}::image-occlusion:{sh_type}{props_str}}}}}"
+                        )
                 occlusions = "<br>".join(cloze_parts)
                 shapes_count = total_shapes
 
@@ -146,7 +153,9 @@ def make_router(get_service: Callable) -> APIRouter:
                     if import_tmp.is_within(service.settings, str(resolved)):
                         image_path = str(resolved)
                     else:
-                        raise HTTPException(status_code=403, detail="Image path forbidden")
+                        raise HTTPException(
+                            status_code=403, detail="Image path forbidden"
+                        )
 
                 image_url = f"/image-occlusion-img/{image_path}"
 
@@ -206,26 +215,32 @@ def make_router(get_service: Callable) -> APIRouter:
         int(payload.get("selected_deck_id", 1))
 
         # Count non-text occlusions: c1, c2, ... (c0 is text)
-        non_text_occlusions = re.findall(r"\{\{c([1-9]\d*)::image-occlusion:", occlusions or "")
+        non_text_occlusions = re.findall(
+            r"\{\{c([1-9]\d*)::image-occlusion:", occlusions or ""
+        )
         shapes_count = int(payload.get("shapes_count", len(non_text_occlusions)))
         if shapes_count <= 0 and len(non_text_occlusions) > 0:
             shapes_count = len(non_text_occlusions)
 
         # Reject empty occlusion / 0 non-text shapes (legacy returns early without saving)
         if not occlusions or shapes_count <= 0 or len(non_text_occlusions) == 0:
-            return signals_response({
-                "is_saving": False,
-                "status_msg": "Cannot save: no occlusions drawn.",
-                "status_type": "danger",
-            })
+            return signals_response(
+                {
+                    "is_saving": False,
+                    "status_msg": "Cannot save: no occlusions drawn.",
+                    "status_type": "danger",
+                }
+            )
 
         # Adjust occlusions for hide_all (ensure :oi=1 is present on all shapes or removed)
         if hide_all:
+
             def add_oi(m):
                 content = m.group(1)
                 if ":oi=" not in content:
                     return "{{" + content + ":oi=1}}"
                 return m.group(0)
+
             occlusions = re.sub(r"\{\{([^}]+)\}\}", add_oi, occlusions)
         else:
             occlusions = re.sub(r":oi=1", "", occlusions)
@@ -282,21 +297,27 @@ def make_router(get_service: Callable) -> APIRouter:
 
         try:
             await service.run_op(do_save)
-            return DatastarResponse([
-                SSE.patch_signals({
-                    "is_saving": False,
-                    "status_msg": "Saved successfully!",
-                    "status_type": "success",
-                    "note_id": saved_nid,
-                }),
-                SSE.redirect("/deckbrowser"),
-            ])
+            return DatastarResponse(
+                [
+                    SSE.patch_signals(
+                        {
+                            "is_saving": False,
+                            "status_msg": "Saved successfully!",
+                            "status_type": "success",
+                            "note_id": saved_nid,
+                        }
+                    ),
+                    SSE.redirect("/deckbrowser"),
+                ]
+            )
         except Exception as e:
             logger.exception("Failed to save image occlusion note")
-            return signals_response({
-                "is_saving": False,
-                "status_msg": f"Failed to save: {e!s}",
-                "status_type": "danger",
-            })
+            return signals_response(
+                {
+                    "is_saving": False,
+                    "status_msg": f"Failed to save: {e!s}",
+                    "status_type": "danger",
+                }
+            )
 
     return router

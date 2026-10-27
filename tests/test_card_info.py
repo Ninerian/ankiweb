@@ -30,5 +30,3 @@ def test_card_stats_rpc_passthrough(client):
 
     assert "card_stats" in PASSTHROUGH
     assert "get_review_logs" in PASSTHROUGH
-
-

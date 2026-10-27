@@ -53,7 +53,7 @@ def test_cloze_format_against_backend(tmp_path):
         occlusions=cloze_str,
         header="Test Header",
         back_extra="Test Extra",
-        tags=["io-test"]
+        tags=["io-test"],
     )
     col._backend.add_image_occlusion_note_raw(req.SerializeToString())
 

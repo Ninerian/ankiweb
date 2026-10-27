@@ -36,7 +36,9 @@ def _make_filtered(client, search="deck:Default", limit=10):
         del g.config.search_terms[:]
         g.config.search_terms.append(
             dp.Deck.Filtered.SearchTerm(
-                search=search, limit=limit, order=dp.Deck.Filtered.SearchTerm.Order.ADDED
+                search=search,
+                limit=limit,
+                order=dp.Deck.Filtered.SearchTerm.Order.ADDED,
             )
         )
         return col.sched.add_or_update_filtered_deck(g).id
@@ -160,5 +162,3 @@ def test_filtered_deck_error_when_no_match(client):
     events = parse_datastar_events(r.text)
     assert any("err" in data for _, data in events)
     assert not any("window.location = '/overview'" in data for _, data in events)
-
-

@@ -95,19 +95,21 @@ def _build_editor_context(
         size = int(fld.get("size", 20))
         rtl = bool(fld.get("rtl", False))
 
-        fields_info.append({
-            "index": i,
-            "name": fld["name"],
-            "value": val,
-            "collapsed": collapsed,
-            "sticky": sticky,
-            "plain_text": plain_text,
-            "is_cloze": is_cloze,
-            "description": desc,
-            "font": font,
-            "size": size,
-            "rtl": rtl,
-        })
+        fields_info.append(
+            {
+                "index": i,
+                "name": fld["name"],
+                "value": val,
+                "collapsed": collapsed,
+                "sticky": sticky,
+                "plain_text": plain_text,
+                "is_cloze": is_cloze,
+                "description": desc,
+                "font": font,
+                "size": size,
+                "rtl": rtl,
+            }
+        )
 
         signals[f"field_val_{i}"] = val
         signals[f"field_collapsed_{i}"] = collapsed
@@ -158,7 +160,9 @@ def make_router(get_service: Callable) -> APIRouter:
         def build(col):
             cur_ntid = int(col.models.current()["id"])
             sticky = sticky_storage.get(cur_ntid, {})
-            ctx = _build_editor_context(col, mode="add", notetype_id=cur_ntid, sticky_values=sticky)
+            ctx = _build_editor_context(
+                col, mode="add", notetype_id=cur_ntid, sticky_values=sticky
+            )
             body = templating.render("pages/editor.html.jinja", **ctx)
             return render_page(
                 context="add",
@@ -187,6 +191,7 @@ def make_router(get_service: Callable) -> APIRouter:
         idx = int(payload.get("index", 0))
         html_val = str(payload.get("html", payload.get(f"field_val_{idx}", "")))
         nid = payload.get("nid")
+
         def fn(col):
             if nid is not None:
                 note = col.get_note(int(nid))
@@ -198,11 +203,13 @@ def make_router(get_service: Callable) -> APIRouter:
         if nid is not None:
             await service.run(fn)
 
-        return signals_response({
-            f"field_val_{idx}": html_val,
-            f"field_saving_{idx}": False,
-            f"field_saved_{idx}": True,
-        })
+        return signals_response(
+            {
+                f"field_val_{idx}": html_val,
+                f"field_saving_{idx}": False,
+                f"field_saved_{idx}": True,
+            }
+        )
 
     @router.post("/editor/blur-field")
     async def blur_field(request: Request, payload_signals: ReadSignals = None):
@@ -214,7 +221,9 @@ def make_router(get_service: Callable) -> APIRouter:
                 payload = json.loads(body_bytes.decode("utf-8"))
             except ValueError:
                 payload = {}
-        logger.warning(f"BLUR_FIELD payload={payload}, payload_signals={payload_signals}")
+        logger.warning(
+            f"BLUR_FIELD payload={payload}, payload_signals={payload_signals}"
+        )
         if not payload and payload_signals:
             payload = payload_signals
         if payload_signals and not payload.get("nid") and payload_signals.get("nid"):
@@ -222,6 +231,7 @@ def make_router(get_service: Callable) -> APIRouter:
         idx = int(payload.get("index", 0))
         html_val = str(payload.get("html", payload.get(f"field_val_{idx}", "")))
         nid = payload.get("nid")
+
         def fn(col):
             if nid is not None:
                 note = col.get_note(int(nid))
@@ -232,11 +242,13 @@ def make_router(get_service: Callable) -> APIRouter:
 
         if nid is not None:
             await service.run_op(fn, initiator="editor")
-        return signals_response({
-            f"field_val_{idx}": html_val,
-            f"field_saving_{idx}": False,
-            f"field_saved_{idx}": True,
-        })
+        return signals_response(
+            {
+                f"field_val_{idx}": html_val,
+                f"field_saving_{idx}": False,
+                f"field_saved_{idx}": True,
+            }
+        )
 
     @router.post("/editor/save-tags")
     async def save_tags(payload: ReadSignals):
@@ -255,6 +267,7 @@ def make_router(get_service: Callable) -> APIRouter:
             tags = [str(tags_raw).strip()]
 
         if nid is not None:
+
             def fn(col):
                 note = col.get_note(int(nid))
                 note.tags = tags
@@ -272,6 +285,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
         ntid = payload.get("notetype_id")
         if ntid is not None:
+
             def fn(col):
                 model = col.models.get(int(ntid))
                 if 0 <= idx < len(model["flds"]):
@@ -293,6 +307,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
         ntid = payload.get("notetype_id")
         if ntid is not None:
+
             def fn(col):
                 model = col.models.get(int(ntid))
                 if 0 <= idx < len(model["flds"]):
@@ -318,7 +333,9 @@ def make_router(get_service: Callable) -> APIRouter:
 
         def render(col):
             col.models.set_current(col.models.get(ntid))
-            ctx = _build_editor_context(col, mode="add", notetype_id=ntid, deck_id=did, sticky_values=sticky)
+            ctx = _build_editor_context(
+                col, mode="add", notetype_id=ntid, deck_id=did, sticky_values=sticky
+            )
             return templating.render("pages/editor.html.jinja", **ctx)
 
         html = await service.run(render)
@@ -345,6 +362,7 @@ def make_router(get_service: Callable) -> APIRouter:
 
         def do_undo(col):
             from anki.errors import UndoEmpty
+
             if not col.undo_status().undo:
                 return False, "Nothing to undo"
             try:
@@ -393,10 +411,12 @@ def make_router(get_service: Callable) -> APIRouter:
 
         if err:
             is_dup = "duplicate" in err.lower()
-            return signals_response({
-                "toast_msg": err,
-                "is_duplicate": is_dup,
-            })
+            return signals_response(
+                {
+                    "toast_msg": err,
+                    "is_duplicate": is_dup,
+                }
+            )
 
         # Successful addition! Record sticky field values
         def get_model_sticky(col):
@@ -412,7 +432,9 @@ def make_router(get_service: Callable) -> APIRouter:
 
         # Rerender blank note preserving sticky fields
         def render_fresh(col):
-            ctx = _build_editor_context(col, mode="add", notetype_id=ntid, deck_id=did, sticky_values=sticky)
+            ctx = _build_editor_context(
+                col, mode="add", notetype_id=ntid, deck_id=did, sticky_values=sticky
+            )
             return templating.render("pages/editor.html.jinja", **ctx)
 
         html = await service.run(render_fresh)
@@ -421,7 +443,9 @@ def make_router(get_service: Callable) -> APIRouter:
         return DatastarResponse(
             [
                 SSE.patch_elements(html, selector="#editor-root"),
-                SSE.patch_signals({"toast_msg": tr.adding_added(), "is_duplicate": False}),
+                SSE.patch_signals(
+                    {"toast_msg": tr.adding_added(), "is_duplicate": False}
+                ),
             ]
         )
 

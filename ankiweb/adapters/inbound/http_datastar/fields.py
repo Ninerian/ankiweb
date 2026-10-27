@@ -61,6 +61,7 @@ def render_fields_html(col, ntid: int, *, return_url: str) -> str:
         cancel_label=tr.actions_cancel(),
     )
 
+
 def make_fields_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/fields")
 
@@ -136,6 +137,7 @@ def make_fields_routes(get_service: Callable) -> APIRouter:
                 col.models.set_sort_index(m_reloaded, sortf)
                 col.models.update_dict(m_reloaded)
             return changes
+
         try:
             await service.run_op(apply, initiator="fields")
         except Exception as exc:

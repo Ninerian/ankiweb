@@ -18,6 +18,7 @@ from ankiweb.adapters.inbound.http_shared import templating
 
 logger = logging.getLogger(__name__)
 
+
 def render_card_layout_html(col, ntid: int, *, return_url: str) -> str:
     m = col.models.get(ntid)
     nids = col.models.nids(ntid)
@@ -54,6 +55,7 @@ def render_card_layout_html(col, ntid: int, *, return_url: str) -> str:
         return_url=return_url,
     )
 
+
 def make_card_layout_routes(get_service: Callable) -> APIRouter:
     router = APIRouter(prefix="/card-layout")
 
@@ -74,6 +76,7 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
             if key in rows and isinstance(rows[key], dict):
                 payload_templates.append(dict(rows[key]))
         css = draft.get("css", "")
+
         def apply(col):
             ntid = int(p["notetypeId"])
             m = col.models.get(ntid)
@@ -117,4 +120,5 @@ def make_card_layout_routes(get_service: Callable) -> APIRouter:
             logger.exception("Failed to save card layout")
             return error_response(exc)
         return redirect_response(return_url)
+
     return router

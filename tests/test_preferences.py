@@ -65,9 +65,7 @@ def test_saveprefs_roundtrip(tmp_path: Path):
         assert r.status_code == 200
         events = parse_datastar_events(r.text)
         assert any("window.location = '/deckbrowser'" in data for _, data in events)
-        p = client.portal.call(
-            app.state.service.run, lambda col: col.get_preferences()
-        )
+        p = client.portal.call(app.state.service.run, lambda col: col.get_preferences())
         assert p.scheduling.rollover == 6
         assert p.scheduling.learn_ahead_secs == 20 * 60  # form minutes -> proto seconds
         assert p.reviewing.time_limit_secs == 3 * 60
@@ -83,9 +81,7 @@ def test_saveprefs_svelte_editor_roundtrip(tmp_path: Path):
     ) as client:
         assert client.portal is not None
         app = cast(Any, client.app)
-        client.portal.call(
-            app.state.service.run, lambda col: col.get_preferences()
-        )
+        client.portal.call(app.state.service.run, lambda col: col.get_preferences())
         payload = {
             "rollover": 4,
             "learn_ahead_mins": 20,
@@ -131,6 +127,7 @@ def test_saveprefs_svelte_editor_roundtrip(tmp_path: Path):
         )
         assert exp == {"1": False}
 
+
 def test_saveprefs_inverse_checkboxes(tmp_path: Path):
     """legacy_timezone checked => new_timezone False; show_play_buttons unchecked => hide True."""
     with TestClient(
@@ -173,9 +170,7 @@ def test_saveprefs_inverse_checkboxes(tmp_path: Path):
             "/preferences/savePrefs", json=payload, headers={"Datastar-Request": "true"}
         )
         assert r.status_code == 200
-        p = client.portal.call(
-            app.state.service.run, lambda col: col.get_preferences()
-        )
+        p = client.portal.call(app.state.service.run, lambda col: col.get_preferences())
         assert p.scheduling.new_timezone is False
         assert p.reviewing.hide_audio_play_buttons is True
 
@@ -220,14 +215,10 @@ def test_saveprefs_direct_signals(tmp_path: Path):
             "/preferences/savePrefs", json=signals, headers={"Datastar-Request": "true"}
         )
         assert r.status_code == 200
-        p = client.portal.call(
-            app.state.service.run, lambda col: col.get_preferences()
-        )
+        p = client.portal.call(app.state.service.run, lambda col: col.get_preferences())
         assert p.scheduling.rollover == 5
         assert p.scheduling.new_timezone is False
         assert p.reviewing.hide_audio_play_buttons is True
         assert p.reviewing.fsrs_short_term_with_steps_enabled is True
         assert p.editing.default_search_text == "tag:test"
         assert p.editing.render_latex is True
-
-

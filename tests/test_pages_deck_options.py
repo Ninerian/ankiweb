@@ -32,6 +32,7 @@ def test_next_deck_options_serves_html(client):
 def test_next_deck_options_filtered_deck(client):
     def make_dyn(col):
         import anki.decks_pb2 as dp
+
         # Add a note so filtered deck has matching cards
         note = col.new_note(col.models.by_name("Basic"))
         note["Front"] = "test front"
@@ -55,13 +56,16 @@ def test_next_deck_options_filtered_deck(client):
     assert r.status_code == 200
     assert "deck not normal" in r.text
 
+
 def test_next_deck_options_change_preset(client):
     did = client.portal.call(
         client.app.state.service.run, lambda col: col.decks.id("Default")
     )
+
     # Add a custom preset first
     def add_cfg(col):
         return col.decks.add_config_returning_id("Test Preset")
+
     new_pid = client.portal.call(client.app.state.service.run, add_cfg)
 
     r = client.post(
@@ -97,7 +101,7 @@ def test_next_deck_options_add_preset(client):
     # Verify preset exists in collection
     configs = client.portal.call(
         client.app.state.service.run,
-        lambda col: [c["name"] for c in col.decks.all_config()]
+        lambda col: [c["name"] for c in col.decks.all_config()],
     )
     assert "Brand New Preset" in configs
 
@@ -128,7 +132,7 @@ def test_next_deck_options_rename_preset(client):
     # Add preset to rename
     pid = client.portal.call(
         client.app.state.service.run,
-        lambda col: col.decks.add_config_returning_id("To Rename")
+        lambda col: col.decks.add_config_returning_id("To Rename"),
     )
     r = client.post(
         "/deck-options/rename-preset",
@@ -179,9 +183,12 @@ def test_next_deck_options_delete_preset(client):
     def check_confs(col):
         return col.decks.get(did_parent)["conf"], col.decks.get(did_child)["conf"]
 
-    parent_conf, child_conf = client.portal.call(client.app.state.service.run, check_confs)
+    parent_conf, child_conf = client.portal.call(
+        client.app.state.service.run, check_confs
+    )
     assert parent_conf == 1
     assert child_conf == 1
+
 
 def test_next_deck_options_save_and_roundtrip(client):
     did = client.portal.call(
@@ -232,7 +239,7 @@ def test_next_deck_options_save_to_all_subdecks(client):
     # Add new preset
     pid = client.portal.call(
         client.app.state.service.run,
-        lambda col: col.decks.add_config_returning_id("Subdeck Preset")
+        lambda col: col.decks.add_config_returning_id("Subdeck Preset"),
     )
     r = client.post(
         "/deck-options/save",
@@ -249,8 +256,7 @@ def test_next_deck_options_save_to_all_subdecks(client):
     assert r.status_code == 200
     # Verify child deck has conf set to pid
     child_conf = client.portal.call(
-        client.app.state.service.run,
-        lambda col: col.decks.get(child_id)["conf"]
+        client.app.state.service.run, lambda col: col.decks.get(child_id)["conf"]
     )
     assert child_conf == pid
 

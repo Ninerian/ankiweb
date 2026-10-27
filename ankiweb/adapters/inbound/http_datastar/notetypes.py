@@ -19,6 +19,7 @@ from ankiweb.core.i18n import tr
 
 logger = logging.getLogger(__name__)
 
+
 def _heading() -> str:
     """Prefer the desktop "Manage Note Types" string; fall back to a keyless heading.
     (qt_misc_manage_note_types exists; notetypes_notetypes does not.)"""

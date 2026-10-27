@@ -143,9 +143,7 @@ def test_cross_origin_referer_defaults_to_notetypes(client):
 )
 def test_unsafe_return_to_defaults_to_notetypes(client, destination):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
-    response = client.get(
-        f"/card-layout/{ntid}", params={"return_to": destination}
-    )
+    response = client.get(f"/card-layout/{ntid}", params={"return_to": destination})
 
     assert response.status_code == 200
     assert _layout_navigation(response.text) == ("/notetypes", "/notetypes")
@@ -158,9 +156,7 @@ def test_cancel_returns_to_context_without_persisting_changes(client):
         client.app.state.service.run,
         lambda col: [(t["name"], t["qfmt"], t["afmt"]) for t in _tmpls(col, ntid)],
     )
-    response = client.get(
-        f"/card-layout/{ntid}", params={"return_to": destination}
-    )
+    response = client.get(f"/card-layout/{ntid}", params={"return_to": destination})
 
     assert response.status_code == 200
     assert _layout_navigation(response.text) == (destination, destination)
@@ -200,7 +196,6 @@ def test_edit_qfmt_afmt_persists_and_redirects_to_return_context(client):
     )
     assert t0["qfmt"] == "{{Front}}<hr>custom"
     assert t0["afmt"] == "{{FrontSide}}<hr id=answer>{{Back}}<br>extra"
-
 
 
 @pytest.mark.parametrize(
@@ -265,6 +260,8 @@ def test_edit_css_persists(client):
         client.app.state.service.run, lambda col: col.models.get(ntid)
     )
     assert ".card { font-family: monospace;" in m["css"]
+
+
 # (d) rename a template persists
 def test_rename_template_persists_and_uses_safe_default(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
@@ -315,8 +312,20 @@ def test_reposition_persists(client):
     p1 = _make_layout_draft_payload(
         ntid,
         [
-            {"key": "t0", "orig": 0, "name": "First", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
-            {"key": "t1", "orig": None, "name": "Second", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
+            {
+                "key": "t0",
+                "orig": 0,
+                "name": "First",
+                "qfmt": "{{Front}}",
+                "afmt": "{{Back}}",
+            },
+            {
+                "key": "t1",
+                "orig": None,
+                "name": "Second",
+                "qfmt": "{{Back}}",
+                "afmt": "{{Front}}",
+            },
         ],
     )
     client.post(
@@ -327,15 +336,25 @@ def test_reposition_persists(client):
         "notetypeId": ntid,
         "layoutDraft": {
             "rows": {
-                "t0": {"orig": 0, "name": "First", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
-                "t1": {"orig": 1, "name": "Second", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
+                "t0": {
+                    "orig": 0,
+                    "name": "First",
+                    "qfmt": "{{Front}}",
+                    "afmt": "{{Back}}",
+                },
+                "t1": {
+                    "orig": 1,
+                    "name": "Second",
+                    "qfmt": "{{Back}}",
+                    "afmt": "{{Front}}",
+                },
             },
             "order": ["t1", "t0"],
             "nextId": 2,
             "css": "",
         },
     }
-    r = client.post(
+    client.post(
         "/card-layout/savelayout", json=p2, headers={"Datastar-Request": "true"}
     )
     names = client.portal.call(
@@ -351,8 +370,20 @@ def test_delete_template_persists(client):
     p1 = _make_layout_draft_payload(
         ntid,
         [
-            {"key": "t0", "orig": 0, "name": "T1", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
-            {"key": "t1", "orig": None, "name": "T2", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
+            {
+                "key": "t0",
+                "orig": 0,
+                "name": "T1",
+                "qfmt": "{{Front}}",
+                "afmt": "{{Back}}",
+            },
+            {
+                "key": "t1",
+                "orig": None,
+                "name": "T2",
+                "qfmt": "{{Back}}",
+                "afmt": "{{Front}}",
+            },
         ],
     )
     client.post(
@@ -366,7 +397,12 @@ def test_delete_template_persists(client):
         "notetypeId": ntid,
         "layoutDraft": {
             "rows": {
-                "t0": {"orig": 0, "name": "T1", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
+                "t0": {
+                    "orig": 0,
+                    "name": "T1",
+                    "qfmt": "{{Front}}",
+                    "afmt": "{{Back}}",
+                },
                 "t1": None,
             },
             "order": ["t0"],
@@ -374,7 +410,7 @@ def test_delete_template_persists(client):
             "css": "",
         },
     }
-    r = client.post(
+    client.post(
         "/card-layout/savelayout", json=p2, headers={"Datastar-Request": "true"}
     )
     after = client.portal.call(
@@ -475,8 +511,6 @@ def test_preview_get_renders_saved_layout_from_native_link(client):
     assert "SAVED_LAYOUT_MARKER" in preview.text
 
 
-
-
 def test_multi_new_block_independent_input_and_css(client):
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
     payload = {
@@ -515,7 +549,11 @@ def test_multi_new_block_independent_input_and_css(client):
         client.app.state.service.run, lambda col: _tmpls(col, ntid)
     )
     assert len(tmpls) == 3
-    assert [t["name"] for t in tmpls] == ["Edited Existing", "New Block A", "New Block B"]
+    assert [t["name"] for t in tmpls] == [
+        "Edited Existing",
+        "New Block A",
+        "New Block B",
+    ]
     assert tmpls[1]["qfmt"] == "{{Front}} (A)"
     assert tmpls[2]["qfmt"] == "{{Front}} (B)"
     m = client.portal.call(
@@ -530,8 +568,20 @@ def test_deleted_records_null_in_map_excluded_on_save(client):
     p1 = _make_layout_draft_payload(
         ntid,
         [
-            {"key": "t0", "orig": 0, "name": "Stay", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
-            {"key": "t1", "orig": None, "name": "DeleteMe", "qfmt": "{{Back}}", "afmt": "{{Front}}"},
+            {
+                "key": "t0",
+                "orig": 0,
+                "name": "Stay",
+                "qfmt": "{{Front}}",
+                "afmt": "{{Back}}",
+            },
+            {
+                "key": "t1",
+                "orig": None,
+                "name": "DeleteMe",
+                "qfmt": "{{Back}}",
+                "afmt": "{{Front}}",
+            },
         ],
     )
     client.post(
@@ -542,7 +592,12 @@ def test_deleted_records_null_in_map_excluded_on_save(client):
         "notetypeId": ntid,
         "layoutDraft": {
             "rows": {
-                "t0": {"orig": 0, "name": "Stay", "qfmt": "{{Front}}", "afmt": "{{Back}}"},
+                "t0": {
+                    "orig": 0,
+                    "name": "Stay",
+                    "qfmt": "{{Front}}",
+                    "afmt": "{{Back}}",
+                },
                 "t1": None,
             },
             "order": ["t0"],

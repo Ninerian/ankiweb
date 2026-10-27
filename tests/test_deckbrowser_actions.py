@@ -15,7 +15,9 @@ def client(tmp_path: Path):
 
 
 def _make_deck(client, name="Custom"):
-    return client.portal.call(client.app.state.service.run, lambda col: col.decks.id(name))
+    return client.portal.call(
+        client.app.state.service.run, lambda col: col.decks.id(name)
+    )
 
 
 def test_deckbrowser_row_has_options_dropdown(client):
@@ -79,9 +81,7 @@ def test_deckbrowser_rename_deck_conflict_suffixes_name(client):
 
 def test_deckbrowser_delete_deck(client):
     did = _make_deck(client)
-    r = client.post(
-        f"/deckbrowser/delete/{did}", headers={"Datastar-Request": "true"}
-    )
+    r = client.post(f"/deckbrowser/delete/{did}", headers={"Datastar-Request": "true"})
     assert r.status_code == 200
     events = parse_datastar_events(r.text)
     assert any("window.location.reload()" in data for _, data in events)

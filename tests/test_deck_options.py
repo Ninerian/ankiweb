@@ -95,5 +95,3 @@ def test_update_deck_configs_persists_and_broadcasts(client):
         ),
     )
     assert persisted == new_limit
-
-

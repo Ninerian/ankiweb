@@ -57,7 +57,10 @@ def test_next_image_occlusion_add_note_save(client):
     # Get notetype ID for Image Occlusion
     io_nt_id = client.portal.call(
         svc.run,
-        lambda col: (col.add_image_occlusion_notetype(), col.models.by_name("Image Occlusion")["id"])[1],
+        lambda col: (
+            col.add_image_occlusion_notetype(),
+            col.models.by_name("Image Occlusion")["id"],
+        )[1],
     )
 
     r = client.post(
@@ -84,7 +87,9 @@ def test_next_image_occlusion_add_note_save(client):
     assert after_notes == before_notes + 1
 
     # Verify created note
-    nids = client.portal.call(svc.run, lambda col: col.find_notes('note:"Image Occlusion"'))
+    nids = client.portal.call(
+        svc.run, lambda col: col.find_notes('note:"Image Occlusion"')
+    )
     assert len(nids) >= 1
     nid = nids[-1]
 
@@ -117,7 +122,10 @@ def test_next_image_occlusion_hide_one_mode(client):
 
     io_nt_id = client.portal.call(
         svc.run,
-        lambda col: (col.add_image_occlusion_notetype(), col.models.by_name("Image Occlusion")["id"])[1],
+        lambda col: (
+            col.add_image_occlusion_notetype(),
+            col.models.by_name("Image Occlusion")["id"],
+        )[1],
     )
 
     r = client.post(
@@ -138,10 +146,14 @@ def test_next_image_occlusion_hide_one_mode(client):
     )
     assert r.status_code == 200
 
-    nids = client.portal.call(svc.run, lambda col: col.find_notes('note:"Image Occlusion"'))
+    nids = client.portal.call(
+        svc.run, lambda col: col.find_notes('note:"Image Occlusion"')
+    )
     nid = nids[-1]
 
-    resp = client.portal.call(svc.run, lambda col: col.get_image_occlusion_note(note_id=nid).note)
+    resp = client.portal.call(
+        svc.run, lambda col: col.get_image_occlusion_note(note_id=nid).note
+    )
     assert resp.occlude_inactive is False
 
 

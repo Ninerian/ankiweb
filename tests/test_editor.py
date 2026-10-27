@@ -31,6 +31,7 @@ def _nid(client):
         client.app.state.service.run, lambda col: next(iter(col.find_notes("")))
     )
 
+
 def _drain_call(ws, fn, tries=6):
     for _ in range(tries):
         m = ws.receive_json()
@@ -55,6 +56,7 @@ def test_editor_load_pushes_note(client):
         assert data["nid"] == nid
         assert data["notetypeId"] is not None
         assert data["initial"] is True
+
 
 def test_editor_blur_saves_field(client):
     nid = _nid(client)

@@ -42,6 +42,7 @@ def _page_title(context: str) -> str:
     clean_title = templating.tr_clean(raw_title)
     return f"{clean_title} \u2013 AnkiWeb" if clean_title else "AnkiWeb"
 
+
 def render_page(
     context: str,
     body: str,

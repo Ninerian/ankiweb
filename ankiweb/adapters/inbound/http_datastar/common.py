@@ -56,9 +56,7 @@ def _normalize_return_url(target: str) -> str:
     return re.sub(r"%(?![0-9A-Fa-f]{2})", "%25", encoded)
 
 
-def safe_return_url(
-    target: object, *, request_url: str | None = None
-) -> str | None:
+def safe_return_url(target: object, *, request_url: str | None = None) -> str | None:
     """Return a safe same-app path, optionally reducing a same-origin Referer."""
     if (
         not isinstance(target, str)
@@ -89,9 +87,9 @@ def safe_return_url(
     if not parsed.path.startswith("/") or parsed.path.startswith("//"):
         return None
     return _normalize_return_url(target)
-def elements_response(
-    elements: str, selector: str | None = None
-) -> DatastarResponse:
+
+
+def elements_response(elements: str, selector: str | None = None) -> DatastarResponse:
     """Patch HTML elements into the DOM, preserving default SDK outer patch mode."""
     if selector is not None:
         return DatastarResponse(SSE.patch_elements(elements, selector=selector))
@@ -123,6 +121,7 @@ async def refresh_screen(
 def error_response(message: object) -> DatastarResponse:
     """Patch the ``error`` signal with the unified error message."""
     return signals_response({"error": str(message)})
+
 
 __all__ = [
     "elements_response",

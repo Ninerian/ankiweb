@@ -70,6 +70,7 @@ def test_gui_current_card_raises_when_idle(client):
     with pytest.raises(RuntimeError):
         _gui(client, "guiCurrentCard")
 
+
 def test_reviewer_flow(client):
     _select_default(client)
     _drive(client, "show")  # loads the seeded card
@@ -218,6 +219,7 @@ def test_gui_add_cards_returns_int_and_validates(client):
 def test_gui_import_file_refuses(client):
     with pytest.raises(RuntimeError):
         _gui(client, "guiImportFile", path="/tmp/x.apkg")
+
 
 def test_gui_exit_anki_noop(client):
     assert _gui(client, "guiExitAnki") is None

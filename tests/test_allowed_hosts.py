@@ -58,6 +58,7 @@ def test_ws_lan_host_allowed_when_configured(tmp_path: Path):
             m = ws.receive_json()
         assert m["id"] == 1
 
+
 def test_ws_lan_host_rejected_by_default(tmp_path: Path):
     from starlette.websockets import WebSocketDisconnect
 
