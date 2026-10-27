@@ -1,16 +1,17 @@
+import socket
 import threading
 import time
 from pathlib import Path
 
 import pytest
 import uvicorn
-from anki.collection import Collection
+from anki.collection import Collection, SearchNode
 
 from ankiweb.app import create_app
 from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import ViewportSize, sync_playwright
+from playwright.sync_api import Locator, ViewportSize, expect, sync_playwright
 
 
 def _observe_browser_refreshes(page):
@@ -24,6 +25,57 @@ def _observe_browser_refreshes(page):
         }
         """
     )
+
+
+def _wait_browse_sidebar(page, opened):
+    page.locator("#sidebar-panel").wait_for(
+        state="visible" if opened else "hidden", timeout=6000
+    )
+    page.wait_for_function(
+        """async (opened) => {
+          const toggle = document.getElementById('browser-sidebar-toggle');
+          const state = document.getElementById('browser-sidebar-state');
+          const panel = document.getElementById('sidebar-panel');
+          const main = document.getElementById('browser-main');
+          const results = document.getElementById('results-wrap');
+          if (!toggle || !state || !panel || !main || !results
+              || state.checked !== opened
+              || toggle.getAttribute('aria-expanded') !== String(opened)) return false;
+          const snapshot = () => [main, panel, results].flatMap((element) => {
+            const box = element.getBoundingClientRect();
+            return [box.x, box.y, box.width, box.height];
+          });
+          let previous = snapshot();
+          for (let frame = 0; frame < 5; frame++) {
+            await new Promise(requestAnimationFrame);
+            const current = snapshot();
+            if (current.some((value, i) => Math.abs(value - previous[i]) > 0.1))
+              return false;
+            previous = current;
+          }
+          const mainBox = main.getBoundingClientRect();
+          const panelBox = panel.getBoundingClientRect();
+          return !opened || (panelBox.height > 0
+            && Math.abs(panelBox.top - mainBox.top) <= 1
+            && Math.abs(panelBox.left - mainBox.left) <= 1
+            && Math.abs(panelBox.height - mainBox.height) <= 1);
+        }""",
+        arg=opened,
+        timeout=6000,
+    )
+
+
+def _open_browse_sidebar(page):
+    toggle = page.locator("#browser-sidebar-toggle")
+    page.wait_for_function(
+        """() => ['true', 'false'].includes(
+          document.getElementById('browser-sidebar-toggle')?.getAttribute('aria-expanded')
+        )""",
+        timeout=6000,
+    )
+    if toggle.get_attribute("aria-expanded") == "false":
+        toggle.click()
+    _wait_browse_sidebar(page, True)
 
 
 @pytest.fixture
@@ -869,8 +921,8 @@ def test_categorized_browser_actions_menu_states_and_links(live_server_browse):
 def live_server_longdeck(tmp_path: Path):
     col_path = tmp_path / "longdeck.anki2"
     col = Collection(str(col_path))
-    # A deep, unbreakable path far wider than the 200px sidebar — the case that used to overflow.
-    long_name = "prefix_" + "a" * 40 + "::middle_" + "b" * 40 + "::leaf_zzz"
+    # The displayed leaf itself must exceed the sidebar width, not just its full path.
+    long_name = "prefix_" + "a" * 40 + "::middle_" + "b" * 40 + "::leaf_" + "z" * 120
     try:
         did = col.decks.id(long_name)
         assert did is not None
@@ -880,6 +932,7 @@ def live_server_longdeck(tmp_path: Path):
         n["Front"] = "q"
         n["Back"] = "a"
         col.add_note(n, did)
+        query = col.build_search_string(SearchNode(deck=long_name))
     finally:
         col.close()
     settings = Settings(collection_path=col_path, port=8129)
@@ -895,21 +948,37 @@ def live_server_longdeck(tmp_path: Path):
         if time.monotonic() > deadline:
             raise RuntimeError("server did not start")
         time.sleep(0.05)
-    yield "http://127.0.0.1:8129", long_name
+    yield "http://127.0.0.1:8129", long_name, query
     server.should_exit = True
     t.join(timeout=5)
 
 
 def test_browse_sidebar_long_name_truncated(live_server_longdeck):
-    base, long_name = live_server_longdeck
+    from urllib.parse import parse_qs, urlparse
+
+    base, long_name, query = live_server_longdeck
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         page.goto(f"{base}/browse")
+        _open_browse_sidebar(page)
         page.wait_for_selector("#sidebar .side-item", timeout=6000)
+        parent_name = long_name.rsplit("::", 1)[0]
+        parent = (
+            page.locator("#sidebar")
+            .get_by_title(parent_name, exact=True)
+            .locator("xpath=ancestor::details[1]")
+        )
+        assert parent.get_attribute("open") is None
+        parent.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(parent).to_have_attribute("open", "")
         item = page.locator("#sidebar").get_by_title(long_name, exact=True)
+        expect(item).to_be_visible(timeout=6000)
         # the full name is preserved on the hover tooltip even though the visible text is clipped
         assert item.get_attribute("title") == long_name
+        href = item.get_attribute("href")
+        assert href is not None
+        assert parse_qs(urlparse(href).query).get("q") == [query]
         geo = item.evaluate(
             "el => { const cs = getComputedStyle(el);"
             " return {scrollW: el.scrollWidth, clientW: el.clientWidth,"
@@ -980,6 +1049,450 @@ def live_server_sidebar_search(tmp_path: Path):
     t.join(timeout=5)
 
 
+@pytest.fixture
+def live_server_nested_decks(tmp_path: Path):
+    col_path = tmp_path / "nested_decks.anki2"
+    intermediate = "Green Line 2::Unit 0"
+    child = f"{intermediate}::Holiday words"
+    leaf = f'{child}::Extra "quoted" words'
+    other_child = "Other branch::Unit 0::Holiday words"
+    cards = (
+        (intermediate, "intermediate card"),
+        (child, "holiday card"),
+        (leaf, "quoted leaf card"),
+        (other_child, "other child card"),
+        (f'{other_child}::Extra "quoted" words', "other leaf card"),
+        ("Green Line 2::Unit 1::Holiday words", "sibling card"),
+        ("Green Line 2", "root card"),
+    )
+    col = Collection(str(col_path))
+    try:
+        note_type = col.models.by_name("Basic")
+        card_ids = {}
+        assert note_type is not None
+        for deck_name, front in cards:
+            deck_id = col.decks.id(deck_name)
+            assert deck_id is not None
+            note = col.new_note(note_type)
+            note["Front"] = front
+            note["Back"] = f"{front} back"
+            col.add_note(note, deck_id)
+            card_ids[front] = note.cards()[0].id
+        queries = {
+            name: col.build_search_string(SearchNode(deck=name))
+            for name in (intermediate, leaf)
+        }
+    finally:
+        col.close()
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        sock.listen()
+        port = sock.getsockname()[1]
+        settings = Settings(collection_path=col_path, port=port)
+        server = uvicorn.Server(
+            uvicorn.Config(
+                create_app(settings), host="127.0.0.1", port=port, log_level="warning"
+            )
+        )
+        thread = threading.Thread(
+            target=server.run, kwargs={"sockets": [sock]}, daemon=True
+        )
+        thread.start()
+        try:
+            deadline = time.monotonic() + 10
+            while not server.started:
+                if not thread.is_alive() or time.monotonic() > deadline:
+                    raise RuntimeError("server did not start")
+                time.sleep(0.05)
+            yield f"http://127.0.0.1:{port}", intermediate, leaf, queries, card_ids
+        finally:
+            server.should_exit = True
+            thread.join(timeout=5)
+
+
+@pytest.mark.parametrize("width,is_mobile", [(1229, False), (882, False), (375, True)])
+def test_browse_sidebar_responsive_layout_and_dismissal(
+    live_server_nested_decks, width, is_mobile
+):
+    base, intermediate, _, _, _ = live_server_nested_decks
+    desktop = width >= 1024
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context(
+            viewport={"width": width, "height": 812},
+            is_mobile=is_mobile,
+            has_touch=is_mobile,
+        )
+        page = context.new_page()
+        page.goto(f"{base}/browse")
+        toggle = page.locator("#browser-sidebar-toggle")
+        panel = page.locator("#sidebar-panel")
+        state = page.locator("#browser-sidebar-state")
+        _wait_browse_sidebar(page, desktop)
+        assert state.is_checked() == desktop
+        assert toggle.get_attribute("aria-controls") == "sidebar-panel"
+        assert toggle.evaluate("el => el.tagName") == "BUTTON"
+        accessible_name = toggle.get_attribute("aria-label")
+        assert accessible_name
+        assert toggle.get_attribute("title") == accessible_name
+        assert page.get_by_role("button", name=accessible_name, exact=True).is_visible()
+        assert toggle.inner_text().strip() == ""
+        assert toggle.locator("svg").is_visible()
+        search = page.locator("#search")
+        toggle_box = toggle.bounding_box()
+        search_box = search.bounding_box()
+        assert toggle_box is not None and search_box is not None
+        same_row = (
+            toggle_box["y"] < search_box["y"] + search_box["height"]
+            and search_box["y"] < toggle_box["y"] + toggle_box["height"]
+        )
+        if same_row:
+            assert toggle_box["x"] + toggle_box["width"] <= search_box["x"]
+        else:
+            assert toggle_box["y"] + toggle_box["height"] <= search_box["y"]
+        toggle.focus()
+        page.keyboard.press("Tab")
+        assert search.evaluate("el => document.activeElement === el")
+
+        original_url = page.url
+        if desktop:
+            toggle.click()
+            _wait_browse_sidebar(page, False)
+        closed_results = page.locator("#results-wrap").bounding_box()
+        assert closed_results is not None
+        _open_browse_sidebar(page)
+        main_box = page.locator("#browser-main").bounding_box()
+        panel_box = panel.bounding_box()
+        open_results = page.locator("#results-wrap").bounding_box()
+        assert (
+            main_box is not None and panel_box is not None and open_results is not None
+        )
+        assert abs(panel_box["y"] - main_box["y"]) <= 1
+        assert abs(panel_box["height"] - main_box["height"]) <= 1
+        assert abs(panel_box["x"] - main_box["x"]) <= 1
+        assert panel_box["x"] >= 0
+        assert panel_box["x"] + panel_box["width"] <= width
+        if desktop:
+            assert open_results["x"] > closed_results["x"]
+            assert open_results["x"] >= panel_box["x"] + panel_box["width"] - 1
+        else:
+            assert abs(open_results["x"] - closed_results["x"]) <= 1
+            assert panel_box["x"] < open_results["x"] + open_results["width"]
+            assert panel_box["x"] + panel_box["width"] > open_results["x"]
+            assert panel_box["width"] <= width - 48 + 1
+            overlay_box = page.locator("#browser-main .drawer-overlay").bounding_box()
+            assert overlay_box is not None
+            assert abs(overlay_box["y"] - main_box["y"]) <= 1
+            assert abs(overlay_box["height"] - main_box["height"]) <= 1
+            assert panel.evaluate(
+                """el => {
+                  const box = el.getBoundingClientRect();
+                  return el.contains(document.elementFromPoint(
+                    box.left + box.width / 2, box.top + box.height / 2
+                  ));
+                }"""
+            )
+
+        decks = page.locator("#sidebar-decks-section")
+        tags = page.locator("#sidebar-tags-section")
+        branch = (
+            page.locator("#sidebar")
+            .get_by_title(intermediate, exact=True)
+            .locator("xpath=ancestor::details[1]")
+        )
+        descendant = (
+            page.locator("#sidebar")
+            .get_by_title(f"{intermediate}::Holiday words", exact=True)
+            .locator("xpath=ancestor::details[1]")
+        )
+        other_branch = (
+            page.locator("#sidebar")
+            .get_by_title("Other branch::Unit 0::Holiday words", exact=True)
+            .locator("xpath=ancestor::details[1]")
+        )
+        other_parent = (
+            page.locator("#sidebar")
+            .get_by_title("Other branch::Unit 0", exact=True)
+            .locator("xpath=ancestor::details[1]")
+        )
+        assert decks.get_attribute("open") is not None
+        assert tags.get_attribute("open") is not None
+        assert branch.get_attribute("open") is None
+        assert descendant.get_attribute("open") is None
+        assert other_parent.get_attribute("open") is None
+        assert other_branch.get_attribute("open") is None
+        branch.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        descendant.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        other_parent.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        other_branch.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        assert branch.get_attribute("open") is not None
+        assert descendant.get_attribute("open") is not None
+        assert other_branch.get_attribute("open") is not None
+        branch.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        assert branch.get_attribute("open") is None
+        assert decks.get_attribute("open") is not None
+        assert tags.get_attribute("open") is not None
+        assert descendant.get_attribute("open") is not None
+        assert other_branch.get_attribute("open") is not None
+        assert state.is_checked()
+        assert toggle.get_attribute("aria-expanded") == "true"
+        assert page.url == original_url
+
+        toggle.click()
+        _wait_browse_sidebar(page, False)
+        _open_browse_sidebar(page)
+        assert branch.get_attribute("open") is None
+        assert descendant.get_attribute("open") is not None
+        assert other_branch.get_attribute("open") is not None
+        assert tags.get_attribute("open") is not None
+        if not desktop:
+            page.mouse.click(
+                main_box["x"] + main_box["width"] - 8,
+                main_box["y"] + main_box["height"] / 2,
+            )
+            _wait_browse_sidebar(page, False)
+            assert toggle.evaluate("el => document.activeElement === el")
+            _open_browse_sidebar(page)
+            page.keyboard.press("Escape")
+            _wait_browse_sidebar(page, False)
+            assert toggle.evaluate("el => document.activeElement === el")
+            _open_browse_sidebar(page)
+        assert branch.get_attribute("open") is None
+        assert descendant.get_attribute("open") is not None
+        assert other_branch.get_attribute("open") is not None
+        assert tags.get_attribute("open") is not None
+        assert page.url == original_url
+        browser.close()
+
+
+def test_browse_sidebar_resize_resets_only_at_breakpoint(live_server_nested_decks):
+    base, _, _, _, _ = live_server_nested_decks
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1229, "height": 812})
+        page.goto(f"{base}/browse")
+        toggle = page.locator("#browser-sidebar-toggle")
+        _wait_browse_sidebar(page, True)
+        toggle.click()
+        _wait_browse_sidebar(page, False)
+        page.set_viewport_size({"width": 1200, "height": 812})
+        _wait_browse_sidebar(page, False)
+        page.set_viewport_size({"width": 1023, "height": 812})
+        _wait_browse_sidebar(page, False)
+        _open_browse_sidebar(page)
+        page.set_viewport_size({"width": 1000, "height": 812})
+        _wait_browse_sidebar(page, True)
+        toggle.click()
+        _wait_browse_sidebar(page, False)
+        page.set_viewport_size({"width": 1024, "height": 812})
+        _wait_browse_sidebar(page, True)
+        page.set_viewport_size({"width": 1023, "height": 812})
+        _wait_browse_sidebar(page, False)
+        browser.close()
+
+
+@pytest.mark.parametrize("width", [1229, 882, 375])
+def test_browse_sidebar_nested_decks_filter_by_full_path(
+    live_server_nested_decks, width
+):
+    from urllib.parse import parse_qs, urlparse
+
+    base, intermediate, leaf, queries, card_ids = live_server_nested_decks
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": width, "height": 812})
+        page.goto(f"{base}/browse")
+        page.wait_for_function(
+            "document.querySelectorAll('#results-body tr.browser-row').length === 7",
+            timeout=6000,
+        )
+
+        for deck_name, label, expected_cards in (
+            (
+                intermediate,
+                "Unit 0",
+                {"intermediate card", "holiday card", "quoted leaf card"},
+            ),
+            (leaf, 'Extra "quoted" words', {"quoted leaf card"}),
+        ):
+            _open_browse_sidebar(page)
+            if deck_name == leaf:
+                for parent_name in (intermediate, f"{intermediate}::Holiday words"):
+                    parent = (
+                        page.locator("#sidebar")
+                        .get_by_title(parent_name, exact=True)
+                        .locator("xpath=ancestor::details[1]")
+                    )
+                    if parent.get_attribute("open") is None:
+                        parent.locator(":scope > summary").click(
+                            position={"x": 6, "y": 10}
+                        )
+                    expect(parent).to_have_attribute("open", "")
+            link = page.locator("#sidebar").get_by_title(deck_name, exact=True)
+            expect(link).to_be_visible(timeout=6000)
+            assert link.inner_text() == label
+            assert link.get_attribute("title") == deck_name
+            href = link.get_attribute("href")
+            assert href is not None
+            assert parse_qs(urlparse(href).query).get("q") == [queries[deck_name]]
+            link.click()
+            page.wait_for_function(
+                "(query) => new URL(location.href).searchParams.get('q') === query",
+                arg=queries[deck_name],
+                timeout=6000,
+            )
+            page.wait_for_function(
+                "(count) => document.querySelectorAll('#results-body tr.browser-row')"
+                ".length === count",
+                arg=len(expected_cards),
+                timeout=6000,
+            )
+            assert urlparse(page.url).path == "/browse"
+            assert parse_qs(urlparse(page.url).query).get("q") == [queries[deck_name]]
+            assert page.input_value("#search") == queries[deck_name]
+            actual_cards = page.locator(
+                "#results-body tr.browser-row .cell-sortfield"
+            ).evaluate_all("(cells) => cells.map((cell) => cell.getAttribute('title'))")
+            assert set(actual_cards) == expected_cards
+            actual_ids = page.locator("#results-body tr.browser-row").evaluate_all(
+                "(rows) => rows.map((row) => Number(row.dataset.cid))"
+            )
+            assert set(actual_ids) == {card_ids[front] for front in expected_cards}
+            _wait_browse_sidebar(page, width >= 1024)
+
+        browser.close()
+
+
+@pytest.mark.parametrize("width,is_mobile", [(1229, False), (375, True)])
+def test_browse_sidebar_search_opens_only_selected_deck_path(
+    live_server_nested_decks: tuple[str, str, str, dict[str, str], dict[str, int]],
+    width: int,
+    is_mobile: bool,
+) -> None:
+    base, intermediate, leaf, queries, _ = live_server_nested_decks
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context(
+            viewport={"width": width, "height": 812},
+            is_mobile=is_mobile,
+            has_touch=is_mobile,
+        )
+        page = context.new_page()
+        page.goto(f"{base}/browse")
+        _open_browse_sidebar(page)
+
+        def link(name: str) -> Locator:
+            return page.locator("#sidebar-decks-section").get_by_title(name, exact=True)
+
+        def branch(name: str) -> Locator:
+            return link(name).locator("xpath=ancestor::details[1]")
+
+        def submit(query: str) -> None:
+            page.locator("#search").fill(query)
+            page.locator("#search").press("Enter")
+            page.wait_for_function(
+                "(query) => new URL(location.href).searchParams.get('q') === query",
+                arg=query,
+                timeout=6000,
+            )
+            _open_browse_sidebar(page)
+
+        root = branch("Green Line 2")
+        unit = branch(intermediate)
+        child = branch(f"{intermediate}::Holiday words")
+        sibling = branch("Green Line 2::Unit 1")
+        other_root = branch("Other branch")
+        other_unit = branch("Other branch::Unit 0")
+        active = page.locator('#sidebar-decks-section a[aria-current="true"]')
+
+        assert root.get_attribute("open") is not None
+        assert other_root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is None
+        assert sibling.get_attribute("open") is None
+        assert other_unit.get_attribute("open") is None
+        assert link(intermediate).is_visible()
+        assert link("Green Line 2::Unit 1").is_visible()
+        assert link("Other branch::Unit 0").is_visible()
+        assert not link(f"{intermediate}::Holiday words").is_visible()
+        assert not link(leaf).is_visible()
+        expect(active).to_have_count(0)
+
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(unit).to_have_attribute("open", "")
+        child.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(child).to_have_attribute("open", "")
+        expect(link(leaf)).to_be_visible(timeout=6000)
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        assert child.get_attribute("open") is not None
+        expect(link(leaf)).not_to_be_visible(timeout=6000)
+
+        submit(queries[leaf].lower())
+        expect(link(leaf)).to_have_attribute("aria-current", "true")
+        expect(active).to_have_count(1)
+        expect(link(leaf)).to_be_visible(timeout=6000)
+        assert root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is not None
+        assert child.get_attribute("open") is not None
+        assert sibling.get_attribute("open") is None
+        assert other_root.get_attribute("open") is None
+        assert other_unit.get_attribute("open") is None
+        assert link("Green Line 2::Unit 1").is_visible()
+        assert not link("Other branch::Unit 0").is_visible()
+
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(link(leaf)).not_to_be_visible(timeout=6000)
+        assert link(leaf).get_attribute("aria-current") == "true"
+        if not is_mobile:
+            tags = page.locator("#sidebar-tags-section")
+            card_types = page.locator("#sidebar-card-types-section")
+            tags.locator(":scope > summary").click()
+            card_types.locator(":scope > summary").click()
+            page.locator("#results-body tr.browser-row").click()
+            page.locator("#detail iframe.editor-frame").wait_for(
+                state="visible", timeout=6000
+            )
+            assert unit.get_attribute("open") is None
+            assert child.get_attribute("open") is not None
+            assert link(leaf).get_attribute("aria-current") == "true"
+            assert tags.get_attribute("open") is None
+            assert card_types.get_attribute("open") is None
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        expect(link(leaf)).to_be_visible(timeout=6000)
+
+        submit(queries[intermediate])
+        expect(link(intermediate)).to_have_attribute("aria-current", "true")
+        expect(active).to_have_count(1)
+        expect(link(intermediate)).to_be_visible(timeout=6000)
+        assert root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is not None
+        assert child.get_attribute("open") is None
+        assert sibling.get_attribute("open") is None
+        assert other_root.get_attribute("open") is None
+        assert not link(leaf).is_visible()
+
+        submit("tag:no-such-tag")
+        expect(active).to_have_count(0)
+        assert root.get_attribute("open") is not None
+        assert other_root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is None
+        assert sibling.get_attribute("open") is None
+        assert other_unit.get_attribute("open") is None
+        assert not link(leaf).is_visible()
+
+        unit.locator(":scope > summary").click(position={"x": 6, "y": 10})
+        assert unit.get_attribute("open") is not None
+        submit("")
+        expect(active).to_have_count(0)
+        assert root.get_attribute("open") is not None
+        assert other_root.get_attribute("open") is not None
+        assert unit.get_attribute("open") is None
+        assert sibling.get_attribute("open") is None
+        assert other_unit.get_attribute("open") is None
+        assert not link(leaf).is_visible()
+        browser.close()
+
+
 def test_browse_sidebar_native_navigation_history_and_new_tabs(
     live_server_sidebar_search,
 ):
@@ -995,6 +1508,7 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(
         page.wait_for_function(
             "document.getElementById('results-body').children.length===3", timeout=6000
         )
+        _open_browse_sidebar(page)
         page.wait_for_selector("#sidebar .side-item", timeout=6000)
 
         deck_item = page.get_by_role("link", name=special_deck, exact=True)
@@ -1017,6 +1531,7 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(
         assert "special tag front" in original_results
         assert "decoy tag front" in original_results
 
+        _open_browse_sidebar(page)
         with context.expect_page() as new_page_info:
             tag_item.click(modifiers=["ControlOrMeta"])
         new_page = new_page_info.value
@@ -1045,6 +1560,7 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(
         assert page.inner_text("#results-body") == original_results
         new_page.close()
 
+        _open_browse_sidebar(page)
         with context.expect_page() as middle_page_info:
             deck_item.click(button="middle")
         middle_page = middle_page_info.value
@@ -1075,6 +1591,7 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(
         middle_page.close()
 
         # A primary click performs a GET, changing the address bar and loading deck results.
+        _open_browse_sidebar(page)
         deck_item.click()
         page.wait_for_function(
             "(query) => new URL(location.href).searchParams.get('q') === query",
@@ -1096,6 +1613,7 @@ def test_browse_sidebar_native_navigation_history_and_new_tabs(
         assert "decoy tag front" not in deck_results
 
         # Normal tag navigation keeps the literal '*' semantics and excludes the decoy.
+        _open_browse_sidebar(page)
         page.get_by_role("link", name=special_tag, exact=True).click()
         page.wait_for_function(
             "(query) => new URL(location.href).searchParams.get('q') === query",
@@ -1168,6 +1686,7 @@ def test_browse_sidebar_sections_fold_independently_and_filter(
         page.wait_for_function(
             "document.getElementById('results-body').children.length===3", timeout=6000
         )
+        _open_browse_sidebar(page)
 
         decks = page.locator("#sidebar-decks-section")
         tags = page.locator("#sidebar-tags-section")
@@ -1177,7 +1696,7 @@ def test_browse_sidebar_sections_fold_independently_and_filter(
         assert tags.get_attribute("open") is not None
         assert deck_link.is_visible() and tag_link.is_visible()
 
-        decks.locator("summary").click()
+        decks.locator(":scope > summary").click()
         assert decks.get_attribute("open") is None
         assert tags.get_attribute("open") is not None
         assert not deck_link.is_visible() and tag_link.is_visible()
@@ -1197,7 +1716,8 @@ def test_browse_sidebar_sections_fold_independently_and_filter(
         )
         assert page.locator("#results-body tr.browser-row").count() == 1
 
-        deck_summary = decks.locator("summary")
+        _open_browse_sidebar(page)
+        deck_summary = decks.locator(":scope > summary")
         if decks.get_attribute("open") is None:
             deck_summary.press("Enter")
         assert decks.get_attribute("open") is not None
@@ -1234,7 +1754,7 @@ def test_browse_sidebar_sections_fold_independently_and_filter(
         browser.close()
 
 
-def test_browse_mobile_sidebar_folding_keeps_dialog_open(live_server_sidebar_search):
+def test_browse_mobile_sidebar_folding_keeps_panel_open(live_server_sidebar_search):
     from urllib.parse import parse_qs, urlparse
 
     base, special_deck, _ = live_server_sidebar_search
@@ -1249,24 +1769,23 @@ def test_browse_mobile_sidebar_folding_keeps_dialog_open(live_server_sidebar_sea
             "document.getElementById('results-body').children.length===3", timeout=6000
         )
 
-        dialog = page.locator("#sidebar-offcanvas")
-        label = page.locator("#sidebar-offcanvas-label").text_content()
-        assert label
-        page.get_by_role("button", name=label.strip(), exact=True).tap()
-        page.wait_for_function(
-            "document.getElementById('sidebar-offcanvas')?.open === true", timeout=6000
-        )
+        _wait_browse_sidebar(page, False)
+        _open_browse_sidebar(page)
 
         decks = page.locator("#sidebar-decks-section")
         tags = page.locator("#sidebar-tags-section")
         assert decks.get_attribute("open") is not None
         assert tags.get_attribute("open") is not None
-        decks.locator("summary").tap()
+        decks.locator(":scope > summary").tap()
         assert decks.get_attribute("open") is None
         assert tags.get_attribute("open") is not None
-        assert dialog.get_attribute("open") is not None
+        assert page.locator("#browser-sidebar-state").is_checked()
+        assert (
+            page.locator("#browser-sidebar-toggle").get_attribute("aria-expanded")
+            == "true"
+        )
 
-        decks.locator("summary").tap()
+        decks.locator(":scope > summary").tap()
         deck_link = page.get_by_role("link", name=special_deck, exact=True)
         href = deck_link.get_attribute("href")
         assert href is not None
@@ -1282,10 +1801,7 @@ def test_browse_mobile_sidebar_folding_keeps_dialog_open(live_server_sidebar_sea
             arg="special deck front",
             timeout=6000,
         )
-        page.wait_for_function(
-            "document.getElementById('sidebar-offcanvas')?.open === false", timeout=6000
-        )
-        dialog.wait_for(state="hidden", timeout=6000)
+        _wait_browse_sidebar(page, False)
 
         browser.close()
 
