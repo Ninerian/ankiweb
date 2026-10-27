@@ -40,6 +40,8 @@ def test_add_note_via_ui(live_server_add):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
+        websocket_urls = []
+        page.on("websocket", lambda websocket: websocket_urls.append(websocket.url))
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(f"{url}/add")
@@ -58,4 +60,5 @@ def test_add_note_via_ui(live_server_add):
             timeout=8000,
         )
         assert not errors, errors
+        assert websocket_urls == []
         browser.close()

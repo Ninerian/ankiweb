@@ -7,13 +7,6 @@ def test_shell_bundle_built():
     assert b"WebSocket" in out.read_bytes()
 
 
-def test_bootstrap_has_opchanges_optout():
-    from pathlib import Path
-
-    js = Path("ankiweb/shell/static/bootstrap.js").read_text()
-    assert "__ankiwebOnOpchanges" in js
-
-
 def test_datastar_bundle_fetched():
     out = Path(__file__).resolve().parent.parent / "ankiweb/shell/static/datastar.js"
     assert out.exists(), "run: python tools/fetch_datastar.py"

@@ -20,6 +20,7 @@
     <script>
       /* night-mode: theme synchronized via the shell bootstrap.js and the daisyUI data-theme attribute */
       window.__ankiwebContext = {{ context | tojson }}
+      window.__ankiwebEnableBridge = {{ bridge | tojson }}
     </script>
     {% for c in css_files %}<link rel="stylesheet" href="/_anki/{{ c }}">{%
       endfor

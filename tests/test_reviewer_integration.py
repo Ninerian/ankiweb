@@ -51,6 +51,8 @@ def test_study_one_card(live_server):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
+        websocket_urls = []
+        page.on("websocket", lambda websocket: websocket_urls.append(websocket.url))
         page.on("pageerror", lambda e: print("PAGEERROR:", e))
         page.goto(f"{live_server}/reviewer")
         # real reviewer.js renders the question into #qa
@@ -73,6 +75,8 @@ def test_study_one_card(live_server):
         page.click(".ease[data-ease='4']")
         page.wait_for_url("**/overview", timeout=6000)
         assert "Congratulations" in page.inner_text("body")
+        assert len(websocket_urls) == 1
+        assert websocket_urls[0].endswith("/ws?context=reviewer")
         browser.close()
 
 

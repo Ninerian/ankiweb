@@ -57,9 +57,7 @@ export class Bridge {
 
   private handle(msg: any) {
     if (msg.type === "call") {
-      // Resolve against registerCalls first, then fall back to a global window.<fn>
-      // (screens like preferences/custom-study/filtered-deck define their error callbacks
-      // as window.ankiweb*Error rather than registering them).
+      // Resolve registered calls first, then fall back to legacy global window.<fn> callbacks.
       const f = this.calls[msg.fn] || (window as any)[msg.fn];
       const value = typeof f === "function" ? f(...(msg.args || [])) : undefined;
       if (msg.id != null) this.send({ type: "result", id: msg.id, value });
