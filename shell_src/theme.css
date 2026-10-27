@@ -59,15 +59,6 @@ html.night-mode {
   --shadow: rgba(0, 0, 0, 0.4);
 }
 
-html:root.night-mode,
-html.night-mode,
-html:root[data-theme="dark"],
-html[data-theme="dark"] {
-  --state-new: var(--color-info);
-  --state-learn: var(--color-error);
-  --state-review: var(--color-success);
-}
-
 /* Mobile bottom bar (#ankiweb-bottom-nav) & More sheet (#ankiwebMoreSheet) */
 @media (max-width: 767.98px) {
   body {
