@@ -66,6 +66,7 @@ def _extract_sidebar_links(html_text: str) -> dict[str, str]:
             super().__init__()
             self.links: dict[str, str] = {}
             self._current_href: str | None = None
+            self._current_title: str | None = None
             self._current_text: list[str] = []
 
         def handle_starttag(self, tag, attrs):
@@ -74,6 +75,7 @@ def _extract_sidebar_links(html_text: str) -> dict[str, str]:
                 classes = (attr_dict.get("class") or "").split()
                 if "side-item" in classes and "href" in attr_dict:
                     self._current_href = attr_dict["href"]
+                    self._current_title = attr_dict.get("title") or None
                     self._current_text = []
 
         def handle_data(self, data):
@@ -83,8 +85,10 @@ def _extract_sidebar_links(html_text: str) -> dict[str, str]:
         def handle_endtag(self, tag):
             if tag == "a" and self._current_href is not None:
                 label = "".join(self._current_text).strip()
-                self.links[label] = self._current_href
+                key = self._current_title or label
+                self.links[key] = self._current_href
                 self._current_href = None
+                self._current_title = None
                 self._current_text = []
 
     parser = SidebarParser()

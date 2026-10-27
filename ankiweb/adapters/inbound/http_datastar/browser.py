@@ -287,13 +287,23 @@ def build_browser_context(
     Existing cards remain selected even when they no longer match the filter.
     """
     if decks is None:
-        decks = [
-            {
-                "name": d.name,
-                "query": col.build_search_string(SearchNode(deck=d.name)),
-            }
-            for d in col.decks.all_names_and_ids()
-        ]
+        tree = col.sched.deck_due_tree()
+
+        def _to_items(nodes):
+            items = []
+            for n in nodes:
+                full_name = col.decks.name(n.deck_id)
+                items.append(
+                    {
+                        "name": n.name,
+                        "full_name": full_name,
+                        "query": col.build_search_string(SearchNode(deck=full_name)),
+                        "children": _to_items(n.children),
+                    }
+                )
+            return items
+
+        decks = _to_items(tree.children if tree is not None else [])
     if tags is None:
         tags = [
             {

@@ -39,8 +39,12 @@ shortcuts.
 
 ![Reviewer](docs/images/reviewer.png)
 
-**Browse & edit** — search, a deck/tag sidebar, the results table, and Anki's real `editor.js`
-embedded live in the detail pane (with Fields… / Cards… / Preview).
+**Browse & edit** — search with an icon-toggled deck/tag sidebar, the results table,
+and Anki's real `editor.js` embedded live in the detail pane (with Fields… / Cards… / Preview).
+From 1024px wide, the sidebar starts open beside the cards; on narrower screens it starts
+closed and overlays the card list at its full available height when opened.
+Nested deck links filter by the full deck path, keeping identically named subdecks distinct.
+Disclosure arrows precede deck names: the arrow folds the branch, while the name opens its cards.
 
 ![Browser](docs/images/browser.png)
 

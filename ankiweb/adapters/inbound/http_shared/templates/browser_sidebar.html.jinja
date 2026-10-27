@@ -1,40 +1,54 @@
-<dialog
-  id="sidebar-offcanvas"
-  class="modal modal-bottom sm:modal-middle md:modal-open md:static md:h-full md:max-h-none md:bg-transparent md:border-0 md:p-0 md:shadow-none"
-  aria-labelledby="sidebar-offcanvas-label"
-  data-on:click="(evt.target.closest('.side-item') && window.innerWidth < 768 && el.open && typeof el.close === 'function') ? el.close() : null"
->
-  <div class="modal-box p-0 md:max-w-none md:w-full md:h-full md:p-0 md:rounded-none md:shadow-none md:bg-transparent">
-    <div class="flex justify-between items-center md:hidden border-b border-base-300 p-2">
-      <h6 class="font-bold text-sm m-0" id="sidebar-offcanvas-label">{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}</h6>
-      <form method="dialog">
-        <button class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
-      </form>
-    </div>
-    <div class="p-0 overflow-y-auto">
-      <div id="sidebar">
+<aside id="sidebar-panel" class="bg-base-100 border-base-300">
+    <ul id="sidebar" class="menu w-full min-w-0 flex-nowrap gap-1 p-2">
+      <li>
         <details id="sidebar-decks-section" open>
-          <summary class="side-section">{{ tr.browsing_sidebar_decks() }}</summary>
-          {% for item in decks %}
-            <a
-              class="side-item"
-              title="{{ item.name }}"
-              href="/browse?{{ {'q': item.query} | urlencode }}"
-            >{{ item.name }}</a>
-          {% endfor %}
+          <summary>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" class="size-4"><path d="M12 3l8 4.5l-8 4.5l-8 -4.5z"></path><path d="M4 12l8 4.5l8 -4.5"></path><path d="M4 16.5l8 4.5l8 -4.5"></path></svg>
+            <span>{{ tr.browsing_sidebar_decks() }}</span>
+          </summary>
+          <ul>
+            {% macro deck_nodes(nodes) %}
+              {% for item in nodes %}
+                <li class="min-w-0">
+                  {% if item.children %}
+                    <details open>
+                      <summary>
+                        <a class="side-item" title="{{ item.full_name }}" href="/browse?{{ {'q': item.query} | urlencode }}">{{ item.name }}</a>
+                      </summary>
+                      <ul>{{ deck_nodes(item.children) }}</ul>
+                    </details>
+                  {% else %}
+                    <a
+                      class="side-item"
+                      title="{{ item.full_name }}"
+                      href="/browse?{{ {'q': item.query} | urlencode }}"
+                    >{{ item.name }}</a>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            {% endmacro %}
+            {{ deck_nodes(decks) }}
+          </ul>
         </details>
+      </li>
+      <li>
         <details id="sidebar-tags-section" open>
-          <summary class="side-section">{{ tr.browsing_sidebar_tags() }}</summary>
-          {% for item in tags %}
-            <a
-              class="side-item"
-              title="{{ item.name }}"
-              href="/browse?{{ {'q': item.query} | urlencode }}"
-            >{{ item.name }}</a>
-          {% endfor %}
+          <summary>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" class="size-4"><path d="M7.5 7.5h.01"></path><path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3z"></path></svg>
+            <span>{{ tr.browsing_sidebar_tags() }}</span>
+          </summary>
+          <ul>
+            {% for item in tags %}
+              <li class="min-w-0">
+                <a
+                  class="side-item"
+                  title="{{ item.name }}"
+                  href="/browse?{{ {'q': item.query} | urlencode }}"
+                >{{ item.name }}</a>
+              </li>
+            {% endfor %}
+          </ul>
         </details>
-      </div>
-    </div>
-  </div>
-  <form method="dialog" class="modal-backdrop md:hidden"><button>close</button></form>
-</dialog>
+      </li>
+    </ul>
+</aside>
