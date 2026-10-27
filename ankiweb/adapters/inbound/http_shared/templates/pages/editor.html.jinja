@@ -235,7 +235,6 @@
             placeholder="Tags separated by spaces"
             data-bind="tags_str"
             value="{{ ' '.join(tags) }}"
-            data-on:input__debounce.300ms="@post('/editor/save-tags')"
           />
         </div>
       </div>
@@ -300,6 +299,23 @@
       document.addEventListener(eventName, refreshEditorNavHref, true);
     });
   }
+  function notifyParentEditorSaved(res) {
+    if (res.ok && window.parent !== window) {
+      window.parent.postMessage({ type: 'ankiweb:editor-saved' }, window.location.origin);
+    }
+  }
+  function saveTags(tags) {
+    fetch('/editor/save-tags', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Datastar-Request': 'true'
+      },
+      body: JSON.stringify({ tags: tags, nid: window.__ankiwebEditNid })
+    }).then(notifyParentEditorSaved);
+  }
+
+
   // Listen for AnkiwebEditor custom events if EditorEngine is active
   document.addEventListener('ankiweb:field-input', function(e) {
     if (!e.detail) return;
@@ -327,7 +343,7 @@
         'Datastar-Request': 'true'
       },
       body: JSON.stringify({ index: index, html: html, nid: window.__ankiwebEditNid })
-    });
+    }).then(notifyParentEditorSaved);
   });
 
   document.addEventListener('ankiweb:tags-changed', function(e) {
@@ -340,15 +356,19 @@
     if (inputFallback) {
       inputFallback.value = (tags || []).join(' ');
     }
-    fetch('/editor/save-tags', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Datastar-Request': 'true'
-      },
-      body: JSON.stringify({ tags: tags, nid: window.__ankiwebEditNid })
-    });
+    saveTags(tags);
   });
+
+  const fallbackTagsInput = document.getElementById('editor-tags-input');
+  if (fallbackTagsInput) {
+    let tagSaveTimeout = null;
+    fallbackTagsInput.addEventListener('input', function() {
+      clearTimeout(tagSaveTimeout);
+      tagSaveTimeout = setTimeout(function() {
+        saveTags(fallbackTagsInput.value.split(/\s+/).filter(Boolean));
+      }, 300);
+    });
+  }
 
   // Import datastar mergePaths helper for contenteditable syncing
   let dsMergePaths = null;
@@ -416,10 +436,9 @@
             'Datastar-Request': 'true'
           },
           body: JSON.stringify({ index: parseInt(idx, 10), html: el.innerHTML, nid: window.__ankiwebEditNid })
-        });
+        }).then(notifyParentEditorSaved);
       }
     });
-
     el.addEventListener('contextmenu', function(e) {
       e.preventDefault();
       const menu = document.getElementById('editor-context-menu');
@@ -458,14 +477,6 @@
         e.preventDefault();
         addBtn.click();
       }
-    }
-  });
-
-  // Editor links / bridge integration if bridge exists
-  window.addEventListener('message', function(ev) {
-    var d = ev.data;
-    if (d && d.type === 'ankiwebLoadNid' && d.nid) {
-      window.location.href = '/edit?nid=' + d.nid;
     }
   });
 })();
