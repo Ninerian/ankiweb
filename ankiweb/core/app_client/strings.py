@@ -103,6 +103,17 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_discard_edit": (
             "You have unsaved text in your current card. Discard it and edit the card?"
         ),
+        "app_add_chip_der": "der",
+        "app_add_chip_die": "die",
+        "app_add_chip_das": "das",
+        "app_add_chip_a_umlaut": "ä",
+        "app_add_chip_o_umlaut": "ö",
+        "app_add_chip_u_umlaut": "ü",
+        "app_add_chip_sharp_s": "ß",
+        "app_add_chip_noun": "Noun",
+        "app_add_chip_verb": "Verb",
+        "app_add_chip_adjective": "Adj",
+        "app_add_chip_plural": "(Plural:)",
     },
     "de": {
         "app_decks_study_space": "Dein Lernbereich",
@@ -205,6 +216,17 @@ STRINGS: dict[str, dict[str, str]] = {
             "Verwerfen und die Karte bearbeiten?"
         ),
         "app_add_start_studying": "Lernen beginnen",
+        "app_add_chip_der": "der",
+        "app_add_chip_die": "die",
+        "app_add_chip_das": "das",
+        "app_add_chip_a_umlaut": "ä",
+        "app_add_chip_o_umlaut": "ö",
+        "app_add_chip_u_umlaut": "ü",
+        "app_add_chip_sharp_s": "ß",
+        "app_add_chip_noun": "Substantiv",
+        "app_add_chip_verb": "Verb",
+        "app_add_chip_adjective": "Adj",
+        "app_add_chip_plural": "(Plural:)",
     },
 }
 
