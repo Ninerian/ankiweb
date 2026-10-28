@@ -127,25 +127,6 @@
   --color-muted-fg: var(--color-muted);
   --color-neo-edge: var(--color-neo-border);
   --shadow-neo: 3px 3px 0 var(--color-neo-shadow);
-
-  /* plan 3 */
-  --color-review-ease-error-border: var(--color-error-border);
-  --color-review-ease-warning-border: var(--color-warning-border);
-  --color-review-ease-success-border: var(--color-success-border);
-  --color-review-ease-info-border: var(--color-info-border);
-  --shadow-review-ease-error: 3px 3px 0 var(--color-error-shadow);
-  --shadow-review-ease-warning: 3px 3px 0 var(--color-warning-shadow);
-  --shadow-review-ease-success: 3px 3px 0 var(--color-success-shadow);
-  --shadow-review-ease-info: 3px 3px 0 var(--color-info-shadow);
-  --color-review-sheet-dismiss-bg: light-dark(var(--color-base-200), var(--color-base-300));
-  --color-review-sheet-danger-edge: var(--color-error-border);
-  --shadow-review-sheet-tile: 2px 2px 0 var(--color-neo-border);
-  --shadow-review-sheet-control: 2px 2px 0 var(--color-neo-shadow);
-  --shadow-review-sheet-danger: 2px 2px 0 var(--color-error-border);
-  --color-review-complete-error: var(--color-error-border);
-  --color-review-complete-info: var(--color-info-border);
-  --color-review-complete-warning: var(--color-warning-border);
-  --color-review-complete-success: var(--color-success-border);
 }
 
 @theme {
@@ -160,46 +141,6 @@
   --transition-duration-meter: 350ms;
   --ease-neo: ease;
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  /* plan 3 */
-  --font-review-sheet: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
-  --text-review-sheet-tile: 0.9rem;
-  --text-review-sheet-close: 1.1rem;
-  --text-review-sheet-dismiss: 1rem;
-  --leading-review-sheet-normal: normal;
-  --radius-review-sheet-control: 10px;
-  --stroke-width-review-sheet-icon: 2.2;
-  --content-review-sheet-hit: "";
-  --spacing-review-sheet-grid-gap: 10px;
-  --spacing-review-sheet-tile-height: 46px;
-  --spacing-review-sheet-tile-gap: 8px;
-  --spacing-review-sheet-tile-y: 12px;
-  --spacing-review-sheet-control-x: 14px;
-  --spacing-review-sheet-icon: 18px;
-  --spacing-review-sheet-close: 32px;
-  --spacing-review-sheet-hit: 6px;
-  --spacing-review-sheet-dismiss-height: 48px;
-  --spacing-review-sheet-dismiss-top: 20px;
-  --spacing-review-sheet-dismiss-y: 10px;
-  --spacing-review-sheet-press: 2px;
-  --spacing-review-complete-confetti-width: 0.55rem;
-  --spacing-review-complete-confetti-height: 0.8rem;
-  --spacing-review-complete-offset-47: 4.7rem;
-  --spacing-review-complete-offset-42: 4.2rem;
-  --spacing-review-complete-offset-44: 4.4rem;
-  --spacing-review-complete-offset-28: 2.8rem;
-  --spacing-review-complete-offset-22: 2.2rem;
-  --spacing-review-complete-offset-24: 2.4rem;
-  --spacing-review-complete-offset-14: 1.4rem;
-  --spacing-review-complete-offset-13: 1.3rem;
-  --spacing-review-complete-offset-29: 2.9rem;
-  --spacing-review-complete-offset-23: 2.3rem;
-  --radius-review-complete-sticker: 1.4rem;
-  --radius-review-complete-confetti: 2px;
-  --text-review-complete-sticker: 2.5rem;
-  --animate-review-complete-arrive: review-arrive 0.4s ease both;
-  --animate-review-complete-sticker: review-sticker 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-  --animate-review-complete-confetti: review-confetti 0.55s ease-out both;
 
   --animate-streak-pop: streakPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --animate-streak-reset: streakReset 0.4s ease-in-out;
@@ -544,4 +485,66 @@
     from { opacity: 0; translate: 0 0; rotate: 0deg; }
     to { opacity: 1; }
   }
+}
+
+/* plan 3 */
+@theme inline {
+  --color-review-ease-error-border: var(--color-error-border);
+  --color-review-ease-warning-border: var(--color-warning-border);
+  --color-review-ease-success-border: var(--color-success-border);
+  --color-review-ease-info-border: var(--color-info-border);
+  --shadow-review-ease-error: 3px 3px 0 var(--color-error-shadow);
+  --shadow-review-ease-warning: 3px 3px 0 var(--color-warning-shadow);
+  --shadow-review-ease-success: 3px 3px 0 var(--color-success-shadow);
+  --shadow-review-ease-info: 3px 3px 0 var(--color-info-shadow);
+  --color-review-sheet-dismiss-bg: light-dark(var(--color-base-200), var(--color-base-300));
+  --color-review-sheet-danger-edge: var(--color-error-border);
+  --shadow-review-sheet-tile: 2px 2px 0 var(--color-neo-border);
+  --shadow-review-sheet-control: 2px 2px 0 var(--color-neo-shadow);
+  --shadow-review-sheet-danger: 2px 2px 0 var(--color-error-border);
+  --color-review-complete-error: var(--color-error-border);
+  --color-review-complete-info: var(--color-info-border);
+  --color-review-complete-warning: var(--color-warning-border);
+  --color-review-complete-success: var(--color-success-border);
+}
+
+@theme {
+  --font-review-sheet: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
+  --text-review-sheet-tile: 0.9rem;
+  --text-review-sheet-close: 1.1rem;
+  --text-review-sheet-dismiss: 1rem;
+  --leading-review-sheet-normal: normal;
+  --radius-review-sheet-control: 10px;
+  --stroke-width-review-sheet-icon: 2.2;
+  --content-review-sheet-hit: "";
+  --spacing-review-sheet-grid-gap: 10px;
+  --spacing-review-sheet-tile-height: 46px;
+  --spacing-review-sheet-tile-gap: 8px;
+  --spacing-review-sheet-tile-y: 12px;
+  --spacing-review-sheet-control-x: 14px;
+  --spacing-review-sheet-icon: 18px;
+  --spacing-review-sheet-close: 32px;
+  --spacing-review-sheet-hit: 6px;
+  --spacing-review-sheet-dismiss-height: 48px;
+  --spacing-review-sheet-dismiss-top: 20px;
+  --spacing-review-sheet-dismiss-y: 10px;
+  --spacing-review-sheet-press: 2px;
+  --spacing-review-complete-confetti-width: 0.55rem;
+  --spacing-review-complete-confetti-height: 0.8rem;
+  --spacing-review-complete-offset-47: 4.7rem;
+  --spacing-review-complete-offset-42: 4.2rem;
+  --spacing-review-complete-offset-44: 4.4rem;
+  --spacing-review-complete-offset-28: 2.8rem;
+  --spacing-review-complete-offset-22: 2.2rem;
+  --spacing-review-complete-offset-24: 2.4rem;
+  --spacing-review-complete-offset-14: 1.4rem;
+  --spacing-review-complete-offset-13: 1.3rem;
+  --spacing-review-complete-offset-29: 2.9rem;
+  --spacing-review-complete-offset-23: 2.3rem;
+  --radius-review-complete-sticker: 1.4rem;
+  --radius-review-complete-confetti: 2px;
+  --text-review-complete-sticker: 2.5rem;
+  --animate-review-complete-arrive: review-arrive 0.4s ease both;
+  --animate-review-complete-sticker: review-sticker 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  --animate-review-complete-confetti: review-confetti 0.55s ease-out both;
 }
