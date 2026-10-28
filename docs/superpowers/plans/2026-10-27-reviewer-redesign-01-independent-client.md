@@ -99,6 +99,22 @@ Tests (`test_study_core.py`, `temp_collection` aus `tests/conftest.py`):
 - [ ] Labels enthalten keine U+2068/2069.
 - [ ] `core` importiert nichts aus `adapters` (bestehender Architekturtest läuft mit).
 
+### 1.1b Revlog-Lesezugriff (gemeinsam für Plan 2 und 3)
+
+Eine Stelle für die Tagesgrenze, damit Fortschritt (Plan 2) und Streak (Plan 3) nicht auseinanderlaufen. **Belegt (Probe):** `col.sched.day_cutoff` folgt dem Rollover (Standard 04:00, `rollover=0` → 00:00, `rollover=23` → 23:00); die Tagesgrenze ist also **nicht** Mitternacht, ein Review um 02:00 zählt bei Standard zum Vortag.
+
+- [ ] `core/app_client/revlog.py` (nur `anki`, keine Adapter-Imports):
+  - `day_start_ms(col) -> int` = `(col.sched.day_cutoff - 86400) * 1000`. **Einzige** Stelle, die diese Rechnung kennt.
+  - `studied_by_deck(col) -> dict[int, int]`: **eine** SQL `select c.did, count(*) from revlog r join cards c on c.id=r.cid where r.id > ? group by c.did` (Plan 2).
+  - `recent_eases(col, limit) -> list[int]`: `select ease from revlog where id > ? order by id desc limit ?` (Plan 3 bildet daraus den Streak; Funktion `streak_from_revlog` bleibt rein und liegt in `streak.py`).
+  - Aufruf nur innerhalb von `service.run(fn)`.
+- [ ] Tests `tests/test_app_revlog.py` (echte Collection, kein Mock):
+  - Review vor und nach der Tagesgrenze: nur der spätere zählt (Revlog-Zeile mit `id` knapp unter/über `day_start_ms` einfügen).
+  - **Rollover-Fälle**: `rollover=4` (Standard), `0` und `23`; Review um 02:00 bei Rollover 4 gehört zum Vortag.
+  - `studied_by_deck`: zwei Decks, Zählung je Deck; Wurzel-Deck zählt seine Kinder **nicht** automatisch (Aufsummieren macht Plan 2).
+  - `recent_eases`: Reihenfolge neueste zuerst, `limit` greift.
+- [ ] Commit: `Add shared revlog read helpers with collection day boundary`
+
 ### 1.2 Router, Layout, Session
 - [ ] `http_app/__init__.py`: `build_app_router(get_service) -> APIRouter(prefix="/app")`; inkludiert Sub-Router der Pläne 2 bis 4 (jetzt leer, nur Healthprobe `GET /app/ping` → 200, für Smoke).
 - [ ] `layout.py::render_app_page` rendert `app/base.html.jinja`: `<meta viewport-fit=cover>`, `app-client.css`, `datastar.js` (module), Manifest/Theme-Color-Tags **noch nicht** (Plan 5, hält Schritte unabhängig).
