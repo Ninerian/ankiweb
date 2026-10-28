@@ -49,6 +49,27 @@ def test_card_sanitizer_preserves_only_whitelisted_classes():
     assert "<span" in rendered and "*word*" in rendered
 
 
+@pytest.mark.parametrize(
+    ("html", "expected"),
+    [
+        (
+            (
+                '<img src="https://example.com/image.png" class="av-hint other" '
+                'onerror="alert(1)">'
+            ),
+            '<img src="https://example.com/image.png" class="av-hint">',
+        ),
+        ('<br class="av-hint other">', '<br class="av-hint">'),
+        (
+            '<span class="av-example other"><b>x</b></span>',
+            '<span class="av-example"><b>x</b></span>',
+        ),
+    ],
+)
+def test_card_sanitizer_preserves_safe_classes_on_void_and_nested_tags(html, expected):
+    assert study.sanitize_html(html) == expected
+
+
 def test_escaped_example_text_stays_escaped_for_client_highlighting():
     rendered = study.sanitize_html(
         '<div class="av-example">&lt;b&gt;*word*&lt;/b&gt; &amp; text</div>'
