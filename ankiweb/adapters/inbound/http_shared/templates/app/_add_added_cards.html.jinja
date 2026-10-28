@@ -1,0 +1,39 @@
+<div id="added-cards" class="mt-6"{% if animation_stamp|default(false) %} data-ts="{{ animation_stamp }}"{% endif %}>
+  {% if cards %}
+  <div class="relative mx-3 h-72">
+    {% for card in cards|reverse %}
+    {% if loop.first %}
+    <article {% if animation_stamp|default(false) %}class="card card-border absolute added-0 animate-slide-to-added motion-reduce:animate-none h-40 w-full overflow-hidden bg-base-100"{% else %}class="card card-border absolute added-0 h-40 w-full overflow-hidden bg-base-100"{% endif %}
+             data-note-id="{{ card.nid }}"{% if animation_stamp|default(false) %} data-ts="{{ animation_stamp }}"{% endif %}>
+      <div class="card-body">
+        <span class="badge badge-accent">{{ s('app_add_top_card') }}</span>
+        <p class="whitespace-pre-wrap">{{ card.front }}</p>
+        <p class="whitespace-pre-wrap">{{ card.back }}</p>
+        {% if card.hint %}<p class="whitespace-pre-wrap">{{ card.hint }}</p>{% endif %}
+        {% if card.example %}<p class="whitespace-pre-wrap">{{ card.example }}</p>{% endif %}
+      </div>
+      <button type="button" class="absolute inset-0 h-full w-full cursor-pointer"
+              data-note-id="{{ card.nid }}" aria-label="{{ s('app_add_edit_last') }}"
+              data-discard="{{ s('app_add_discard_edit') }}" data-edit-unavailable="{{ s('app_add_edit_unavailable') }}"
+              data-attr:disabled="$saving"
+              data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.editUnavailable) : null"
+              data-on:click="$saving ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? @post('/app/add/edit/' + el.dataset.noteId + '?deck=' + document.getElementById('add-wizard').dataset.deckId) : null)"></button>
+    </article>
+    {% else %}
+    <div {% if loop.index0 == 1 %}class="card card-border absolute added-1 h-40 w-full overflow-hidden bg-base-100"{% elif loop.index0 == 2 %}class="card card-border absolute added-2 h-40 w-full overflow-hidden bg-base-100"{% else %}class="card card-border absolute added-3 h-40 w-full overflow-hidden bg-base-100"{% endif %} aria-hidden="true">
+      <div class="card-body">
+        <p class="whitespace-pre-wrap">{{ card.front }}</p>
+        <p class="whitespace-pre-wrap">{{ card.back }}</p>
+        {% if card.hint %}<p class="whitespace-pre-wrap">{{ card.hint }}</p>{% endif %}
+        {% if card.example %}<p class="whitespace-pre-wrap">{{ card.example }}</p>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  <div class="mt-3">{{ count }} {{ s('app_add_cards_added') }}</div>
+  {% else %}
+  <p>{{ s('app_add_no_cards') }}</p>
+  <p>{{ s('app_add_first_card') }}</p>
+  {% endif %}
+</div>

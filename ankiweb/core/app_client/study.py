@@ -88,6 +88,7 @@ class StudySession:
         self.reviewed = 0
         self.last_rated: tuple[int, Ease] | None = None
         self._last_rated_step: int | None = None
+        self.added_note_ids: list[int] = []
 
 
 @dataclass(frozen=True)

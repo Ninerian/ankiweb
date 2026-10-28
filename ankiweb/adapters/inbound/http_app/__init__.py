@@ -3,6 +3,7 @@ from collections.abc import Callable
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
+from ankiweb.adapters.inbound.http_app.add import build_add_router
 from ankiweb.adapters.inbound.http_app.decks import add_decks_routes
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
 from ankiweb.adapters.inbound.http_app.review import make_review_router
@@ -25,4 +26,5 @@ def build_app_router(
         return render_app_page("AnkiWeb", body, active="", lang=lang)
 
     add_decks_routes(router, get_service, lang)
+    router.include_router(build_add_router(get_service, settings))
     return router

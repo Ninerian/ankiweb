@@ -608,3 +608,57 @@
 @utility pb-deck-safe {
   padding-bottom: max(2.25rem, env(safe-area-inset-bottom));
 }
+
+/* plan 4 */
+@theme static {
+  --spacing-add-safe: max(1rem, env(safe-area-inset-bottom));
+  --animate-add-pop-card: popCardUp 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --add-target-x-0: -6px;
+  --add-target-y-0: 32px;
+  --add-target-scale-0: 1;
+  --add-target-rot-0: -3.2deg;
+  --add-target-x-1: 8px;
+  --add-target-y-1: 64px;
+  --add-target-scale-1: 0.98;
+  --add-target-rot-1: 2.8deg;
+  --add-target-x-2: -5px;
+  --add-target-y-2: 96px;
+  --add-target-scale-2: 0.96;
+  --add-target-rot-2: -2deg;
+  --add-target-x-3: 7px;
+  --add-target-y-3: 128px;
+  --add-target-scale-3: 0.94;
+  --add-target-rot-3: 3deg;
+
+  @keyframes popCardUp {
+    0% { opacity: 0.6; transform: translateY(30px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
+@utility add-card-transform {
+  transform: translate(var(--target-x), var(--target-y)) scale(var(--target-scale)) rotate(var(--target-rot));
+}
+
+@utility add-target-* {
+  --target-x: --value(--add-target-x-*);
+  --target-y: --value(--add-target-y-*);
+  --target-scale: --value(--add-target-scale-*);
+  --target-rot: --value(--add-target-rot-*);
+}
+
+@layer components {
+  .add-action-bar { @apply pb-add-safe; }
+
+  .added-0, .added-1, .added-2, .added-3 {
+    @apply absolute inset-x-0 top-0 bottom-auto add-card-transform origin-top;
+  }
+
+  .added-0 { @apply add-target-0 z-4; }
+  .added-1 { @apply add-target-1 z-3 opacity-90; }
+  .added-2 { @apply add-target-2 z-2 opacity-80; }
+  .added-3 { @apply add-target-3 z-1 opacity-70; }
+
+  .animate-pop-card-up { @apply animate-add-pop-card motion-reduce:animate-none; }
+}
+/* end plan 4 */

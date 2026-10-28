@@ -61,6 +61,7 @@ STRINGS: dict[str, dict[str, str]] = {
         # Add cards (plan 4)
         "app_add_cards_added": "Cards added",
         "app_add_exit": "Exit Creator",
+        "app_add_done": "Done",
         "app_add_edit_last": "Edit last added card",
         "app_add_front_prompt": "Front (Question / Prompt)",
         "app_add_front_help": "What will you test?",
@@ -89,6 +90,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_front_required": "Front cannot be empty!",
         "app_add_back_required": "Back cannot be empty!",
         "app_add_both_required": "Front and back are required",
+        "app_add_duplicate": "A card with this front already exists.",
+        "app_add_save_failed": "Could not add the card. Please try again.",
+        "app_add_edit_unavailable": (
+            "This card is unavailable for editing. Please try again."
+        ),
         "app_add_editing": "Editing…",
         "app_add_card_first": "Add a card first.",
         "app_add_cards_ready": "Cards Ready!",
@@ -103,6 +109,17 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_discard_edit": (
             "You have unsaved text in your current card. Discard it and edit the card?"
         ),
+        "app_add_chip_der": "der",
+        "app_add_chip_die": "die",
+        "app_add_chip_das": "das",
+        "app_add_chip_a_umlaut": "ä",
+        "app_add_chip_o_umlaut": "ö",
+        "app_add_chip_u_umlaut": "ü",
+        "app_add_chip_sharp_s": "ß",
+        "app_add_chip_noun": "Noun",
+        "app_add_chip_verb": "Verb",
+        "app_add_chip_adjective": "Adj",
+        "app_add_chip_plural": "(Plural:)",
     },
     "de": {
         "app_decks_study_space": "Dein Lernbereich",
@@ -160,6 +177,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_review_complete_study_again": "Erneut lernen",
         "app_add_cards_added": "Hinzugefügte Karten",
         "app_add_exit": "Kartenerstellung verlassen",
+        "app_add_done": "Fertig",
         "app_add_edit_last": "Zuletzt hinzugefügte Karte bearbeiten",
         "app_add_front_prompt": "Vorderseite (Frage / Stichwort)",
         "app_add_front_help": "Was möchtest du abfragen?",
@@ -190,6 +208,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_front_required": "Die Vorderseite darf nicht leer sein!",
         "app_add_back_required": "Die Rückseite darf nicht leer sein!",
         "app_add_both_required": "Vorder- und Rückseite sind erforderlich",
+        "app_add_duplicate": "Eine Karte mit dieser Vorderseite existiert bereits.",
+        "app_add_save_failed": (
+            "Die Karte konnte nicht hinzugefügt werden. Bitte erneut versuchen."
+        ),
+        "app_add_edit_unavailable": (
+            "Diese Karte kann nicht bearbeitet werden. Bitte erneut versuchen."
+        ),
         "app_add_editing": "Wird bearbeitet…",
         "app_add_card_first": "Füge zuerst eine Karte hinzu.",
         "app_add_cards_ready": "Karten bereit!",
@@ -205,6 +230,17 @@ STRINGS: dict[str, dict[str, str]] = {
             "Verwerfen und die Karte bearbeiten?"
         ),
         "app_add_start_studying": "Lernen beginnen",
+        "app_add_chip_der": "der",
+        "app_add_chip_die": "die",
+        "app_add_chip_das": "das",
+        "app_add_chip_a_umlaut": "ä",
+        "app_add_chip_o_umlaut": "ö",
+        "app_add_chip_u_umlaut": "ü",
+        "app_add_chip_sharp_s": "ß",
+        "app_add_chip_noun": "Substantiv",
+        "app_add_chip_verb": "Verb",
+        "app_add_chip_adjective": "Adj",
+        "app_add_chip_plural": "(Plural:)",
     },
 }
 
