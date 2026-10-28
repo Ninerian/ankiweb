@@ -22,7 +22,9 @@
 | Fünf feste `deck`-IDs (`german-b1` …), Fallback auf `german-b1` | Echte Anki-Deck-IDs (int). Unbekannte/fehlende ID → Redirect `/app/` | Mockup-IDs waren Prototyp-Stub (REFERENCE §2.1) |
 | Emoji je Deck hart codiert | Aus Deck-Namen abgeleitet: führendes Emoji-Graphem im Namen, sonst Standard `🗂️` | Anki kennt kein Emoji-Feld; Namen wie `🇩🇪 German B1 Vocab` sind im Mockup-Stil |
 | Due/New aus Mockup-Konstanten | `deck_due_tree()`; Due = `review_count + learn_count`, New = `new_count` | Verifiziert: `DeckTreeNode` hat diese Felder (Plan 1 Probe) |
-| Fortschritt 70 % (Konstante) | `studied_today / (studied_today + due + new)`; 0 wenn Nenner 0 | Definition nötig; **Produktannahme**, in Doku vermerken |
+| Fortschritt 70 % (Konstante) | **Tagesfortschritt pro Deck** (Entscheidung): `studied / (studied + due + new)`, 0 wenn Nenner 0. `studied` = Reviews seit Tagesbeginn je Deck | **Belegt:** `DeckTreeNode` hat kein `studied_today`; `col.studied_today()` ist ein **Text** für die ganze Sammlung. Deshalb eigene Abfrage: **eine** gruppierte SQL über alle Decks, `select c.did, count(*) from revlog r join cards c on c.id=r.cid where r.id > ? group by c.did`, Parameter `(col.sched.day_cutoff - 86400) * 1000` (Tagesgrenze der Sammlung, **nicht** Mitternacht). Probe: 100 Läufe = 0,3 ms, kein Query pro Zeile. Kinder-Decks fließen über `cards.did` nicht in den Elternwert ein: Summe über die Teilbaum-IDs bilden |
+| Reviews zählen | Jeder `revlog`-Eintrag zählt, auch wiederholte Karten (Again) | Produktannahme: Fortschritt kann dadurch über den Anfangsbestand hinaus wachsen, Anzeige auf 100 geklemmt |
+| Wo die SQL liegt | `core/app_client/deck_progress.py` auf `col.db` (Collection-Zugriff nur in `service.run`), reine Funktion `(rows, tree) -> dict[deck_id, pct]` getrennt testbar | Adapter bleibt ohne SQL (Architekturregel) |
 | Suche mit Client-JS | `data-bind` + `data-show`-Filter per **Server-Fragment** (siehe unten) | Datastar-Prinzip: Backend rendert; aber Live-Suche pro Taste ist Round Trip |
 
 **Suche:** zwei Optionen, Standard **Option A**:

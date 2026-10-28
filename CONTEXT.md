@@ -36,6 +36,10 @@ _Avoid_: Frische Karten
 Das Beantworten der faelligen Karten eines Decks mit Ease-Bewertung.
 _Avoid_: Lernmodus, Quiz
 
+**Tagesfortschritt**:
+Anteil der heute erledigten Reviews eines Decks an erledigten plus noch offenen (faellige plus neue). Tagesgrenze ist die der Sammlung, nicht Mitternacht.
+_Avoid_: Lernstand, Fortschritt
+
 **Streak**:
 Anzahl der in dieser Review-Sitzung direkt nacheinander als gewusst bewerteten Karten.
 _Avoid_: Serie, Combo
