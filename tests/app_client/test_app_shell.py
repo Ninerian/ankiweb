@@ -3,11 +3,17 @@ from http.cookies import SimpleCookie
 from pathlib import Path
 
 import httpx
+import pytest
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.testclient import TestClient
 
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
-from ankiweb.adapters.inbound.http_app.session import SessionStore, get_session
+from ankiweb.adapters.inbound.http_app.session import (
+    SessionStore,
+    get_session,
+    set_session_cookie,
+)
 from ankiweb.app import create_app
 from ankiweb.core.auth import COOKIE, auth_token
 from ankiweb.core.config import Settings
@@ -45,7 +51,6 @@ def test_ping_follows_password_gate(tmp_path: Path) -> None:
         response = test_client.get("/app/ping", follow_redirects=False)
         assert response.status_code == 303
         assert response.headers["location"] == "/login"
-        assert "app_sid" not in response.cookies
         test_client.cookies.set(COOKIE, auth_token(password))
         assert test_client.get("/app/ping").status_code == 200
 
@@ -119,7 +124,9 @@ def test_app_session_cookie_only_set_when_needed() -> None:
 
     @app.get("/session")
     def session_route(request: Request, response: Response) -> dict[str, int]:
-        return {"session": id(get_session(request, response))}
+        session, cookie = get_session(request)
+        set_session_cookie(response, cookie)
+        return {"session": id(session)}
 
     with TestClient(app) as client:
         first = client.get("/session")
@@ -141,6 +148,38 @@ def test_app_session_cookie_only_set_when_needed() -> None:
         assert third.cookies["app_sid"] != "unknown"
         assert "app_sid=" in third.headers["set-cookie"]
         assert third.json() != first.json()
+
+
+@pytest.mark.parametrize("kind", ["html", "redirect"])
+def test_app_session_cookie_survives_explicit_response(kind: str) -> None:
+    app = FastAPI()
+
+    @app.get("/session")
+    def session_route(request: Request) -> Response:
+        session, cookie = get_session(request)
+        if kind == "html":
+            result = HTMLResponse("session")
+        else:
+            result = RedirectResponse("/next")
+        result.headers["x-session-id"] = str(id(session))
+        set_session_cookie(result, cookie)
+        return result
+
+    with TestClient(app) as client:
+        first = client.get("/session", follow_redirects=False)
+        assert first.status_code == (200 if kind == "html" else 307)
+        sid = first.cookies["app_sid"]
+        assert sid
+        cookie = SimpleCookie()
+        cookie.load(first.headers["set-cookie"])
+        assert cookie["app_sid"]["httponly"]
+        assert cookie["app_sid"]["samesite"].lower() == "lax"
+        assert cookie["app_sid"]["path"] == "/"
+
+        second = client.get("/session", follow_redirects=False)
+        assert second.headers["x-session-id"] == first.headers["x-session-id"]
+        assert client.cookies["app_sid"] == sid
+        assert "set-cookie" not in second.headers
 
 
 def test_session_store_evicts_least_recently_used() -> None:
