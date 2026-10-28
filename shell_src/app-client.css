@@ -386,18 +386,16 @@
     .review-action-tile:active, .review-sheet-close:active, .review-sheet-dismiss:active { transform: none; }
   }
 
-  .flashcard { min-width: 0; }
+  .flashcard { @apply min-w-0; }
 
   .review-card-content {
-    overflow-wrap: anywhere;
-    max-width: 100%;
+    @apply wrap-anywhere max-w-full;
   }
 
   .review-card-content img,
   .review-card-content video,
   .review-card-content iframe {
-    max-width: 100%;
-    height: auto;
+    @apply max-w-full h-auto;
   }
 
   .review-ease-error {
