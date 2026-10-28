@@ -19,6 +19,18 @@ for (const f of ["theme.css", "dialogs.js"]) {
   console.log(`copied ${f} -> ankiweb/shell/static/${f}`);
 }
 
+// Independent app scripts are served unbundled, including in the Docker image.
+if (existsSync("shell_src/app")) {
+  const files = readdirSync("shell_src/app").filter(f => f.endsWith(".js")).sort();
+  if (files.length) {
+    mkdirSync("ankiweb/shell/static/app", { recursive: true });
+    for (const f of files) {
+      copyFileSync(`shell_src/app/${f}`, `ankiweb/shell/static/app/${f}`);
+      console.log(`copied ${f} -> ankiweb/shell/static/app/${f}`);
+    }
+  }
+}
+
 // Component CSS is emitted inside the Tailwind `components` cascade layer (declared by app.css)
 // so Tailwind utilities on the markup (px-4, flex-1, hidden, ...) can override it, the way
 // Bootstrap's !important utilities used to. Unlayered CSS would always beat them.

@@ -12,6 +12,7 @@ from starlette_compress import CompressMiddleware
 
 # Initialize Anki through the collection adapter before screens import its cyclic modules.
 import ankiweb.adapters.outbound.anki_collection_adapter as collection_adapter
+from ankiweb.adapters.inbound.http_app import build_app_router
 from ankiweb.adapters.inbound.http_datastar.common import (
     error_response,
     redirect_response,
@@ -240,6 +241,7 @@ def create_app(
             settings=settings,
         )
     )  # GET / + /notify
+    app.include_router(build_app_router(lambda: app.state.service))  # GET /app/*
     app.include_router(
         build_media_router(lambda: app.state.service)
     )  # GET  /{path} — LAST

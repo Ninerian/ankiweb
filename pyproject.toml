@@ -95,7 +95,7 @@ docstring-code-format = false
 include = ["ankiweb*"]
 
 [tool.setuptools.package-data]
-ankiweb = ["adapters/inbound/http_shared/templates/*.html.jinja"]
+ankiweb = ["adapters/inbound/http_shared/templates/*.html.jinja", "adapters/inbound/http_shared/templates/app/*.html.jinja"]
 
 [tool.djlint]
 profile = "jinja"

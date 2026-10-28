@@ -80,7 +80,7 @@ sequenceDiagram
 | `POST /app/review/due` | `cardId`, `spec` (z. B. `3`, `1-7`) | SSE; Fehler per `error_response` |
 | `GET /app/review/info/{cardId}` | Card Info | 303 auf bestehende Card-Info-Seite (`/card-info/{ids}`, belegt `http_pages/card_info.py:935`) |
 
-Alle POST: `cardId`-Check → `StaleCard` → 409 und Client lädt per `@get` die Seite neu. `ease` ∉ 1..4 → 422.
+Alle POST: `cardId`-Check → `StaleCard` → 409 und Client lädt per `@get` die Seite neu. Für `answer` gilt dies auch, wenn die Karte in der Collection zwischenzeitlich beantwortet, umgeplant oder gelöscht wurde. `ease` ∉ 1..4 → 422.
 
 ## Aufgaben
 
@@ -136,7 +136,7 @@ Routen (`TestClient`, Collection mit 3 Karten):
 - [ ] "Study again" nur sichtbar, wenn weitere Karten fällig sind (Fixture mit Lern-Schritt) und fehlt sonst.
 - [ ] Verteilung gilt für die Sitzung: zweite Sitzung am selben Tag zeigt nur ihre eigenen Ratings, der Streak dagegen den Tageswert.
 - [ ] Hostile Eingabe: kein Feldinhalt gelangt in den Erfolgsscreen (nur Zahlen und feste `s()`-Texte).
-- [ ] XSS: Feldwert `<script>alert(1)</script>` erscheint nicht als ausführbares Tag (sanitize), `*x*` im Example wird `<mark>`, `<b>` bleibt escaped.
+- [ ] XSS: Feldwert `<script>alert(1)</script>` erscheint nicht als ausführbares Tag (sanitize); Markup-Payloads in Raw-Text- und RCDATA-Elementen bleiben inert. `*x*` im Example wird `<mark>`, `<b>` bleibt escaped.
 - [ ] Passwort-Gate: 303.
 - [ ] Zeitmessung über HTTP: `sleep(0.05)` zwischen GET und POST, Revlog-`time` ≥ 40.
 - [ ] `Cache-Control: no-store` auf `GET /app/review`.

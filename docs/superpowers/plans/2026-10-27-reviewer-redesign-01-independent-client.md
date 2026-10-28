@@ -25,12 +25,12 @@
 | Thema | Wahl |
 |---|---|
 | Auth | `/app/*` bleibt hinter `_auth_guard` (Session-Cookie). Keine Änderung am Guard. Manifest/SW-Ausnahmen existieren bereits |
-| State der In-flight-Karte | Serverseitig, **eine `StudySession` je Browser-Session**, Schlüssel = zufälliges Cookie `app_sid` (httponly, samesite=lax), im Speicher (`dict`, LRU ≤ 8). Zwei Tabs im selben Browser teilen sie, Stale-Answer wird per `cardId`-Check mit 409 abgelehnt |
+| State der In-flight-Karte | Serverseitig, **eine `StudySession` je Browser-Session**, Schlüssel = zufälliges Cookie `app_sid` (httponly, samesite=lax), im Speicher (`dict`, LRU ≤ 8). Zwei Tabs im selben Browser teilen sie; veraltete Antworten werden mit 409 abgelehnt, auch bei zwischenzeitlich beantworteter oder gelöschter Karte |
 | Fehlerform | Datastar-Signal `error` via vorhandenes `error_response` (`http_datastar/common.py`) |
-| CSS | **Tailwind 4 + daisyUI 5** über eigenen Entry `shell_src/app-client.css` → `ankiweb/shell/static/app-client.css` (Styling-Vertrag in Übersicht). Das alte `app.css`/`theme.css`/`components.css` wird **nicht** geladen |
+| CSS | **Tailwind 4 + daisyUI 5** über eigenen Entry `shell_src/app-client.css` → `ankiweb/shell/static/app-client.css` (Styling-Vertrag in Übersicht). Komponenten-Stile mit `@apply`; reines CSS nur für Keyframes, Gradienten und Animationsdeklarationen, die sich nicht durch Utilities ausdrücken lassen. Das alte `app.css`/`theme.css`/`components.css` wird **nicht** geladen |
 | Build | `npm run build` erzeugt `app-client.css` zusätzlich (neues Skript `build:css:app`). JS bleibt unbundled: statische Dateien unter `shell_src/app/*.js`, kopiert nach `ankiweb/shell/static/app/` (wie `dialogs.js` in `tools/build_shell.mjs`, sonst wären sie gitignoriert und fehlten im Docker-Image). Datastar aus `/shell/static/datastar.js` |
 | i18n | UI-Texte Englisch wie Mockups; `tr.*` nur für Ease-Labels (kommen fertig von `describe_next_states`). Lokalisierung = ungeprüft, nicht im Scope |
-| Sanitizing | Karten-HTML kommt aus dedizierten Typen. Vor Einfügen `sanitize_html` (`core/html_sanitize.py`) anwenden (RESEARCH §3a: Felder können aus Importen stammen) |
+| Sanitizing | Karten-HTML kommt aus dedizierten Typen. Vor Einfügen `sanitize_html` (`core/html_sanitize.py`) anwenden (RESEARCH §3a: Felder können aus Importen stammen); Inhalte von Raw-Text- und RCDATA-Elementen bleiben als Text inert, auch bei fehlendem End-Tag oder selbstschließendem Start-Tag. `plaintext` behandelt den Rest als Text; gefährliche Elemente wie `script` werden samt Inhalt entfernt |
 
 ## Dateien
 
@@ -80,11 +80,11 @@ def fetch_next(col, session, deck_id: int | None) -> CardView | None
 def answer(col, session, card_id: int, ease: int) -> None   # raises StaleCard, ValueError
 ```
 
-Regeln (alle aus RESEARCH §11 belegt):
+Regeln:
 - **Feldnamen-Zuordnung (eine Stelle, mit Test):** Queue-Antwort `get_queued_cards` nutzt `new_count`, `learning_count`, `review_count`; `deck_due_tree`-Knoten nutzen `new_count`, `learn_count`, `review_count` (beide belegt per Probe). Das Mapping steht ausschließlich in `QueueCounts.from_queue(...)` (Plan 1) und `DeckRow` (Plan 2). Ein Test legt je eine Karte in New und Learning an und prüft beide Wege auf konkrete Werte ungleich 0, weil ein falscher Feldname sonst still 0 liefert.
 - `fetch_next`: `col.decks.set_current(deck_id)`, `queued = col.sched.get_queued_cards(fetch_limit=1)`; Zähler **aus `queued.new_count/learning_count/review_count`** (gleiche Antwort, kein zweiter Call). `card.start_timer()` **vor** Render. Labels via `col.sched.describe_next_states(top.states)`.
 - Unicode-Isolate (U+2068/U+2069) aus Labels entfernen, NBSP durch Leerzeichen (RESEARCH §11 letzter Punkt). `tr_clean`-Logik aus `templating.tr_clean` **nicht** importieren (Adapter); kleine eigene Funktion im Kern.
-- `answer`: `StaleCard` wenn `session.card is None or session.card.id != card_id`; `ValueError` bei `ease` ∉ 1..4. Mapping auf `CardAnswer.Rating` wie `answer_current`.
+- `answer`: `StaleCard` wenn `session.card is None or session.card.id != card_id`; `ValueError` bei `ease` ∉ 1..4. Vor `build_answer` die bei `fetch_next` erfassten persistierten Änderungs- und Scheduling-Felder (u. a. `mod`, `usn`, `type`, `queue`, `due`, `reps`) vergleichen: bei Abweichung oder fehlender Karte die In-flight-Daten leeren und `StaleCard` auslösen, ohne den Undo-Verlauf zu ändern. Keine zeitabhängigen Scheduler-States vergleichen. Mapping auf `CardAnswer.Rating` wie `answer_current`.
 - `<style></style>`-Präfix im Render entfernen (RESEARCH §10: leer, harmlos; vor `sanitize_html` strippen, damit Tests deterministisch sind).
 - AV-Tags: dedizierter Typ hat kein Audio. Falls `[anki:play:...]` im Render vorkommt: entfernen (nicht abspielbar im neuen Client), Log auf debug.
 - Type-in-Answer: **nicht unterstützt** (dedizierter Typ hat keinen `{{type:}}`).
@@ -93,6 +93,7 @@ Tests (`test_study_core.py`, `temp_collection` aus `tests/conftest.py`):
 - [ ] 5 neue Karten, Reihenfolge = Erstellungsreihenfolge, Zähler fallen 5→0 (Spike-Tabelle nachstellen).
 - [ ] Again/Hard: Karte kehrt zurück; `learning` steigt.
 - [ ] `StaleCard` bei falscher ID; `ValueError` bei ease 0 und 5; Karte in flight bleibt unverändert.
+- [ ] Zwei Sitzungen laden dieselbe Karte: nach Antwort der ersten wird die zweite als stale abgelehnt, ihre In-flight-Daten sind leer und Undo der ersten Antwort bleibt verfügbar. Eine gelöschte oder extern umgeplante In-flight-Karte wird ebenfalls vor dem Backend abgelehnt; Undo von Set Due Date bleibt verfügbar, auch wenn `reps`, `mod` und `usn` unverändert sind.
 - [ ] **Zeitmessung:** `time.sleep(0.05)` zwischen `fetch_next` und `answer`, Review-Log `time` ≥ 40 ms (Regressionstest gegen `answerCards`-Problem, RESEARCH §3 Timing-Caveat).
 - [ ] Zweiter `fetch_next` für dieselbe Karte startet Timer neu (dokumentiert, kein Fehler).
 - [ ] Leere Queue → `None`.
@@ -105,15 +106,16 @@ Eine Stelle für die Tagesgrenze, damit Fortschritt (Plan 2) und Streak (Plan 3)
 
 - [ ] `core/app_client/revlog.py` (nur `anki`, keine Adapter-Imports):
   - `day_start_ms(col) -> int` = `(col.sched.day_cutoff - 86400) * 1000`. **Einzige** Stelle, die diese Rechnung kennt.
-  - `studied_by_deck(col) -> dict[int, int]`: **eine** SQL `select c.did, count(*) from revlog r join cards c on c.id=r.cid where r.id > ? group by c.did` (Plan 2).
-  - `recent_eases(col, limit) -> list[int]`: `select ease from revlog where id > ? order by id desc limit ?` (Plan 3 bildet daraus den Streak; Funktion `streak_from_revlog` bleibt rein und liegt in `streak.py`).
+  - `studied_by_deck(col) -> dict[int, int]`: **eine** SQL `select c.did, count(*) from revlog r join cards c on c.id=r.cid where r.id > ? and r.ease > 0 group by c.did` (Plan 2).
+  - `recent_eases(col, limit) -> list[int]`: `select ease from revlog where id > ? and ease > 0 order by id desc limit ?` (Plan 3 bildet daraus den Streak; Funktion `streak_from_revlog` bleibt rein und liegt in `streak.py`).
   - **Port und Ort (Antwort auf Review-Einwand):** Der Port ist der bestehende `CollectionPort` (`core/ports.py`, Methode `run(fn)`), die **eine** Naht zu pylib; kein neuer Port pro Abfrage. Die SQL liegt bewusst in `core/app_client/revlog.py`, **nicht** in einem Outbound-Adapter: Das Repo führt rohes `col.db`-SQL im Core bereits (`ankiconnect_actions/actions/stats.py:29,45,79,104`, `cards.py:260,286`, `notes.py:393`), und `tests/test_architecture_boundaries.py` verbietet nur `core → ankiweb.adapters`, nicht SQL. Eine Verlagerung in einen Adapter wäre ein neues Muster und eine eigene Entscheidung. Die Funktionen nehmen `col` und laufen nur als `fn` in `CollectionPort.run`; der Aufrufer (Inbound-Adapter) übergibt sie, importiert aber kein `anki`.
-  - **Abgleich:** `getNumCardsReviewedToday` (`actions/stats.py:29`) nutzt dieselbe Grenze `(col.sched.day_cutoff - 86400) * 1000`. `day_start_ms` ist die gemeinsame Quelle; die bestehende Aktion wird **nicht** umgebaut (kein Eingriff in AnkiConnect), ein Test prüft, dass beide denselben Wert liefern.
+  - **Abgleich:** `getNumCardsReviewedToday` (`actions/stats.py:29`) nutzt dieselbe Grenze `(col.sched.day_cutoff - 86400) * 1000`. Parität gilt nur für die Tagesgrenze, nicht für alle gezählten Zeilen: Die bestehende Aktion zählt auch manuelle Revlog-Einträge mit `ease=0`, während die neuen Abfragen nur Bewertungen zählen. Die Aktion wird **nicht** umgebaut (kein Eingriff in AnkiConnect); Tests prüfen die Grenze und diese Abweichung.
 - [ ] Tests `tests/test_app_revlog.py` (echte Collection, kein Mock):
   - Review vor und nach der Tagesgrenze: nur der spätere zählt (Revlog-Zeile mit `id` knapp unter/über `day_start_ms` einfügen).
   - **Rollover-Fälle**: `rollover=4` (Standard), `0` und `23`; Review um 02:00 bei Rollover 4 gehört zum Vortag.
   - `studied_by_deck`: zwei Decks, Zählung je Deck; Wurzel-Deck zählt seine Kinder **nicht** automatisch (Aufsummieren macht Plan 2).
   - `recent_eases`: Reihenfolge neueste zuerst, `limit` greift.
+  - Manuelle Revlog-Einträge der Typen 4 und 5 mit `ease=0` zählen weder zu Deck-Fortschritt noch zu jüngsten Bewertungen; das Limit greift erst nach dem Filter.
 - [ ] Commit: `Add shared revlog read helpers with collection day boundary`
 
 ### 1.2 Router, Layout, Session

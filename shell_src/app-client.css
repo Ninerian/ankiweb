@@ -1,0 +1,261 @@
+@import "tailwindcss" source(none);
+
+@plugin "daisyui" {
+  themes: false;
+}
+
+/* Mockup token mapping (light / dark):
+   bg-base             -> base-100
+   bg-surface          -> base-200
+   bg-surface-elevated -> base-300
+   text-main           -> base-content
+   color-primary       -> primary (dark uses the mockup's answer blue)
+   color-meter-fill    -> accent
+   ease-again-*        -> error / error-content
+   ease-hard-*         -> warning / warning-content
+   ease-good-*         -> success / success-content
+   ease-easy-*         -> info / info-content
+   border, shadow, muted text, meter, streak and ease borders/shadows
+   retain dedicated theme tokens. */
+@plugin "daisyui/theme" {
+  name: "aw-light";
+  default: true;
+  color-scheme: light;
+  --color-base-100: #f4f3ed;
+  --color-base-200: #ffffff;
+  --color-base-300: #e5e3d8;
+  --color-base-content: #18191f;
+  --color-primary: #1971c2;
+  --color-primary-content: #ffffff;
+  --color-secondary: #e9ecef;
+  --color-secondary-content: #212529;
+  --color-accent: #ffd13b;
+  --color-accent-content: #18191f;
+  --color-neutral: #18191f;
+  --color-neutral-content: #ffffff;
+  --color-info: #d0ebff;
+  --color-info-content: #135087;
+  --color-success: #d3f9d8;
+  --color-success-content: #145b24;
+  --color-warning: #fff3bf;
+  --color-warning-content: #8f300b;
+  --color-error: #ffe3e3;
+  --color-error-content: #a62222;
+  --color-error-border: #fa5252;
+  --color-error-shadow: #c92a2a;
+  --color-warning-border: #fab005;
+  --color-warning-shadow: #e67700;
+  --color-success-border: #40c057;
+  --color-success-shadow: #2b8a3e;
+  --color-info-border: #228be6;
+  --color-info-shadow: #1864ab;
+  --color-muted: #5f6368;
+  --color-meter-track: #e5e3d8;
+  --color-streak: #ff4d00;
+  --color-streak-text: #a83200;
+  --color-streak-bg: #fff0eb;
+  --color-neo-border: #18191f;
+  --color-neo-shadow: #18191f;
+  --color-streak-glow: #ff4d00;
+  --radius-selector: 1rem;
+  --radius-field: 16px;
+  --radius-box: 24px;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2.5px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "aw-dark";
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #121316;
+  --color-base-200: #1e2025;
+  --color-base-300: #282a30;
+  --color-base-content: #f8f9fa;
+  --color-primary: #74c0fc;
+  --color-primary-content: #121316;
+  --color-secondary: #2d3038;
+  --color-secondary-content: #e9ecef;
+  --color-accent: #ffd13b;
+  --color-accent-content: #18191f;
+  --color-neutral: #f8f9fa;
+  --color-neutral-content: #121316;
+  --color-info: #0c2b45;
+  --color-info-content: #a4d5ff;
+  --color-success: #0f361a;
+  --color-success-content: #8ce99a;
+  --color-warning: #382c0b;
+  --color-warning-content: #ffe066;
+  --color-error: #381519;
+  --color-error-content: #ffbdbd;
+  --color-neo-border: #f8f9fa;
+  --color-neo-shadow: #000000;
+  --color-streak-glow: #ff6b35;
+  --color-error-border: #ff6b6b;
+  --color-error-shadow: #1a080a;
+  --color-warning-border: #fcc419;
+  --color-warning-shadow: #1a1402;
+  --color-success-border: #51cf66;
+  --color-success-shadow: #051408;
+  --color-info-border: #4dabf7;
+  --color-info-shadow: #04121e;
+  --color-muted: #a1a6b0;
+  --color-meter-track: #2a2c33;
+  --color-streak: #ff6b35;
+  --color-streak-text: #ff6b35;
+  --color-streak-bg: #2b170c;
+  --radius-selector: 1rem;
+  --radius-field: 16px;
+  --radius-box: 24px;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2.5px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@source "../ankiweb/adapters/inbound/http_app";
+@source "../ankiweb/adapters/inbound/http_shared/templates/app";
+@source "../ankiweb/shell/static/app";
+/* Emit animation utilities even when their classes are added dynamically. */
+@source inline("animate-{streak-pop,streak-reset,slide-to-added,fresh-card,added-pill-pop,reveal-answer}");
+
+@theme inline {
+  --color-muted-fg: var(--color-muted);
+  --color-neo-edge: var(--color-neo-border);
+  --shadow-neo: 3px 3px 0 var(--color-neo-shadow);
+}
+
+@theme {
+  --text-av-front: 2rem;
+  --text-av-back: 1.85rem;
+  --text-av-sm: 0.95rem;
+  --tracking-av-front: -0.03em;
+  --tracking-av-back: -0.02em;
+  --radius-av-example: 10px;
+  --leading-av-example: 1.45;
+  --transition-duration-neo: 80ms;
+  --transition-duration-meter: 350ms;
+  --ease-neo: ease;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --animate-streak-pop: streakPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-streak-reset: streakReset 0.4s ease-in-out;
+  --animate-slide-to-added: slideToAdded 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  --animate-fresh-card: popInFreshCard 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  --animate-added-pill-pop: addedPillPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-reveal-answer: revealAnswer 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+
+  @keyframes streakPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.35) rotate(-4deg); box-shadow: 0 0 16px var(--color-streak-glow); }
+    75% { transform: scale(0.95) rotate(2deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+
+  @keyframes streakReset {
+    0%, 100% { transform: translateX(0); opacity: 1; }
+    20% { transform: translateX(-6px) rotate(-3deg); opacity: 0.6; }
+    40% { transform: translateX(6px) rotate(3deg); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  @keyframes slideToAdded {
+    0% { transform: translate(0, 0) scale(1) rotate(0); opacity: 1; }
+    50% { transform: translate(8px, 60px) scale(0.97) rotate(3deg); opacity: 0.95; }
+    100% { transform: translate(var(--target-x, 0px), var(--target-y, 24px)) scale(var(--target-scale, 0.98)) rotate(var(--target-rot, -2deg)); opacity: 1; }
+  }
+
+  @keyframes popInFreshCard {
+    0% { opacity: 0; transform: translateY(-24px) scale(0.94); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes addedPillPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.3) rotate(-3deg); box-shadow: 0 0 16px var(--color-streak-glow); }
+    75% { transform: scale(0.95) rotate(2deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+
+  @keyframes revealAnswer {
+    0% { opacity: 0; transform: translateY(16px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
+/* Reduced motion: neutralise the animation tokens themselves. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-streak-pop: none;
+    --animate-streak-reset: none;
+    --animate-slide-to-added: none;
+    --animate-fresh-card: none;
+    --animate-added-pill-pop: none;
+    --animate-reveal-answer: none;
+  }
+}
+
+@utility border-neo {
+  border-width: var(--border);
+}
+
+@utility border-image-reset {
+  border-image: initial;
+}
+
+@utility transition-neo {
+  transition-property: transform, translate, box-shadow;
+}
+
+@utility transition-meter {
+  transition-property: width;
+}
+
+@layer components {
+  /* Component styles use @apply; plain CSS only for the stripe gradient. */
+  .neo-press {
+    @apply border-neo border-solid border-neo-edge border-image-reset shadow-neo
+      transition-neo duration-neo ease-neo motion-reduce:transition-none;
+  }
+
+  .neo-press:active {
+    @apply translate-x-0.5 translate-y-0.5 shadow-none motion-reduce:translate-none;
+  }
+
+  .meter-fill {
+    @apply h-full rounded-full border-r-2 border-neo-edge bg-accent transition-meter
+      duration-meter ease-spring motion-reduce:transition-none;
+    background-image: repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--color-accent-content) 8%, transparent) 0 8px,
+      transparent 8px 16px
+    );
+  }
+
+  .av-front-text {
+    @apply mb-2 text-av-front font-black tracking-av-front;
+  }
+
+  .av-hint {
+    @apply mb-3 text-muted-fg text-av-sm italic;
+  }
+
+  .av-back-text {
+    @apply mb-1.5 text-primary text-av-back font-black tracking-av-back;
+  }
+
+  .av-example {
+    @apply max-w-full mt-2.5 px-3.5 py-2.5 border-2 border-dashed border-neo-edge
+      border-image-reset rounded-av-example bg-base-100 text-base-content text-av-sm
+      font-medium leading-av-example;
+  }
+
+  .av-example mark {
+    @apply px-1 rounded-sm bg-accent text-accent-content font-bold;
+  }
+}
