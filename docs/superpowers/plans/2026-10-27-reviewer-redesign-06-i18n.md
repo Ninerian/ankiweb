@@ -1,6 +1,8 @@
 # Plan 6: Mehrsprachigkeit (i18n) für `/app/*`
 
 Teil von [00-overview](2026-10-27-reviewer-redesign-00-overview.md). Voraussetzung: [Plan 1](2026-10-27-reviewer-redesign-01-independent-client.md) (Paket, Templates). Wirkt auf Pläne 2 bis 5 (Texte, `<html lang/dir>`, Manifest).
+
+> **Reihenfolge (Entscheidung):** Plan 6 läuft **nach Plan 1 und vor 2/3/4**. Davon zuerst 6.0 bis 6.2 und 6.4. Aufgabe 6.3 (Templates umstellen) entfällt für 2 bis 4, weil sie gleich mit `tr`/`s` entstehen; sie bleibt nur für Plan 5 (Offline-Seite) und für die Prüfung durch das Gate `test_no_hardcoded_text`. 6.5 (Manifest, Cache-Hash) wird in Plan 5 umgesetzt.
 Bestehende Lösung: `docs/superpowers/plans/2026-06-02-ankiweb-i18n-i1-language-plumbing.md`, `…-i2-screens.md`, `…-i3-preferences.md`.
 
 **Ziel:** Alle sichtbaren Texte von `/app/*` folgen `ANKIWEB_LANG`, wie der Rest der App. Keine zweite Sprachquelle, kein In-App-Umschalter (gleiche Regel wie heute, README "Language").

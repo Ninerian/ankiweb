@@ -70,22 +70,23 @@ Offene Abweichung vom Mockup: daisyUI-Komponenten haben eigene Geometrie. Pixelg
 
 ```mermaid
 flowchart LR
-  P1[1 Client-Basis + Study-Service] --> P2[2 Deck-Liste]
-  P1 --> P3[3 Review]
-  P1 --> P4[4 Karten hinzufügen]
+  P1[1 Client-Basis, Theme/Build, Revlog] --> P6[6 i18n: s, lang/dir, Gates]
+  P6 --> P2[2 Deck-Liste]
+  P6 --> P3[3 Review]
+  P6 --> P4[4 Karten hinzufügen]
   P2 --> P5[5 PWA + Einbindung]
   P3 --> P5
   P4 --> P5
-  P1 --> P6[6 i18n: Katalog, lang/dir]
-  P6 -.-> P2
-  P6 -.-> P3
-  P6 -.-> P4
-  P6 --> P5
 ```
 
-Plan 6 legt `s()`, `<html lang/dir>` und die Test-Gates früh fest (nach Plan 1). Pläne 2 bis 4 verwenden von Anfang an `{{ tr.… }}`/`{{ s("…") }}` statt Klartext; nachträglich umstellen kostet einen Durchlauf pro Template. Plan 5 schließt Manifest, Offline-Seite und Cache-Hash ab.
+**Ausführungsreihenfolge (Entscheidung):** 1, dann 6, dann 2/3/4 **parallel**, dann 5. Plan 6 ist also eine **harte** Voraussetzung für 2 bis 4: Sie nutzen von Anfang an `{{ tr.… }}`/`{{ s("…") }}` statt Klartext, sonst muss jedes Template ein zweites Mal angefasst werden. Aus Plan 6 laufen **vor** der Parallelphase nur 6.0 bis 6.2 und 6.4 (Sprachvertrag, `s()`, Gate-Tests, `lang/dir`); die Template-Umstellung 6.3 entfällt, weil 2 bis 4 gleich lokalisiert schreiben. 6.5 (Manifest, Cache-Hash) gehört zu Plan 5.
 
-Schritte 2, 3, 4 sind nach 1 unabhängig voneinander. Gemeinsame Dateien: `http_app/__init__.py` (Router-Aggregation), `templates/app/`, `app.css`-Tokens. Konflikte klein halten: jeder Schritt hängt **nur eine Zeile** an die Aggregation.
+**Parallelphase 2/3/4.** Gemeinsame Dateien und Regel gegen Konflikte:
+- `http_app/__init__.py` (Router-Aggregation): jeder Plan hängt **genau eine Zeile** an.
+- `shell_src/app-client.css`: jeder Plan nutzt einen **eigenen Abschnitt** mit Kommentarmarke (`/* plan 2 */`, `/* plan 3 */`, `/* plan 4 */`), nur `@layer components`.
+- `core/app_client/strings.py`: jeder Plan fügt seinen Block **am Ende des eigenen Schlüsselbereichs** an (`app_decks_*`, `app_review_*`, `app_add_*`); die Test-Gates aus 6.2 melden nicht benutzte oder fehlende Schlüssel.
+- `templates/app/`: getrennte Dateien je Plan, kein gemeinsames Partial außer dem Layout aus Plan 1.
+- Gemeinsame Helfer (Revlog, Layout) liegen in Plan 1 und werden in der Parallelphase nicht verändert.
 
 ## Ziel-Dateistruktur
 
