@@ -120,53 +120,34 @@
 @source "../ankiweb/adapters/inbound/http_app";
 @source "../ankiweb/adapters/inbound/http_shared/templates/app";
 @source "../ankiweb/shell/static/app";
+/* Emit animation utilities even when their classes are added dynamically. */
+@source inline("animate-{streak-pop,streak-reset,slide-to-added,fresh-card,added-pill-pop,reveal-answer}");
 
-@layer components {
-  /* Component styles use @apply; plain CSS only for keyframes and gradients. */
-  .neo-press {
-    @apply border-[length:var(--border)] border-solid border-[color:var(--color-neo-border)]
-      [border-image:initial] [box-shadow:3px_3px_0_var(--color-neo-shadow)]
-      [transition:transform_0.08s_ease,box-shadow_0.08s_ease];
-  }
+@theme inline {
+  --color-muted-fg: var(--color-muted);
+  --color-neo-edge: var(--color-neo-border);
+  --shadow-neo: 3px 3px 0 var(--color-neo-shadow);
+}
 
-  .neo-press:active {
-    @apply [transform:translate(2px,2px)] [box-shadow:0_0_0_var(--color-neo-shadow)];
-  }
+@theme {
+  --text-av-front: 2rem;
+  --text-av-back: 1.85rem;
+  --text-av-sm: 0.95rem;
+  --tracking-av-front: -0.03em;
+  --tracking-av-back: -0.02em;
+  --radius-av-example: 10px;
+  --leading-av-example: 1.45;
+  --transition-duration-neo: 80ms;
+  --transition-duration-meter: 350ms;
+  --ease-neo: ease;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  .meter-fill {
-    @apply h-full [border-right:2px_solid_var(--color-neo-border)] rounded-[999px]
-      bg-[color:var(--color-accent)] [transition:width_0.35s_cubic-bezier(0.34,1.56,0.64,1)];
-    background-image: repeating-linear-gradient(
-      45deg,
-      color-mix(in srgb, var(--color-accent-content) 8%, transparent) 0 8px,
-      transparent 8px 16px
-    );
-  }
-
-  .av-front-text {
-    @apply mb-[8px] text-[length:2rem] font-[900] tracking-[-0.03em];
-  }
-
-  .av-hint {
-    @apply mb-[12px] text-[color:var(--color-muted)] text-[length:0.95rem] italic;
-  }
-
-  .av-back-text {
-    @apply mb-[6px] text-[color:var(--color-primary)] text-[length:1.85rem]
-      font-[900] tracking-[-0.02em];
-  }
-
-  .av-example {
-    @apply max-w-full mt-[10px] [padding:10px_14px] border-[length:2px] border-dashed
-      border-[color:var(--color-neo-border)] [border-image:initial] rounded-[10px]
-      [background:var(--color-base-100)] text-[color:var(--color-base-content)]
-      text-[length:0.95rem] font-[500] leading-[1.45];
-  }
-
-  .av-example mark {
-    @apply [padding:0_4px] rounded-[4px] [background:var(--color-accent)]
-      text-[color:var(--color-accent-content)] font-[700];
-  }
+  --animate-streak-pop: streakPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-streak-reset: streakReset 0.4s ease-in-out;
+  --animate-slide-to-added: slideToAdded 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  --animate-fresh-card: popInFreshCard 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  --animate-added-pill-pop: addedPillPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-reveal-answer: revealAnswer 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 
   @keyframes streakPop {
     0% { transform: scale(1); }
@@ -205,18 +186,76 @@
     0% { opacity: 0; transform: translateY(16px) scale(0.95); }
     100% { opacity: 1; transform: translateY(0) scale(1); }
   }
+}
 
-  .animate-streak-pop { @apply animate-[streakPop_0.45s_cubic-bezier(0.175,0.885,0.32,1.275)]; }
-  .animate-streak-reset { @apply animate-[streakReset_0.4s_ease-in-out]; }
-  .animate-slide-to-added { @apply animate-[slideToAdded_0.42s_cubic-bezier(0.25,1,0.5,1)_forwards]; }
-  .animate-fresh-card { @apply animate-[popInFreshCard_0.35s_cubic-bezier(0.175,0.885,0.32,1.275)_forwards]; }
-  .animate-added-pill-pop { @apply animate-[addedPillPop_0.4s_cubic-bezier(0.175,0.885,0.32,1.275)]; }
-  .animate-reveal-answer { @apply animate-[revealAnswer_0.3s_cubic-bezier(0.175,0.885,0.32,1.275)_forwards]; }
+/* Reduced motion: neutralise the animation tokens themselves. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-streak-pop: none;
+    --animate-streak-reset: none;
+    --animate-slide-to-added: none;
+    --animate-fresh-card: none;
+    --animate-added-pill-pop: none;
+    --animate-reveal-answer: none;
+  }
+}
 
-  .neo-press, .meter-fill { @apply motion-reduce:[transition:none]; }
-  .neo-press:active { @apply motion-reduce:transform-none; }
-  .animate-streak-pop, .animate-streak-reset, .animate-slide-to-added,
-  .animate-fresh-card, .animate-added-pill-pop, .animate-reveal-answer {
-    @apply motion-reduce:animate-none;
+@utility border-neo {
+  border-width: var(--border);
+}
+
+@utility border-image-reset {
+  border-image: initial;
+}
+
+@utility transition-neo {
+  transition-property: transform, translate, box-shadow;
+}
+
+@utility transition-meter {
+  transition-property: width;
+}
+
+@layer components {
+  /* Component styles use @apply; plain CSS only for the stripe gradient. */
+  .neo-press {
+    @apply border-neo border-solid border-neo-edge border-image-reset shadow-neo
+      transition-neo duration-neo ease-neo motion-reduce:transition-none;
+  }
+
+  .neo-press:active {
+    @apply translate-x-0.5 translate-y-0.5 shadow-none motion-reduce:translate-none;
+  }
+
+  .meter-fill {
+    @apply h-full rounded-full border-r-2 border-neo-edge bg-accent transition-meter
+      duration-meter ease-spring motion-reduce:transition-none;
+    background-image: repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--color-accent-content) 8%, transparent) 0 8px,
+      transparent 8px 16px
+    );
+  }
+
+  .av-front-text {
+    @apply mb-2 text-av-front font-black tracking-av-front;
+  }
+
+  .av-hint {
+    @apply mb-3 text-muted-fg text-av-sm italic;
+  }
+
+  .av-back-text {
+    @apply mb-1.5 text-primary text-av-back font-black tracking-av-back;
+  }
+
+  .av-example {
+    @apply max-w-full mt-2.5 px-3.5 py-2.5 border-2 border-dashed border-neo-edge
+      border-image-reset rounded-av-example bg-base-100 text-base-content text-av-sm
+      font-medium leading-av-example;
+  }
+
+  .av-example mark {
+    @apply px-1 rounded-sm bg-accent text-accent-content font-bold;
   }
 }
