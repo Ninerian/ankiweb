@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/shell/static/app-client.css">
+    <script type="module" src="/shell/static/datastar.js"></script>
+    {% for script in scripts %}<script type="module" src="{{ script }}"></script>{% endfor %}
+  </head>
+  <body data-signals="{error: ''}">
+    {{ body | safe }}
+    <div id="app-error" class="toast" data-show="$error" style="display:none">
+      <div class="alert alert-error" role="alert" data-text="$error"></div>
+    </div>
+  </body>
+</html>
