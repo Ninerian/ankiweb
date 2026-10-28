@@ -1,6 +1,7 @@
 import logging
 import time
 
+import anki.errors
 import pytest
 from anki.cards import CardId
 from anki.collection import Collection
@@ -119,6 +120,49 @@ def test_stale_id_and_duplicate_answer_preserve_session(temp_collection):
     answer(col, session, view.card_id, 4)
     with pytest.raises(StaleCard):
         answer(col, session, view.card_id, 4)
+
+
+def test_answer_rejects_card_answered_by_another_session(temp_collection):
+    col = temp_collection
+    deck_id, card_ids = add_cards(col, 2)
+    first_session = StudySession()
+    second_session = StudySession()
+    first = fetch_next(col, first_session, deck_id)
+    second = fetch_next(col, second_session, deck_id)
+    assert first is not None
+    assert second is not None
+    assert first.card_id == second.card_id == card_ids[0]
+
+    answer(col, first_session, first.card_id, 4)
+    with pytest.raises(StaleCard) as exc_info:
+        answer(col, second_session, second.card_id, 4)
+    assert isinstance(exc_info.value.__cause__, anki.errors.InvalidInput)
+    assert (second_session.card, second_session.states, second_session.context) == (
+        None,
+        None,
+        None,
+    )
+    next_view = fetch_next(col, second_session, deck_id)
+    assert next_view is not None
+    assert next_view.card_id == card_ids[1]
+
+
+def test_answer_rejects_deleted_card(temp_collection):
+    col = temp_collection
+    deck_id, card_ids = add_cards(col, 2)
+    session = StudySession()
+    view = fetch_next(col, session, deck_id)
+    assert view is not None
+    assert session.card is not None
+    col.remove_notes([session.card.nid])
+
+    with pytest.raises(StaleCard) as exc_info:
+        answer(col, session, view.card_id, 4)
+    assert isinstance(exc_info.value.__cause__, anki.errors.NotFoundError)
+    assert (session.card, session.states, session.context) == (None, None, None)
+    next_view = fetch_next(col, session, deck_id)
+    assert next_view is not None
+    assert next_view.card_id == card_ids[1]
 
 
 @pytest.mark.parametrize("ease", [1, 2, 3, 4])

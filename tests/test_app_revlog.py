@@ -1,9 +1,13 @@
 from datetime import datetime, timedelta
 from pathlib import Path
-from time import localtime
+from time import gmtime, localtime
 
 import pytest
+from anki.cards import CardId
 from anki.collection import Collection
+from anki.decks import DeckId
+from anki.scheduler.v3 import CardAnswer
+from anki.scheduler.v3 import Scheduler as V3Scheduler
 from fastapi.testclient import TestClient
 
 from ankiweb.ankiconnect.app import create_ankiconnect_app
@@ -11,7 +15,7 @@ from ankiweb.core.app_client.revlog import day_start_ms, recent_eases, studied_b
 from ankiweb.core.config import Settings
 
 
-def _add_card(col: Collection, deck_name: str) -> tuple[int, int]:
+def _add_card(col: Collection, deck_name: str) -> tuple[int, CardId]:
     deck_id = col.decks.id(deck_name)
     model = col.models.by_name("Basic")
     assert deck_id is not None
@@ -41,7 +45,7 @@ def test_day_boundary_follows_collection_rollover(
     # Anki caches scheduler timing, so configure rollover before the first cutoff read.
     col.set_config("rollover", rollover)
     start = day_start_ms(col)
-    assert localtime(col.sched.day_cutoff).tm_hour == rollover
+    assert gmtime(col.sched.day_cutoff + localtime().tm_gmtoff).tm_hour == rollover
     deck_id, card_id = _add_card(col, "Boundary")
     _insert_review(col, card_id, start - 1, 1)
     _insert_review(col, card_id, start, 2)
@@ -56,7 +60,7 @@ def test_two_am_review_belongs_to_previous_day(temp_collection: Collection) -> N
     col.set_config("rollover", 4)
     start = day_start_ms(col)
     start_local = datetime.fromtimestamp(start / 1000)
-    assert localtime(col.sched.day_cutoff).tm_hour == 4
+    assert gmtime(col.sched.day_cutoff + localtime().tm_gmtoff).tm_hour == 4
     two_am = start_local.replace(hour=2, minute=0, second=0, microsecond=0)
     if datetime.fromtimestamp(two_am.timestamp()).hour != 2:
         # On a spring-forward day, local 02:00 does not exist.
@@ -102,6 +106,46 @@ def test_recent_eases_newest_first_and_limited(temp_collection: Collection) -> N
     assert recent_eases(col, 10) == [4, 1, 2]
     assert recent_eases(col, 2) == [4, 1]
     assert recent_eases(col, 0) == []
+
+
+@pytest.mark.parametrize("operations", [("due",), ("forget",), ("due", "forget")])
+@pytest.mark.parametrize("helper", ["studied", "eases"])
+def test_manual_scheduling_does_not_count_as_study(
+    temp_collection: Collection, operations: tuple[str, ...], helper: str
+) -> None:
+    col = temp_collection
+    _, due_card = _add_card(col, "Manual")
+    _, forgotten_card = _add_card(col, "Manual")
+    for operation in operations:
+        if operation == "due":
+            col.sched.set_due_date([due_card], "1")
+        else:
+            col.sched.schedule_cards_as_new([forgotten_card])
+
+    if helper == "studied":
+        assert studied_by_deck(col) == {}
+    else:
+        assert recent_eases(col, 10) == []
+
+    studied_deck, _ = _add_card(col, "Study")
+    col.decks.set_current(DeckId(studied_deck))
+    assert isinstance(col.sched, V3Scheduler)
+    queued = col.sched.get_queued_cards(fetch_limit=1)
+    assert queued.cards
+    top = queued.cards[0]
+    card = col.get_card(CardId(top.card.id))
+    card.start_timer()
+    answer = col.sched.build_answer(
+        card=card, states=top.states, rating=CardAnswer.Rating.GOOD
+    )
+    col.sched.answer_card(answer)
+    col.sched.set_due_date([due_card], "3")
+
+    if helper == "studied":
+        assert studied_by_deck(col) == {studied_deck: 1}
+    else:
+        assert recent_eases(col, 10) == [3]
+        assert recent_eases(col, 1) == [3]
 
 
 @pytest.mark.parametrize("rollover", [4, 0, 23])
