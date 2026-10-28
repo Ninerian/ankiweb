@@ -1,3 +1,7 @@
+from html.parser import HTMLParser
+
+import pytest
+
 from ankiweb.core.html_sanitize import sanitize_html
 
 
@@ -48,3 +52,78 @@ def test_sanitize_allowed_formatting_tags():
         sanitized
         == "<p>Paragraph with <b>bold</b>, <i>italic</i>, and <code>code</code>.</p>"
     )
+
+
+class _RenderedContent(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tags: list[str] = []
+        self.text: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        self.tags.append(tag)
+
+    def handle_data(self, data):
+        self.text.append(data)
+
+
+@pytest.mark.parametrize(
+    ("tag", "visible_entity"),
+    [
+        ("xmp", "&amp;"),
+        ("noembed", "&amp;"),
+        ("noframes", "&amp;"),
+        ("title", "&"),
+        ("textarea", "&"),
+    ],
+)
+@pytest.mark.parametrize("opening_suffix", [">", "/>"])
+def test_sanitize_text_only_elements_do_not_create_markup(
+    tag, visible_entity, opening_suffix
+):
+    payload = '<img src=x onerror="window.reviewXss=1">'
+    raw = (
+        f"<b>safe &amp; sound</b><{tag}{opening_suffix}"
+        f"before {payload} &amp; after</{tag}><i>end</i>"
+    )
+    rendered = _RenderedContent()
+    rendered.feed(sanitize_html(raw))
+    rendered.close()
+
+    assert rendered.tags == ["b", "i"]
+    assert "".join(rendered.text) == (
+        f"safe & soundbefore {payload} {visible_entity} afterend"
+    )
+
+
+@pytest.mark.parametrize("tag", ["xmp", "noembed", "noframes", "title", "textarea"])
+def test_sanitize_unclosed_text_only_element_keeps_payload_inert(tag):
+    payload = '<img src=x onerror="window.reviewXss=1">'
+    rendered = _RenderedContent()
+    rendered.feed(sanitize_html(f"<{tag}>{payload}"))
+    rendered.close()
+
+    assert rendered.tags == []
+    assert "".join(rendered.text) == payload
+
+
+@pytest.mark.parametrize("opening", ["<plaintext>", "<plaintext/>"])
+def test_sanitize_plaintext_consumes_the_remainder_as_text(opening):
+    payload = '<img src=x onerror="window.reviewXss=1">'
+    remainder = f"{payload} &amp; </plaintext><b>still text</b>"
+    rendered = _RenderedContent()
+    rendered.feed(sanitize_html(f"<i>before</i>{opening}{remainder}"))
+    rendered.close()
+
+    assert rendered.tags == ["i"]
+    assert "".join(rendered.text) == f"before{remainder}"
+
+
+def test_sanitize_preserves_entities_and_escapes_text():
+    raw = "<p>A &amp; B &#60; C &gt; D & E</p><textarea>&lt;b&gt;&amp;&#65;</textarea>"
+    rendered = _RenderedContent()
+    rendered.feed(sanitize_html(raw))
+    rendered.close()
+
+    assert rendered.tags == ["p"]
+    assert "".join(rendered.text) == "A & B < C > D & E<b>&A"

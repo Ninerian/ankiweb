@@ -64,10 +64,11 @@ class StudySession:
         self.card: Card | None = None
         self.states: SchedulingStates | None = None
         self.context: SchedulingContext | None = None
+        self._card_snapshot: tuple[int | str, ...] | None = None
 
 
 class StaleCard(Exception):
-    """The requested card is not the session's current card."""
+    """The requested card is not in flight or has changed in the collection."""
 
 
 def _clean_label(label: str) -> str:
@@ -82,6 +83,20 @@ def _render_html(html: str) -> str:
     return sanitize_html(html)
 
 
+def _card_snapshot(
+    col: anki.collection.Collection, card_id: CardId
+) -> tuple[int | str, ...] | None:
+    # Compare persisted fields, not time-dependent scheduler states. The data
+    # column includes FSRS and custom scheduling data.
+    assert col.db is not None
+    row = col.db.first(
+        "select mod, usn, type, queue, due, did, ivl, factor, reps, lapses, "
+        '"left", odue, odid, data from cards where id = ?',
+        card_id,
+    )
+    return tuple(row) if row is not None else None
+
+
 def fetch_next(
     col: anki.collection.Collection, session: StudySession, deck_id: int | None
 ) -> CardView | None:
@@ -93,14 +108,23 @@ def fetch_next(
         session.card = None
         session.states = None
         session.context = None
+        session._card_snapshot = None
         return None
 
     top = queued.cards[0]
     card = col.get_card(CardId(top.card.id))
+    snapshot = _card_snapshot(col, card.id)
+    if snapshot is None:
+        session.card = None
+        session.states = None
+        session.context = None
+        session._card_snapshot = None
+        raise StaleCard("Card has changed in the collection")
     card.start_timer()
     session.card = card
     session.states = top.states
     session.context = top.context
+    session._card_snapshot = snapshot
     again, hard, good, easy = scheduler.describe_next_states(top.states)
     return CardView(
         card_id=card.id,
@@ -125,6 +149,14 @@ def answer(
         raise StaleCard("Card is not in flight")
     if ease not in _RATINGS:
         raise ValueError("Ease must be between 1 and 4")
+    if session._card_snapshot is None or (
+        _card_snapshot(col, card.id) != session._card_snapshot
+    ):
+        session.card = None
+        session.states = None
+        session.context = None
+        session._card_snapshot = None
+        raise StaleCard("Card has changed in the collection")
     assert session.states is not None
     scheduler = cast(Scheduler, col.sched)
     response = scheduler.build_answer(
@@ -134,3 +166,4 @@ def answer(
     session.card = None
     session.states = None
     session.context = None
+    session._card_snapshot = None

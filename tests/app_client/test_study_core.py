@@ -72,6 +72,8 @@ def test_again_and_hard_requeue_as_learning(temp_collection, ease):
     assert returning is not None
     assert returning.card_id == card_ids[0]
     assert returning.counts == QueueCounts(new=0, learning=1, review=0)
+    answer(col, session, returning.card_id, 4)
+    assert col.get_card(returning.card_id).reps == 2
 
 
 def test_queue_and_deck_tree_use_their_respective_learning_fields(temp_collection):
@@ -97,10 +99,15 @@ def test_invalid_ease_preserves_in_flight_card(temp_collection, ease):
     session = StudySession()
     view = fetch_next(col, session, deck_id)
     assert view is not None
-    before = (session.card, session.states, session.context)
+    before = (session.card, session.states, session.context, session._card_snapshot)
     with pytest.raises(ValueError):
         answer(col, session, view.card_id, ease)
-    assert (session.card, session.states, session.context) == before
+    assert (
+        session.card,
+        session.states,
+        session.context,
+        session._card_snapshot,
+    ) == before
     answer(col, session, view.card_id, 4)
 
 
@@ -112,13 +119,195 @@ def test_stale_id_and_duplicate_answer_preserve_session(temp_collection):
         answer(col, session, 123, 4)
     view = fetch_next(col, session, deck_id)
     assert view is not None
-    before = (session.card, session.states, session.context)
+    before = (session.card, session.states, session.context, session._card_snapshot)
     with pytest.raises(StaleCard):
         answer(col, session, view.card_id + 1, 4)
-    assert (session.card, session.states, session.context) == before
+    assert (
+        session.card,
+        session.states,
+        session.context,
+        session._card_snapshot,
+    ) == before
     answer(col, session, view.card_id, 4)
     with pytest.raises(StaleCard):
         answer(col, session, view.card_id, 4)
+
+
+def test_stale_answer_in_another_session_preserves_undo(temp_collection, monkeypatch):
+    col = temp_collection
+    deck_id, card_ids = add_cards(col, 1)
+    card_id = card_ids[0]
+    first_session = StudySession()
+    stale_session = StudySession()
+    first = fetch_next(col, first_session, deck_id)
+    stale = fetch_next(col, stale_session, deck_id)
+    assert first is not None
+    assert stale is not None
+    assert first.card_id == stale.card_id == card_id
+    assert stale_session.card is not None
+    assert stale_session.states is not None
+    assert stale_session.context is not None
+    initial_reps = stale_session.card.reps
+    initial_reviews = col.db.scalar("select count() from revlog where cid = ?", card_id)
+
+    answer(col, first_session, card_id, 4)
+    assert col.get_card(card_id).reps == initial_reps + 1
+    assert col.db.scalar("select count() from revlog where cid = ?", card_id) == (
+        initial_reviews + 1
+    )
+    undo_status = col.undo_status()
+    assert undo_status.undo
+
+    before = (stale_session.card, stale_session.states, stale_session.context)
+    with pytest.raises(ValueError):
+        answer(col, stale_session, card_id, 0)
+    assert (stale_session.card, stale_session.states, stale_session.context) == before
+
+    def unexpected_build_answer(**kwargs):
+        pytest.fail("Stale answer reached build_answer")
+
+    monkeypatch.setattr(col.sched, "build_answer", unexpected_build_answer)
+    with pytest.raises(StaleCard):
+        answer(col, stale_session, card_id, 4)
+    assert stale_session.card is None
+    assert stale_session.states is None
+    assert stale_session.context is None
+    assert stale_session._card_snapshot is None
+    assert col.undo_status() == undo_status
+    assert col.get_card(card_id).reps == initial_reps + 1
+    assert col.db.scalar("select count() from revlog where cid = ?", card_id) == (
+        initial_reviews + 1
+    )
+
+    col.undo()
+    assert col.get_card(card_id).reps == initial_reps
+    assert col.db.scalar("select count() from revlog where cid = ?", card_id) == (
+        initial_reviews
+    )
+
+
+@pytest.mark.parametrize("same_mod_and_usn", [False, True])
+def test_external_reschedule_rejects_stale_answer_and_preserves_undo(
+    temp_collection, monkeypatch, same_mod_and_usn
+):
+    col = temp_collection
+    deck_id, card_ids = add_cards(col, 1)
+    card_id = card_ids[0]
+    session = StudySession()
+    view = fetch_next(col, session, deck_id)
+    assert view is not None
+    assert view.card_id == card_id
+    assert session.card is not None
+    assert session.states is not None
+    assert session.context is not None
+    assert session._card_snapshot is not None
+    before = col.db.first(
+        "select mod, usn, type, queue, due, reps from cards where id = ?", card_id
+    )
+    assert before is not None
+    assert before[5] == session.card.reps == 0
+
+    col.sched.set_due_date([card_id], "0")
+    after = col.db.first(
+        "select mod, usn, type, queue, due, reps from cards where id = ?", card_id
+    )
+    assert after is not None
+    assert after[5] == before[5]
+    assert after[2:5] != before[2:5]
+    undo_status = col.undo_status()
+    assert undo_status.undo == "Set Due Date"
+
+    if same_mod_and_usn:
+        # Simulate the timestamp/usn collision even if execution crosses a second.
+        session._card_snapshot = (
+            after[0],
+            after[1],
+            *session._card_snapshot[2:],
+        )
+        assert session._card_snapshot[:2] == tuple(after[:2])
+
+    def unexpected_build_answer(**kwargs):
+        pytest.fail("Rescheduled card reached build_answer")
+
+    monkeypatch.setattr(col.sched, "build_answer", unexpected_build_answer)
+    with pytest.raises(StaleCard):
+        answer(col, session, card_id, 4)
+    assert session.card is None
+    assert session.states is None
+    assert session.context is None
+    assert session._card_snapshot is None
+    assert col.undo_status() == undo_status
+    assert (
+        col.db.first(
+            "select mod, usn, type, queue, due, reps from cards where id = ?", card_id
+        )
+        == after
+    )
+
+    col.undo()
+    restored = col.db.first(
+        "select type, queue, due, reps from cards where id = ?", card_id
+    )
+    assert restored == before[2:]
+
+
+@pytest.mark.parametrize(
+    "update_sql",
+    [
+        "update cards set mod = mod + 1 where id = ?",
+        "update cards set usn = usn + 1 where id = ?",
+        "update cards set due = due + 1 where id = ?",
+        "update cards set ivl = ivl + 1 where id = ?",
+        'update cards set data = \'{"cd":{"x":1}}\' where id = ?',
+    ],
+)
+def test_persisted_card_field_changes_reject_stale_answer(
+    temp_collection, monkeypatch, update_sql
+):
+    col = temp_collection
+    deck_id, card_ids = add_cards(col, 1)
+    session = StudySession()
+    view = fetch_next(col, session, deck_id)
+    assert view is not None
+    col.db.execute(update_sql, card_ids[0])
+
+    def unexpected_build_answer(**kwargs):
+        pytest.fail("Changed card reached build_answer")
+
+    monkeypatch.setattr(col.sched, "build_answer", unexpected_build_answer)
+    with pytest.raises(StaleCard):
+        answer(col, session, view.card_id, 4)
+    assert session.card is None
+    assert session.states is None
+    assert session.context is None
+    assert session._card_snapshot is None
+
+
+def test_deleted_card_answer_clears_session_and_preserves_undo(temp_collection):
+    col = temp_collection
+    deck_id, card_ids = add_cards(col, 1)
+    session = StudySession()
+    view = fetch_next(col, session, deck_id)
+    assert view is not None
+    assert view.card_id == card_ids[0]
+    assert session.card is not None
+    assert session.states is not None
+    assert session.context is not None
+    col.remove_notes([session.card.nid])
+    assert col.db.scalar("select reps from cards where id = ?", view.card_id) is None
+    undo_status = col.undo_status()
+    assert undo_status.undo
+
+    with pytest.raises(StaleCard):
+        answer(col, session, view.card_id, 4)
+    assert session.card is None
+    assert session.states is None
+    assert session.context is None
+    assert session._card_snapshot is None
+    assert col.undo_status() == undo_status
+
+    col.undo()
+    assert col.get_card(card_ids[0]).id == card_ids[0]
 
 
 @pytest.mark.parametrize("ease", [1, 2, 3, 4])
@@ -169,6 +358,7 @@ def test_empty_queue_clears_session(temp_collection):
     assert session.card is None
     assert session.states is None
     assert session.context is None
+    assert session._card_snapshot is None
 
 
 def test_labels_remove_isolates_and_nbsp(temp_collection, monkeypatch):

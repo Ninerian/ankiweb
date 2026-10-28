@@ -14,7 +14,7 @@ def studied_by_deck(col: Collection) -> dict[int, int]:
     return dict(
         col.db.all(
             "select c.did, count(*) from revlog r join cards c on c.id=r.cid "
-            "where r.id > ? group by c.did",
+            "where r.id > ? and r.ease > 0 group by c.did",
             day_start_ms(col),
         )
     )
@@ -24,7 +24,7 @@ def recent_eases(col: Collection, limit: int) -> list[int]:
     """Return today's latest review ratings, newest first."""
     assert col.db is not None
     return col.db.list(
-        "select ease from revlog where id > ? order by id desc limit ?",
+        "select ease from revlog where id > ? and ease > 0 order by id desc limit ?",
         day_start_ms(col),
         limit,
     )
