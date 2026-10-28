@@ -2,7 +2,7 @@
 
 > Teil von [00-overview](2026-10-27-reviewer-redesign-00-overview.md). Voraussetzung: Pläne 1 bis 4 gemerged.
 
-**Ziel:** `/app/` ist als eigenständige PWA installierbar, alle drei Ansichten (Deck-Liste, Review, Add) sind konsistent verbunden, der alte Client bleibt unter `/` funktionsfähig.
+**Ziel:** `/app/` erfüllt die Installierbarkeitskriterien von Chromium (Manifest, Worker, Icons; geprüft per CDP auf localhost). **Nicht im Umfang (Entscheidung): HTTPS-Betrieb.** Der Plan liefert nur Dokumentation (`docs/pwa-deployment.md`); ohne TLS lässt sich die App auf einem Smartphone außerhalb von `localhost` nicht installieren, und das ist im Repo nicht testbar. Alle drei Ansichten (Deck-Liste, Review, Add) sind konsistent verbunden, der alte Client bleibt unter `/` funktionsfähig.
 
 ## Ausgangslage (belegt, `pwa.py`, `REFERENCE.md` §4 bis §8)
 
