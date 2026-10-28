@@ -142,7 +142,7 @@ Routen (`TestClient`, Collection mit 3 Karten):
 - [ ] `Cache-Control: no-store` auf `GET /app/review`.
 
 Browser (Playwright, `importorskip`):
-- [ ] Space deckt auf, `1`..`4` bewertet, Streak steigt/fällt, Again zeigt Reset-Toast, **Reload behält den Streak**, Undo senkt ihn.
+- [ ] Space deckt auf, `1`..`4` bewertet, Streak steigt/fällt (Pill-Animation und Zähler, **kein** Toast: Entscheidung des Nutzers vom 2026-10-28, siehe DESIGN §2.A), **Reload behält den Streak**, Undo senkt ihn.
 - [ ] Space/Ziffern im Fokus eines Buttons ignoriert (Guard).
 - [ ] Sheet öffnen, Backdrop schließt, Escape schließt.
 - [ ] Bury/Suspend entfernt Karte; Undo bringt Rating zurück.
