@@ -1,5 +1,7 @@
+import json
 from dataclasses import dataclass
 
+import anki._backend
 import anki.lang
 
 from ankiweb.core.config import Settings
@@ -12,29 +14,33 @@ class ResolvedLang:
     catalog_lang: str
 
 
+def _disk_lang(locale: str) -> str:
+    parts = locale.split("-")
+    base = parts[0]
+    # Anki remaps these languages to region-specific bundles independently of
+    # lang_to_disk_lang(). In particular, scripts do not select Chinese bundles.
+    if base == "zh":
+        if "HK" in parts and "Hans" not in parts:
+            return "zh-HK"
+        if "HK" in parts or "TW" in parts:
+            return "zh-TW"
+        return "zh-CN"
+    if base == "pt":
+        return "pt-PT" if "PT" in parts else "pt-BR"
+    if base == "en":
+        return "en-GB" if locale == "en-GB" else "en"
+    if base == "ga":
+        return "ga-IE"
+    disk = anki.lang.lang_to_disk_lang(locale)
+    return base if "_" in disk else disk
+
+
 def resolve_lang(settings: Settings) -> ResolvedLang:
     """Resolve the startup language for the app's HTML and custom catalog."""
-    disk = anki.lang.lang_to_disk_lang(settings.lang or "en")
-    known = {anki.lang.lang_to_disk_lang(code) for _, code in anki.lang.langs}
-    # "no" normalizes to "nb" but Anki translates it as English. Direct "nb"
-    # locales do translate, even though only nb-NO appears in the language list.
-    parts = settings.lang.replace("_", "-").split("-")
-    nb_locale = (
-        disk == "nb"
-        and parts[0] == "nb"
-        and (
-            len(parts) == 1
-            or (
-                len(parts) == 2
-                and len(parts[1]) == 2
-                and parts[1].isascii()
-                and parts[1].isalpha()
-            )
-        )
-    )
-    # Anki 26.9.2's Persian bundle fails to parse and falls back to English
-    # (observed 2026-10-28). The regression test should fail when upstream fixes it.
-    if disk == "fa" or (disk not in known and not nb_locale):
-        disk = "en"
-    base = disk.split("-")[0].split("_")[0]
+    # set_lang() builds the same backend from the original setting. Its reported
+    # locales contain only successfully loaded bundles, followed by English.
+    backend = anki._backend.RustBackend(langs=[settings.lang or "en"])
+    locale = json.loads(backend.i18n_resources(modules=["actions"]))["langs"][0]
+    disk = _disk_lang(locale)
+    base = disk.split("-")[0]
     return ResolvedLang(disk, "rtl" if anki.lang.is_rtl(base) else "ltr", base)
