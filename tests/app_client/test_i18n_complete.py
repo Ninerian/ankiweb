@@ -73,9 +73,6 @@ PRESEEDED_UNUSED_REVIEW = {
 PRESEEDED_UNUSED_ADD = {
     "app_add_edit_last",
     "app_add_edit_preview",
-    "app_add_no_cards",
-    "app_add_first_card",
-    "app_add_top_card",
     "app_add_discard_leave",
     "app_add_discard_finish",
     "app_add_discard_edit",

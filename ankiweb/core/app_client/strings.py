@@ -89,6 +89,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_front_required": "Front cannot be empty!",
         "app_add_back_required": "Back cannot be empty!",
         "app_add_both_required": "Front and back are required",
+        "app_add_duplicate": "A card with this front already exists.",
+        "app_add_save_failed": "Could not add the card. Please try again.",
         "app_add_editing": "Editing…",
         "app_add_card_first": "Add a card first.",
         "app_add_cards_ready": "Cards Ready!",
@@ -201,6 +203,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_front_required": "Die Vorderseite darf nicht leer sein!",
         "app_add_back_required": "Die Rückseite darf nicht leer sein!",
         "app_add_both_required": "Vorder- und Rückseite sind erforderlich",
+        "app_add_duplicate": "Eine Karte mit dieser Vorderseite existiert bereits.",
+        "app_add_save_failed": (
+            "Die Karte konnte nicht hinzugefügt werden. Bitte erneut versuchen."
+        ),
         "app_add_editing": "Wird bearbeitet…",
         "app_add_card_first": "Füge zuerst eine Karte hinzu.",
         "app_add_cards_ready": "Karten bereit!",

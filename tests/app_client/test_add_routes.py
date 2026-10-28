@@ -1,8 +1,14 @@
+import json
+import re
 from pathlib import Path
 
 import anki.lang
 import pytest
+from anki.collection import Collection
+from anki.decks import DeckId
+from anki.notes import NoteId
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from ankiweb.app import create_app
 from ankiweb.core.app_client.vocab import NOTETYPE_NAME, escape_field, highlight_example
@@ -37,7 +43,9 @@ def test_add_page_initializes_model_and_session(client: TestClient) -> None:
     for step in (1, 2, 3):
         assert f'data-show="$step === {step}" style="display:none"' in page.text
     assert "/app/add/preview" in page.text
-    assert "/app/add/commit" not in page.text
+    assert f"/app/add/commit?deck={deck_id}" in page.text
+    assert "data-indicator:saving" in page.text
+    assert 'data-attr:disabled="$saving"' in page.text
     assert "app_sid" in page.cookies
     assert "HttpOnly" in page.headers["set-cookie"]
     assert "SameSite=lax" in page.headers["set-cookie"]
@@ -89,6 +97,7 @@ def test_add_routes_follow_password_gate(tmp_path: Path) -> None:
         for response in (
             client.get("/app/add?deck=1", follow_redirects=False),
             client.post("/app/add/preview", json={}, follow_redirects=False),
+            client.post("/app/add/commit?deck=1", json={}, follow_redirects=False),
         ):
             assert response.status_code == 303
             assert response.headers["location"] == "/login"
@@ -96,6 +105,7 @@ def test_add_routes_follow_password_gate(tmp_path: Path) -> None:
         client.cookies.set(COOKIE, auth_token(password))
         assert client.get("/app/add?deck=1").status_code == 200
         assert client.post("/app/add/preview", json={}).status_code == 200
+        assert client.post("/app/add/commit?deck=1", json={}).status_code == 200
 
 
 def test_preview_escapes_all_fields_and_highlights_example(client: TestClient) -> None:
@@ -139,15 +149,420 @@ def test_preview_omits_empty_optional_fields(client: TestClient) -> None:
     assert "Example sentence" not in response.text
 
 
+def test_preview_matches_saved_example_after_client_highlighting(
+    client: TestClient,
+) -> None:
+    example = 'Say *<b> & "x"*.\nThen *<img src=x onerror=alert(1)>*.'
+    payload = {"front": "Question", "back": "Answer", "example": example}
+    preview = client.post("/app/add/preview", json=payload)
+    committed = client.post("/app/add/commit?deck=1", json=payload)
+    assert preview.status_code == committed.status_code == 200
+    assert _signals(committed)["count"] == 1
+
+    ids = _notes(client)
+    assert len(ids) == 1
+    assert client.portal is not None
+
+    def saved_example(col: Collection) -> tuple[str, str]:
+        note = col.get_note(ids[0])
+        return note["Example"], note.cards()[0].answer()
+
+    stored, answer = client.portal.call(client.app.state.service.run, saved_example)
+    assert stored == (
+        'Say *&lt;b&gt; &amp; "x"*.<br>Then *&lt;img src=x onerror=alert(1)&gt;*.'
+    )
+    assert f'<div class="av-example">{stored}</div>' in answer
+
+    # The planned client highlights text within each line, after Anki renders it.
+    rendered = "<br>".join(
+        re.sub(r"\*([^*]+)\*", r"<mark>\1</mark>", line)
+        for line in stored.split("<br>")
+    )
+    assert rendered == (
+        'Say <mark>&lt;b&gt; &amp; "x"</mark>.<br>'
+        "Then <mark>&lt;img src=x onerror=alert(1)&gt;</mark>."
+    )
+    assert f"<p>{rendered}</p>" in preview.text
+    assert "<img src=x" not in preview.text
+    assert "<img src=x" not in answer
+
+
 def test_add_page_uses_resolved_language(tmp_path: Path) -> None:
     settings = Settings(collection_path=tmp_path / "de-add.anki2", lang="de_DE")
     try:
         with TestClient(create_app(settings)) as client:
             response = client.get("/app/add?deck=1")
             preview = client.post("/app/add/preview", json={"front": "Frage"})
+            client.post(
+                "/app/add/commit?deck=1", json={"front": "Frage", "back": "Antwort"}
+            )
+            duplicate = client.post(
+                "/app/add/commit?deck=1", json={"front": "Frage", "back": "Antwort"}
+            )
     finally:
         anki.lang.set_lang("en")
     assert response.status_code == 200
     assert '<html lang="de" dir="ltr">' in response.text
     assert "Vorderseite (Frage / Stichwort)" in response.text
     assert "Kartenvorschau" in preview.text
+    assert _signals(duplicate) == {
+        "error": "Eine Karte mit dieser Vorderseite existiert bereits."
+    }
+
+
+def _signals(response: Response) -> dict[str, object]:
+    for line in response.text.splitlines():
+        if line.startswith("data: signals "):
+            return json.loads(line.removeprefix("data: signals "))
+    raise AssertionError("No Datastar signal patch")
+
+
+def _notes(client: TestClient) -> list[NoteId]:
+    assert client.portal is not None
+    return client.portal.call(
+        client.app.state.service.run, lambda col: col.find_notes("")
+    )
+
+
+def test_commit_persists_escaped_note_and_patches_session_cards(
+    client: TestClient,
+) -> None:
+    assert client.portal is not None
+    service = client.app.state.service
+    deck_id = client.portal.call(service.run, lambda col: col.decks.id("Commit deck"))
+    assert deck_id is not None
+    assert client.get(f"/app/add?deck={deck_id}").status_code == 200
+    values = {
+        "front": '<img src=x onerror="alert(1)"> &\nQuestion',
+        "back": "<script>alert(1)</script> & answer",
+        "hint": "<b>hint</b> &",
+        "example": "A *word* & <img src=x onerror=alert(1)>",
+    }
+
+    response = client.post(
+        f"/app/add/commit?deck={deck_id}",
+        json={**values, "step": 3, "nid": 0, "count": 999},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert response.text.count("event: datastar-patch-elements") == 2
+    assert 'id="added-cards"' in response.text
+    assert 'id="hud-count"' in response.text
+    assert "1 Cards added" in response.text
+    assert "Top card" in response.text
+    assert "&lt;img src=x onerror=&#34;alert(1)&#34;&gt; &amp;" in response.text
+    assert "&lt;script&gt;alert(1)&lt;/script&gt; &amp; answer" in response.text
+    assert "&lt;b&gt;hint&lt;/b&gt; &amp;" in response.text
+    assert "*word* &amp; &lt;img src=x onerror=alert(1)&gt;" in response.text
+    assert "<img src=x" not in response.text
+    assert "<script>" not in response.text
+    assert _signals(response) == {
+        "front": "",
+        "back": "",
+        "hint": "",
+        "example": "",
+        "step": 1,
+        "nid": 0,
+        "count": 1,
+        "error": "",
+    }
+
+    ids = _notes(client)
+    assert len(ids) == 1
+
+    def saved(col: Collection) -> tuple[str, list[str], list[DeckId]]:
+        note = col.get_note(ids[0])
+        model = note.note_type()
+        assert model is not None
+        return (
+            model["name"],
+            [note[key] for key in ("Front", "Back", "Hint", "Example")],
+            [card.did for card in note.cards()],
+        )
+
+    name, fields, decks = client.portal.call(service.run, saved)
+    assert name == NOTETYPE_NAME
+    assert fields == [escape_field(values[key]) for key in values]
+    assert decks == [deck_id]
+
+    page = client.get(f"/app/add?deck={deck_id}")
+    assert "count: 1" in page.text
+    assert '<span data-text="$count">1</span>' in page.text
+    assert "&lt;img src=x onerror=&#34;alert(1)&#34;&gt;" in page.text
+    assert "<img src=x" not in page.text
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {},
+        {"front": "", "back": "Answer"},
+        {"front": " \n", "back": "Answer"},
+        {"front": "Question", "back": " "},
+        {"front": 42, "back": "Answer"},
+        {"front": "Question", "back": "Answer", "hint": None},
+    ],
+)
+def test_commit_rejects_invalid_fields_without_resetting_form(
+    client: TestClient, values: dict
+) -> None:
+    response = client.post("/app/add/commit?deck=1", json=values)
+    assert response.status_code == 200
+    assert _signals(response) == {"error": "Front and back are required"}
+    assert "datastar-patch-elements" not in response.text
+    assert _notes(client) == []
+
+
+def test_commit_rejects_malformed_json_without_resetting_form(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/app/add/commit?deck=1",
+        content="{",
+        headers={"content-type": "application/json"},
+    )
+    assert _signals(response) == {"error": "Front and back are required"}
+    assert _notes(client) == []
+
+
+def test_duplicate_commit_keeps_form_and_one_note(client: TestClient) -> None:
+    payload = {"front": "Hund", "back": "dog"}
+    assert _signals(client.post("/app/add/commit?deck=1", json=payload))["count"] == 1
+    response = client.post("/app/add/commit?deck=1", json=payload)
+    assert _signals(response) == {"error": "A card with this front already exists."}
+    assert "datastar-patch-elements" not in response.text
+    assert len(_notes(client)) == 1
+    assert "count: 1" in client.get("/app/add?deck=1").text
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "",
+        "?deck=",
+        "?deck=nope",
+        "?deck=0",
+        "?deck=-1",
+        "?deck=9223372036854775808",
+        "?deck=999999999",
+    ],
+)
+def test_commit_rejects_invalid_deck(client: TestClient, query: str) -> None:
+    response = client.post(
+        f"/app/add/commit{query}",
+        json={"front": "Question", "back": "Answer"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert response.headers["location"] == "/app/"
+    assert "app_sid" not in response.cookies
+    assert _notes(client) == []
+
+
+def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
+    assert client.portal is not None
+    service = client.app.state.service
+    other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
+    assert other_deck is not None
+    first = client.post("/app/add/commit?deck=1", json={"front": "A", "back": "a"})
+    assert _signals(first)["count"] == 1
+    first_nid = _notes(client)[0]
+    session_a = client.cookies.get("app_sid")
+    assert session_a
+
+    second = client.post(
+        f"/app/add/commit?deck={other_deck}", json={"front": "B", "back": "b"}
+    )
+    assert _signals(second)["count"] == 1
+    assert ">B</p>" in second.text
+    assert ">A</p>" not in second.text
+    assert ">A</p>" in client.get("/app/add?deck=1").text
+    other_page = client.get(f"/app/add?deck={other_deck}")
+    assert ">B</p>" in other_page.text
+    assert ">A</p>" not in other_page.text
+    for deck in (1, other_deck):
+        denied = client.post(
+            f"/app/add/commit?deck={deck}",
+            json={"nid": first_nid, "front": "Changed", "back": "changed"},
+        )
+        assert _signals(denied) == {
+            "error": "Could not add the card. Please try again."
+        }
+    assert len(_notes(client)) == 2
+    assert ">A</p>" in client.get("/app/add?deck=1").text
+
+    client.cookies.clear()
+    empty_page = client.get("/app/add?deck=1")
+    assert "count: 0" in empty_page.text
+    assert ">A</p>" not in empty_page.text
+    assert "No cards added yet" in empty_page.text
+    denied = client.post(
+        "/app/add/commit?deck=1",
+        json={"nid": first_nid, "front": "Changed", "back": "changed"},
+    )
+    assert _signals(denied) == {"error": "Could not add the card. Please try again."}
+    third = client.post("/app/add/commit?deck=1", json={"front": "C", "back": "c"})
+    assert _signals(third)["count"] == 1
+    assert ">C</p>" in third.text
+    assert ">A</p>" not in third.text
+
+    client.cookies.clear()
+    client.cookies.set("app_sid", session_a)
+    page = client.get("/app/add?deck=1")
+    assert "count: 1" in page.text
+    assert ">A</p>" in page.text
+    assert ">C</p>" not in page.text
+    assert len(_notes(client)) == 3
+
+
+@pytest.mark.parametrize("nid", [1, -1, "1", True, None])
+def test_commit_rejects_nonzero_or_invalid_note_id(
+    client: TestClient, nid: object
+) -> None:
+    response = client.post(
+        "/app/add/commit?deck=1",
+        json={"nid": nid, "front": "Question", "back": "Answer"},
+    )
+    assert _signals(response) == {"error": "Could not add the card. Please try again."}
+    assert _notes(client) == []
+
+
+def test_commit_failure_preserves_form_signals(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail(*args, **kwargs):
+        raise ValueError("private backend detail")
+
+    monkeypatch.setattr("ankiweb.adapters.inbound.http_app.add.add_vocab_note", fail)
+    response = client.post(
+        "/app/add/commit?deck=1", json={"front": "Question", "back": "Answer"}
+    )
+    assert _signals(response) == {"error": "Could not add the card. Please try again."}
+    assert "private backend detail" not in response.text
+    assert "datastar-patch-elements" not in response.text
+    assert _notes(client) == []
+
+
+def test_commit_does_not_hide_programming_errors(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail(*args, **kwargs):
+        raise RuntimeError("programming error")
+
+    monkeypatch.setattr("ankiweb.adapters.inbound.http_app.add.add_vocab_note", fail)
+    with pytest.raises(RuntimeError, match="programming error"):
+        client.post(
+            "/app/add/commit?deck=1", json={"front": "Question", "back": "Answer"}
+        )
+
+
+def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> None:
+    for index in range(5):
+        response = client.post(
+            "/app/add/commit?deck=1",
+            json={"front": f"Front {index}", "back": f"Back {index}"},
+        )
+        assert _signals(response)["count"] == index + 1
+    assert "Front 0" not in response.text
+    for index in range(1, 5):
+        assert f"Front {index}" in response.text
+    assert response.text.index("Front 4") < response.text.index("Front 3")
+    assert response.text.index("Top card") < response.text.index("Front 4")
+    assert "5 Cards added" in response.text
+    assert response.text.count("Top card") == 1
+    page = client.get("/app/add?deck=1")
+    assert "count: 5" in page.text
+    assert "Front 0" not in page.text
+    assert "Front 4" in page.text
+
+    match = re.search(r'data-note-id="(\d+)"', response.text)
+    assert match is not None
+    assert client.portal is not None
+    nid = NoteId(int(match.group(1)))
+    client.portal.call(
+        client.app.state.service.run, lambda col: col.remove_notes([nid])
+    )
+    page = client.get("/app/add?deck=1")
+    assert "count: 4" in page.text
+    assert "Front 0" in page.text
+    assert "Front 4" not in page.text
+
+
+def test_added_cards_span_query_batches(client: TestClient) -> None:
+    for index in range(33):
+        response = client.post(
+            "/app/add/commit?deck=1",
+            json={"front": f"Batch {index}", "back": "Answer"},
+        )
+    assert _signals(response)["count"] == 33
+    page = client.get("/app/add?deck=1")
+    assert "count: 33" in page.text
+    assert "Batch 28" not in page.text
+    for index in range(29, 33):
+        assert f"Batch {index}" in page.text
+
+
+def test_deleted_notes_are_removed_without_losing_other_decks(
+    client: TestClient,
+) -> None:
+    assert client.portal is not None
+    service = client.app.state.service
+    other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
+    assert other_deck is not None
+
+    def add(deck: int, front: str) -> NoteId:
+        response = client.post(
+            f"/app/add/commit?deck={deck}", json={"front": front, "back": "Answer"}
+        )
+        match = re.search(r'data-note-id="(\d+)"', response.text)
+        assert match is not None
+        return NoteId(int(match.group(1)))
+
+    first = add(1, "First")
+    add(other_deck, "Other")
+    last = add(1, "Last")
+    client.portal.call(service.run, lambda col: col.remove_notes([last]))
+
+    page = client.get("/app/add?deck=1")
+    assert "count: 1" in page.text
+    assert ">First</p>" in page.text
+    assert ">Last</p>" not in page.text
+    other_page = client.get(f"/app/add?deck={other_deck}")
+    assert "count: 1" in other_page.text
+    assert ">Other</p>" in other_page.text
+
+    response = client.post(
+        "/app/add/commit?deck=1", json={"front": "New", "back": "Answer"}
+    )
+    assert _signals(response)["count"] == 2
+    assert ">New</p>" in response.text
+    assert ">First</p>" in response.text
+    assert ">Last</p>" not in response.text
+    client.portal.call(service.run, lambda col: col.remove_notes([first]))
+    assert "count: 1" in client.get("/app/add?deck=1").text
+    assert ">Other</p>" in client.get(f"/app/add?deck={other_deck}").text
+
+
+def test_added_note_follows_card_moved_between_decks(client: TestClient) -> None:
+    assert client.portal is not None
+    service = client.app.state.service
+    other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
+    assert other_deck is not None
+    client.post("/app/add/commit?deck=1", json={"front": "Moved", "back": "Answer"})
+    nid = _notes(client)[0]
+
+    def move(col: Collection, deck: DeckId) -> None:
+        card_ids = [card.id for card in col.get_note(nid).cards()]
+        col.set_deck(card_ids, deck)
+
+    client.portal.call(service.run, lambda col: move(col, other_deck))
+    assert "count: 0" in client.get("/app/add?deck=1").text
+    other_page = client.get(f"/app/add?deck={other_deck}")
+    assert "count: 1" in other_page.text
+    assert ">Moved</p>" in other_page.text
+
+    client.portal.call(service.run, lambda col: move(col, DeckId(1)))
+    assert "count: 0" in client.get(f"/app/add?deck={other_deck}").text
+    page = client.get("/app/add?deck=1")
+    assert "count: 1" in page.text
+    assert ">Moved</p>" in page.text

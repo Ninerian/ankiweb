@@ -28,21 +28,26 @@
 {% macro chip(label, target, space=false) %}
 <button type="button" class="btn btn-xs btn-outline" data-target="{{ target }}" data-value="{{ label }}{% if space %} {% endif %}" data-on:click="window.avInsert(el)">{{ label }}</button>
 {% endmacro %}
-{% if preview_only|default(false) %}
+{% macro hud() %}
+<div id="hud-count" class="mt-3">
+  <span class="badge badge-lg"><span data-text="$count">{{ count }}</span>&nbsp;{{ s('app_add_cards_added') }}</span>
+</div>
+{% endmacro %}
+{% if hud_only|default(false) %}
+{{ hud() }}
+{% elif preview_only|default(false) %}
 {{ preview_card() }}
 {% else %}
 <main id="add-wizard" class="mx-auto w-full max-w-2xl p-4"
       data-deck-id="{{ deck_id }}"
-      data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: 0, error: ''}"
+      data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: {{ count }}, error: '', saving: false}"
       data-on:keydown__window="window.avAddKey(evt)">
   <header class="mb-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <a href="/app/" class="btn btn-ghost" aria-label="{{ s('app_add_exit') }}">{{ tr.actions_decks() }}</a>
       <span class="badge badge-lg">{{ deck_name }}</span>
     </div>
-    <div id="hud-count" class="mt-3">
-      <span class="badge badge-lg"><span data-text="$count">0</span>&nbsp;{{ s('app_add_cards_added') }}</span>
-    </div>
+    {{ hud() }}
   </header>
 
   <ul class="steps steps-horizontal w-full">
@@ -118,10 +123,15 @@
                 data-next-back="{{ s('app_add_next_back') }}" data-next-preview="{{ s('app_add_next_preview') }}"
                 data-text="$step === 1 ? el.dataset.nextBack : el.dataset.nextPreview"
                 data-on:click="$step === 1 ? ($front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.frontRequired)) : ($front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/add/preview')) : ($error = $front.trim() ? el.dataset.backRequired : el.dataset.frontRequired))">{{ s('app_add_next_back') }}</button>
-        <button id="btn-add" type="button" class="btn btn-success" data-show="$step === 3" style="display:none" disabled>{{ tr.actions_add() }}</button>
+        <button id="btn-add" type="button" class="btn btn-success" data-show="$step === 3" style="display:none"
+                data-save-failed="{{ s('app_add_save_failed') }}"
+                data-error-duplicate="{{ s('app_add_duplicate') }}"
+                data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
+                data-on:click="$saving ? null : @post('/app/add/commit?deck={{ deck_id }}')"
+                data-indicator:saving data-attr:disabled="$saving">{{ tr.actions_add() }}</button>
       </div>
     </div>
   </div>
-  <div id="added-cards" class="mt-6"></div>
+  {% include "app/_add_added_cards.html.jinja" %}
 </main>
 {% endif %}

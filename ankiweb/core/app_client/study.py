@@ -64,6 +64,7 @@ class StudySession:
         self.card: Card | None = None
         self.states: SchedulingStates | None = None
         self.context: SchedulingContext | None = None
+        self.added_note_ids: list[int] = []
 
 
 class StaleCard(Exception):
