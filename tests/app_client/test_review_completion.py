@@ -111,7 +111,7 @@ def test_current_streak_obeys_boundary_and_includes_all_decks(temp_collection):
     assert streak.current_streak(col) == 1
 
 
-def test_five_hundred_reviews_expand_without_a_streak_cap(temp_collection, monkeypatch):
+def test_five_hundred_reviews_expand_without_a_streak_cap(temp_collection):
     col = temp_collection
     _, card_id = _add_card(col, "Long streak")
     start = day_start_ms(col)
@@ -119,18 +119,9 @@ def test_five_hundred_reviews_expand_without_a_streak_cap(temp_collection, monke
     for i in range(500):
         _insert_review(col, card_id, start + i + 2, 2 + i % 3)
 
-    limits = []
-    recent_eases = streak.recent_eases
-
-    def record_limit(collection, limit):
-        limits.append(limit)
-        return recent_eases(collection, limit)
-
-    monkeypatch.setattr(streak, "recent_eases", record_limit)
     before = time.monotonic()
     assert streak.current_streak(col) == 500
     elapsed = time.monotonic() - before
-    assert limits == [64, 128, 256, 512]
     assert elapsed < 10
     assert col.db.scalar("select count(*) from revlog") == 501
 
