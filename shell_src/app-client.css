@@ -137,7 +137,7 @@
   --shadow-p3-ease-warning: 3px 3px 0 var(--color-warning-shadow);
   --shadow-p3-ease-success: 3px 3px 0 var(--color-success-shadow);
   --shadow-p3-ease-info: 3px 3px 0 var(--color-info-shadow);
-  --color-p3-sheet-dismiss: light-dark(var(--color-base-200), var(--color-base-300));
+  --color-p3-sheet-dismiss-bg: light-dark(var(--color-base-200), var(--color-base-300));
   --color-p3-sheet-danger-edge: var(--color-error-border);
   --shadow-p3-sheet-tile: 2px 2px 0 var(--color-neo-border);
   --shadow-p3-sheet-control: 2px 2px 0 var(--color-neo-shadow);
@@ -319,23 +319,21 @@
   }
   /* plan 3 */
   .review-actions-grid {
-    @apply grid grid-cols-2 gap-[10px];
+    @apply grid grid-cols-2 gap-p3-sheet-grid-gap;
   }
 
   .review-action-tile,
   .review-sheet-close,
   .review-sheet-dismiss {
-    @apply text-[color:var(--color-base-content)] cursor-pointer
-      [font-family:-apple-system,BlinkMacSystemFont,"Trebuchet_MS","Impact","Segoe_UI",system-ui,sans-serif]
-      font-[800] [transition:transform_0.08s_ease,box-shadow_0.08s_ease];
+    @apply text-base-content cursor-pointer font-p3-sheet font-extrabold
+      transition-neo duration-neo ease-neo;
   }
 
   .review-action-tile {
-    @apply flex min-h-[46px] min-w-0 items-center gap-[8px] [padding:12px_14px]
-      border-[length:2px] border-solid border-[color:var(--color-neo-border)]
-      [border-image:initial] rounded-[10px] [background:var(--color-base-100)]
-      [box-shadow:2px_2px_0_var(--color-neo-border)] text-[length:0.9rem]
-      [line-height:normal] text-start [text-decoration:none] [overflow-wrap:anywhere];
+    @apply flex min-h-p3-sheet-tile-height min-w-0 items-center gap-p3-sheet-tile-gap
+      py-p3-sheet-tile-y px-p3-sheet-control-x border-2 border-solid border-neo-edge
+      border-image-reset rounded-p3-sheet-control bg-base-100 shadow-p3-sheet-tile
+      text-p3-sheet-tile leading-p3-sheet-normal text-start no-underline wrap-anywhere;
   }
 
   .review-action-tile span {
@@ -343,68 +341,49 @@
   }
 
   [dir="rtl"] #action-undo svg {
-    @apply [transform:scaleX(-1)];
+    @apply -scale-x-100;
   }
 
   .review-action-tile svg {
-    @apply size-[18px] shrink-0 fill-none stroke-current [stroke-width:2.2];
+    @apply size-p3-sheet-icon shrink-0 fill-none stroke-current stroke-p3-sheet-icon;
   }
 
   .review-action-tile--danger {
-    @apply border-[color:var(--color-error-border)] text-[color:var(--color-error-content)]
-      [box-shadow:2px_2px_0_var(--color-error-border)];
+    @apply border-p3-sheet-danger-edge text-error-content shadow-p3-sheet-danger;
   }
 
   .review-sheet-close {
-    @apply relative inline-flex size-[32px] shrink-0 items-center justify-center p-0
-      border-[length:2.5px] border-solid border-[color:var(--color-neo-border)]
-      [border-image:initial] rounded-[10px] [background:var(--color-base-200)]
-      [box-shadow:2px_2px_0_var(--color-neo-shadow)] text-[length:1.1rem];
+    @apply relative inline-flex size-p3-sheet-close shrink-0 items-center justify-center p-0
+      border-neo border-solid border-neo-edge border-image-reset rounded-p3-sheet-control
+      bg-base-200 shadow-p3-sheet-control text-p3-sheet-close;
   }
 
   .review-sheet-close::before {
-    @apply absolute [inset:-6px] [content:""];
-  }
-
-  :root,
-  [data-theme="aw-light"] {
-    @apply [--review-sheet-dismiss-background:var(--color-base-200)];
-  }
-
-  [data-theme="aw-dark"] {
-    @apply [--review-sheet-dismiss-background:var(--color-base-300)];
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme]) {
-      @apply [--review-sheet-dismiss-background:var(--color-base-300)];
-    }
+    @apply absolute -inset-p3-sheet-hit content-p3-sheet-hit;
   }
 
   .review-sheet-dismiss {
-    @apply w-full min-h-[48px] mt-[20px] [padding:10px_14px]
-      border-[length:2px] border-solid border-[color:var(--color-neo-border)]
-      [border-image:initial] rounded-[var(--radius-field)]
-      [background:var(--review-sheet-dismiss-background)]
-      [box-shadow:2px_2px_0_var(--color-neo-shadow)] text-[length:1rem]
-      [line-height:normal] [overflow-wrap:anywhere];
+    @apply w-full min-h-p3-sheet-dismiss-height mt-p3-sheet-dismiss-top
+      py-p3-sheet-dismiss-y px-p3-sheet-control-x border-2 border-solid border-neo-edge
+      border-image-reset rounded-field bg-p3-sheet-dismiss-bg shadow-p3-sheet-control
+      text-p3-sheet-dismiss leading-p3-sheet-normal wrap-anywhere;
   }
 
   .review-action-tile:active,
   .review-sheet-close:active,
   .review-sheet-dismiss:active {
-    @apply [transform:translate(2px,2px)] [box-shadow:none];
+    @apply translate-p3-sheet-press shadow-none;
   }
 
   .review-action-tile:focus-visible,
   .review-sheet-close:focus-visible,
   .review-sheet-dismiss:focus-visible {
-    @apply [outline:2px_solid_var(--color-primary)] [outline-offset:3px];
+    @apply outline-2 outline-solid outline-primary outline-offset-3;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .review-action-tile, .review-sheet-close, .review-sheet-dismiss { @apply [transition:none]; }
-    .review-action-tile:active, .review-sheet-close:active, .review-sheet-dismiss:active { @apply [transform:none]; }
+    .review-action-tile, .review-sheet-close, .review-sheet-dismiss { @apply transition-none; }
+    .review-action-tile:active, .review-sheet-close:active, .review-sheet-dismiss:active { @apply translate-none; }
   }
 
   .flashcard { @apply min-w-0; }
