@@ -261,7 +261,11 @@
 
   /* plan 2 */
   .deck-card {
-    @apply border-[length:var(--border)] border-solid border-[color:var(--color-neo-border)]
-      [box-shadow:4px_4px_0_var(--color-neo-shadow)];
+    @apply border-neo border-solid border-neo-edge shadow-deck-card;
   }
+}
+
+/* plan 2 */
+@theme inline {
+  --shadow-deck-card: 4px 4px 0 var(--color-neo-shadow);
 }
