@@ -399,22 +399,20 @@
   }
 
   .review-ease-error {
-    border-color: var(--color-error-border);
-    box-shadow: 3px 3px 0 var(--color-error-shadow);
+    @apply border-[color:var(--color-error-border)] [box-shadow:3px_3px_0_var(--color-error-shadow)];
   }
   .review-ease-warning {
-    border-color: var(--color-warning-border);
-    box-shadow: 3px 3px 0 var(--color-warning-shadow);
+    @apply border-[color:var(--color-warning-border)] [box-shadow:3px_3px_0_var(--color-warning-shadow)];
   }
   .review-ease-success {
-    border-color: var(--color-success-border);
-    box-shadow: 3px 3px 0 var(--color-success-shadow);
+    @apply border-[color:var(--color-success-border)] [box-shadow:3px_3px_0_var(--color-success-shadow)];
   }
   .review-ease-info {
-    border-color: var(--color-info-border);
-    box-shadow: 3px 3px 0 var(--color-info-shadow);
+    @apply border-[color:var(--color-info-border)] [box-shadow:3px_3px_0_var(--color-info-shadow)];
   }
-  .review-ease:active { box-shadow: none; }
+  .review-ease:active {
+    @apply [box-shadow:none];
+  }
 
   .review-complete { animation: review-arrive 0.4s ease both; }
   .review-celebration {
