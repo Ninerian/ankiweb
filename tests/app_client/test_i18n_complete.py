@@ -17,8 +17,9 @@ APP_TEMPLATES = (
     / "ankiweb/adapters/inbound/http_shared/templates/app"
 )
 
-# Plans 2, 3 and 4 remove their individual entries as templates use them.
-PRESEEDED_UNUSED = {
+# One set per plan so parallel plans each delete only entries in their own set.
+# Each plan removes an entry as its templates use the key.
+PRESEEDED_UNUSED_DECKS = {
     "app_decks_study_space",
     "app_decks_my_decks",
     "app_decks_search",
@@ -30,6 +31,8 @@ PRESEEDED_UNUSED = {
     "app_decks_add_first",
     "app_decks_edit_add",
     "app_decks_learn_deck",
+}
+PRESEEDED_UNUSED_REVIEW = {
     "app_review_streak",
     "app_review_streak_title",
     "app_review_streak_reset",
@@ -66,6 +69,8 @@ PRESEEDED_UNUSED = {
     "app_review_complete_hard_extra",
     "app_review_complete_back_to_decks",
     "app_review_complete_study_again",
+}
+PRESEEDED_UNUSED_ADD = {
     "app_add_cards_added",
     "app_add_edit_last",
     "app_add_exit",
@@ -105,6 +110,9 @@ PRESEEDED_UNUSED = {
     "app_add_keep_adding",
     "app_add_start_studying",
 }
+PRESEEDED_UNUSED = (
+    PRESEEDED_UNUSED_DECKS | PRESEEDED_UNUSED_REVIEW | PRESEEDED_UNUSED_ADD
+)
 
 # The label inventory from plan 6, section 3; each accepts a zero-argument call.
 ANKI_INVENTORY = {
