@@ -133,7 +133,7 @@ Browser (Playwright):
 
 ## Commits
 
-> `DESIGN.md` §5.D/§6 beschreibt bis Commit 8 noch "Finish and Save All" und Pop-aus-Speicher. Bis dahin gilt dieser Plan. Commit 8 darf nicht entfallen.
+> `DESIGN.md` §5.B/§5.C/§5.D sind auf "sofort speichern, Edit-last = Update" angepasst (Entscheidung bestätigt, Commit `Update DESIGN.md`). Offen bleibt in Commit 8 nur noch `REFERENCE.md` (Zeile "Editor → Reviewer, Finish").
 
 1. `Add vocab note type, escaping and note add/update core`
 2. `Add /app/add page with wizard steps`

@@ -129,9 +129,12 @@ The editor presents a focused single-purpose card interface divided into three d
 3. **Step 3: Quick Preview & Commit**:
    - Renders the finished card exactly as the reviewer shows it: Prompt, Answer, plus Hint and Example (with highlighted key word) when present.
    - Primary CTA: **Add to Stack 📥** (vibrant emerald green `#40c057`).
-   - Once tapped, the card commits and the editor instantly resets to Step 1 with clean fields, enabling friction-free continuous entry without leaving the view.
+   - Once tapped, the card is **saved immediately as a note** in the target deck (not held in the browser) and the editor resets to Step 1 with clean fields, enabling friction-free continuous entry without leaving the view. Reloading the page loses nothing.
 
 ### C. Card-Stack Physical Metaphor & Animation
+
+> Naming (see `CONTEXT.md`): the visual pile is the **added cards** of this session. "Stack" stays only as the animation metaphor and in the mockup's identifiers; the Anki object is a **deck**.
+
 The core psychological hook of the creator is the **physical growing card pile**:
 - **Slide-to-Stack Keyframe Animation (`@keyframes slideToStack`)**:
   - Upon tapping **Add to Stack**, the active card physically slides down and rotates (`transform: translate(x, y) rotate(deg)`), visibly joining the stack beneath the editing stage.
@@ -144,9 +147,9 @@ The core psychological hook of the creator is the **physical growing card pile**
 
 ### D. Edit-Last-Card Affordance (Quick Mistake Correction)
 When rapidly typing cards on mobile, students inevitably make typos or notice mistakes right after submitting:
-- **One-Tap Reversal**: Tapping either the topmost card in the physical stack, the bottom **Top of stack** peek banner, or the top HUD stack pill immediately pops that card back into the editor (`@keyframes popCardUp`).
-- **State Reconstitution**: The Front and Back text are restored into the editor inputs, the wizard opens directly to Step 1, and the stack count decrements by 1.
-- **Safety Guard**: If the student has already started typing new uncommitted text in the current card, a confirmation alert guards against accidental text loss before popping.
+- **One-Tap Reversal**: Tapping either the topmost card in the physical stack, the bottom **Top of stack** peek banner, or the top HUD stack pill loads that card back into the editor (`@keyframes popCardUp`). The card **stays saved**; saving again **updates** the same note instead of adding a second one.
+- **State Reconstitution**: The Front and Back text are restored into the editor inputs, the wizard opens directly to Step 1, and the card count is **unchanged** (the card was never removed).
+- **Safety Guard**: If the student has already started typing new unsaved text in the current card, a confirmation guards against accidental text loss before loading the saved card.
 
 ### E. Porting & Architecture Blueprint
 This flow is designed as a **new dedicated mobile route**, completely separate from Anki's existing complex `/add` route:
