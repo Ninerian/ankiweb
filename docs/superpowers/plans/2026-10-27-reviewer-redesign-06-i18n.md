@@ -45,6 +45,16 @@ Bestehende Lösung: `docs/superpowers/plans/2026-06-02-ankiweb-i18n-i1-language-
 
 **Wichtig, Sprachumfang [INFERENCE]:** Eigene Strings sind nur so gut übersetzt, wie ich sie pflege. Plan liefert **en + de** (Mockup-Sprache des Zielpublikums). Jede andere Sprache fällt pro Schlüssel auf Englisch zurück; das ist sichtbar und gewollt, nicht still falsch. Weitere Sprachen sind reine Daten-Ergänzung, kein Code.
 
+### 2a. Sprachvertrag (verbindlich, 6.0)
+
+1. **Eine Sprache pro Prozess**, gewählt beim Start durch `ANKIWEB_LANG` (`Settings.lang`). Kein `Accept-Language`, kein In-App-Umschalter (wie README "Language"), kein Toggle im Mockup.
+2. **Eine Interpretationsstelle:** `resolve_lang(settings)` in `core/app_client/lang.py`. Nichts im Client liest `anki.lang.current_lang`.
+3. **Settings werden durchgereicht, nicht global gehalten.** `build_app_router(get_service, settings)` löst einmal `ResolvedLang` auf und übergibt es an `render_app_page(..., lang=resolved)` (Default: Englisch, nur damit Aufrufer ohne Sprache wie Layout-Tests weiter laufen). Seiten-Bodies rendern mit `render("app/x.html.jinja", app_lang=resolved, …)`.
+4. **Jinja-`s`:** `s(key, **fmt)` ist ein `pass_context`-Global und liest `app_lang` aus dem Render-Kontext (fehlt es: Fehler, kein stilles Englisch). Die reine Funktion `strings.s(key, *, lang, **fmt)` löst auf: Block `lang` → `en` → `KeyError`.
+5. **Schlüsselbereiche:** `app_decks_*` (Plan 2), `app_review_*` und `app_review_complete_*` (Plan 3), `app_add_*` (Plan 4). Jeder Plan ergänzt nur den eigenen Bereich. Das Gate aus 6.2 erlaubt nur die ausdrücklich aufgelisteten, vorab angelegten Schlüssel als noch unbenutzt; der besitzende Plan entfernt seine Ausnahmen, sobald Templates diese verwenden.
+6. **Anki-Schlüssel** nie raten: `getattr(tr, key)()` in `en` und `de` (Test 6.2).
+7. **Vor der Parallelphase zurückgestellt:** 6.3 (Plan 2 bis 4 schreiben lokalisiert), 6.5 (Plan 5), Browser-Smoke 6.6 und `README`/`DESIGN`/`REFERENCE` in 6.7 (Dateien außerhalb des Besitzes dieses Schritts), `test_no_hardcoded_text` (Plan 1 `ping.html.jinja` ist absichtlich Klartext; Gate kommt mit Plan 5, wenn `ping` entfällt) und der Text-Vergleich in `test_html_lang_matches_rendered_text` (braucht lokalisierte Seiten aus Plan 2 bis 4). Der Prozess-Global-Test (`Accept-Language` ändert nichts) läuft mit 6.4, weil er das `/app`-Layout rendert.
+
 ## 3. Texte klassifizieren (Inventur aus den Mockups, belegt)
 
 Mockups enthalten ~110 sichtbare Textknoten plus JS-Toasts und `confirm()`. Zuordnung (Auszug, Vollständigkeit prüft Test 6.4):
@@ -104,8 +114,8 @@ Regel: **Schlüssel nie raten.** Jeder Anki-Schlüssel wird im Test per `getattr
 Jede Aufgabe: Test zuerst, dann Code, dann Commit.
 
 ### 6.0 Gate: Sprachvertrag festschreiben (kein Code)
-- [ ] Test `tests/test_app_i18n_contract.py::test_lang_is_process_global`: zwei Requests in unterschiedlicher `Accept-Language` liefern **dieselbe** Sprache (die gestartete). Absicherung der Entscheidung "kein Request-Sprachwechsel".
-- [ ] Entscheidung dokumentieren: kein In-App-Switcher, wie README. **Kein** Toggle im Mockup (Design hat keinen).
+- [ ] Test `test_lang_is_process_global` wandert nach 6.4 (braucht das gerenderte Layout, siehe §2a Punkt 7).
+- [x] Entscheidung dokumentiert (§2a): kein In-App-Switcher, kein Toggle im Mockup.
 
 ### 6.1 `core/app_client/strings.py` und Jinja-Funktion `s`
 - [ ] `STRINGS: dict[str, dict[str, str]] = {"en": {...}, "de": {...}}`. Schlüssel `snake_case`, Namensraum `app_*`.
