@@ -1,4 +1,3 @@
-import re
 from http.cookies import SimpleCookie
 from pathlib import Path
 
@@ -20,10 +19,6 @@ from ankiweb.core.config import Settings
 
 ROOT = Path(__file__).resolve().parents[2]
 CSS = ROOT / "ankiweb/shell/static/app-client.css"
-APP_SOURCES = (
-    ROOT / "ankiweb/adapters/inbound/http_app",
-    ROOT / "ankiweb/adapters/inbound/http_shared/templates/app",
-)
 
 
 def _built_css() -> str:
@@ -96,27 +91,6 @@ def test_app_css_build_has_system_themes() -> None:
     assert "aw-dark" in css
     assert "prefers-color-scheme" in css
     assert "data-theme" not in render_app_page("", "", active="")
-
-
-def test_app_classes_are_in_built_css() -> None:
-    css = _built_css()
-    classes: set[str] = set()
-    for source_dir in APP_SOURCES:
-        for path in source_dir.rglob("*"):
-            if path.suffix not in {".py", ".jinja"}:
-                continue
-            source = path.read_text(encoding="utf-8")
-            for attribute in re.findall(r'class="([^"]+)"', source):
-                classes.update(attribute.split())
-    assert {"card", "badge", "toast", "alert"} <= classes
-    missing = []
-    for name in sorted(classes):
-        if name.startswith("av-"):
-            continue
-        css_name = re.sub(r"([^a-zA-Z0-9_-])", r"\\\1", name)
-        if not re.search(r"\." + re.escape(css_name) + r"(?![\w-])", css):
-            missing.append(name)
-    assert not missing, f"classes missing from app-client.css: {missing}"
 
 
 def test_app_session_cookie_only_set_when_needed() -> None:

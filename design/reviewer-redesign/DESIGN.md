@@ -59,6 +59,7 @@ The prototype delivers instant dopamine and flow state without requiring backend
 4. **Mobile Bottom Sheet (Card Actions)**:
    - Replaces the desktop-style dropdown menu with a slide-up bottom drawer.
    - Provides clean 2-column quick-action tiles: **Mark Card**, **Flag (Red)**, **Bury Card**, **Suspend**, **Undo Review**, **Set Due Date**, **Card Info**, and **Delete Note**.
+   - In the real reviewer, tiles use inline SVG icons and theme-aware base, border, shadow, and danger colors; translated labels and mark/flag state remain unchanged.
    - Tap outside or tap **Dismiss** to close.
 
 ---
@@ -195,6 +196,8 @@ What the server enforces on `addNote` (belegt, `actions/_helpers.py:43`): it rej
 ```
 
 `{{#Field}}...{{/Field}}` is Anki's built-in conditional, so empty Hint/Example render no element and the fast two-field path is unchanged. The back template repeats the front markup instead of using `{{FrontSide}}`, so the design can address each part by class.
+
+The reviewer adds a localized front label outside the Anki template for `AnkiWeb Vocab` cards. The card content is centered for this note type; other note types keep their own presentation.
 
 **Escaping and highlight (change from the prototype):** Anki fields are HTML. The prototype stored plain text and escaped at render time (`CardRender.renderCard`). With server-rendered HTML the contract is: the **writer escapes on save** (the quick-add view must HTML-escape `<`, `>`, `&` before `addNote`, otherwise typed `<` is interpreted as markup), and the `*word*` → `<mark>` conversion for `.av-example` happens in the **client** after render, because Anki has no template filter for it. The converted text is already escaped, so only `<mark>` is added.
 
