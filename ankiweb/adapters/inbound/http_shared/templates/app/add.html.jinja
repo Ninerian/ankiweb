@@ -32,8 +32,8 @@
 <div id="hud-count" class="mt-3">
   <button type="button" {% if animation_stamp|default(false) %}class="badge badge-lg animate-added-pill-pop motion-reduce:animate-none" data-ts="{{ animation_stamp }}"{% else %}class="badge badge-lg"{% endif %}
           aria-label="{{ s('app_add_edit_last') }}" data-discard="{{ s('app_add_discard_edit') }}"
-          data-save-failed="{{ s('app_add_save_failed') }}" data-attr:disabled="$count === 0 || $saving"
-          data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
+          data-edit-unavailable="{{ s('app_add_edit_unavailable') }}" data-attr:disabled="$count === 0 || $saving"
+          data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.editUnavailable) : null"
           data-on:click="$saving || !$count ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? @post('/app/add/edit/' + window.avLastNoteId() + '?deck=' + document.getElementById('add-wizard').dataset.deckId) : null)"><span data-text="$count">{{ count }}</span>&nbsp;{{ s('app_add_cards_added') }}</button>
 </div>
 {% endmacro %}
@@ -146,8 +146,8 @@
   {% include "app/_add_added_cards.html.jinja" %}
   <button type="button" class="btn btn-block mt-3" data-show="$count > 0" style="display:none"
           aria-label="{{ s('app_add_edit_last') }}" data-discard="{{ s('app_add_discard_edit') }}"
-          data-save-failed="{{ s('app_add_save_failed') }}" data-attr:disabled="$saving"
-          data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
+          data-edit-unavailable="{{ s('app_add_edit_unavailable') }}" data-attr:disabled="$saving"
+          data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.editUnavailable) : null"
           data-on:click="$saving ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? @post('/app/add/edit/' + window.avLastNoteId() + '?deck=' + document.getElementById('add-wizard').dataset.deckId) : null)">{{ s('app_add_edit_last') }}</button>
   {% include "app/_add_summary.html.jinja" %}
 </main>

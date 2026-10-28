@@ -11,6 +11,7 @@ from typing import Literal
 import pytest
 import uvicorn
 from anki.collection import Collection
+from anki.notes import NoteId
 from fastapi import FastAPI
 
 from ankiweb.app import create_app
@@ -284,6 +285,31 @@ def test_edit_last_discard_guard_and_round_trip(page: Page, live_app: LiveApp) -
     expect(page.locator("#added-cards")).to_contain_text("Updated <front> & text")
     assert live_app.notes() == updated
     assert live_app.persisted_notes() == updated
+
+
+def test_edit_deleted_card_shows_unavailable_error(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/add?deck=1")
+    _add(page)
+    notes = live_app.notes()
+    assert len(notes) == 1
+    nid = NoteId(notes[0][0])
+    asyncio.run_coroutine_threadsafe(
+        live_app.app.state.service.run(lambda col: col.remove_notes([nid])),
+        live_app.loop,
+    ).result(timeout=10)
+    assert live_app.notes() == []
+
+    page.locator("#added-cards").get_by_role(
+        "button", name="Edit last added card", exact=True
+    ).click()
+    error = page.get_by_role("alert")
+    expect(error).to_be_visible()
+    expect(error).to_have_text(
+        "This card is unavailable for editing. Please try again."
+    )
 
 
 def test_double_click_add_saves_only_one_note(page: Page, live_app: LiveApp) -> None:

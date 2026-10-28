@@ -14,7 +14,7 @@ from anki.notes import NoteId
 from datastar_py.fastapi import DatastarResponse
 from datastar_py.fastapi import ServerSentEventGenerator as SSE
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
 from ankiweb.adapters.inbound.http_app.session import get_session
@@ -243,7 +243,11 @@ class _AddRoutes:
                 lambda col: _editable_note(col, session, deck_id, nid)
             )
         except _NoteNotEditable:
-            return _with_session_cookie(Response(status_code=404), cookie_response)
+            response = PlainTextResponse(
+                s("app_add_edit_unavailable", lang=self.lang.catalog_lang),
+                status_code=404,
+            )
+            return _with_session_cookie(response, cookie_response)
         except AnkiException:
             logger.exception("Failed to load vocabulary note")
             return _with_session_cookie(

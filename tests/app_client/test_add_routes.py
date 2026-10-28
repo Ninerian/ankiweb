@@ -781,6 +781,8 @@ def test_edit_and_update_reject_cross_session_and_preserve_new_cookie(
     client.cookies.clear()
     edit = client.post(f"/app/add/edit/{nid}?deck=1")
     assert edit.status_code == 404
+    assert edit.text == "This card is unavailable for editing. Please try again."
+    assert edit.headers["content-type"].startswith("text/plain")
     assert "app_sid" in edit.cookies
     assert "HttpOnly" in edit.headers["set-cookie"]
     new_sid = client.cookies.get("app_sid")
@@ -796,6 +798,25 @@ def test_edit_and_update_reject_cross_session_and_preserve_new_cookie(
     client.cookies.set("app_sid", original_sid)
     assert _signals(client.post(f"/app/add/edit/{nid}?deck=1"))["front"] == "First"
     assert len(_notes(client)) == 1
+
+
+def test_edit_missing_note_returns_localized_error_and_session_cookie(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(collection_path=tmp_path / "de-edit.anki2", lang="de_DE")
+    try:
+        with TestClient(create_app(settings)) as client:
+            response = client.post("/app/add/edit/123456789?deck=1")
+            assert response.status_code == 404
+            assert response.text == (
+                "Diese Karte kann nicht bearbeitet werden. Bitte erneut versuchen."
+            )
+            assert response.headers["content-type"].startswith("text/plain")
+            assert "app_sid" in response.cookies
+            assert "HttpOnly" in response.headers["set-cookie"]
+            assert "SameSite=lax" in response.headers["set-cookie"]
+    finally:
+        anki.lang.set_lang("en")
 
 
 def test_unauthorized_update_sets_new_session_cookie(client: TestClient) -> None:
