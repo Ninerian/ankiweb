@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
+from ankiweb.adapters.inbound.http_app.review import make_review_router
 from ankiweb.adapters.inbound.http_shared.templating import render
 from ankiweb.core.app_client.lang import resolve_lang
 from ankiweb.core.config import Settings
@@ -15,6 +16,7 @@ def build_app_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/app")
     lang = resolve_lang(settings)
+    router.include_router(make_review_router(get_service, settings))
 
     @router.get("/ping", response_class=HTMLResponse)
     def ping() -> str:
