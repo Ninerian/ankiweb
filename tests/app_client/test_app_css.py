@@ -32,6 +32,19 @@ def test_app_css_is_built() -> None:
         assert expected in css
 
 
+def test_neo_press_uses_theme_border_width() -> None:
+    css = BUILT.read_text(encoding="utf-8")
+    rule = re.search(r"(?:^|[{}])\s*\.neo-press\s*\{([^{}]*)\}", css)
+    assert rule is not None, "missing .neo-press rule"
+    assert re.search(
+        r"(?:^|;)\s*(?:"
+        r"border-width\s*:\s*var\(\s*--border\s*\)\s*|"
+        r"border\s*:\s*var\(\s*--border\s*\)(?:\s+[^;]+)?\s*"
+        r")(?:;|$)",
+        rule.group(1),
+    ), ".neo-press must use var(--border) for its border width"
+
+
 @pytest.mark.parametrize("theme", ["aw-light", "aw-dark"])
 @pytest.mark.parametrize(
     "color", ["error", "warning", "success", "info", "primary", "accent"]
