@@ -1,0 +1,30 @@
+<main id="decks-page" data-signals="{q: ''}">
+  <header>
+    <p>{{ s("app_decks_study_space") }}</p>
+    <h1>{{ s("app_decks_my_decks") }}</h1>
+{% if views %}
+    <label>
+      <span class="sr-only">{{ s("app_decks_search") }}</span>
+      <input id="deck-search" type="search" placeholder="{{ s('app_decks_search') }}" autocomplete="off" data-bind:q>
+    </label>
+{% endif %}
+  </header>
+{% if views %}
+  <section aria-labelledby="decks-heading">
+    <h2 id="decks-heading">{{ s("app_decks_your_decks") }}</h2>
+    <div id="deck-list">
+{% for view in views %}
+{% include "app/_deck_row.html.jinja" %}
+{% endfor %}
+    </div>
+    <p id="empty-state" role="status" style="display:none" data-show="{{ no_match }}">
+      <strong>{{ s("app_decks_no_results") }}</strong>
+      {{ s("app_decks_try_search") }}
+    </p>
+  </section>
+{% else %}
+  <section id="no-decks">
+    <a href="/app/add">{{ s("app_decks_add_first") }}</a>
+  </section>
+{% endif %}
+</main>

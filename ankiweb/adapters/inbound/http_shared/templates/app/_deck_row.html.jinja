@@ -1,0 +1,21 @@
+<article id="deck-{{ view.row.deck_id }}" data-show="{{ view.show }}">
+  <div>
+    <span aria-hidden="true">{{ view.row.emoji }}</span>
+    <h3>{{ view.row.name }}</h3>
+  </div>
+  <div>
+    <span>{{ view.row.due }} {{ tr.statistics_due_count() }}</span>
+    <span>{{ view.row.new }} {{ tr.actions_new() }}</span>
+  </div>
+  <div>
+    <span>{{ s("app_decks_progress") }}</span>
+    <span>{{ view.row.progress_pct }}%</span>
+  </div>
+  <div role="progressbar" aria-label="{{ s('app_decks_progress_for', deck=view.row.name) }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ view.row.progress_pct }}">
+    <div class="meter-fill" style="width: {{ view.row.progress_pct }}%"></div>
+  </div>
+  <div>
+    <a href="/app/review?deck={{ view.row.deck_id }}" aria-label="{{ s('app_decks_learn_deck', deck=view.row.name) }}">{{ tr.decks_learn_header() }}</a>
+    <a href="/app/add?deck={{ view.row.deck_id }}">{{ s("app_decks_edit_add") }}</a>
+  </div>
+</article>
