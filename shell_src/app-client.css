@@ -258,4 +258,60 @@
   .av-example mark {
     @apply px-1 rounded-sm bg-accent text-accent-content font-bold;
   }
+
+  /* plan 4 */
+  .add-action-bar { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+
+  .added-0, .added-1, .added-2, .added-3 {
+    position: absolute;
+    inset: 0 0 auto;
+    transform: translate(var(--target-x), var(--target-y)) scale(var(--target-scale)) rotate(var(--target-rot));
+    transform-origin: center top;
+  }
+
+  .added-0 {
+    --target-x: -6px;
+    --target-y: 32px;
+    --target-scale: 1;
+    --target-rot: -3.2deg;
+    z-index: 4;
+  }
+
+  .added-1 {
+    --target-x: 8px;
+    --target-y: 64px;
+    --target-scale: 0.98;
+    --target-rot: 2.8deg;
+    z-index: 3;
+    opacity: 0.9;
+  }
+
+  .added-2 {
+    --target-x: -5px;
+    --target-y: 96px;
+    --target-scale: 0.96;
+    --target-rot: -2deg;
+    z-index: 2;
+    opacity: 0.8;
+  }
+
+  .added-3 {
+    --target-x: 7px;
+    --target-y: 128px;
+    --target-scale: 0.94;
+    --target-rot: 3deg;
+    z-index: 1;
+    opacity: 0.7;
+  }
+
+  @keyframes popCardUp {
+    0% { opacity: 0.6; transform: translateY(30px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .animate-pop-card-up { animation: popCardUp 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-pop-card-up { animation: none; }
+  }
 }
