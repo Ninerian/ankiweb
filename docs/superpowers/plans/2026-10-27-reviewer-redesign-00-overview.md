@@ -6,13 +6,15 @@ Dieses Dokument = Index, Entscheidungen, Abhängigkeiten. Details je Schritt in 
 | # | Plan | Ergebnis |
 |---|---|---|
 | 1 | [01-independent-client](2026-10-27-reviewer-redesign-01-independent-client.md) | Eigenes Paket `/app/*`, Shell, Design-Tokens, Study-Service, Auth, Tests-Fixtures |
-| 2 | [02-deck-list](2026-10-27-reviewer-redesign-02-deck-list.md) | `GET /app/` Stapelansicht (Suche, Zähler, Learn / Edit-Add) |
+| 2 | [02-deck-list](2026-10-27-reviewer-redesign-02-deck-list.md) | `GET /app/` Deck-Liste (Suche, Zähler, Learn / Edit-Add) |
 | 3 | [03-review-flow](2026-10-27-reviewer-redesign-03-review-flow.md) | `/app/review` Queue, Reveal, Rating, Streak, Actions-Sheet |
-| 4 | [04-add-cards](2026-10-27-reviewer-redesign-04-add-cards.md) | `/app/add` Wizard, Stapel, Note-Type `AnkiWeb Vocab`, Edit-last |
+| 4 | [04-add-cards](2026-10-27-reviewer-redesign-04-add-cards.md) | `/app/add` Wizard, Hinzugefügte Karten, Notiztyp `AnkiWeb Vocab`, Edit-last |
 | 5 | [05-pwa-bootstrap](2026-10-27-reviewer-redesign-05-pwa-bootstrap.md) | Einbindung aller Views, Manifest/SW auf `/app/`, Navigation, Doku |
 | 6 | [06-i18n](2026-10-27-reviewer-redesign-06-i18n.md) | Mehrsprachigkeit: Anki-Katalog plus kleiner eigener Katalog, `<html lang/dir>`, RTL, lokalisiertes Manifest |
 
 ## Festgelegte Entscheidungen
+
+Begriffe: [`CONTEXT.md`](../../../CONTEXT.md) (Deck, Deck-Liste, Hinzugefügte Karten, Neue Karten = Anki-Zähler). Architekturentscheidung: [ADR 0001](../../adr/0001-mobile-client-separate-from-existing-client.md) (`/app/*` dauerhaft getrennt vom alten Client).
 
 | Entscheidung | Wahl | Begründung |
 |---|---|---|
@@ -46,7 +48,7 @@ Belegt im Repo: Tailwind 4.3.3 + daisyUI 5.7.47 (`package.json`); `shell_src/app
 | Themes | Zwei eigene daisyUI-Themes per `@plugin "daisyui/theme"`: `aw-light` (`default: true`) und `aw-dark` (`prefersdark: true`). `@plugin "daisyui" { themes: false; }`, damit nur diese zwei ausgeliefert werden. **Verifiziert:** Der Compile erzeugt `@media (prefers-color-scheme: dark) { :root:not([data-theme]) {…} }`. `/app/*` setzt **kein** `data-theme`, braucht kein Inline-JS und hat keinen Toggle (DESIGN §6) |
 | Tokens | Mockup-Werte werden daisyUI-Variablen: `--color-base-100` (#f4f3ed), `--color-base-200/300`, `--color-base-content` (#18191f), `--color-primary`, `--color-accent` (#ffd13b), `--color-info/success/warning/error` für Easy/Good/Hard/Again, `--radius-box` (24px), `--radius-field` (16px), `--border` (2.5px). Kontrast ≥ 4.5:1 wie in `REFERENCE.md` §3: **Werte aus dem Mockup übernehmen, nicht neu wählen**; Prüfung per Messung (Plan 1, Aufgabe 1.0) |
 | Komponenten | daisyUI zuerst: `btn`, `card`, `badge`, `progress`, `join`/`tabs` (Mode-Switch), `modal` (Summary, Sheet als `modal modal-bottom`), `toast`, `alert`, `input`/`textarea`, `collapse`/`details`, `menu`, `steps`/`step`. Tailwind-Utilities für Layout, Abstände, Typografie, Safe-Area (`pt-[env(safe-area-inset-top)]`), `motion-reduce:` |
-| Eigenes CSS | Nur wo daisyUI/Utilities nichts abbilden, in `shell_src/app-client.css` unter `@layer components`: Hard-Shadow und Press-State (`.neo-press`), Candy-Stripe-Meter, Keyframes (`streakPop`, `streakReset`, `slideToStack`, `popInFreshCard`, `stackPillPop`, `revealAnswer`), Karten-Klassen `.av-front-text`/`.av-hint`/`.av-back-text`/`.av-example` (Server-HTML, nicht im Template steuerbar, `@apply` erlaubt). Alles mit `motion-reduce` abgeschaltet. **Kein Block mit hartcodierten Hex-Farben**: Farben nur über Theme-Variablen |
+| Eigenes CSS | Nur wo daisyUI/Utilities nichts abbilden, in `shell_src/app-client.css` unter `@layer components`: Hard-Shadow und Press-State (`.neo-press`), Candy-Stripe-Meter, Keyframes (`streakPop`, `streakReset`, `slideToAdded`, `popInFreshCard`, `addedPillPop`, `revealAnswer`), Karten-Klassen `.av-front-text`/`.av-hint`/`.av-back-text`/`.av-example` (Server-HTML, nicht im Template steuerbar, `@apply` erlaubt). Alles mit `motion-reduce` abgeschaltet. **Kein Block mit hartcodierten Hex-Farben**: Farben nur über Theme-Variablen |
 | Ease-Kacheln | `btn` mit Farbe über `btn-error`/`btn-warning`/`btn-success`/`btn-info` plus `neo-press`. Mockup-Textfarben (`--ease-*-text`) werden `--color-*-content` der Themes |
 | Datastar | `data-class`/`data-show` setzen **vollständige** Tailwind-Klassen. `data-show` immer mit `style="display:none"` (Gotcha #4). Tailwind `hidden` und `data-show` nicht mischen, sonst Konflikt um `display` |
 | Alter Client | Unverändert. Test: `app.css`/`theme.css` nicht in `/app/*`-Seiten referenziert; `app-client.css` nicht in alten Seiten |
@@ -68,7 +70,7 @@ Offene Abweichung vom Mockup: daisyUI-Komponenten haben eigene Geometrie. Pixelg
 
 ```mermaid
 flowchart LR
-  P1[1 Client-Basis + Study-Service] --> P2[2 Stapelansicht]
+  P1[1 Client-Basis + Study-Service] --> P2[2 Deck-Liste]
   P1 --> P3[3 Review]
   P1 --> P4[4 Karten hinzufügen]
   P2 --> P5[5 PWA + Einbindung]

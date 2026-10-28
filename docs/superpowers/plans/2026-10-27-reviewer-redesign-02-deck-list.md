@@ -1,4 +1,4 @@
-# Plan 2: Startseite mit Stapelansicht (`GET /app/`)
+# Plan 2: Startseite mit Deck-Liste (`GET /app/`)
 
 > Teil von [00-overview](2026-10-27-reviewer-redesign-00-overview.md). Voraussetzung: [Plan 1](2026-10-27-reviewer-redesign-01-independent-client.md).
 

@@ -23,7 +23,7 @@ Bestehende Lösung: `docs/superpowers/plans/2026-06-02-ankiweb-i18n-i1-language-
 
 **Was nicht geht (belegt):**
 - Der Backend nimmt **keine eigenen Fluent-Bundles**: `RustBackend(langs, server)` und `translate(module_index, message_index, **args)` kennen nur Indizes des eingebauten Katalogs. Eigene Schlüssel wie `app_streak` lassen sich dort nicht eintragen.
-- Anki hat **keinen** Schlüssel für einige Mockup-Texte (Suche ergab null Treffer): "Streak", "Hint"/"Hinweis", "Example sentence", "No decks found", "Your study space", "Stack is empty", "Keep adding more cards", u. a.
+- Anki hat **keinen** Schlüssel für einige Mockup-Texte (Suche ergab null Treffer): "Streak", "Hint"/"Hinweis", "Example sentence", "No decks found", "Your study space", "No cards added yet", "Keep adding more cards", u. a.
 - Falsche Annahmen aus dem Mockup, die der Code widerlegt: `studying_suspend_card`, `actions_flag`, `actions_done` **existieren nicht**. Richtig: `actions_suspend_card`, `studying_flag_card`, `browsing_flag`/`actions_set_flag`.
 
 ## 2. Entscheidung
@@ -69,7 +69,7 @@ Mockups enthalten ~110 sichtbare Textknoten plus JS-Toasts und `confirm()`. Zuor
 | Options | Anki | `actions_options` |
 | Finish | Anki | `studying_finish` |
 | Close / Cancel / Save | Anki | `actions_close`, `actions_cancel`, `actions_save` |
-| Streak, Hint, Example sentence, "No decks found", "Your study space", "Stack is empty", "Keep adding more cards", "Cards ready", Toasts | **Eigen** | `strings.py` |
+| Streak, Hint, Example sentence, "No decks found", "Your study space", "No cards added yet", "Keep adding more cards", "Cards ready", Toasts | **Eigen** | `strings.py` |
 
 Regel: **Schlüssel nie raten.** Jeder Anki-Schlüssel wird im Test per `getattr(tr, key)()` aufgelöst (ein Tippfehler = `AttributeError`, siehe I2). Vor Aufnahme in einen Plan/Template per `find`-Skript nach dem englischen Wortlaut suchen; ein Treffer wie `deck_config_…tooltip` (Langtext) ist **kein** Label.
 
@@ -115,7 +115,7 @@ Jede Aufgabe: Test zuerst, dann Code, dann Commit.
 - [ ] `test_no_hardcoded_text`: Template-Parse (Jinja AST oder HTML) findet **keine** sichtbaren Textknoten ohne `{{ … }}`; Whitelist für Symbole/Emoji/Zahlen. Verhindert, dass Mockup-Text wieder hardcodiert hineinrutscht.
 
 ### 6.3 Templates der Pläne 2 bis 5 umstellen
-- [ ] Plan 2 (Stapelliste), Plan 3 (Review, Actions-Sheet, Toasts), Plan 4 (Wizard, Summary, Toasts, `confirm`-Ersatz), Plan 5 (Offline-Seite). Pro Plan: alle Texte aus §3 ersetzen. **Nur Text**: nie IDs, Klassen, `data-*`, Routen, Signalnamen ändern (I2-Regel).
+- [ ] Plan 2 (Deck-Liste), Plan 3 (Review, Actions-Sheet, Toasts), Plan 4 (Wizard, Summary, Toasts, `confirm`-Ersatz), Plan 5 (Offline-Seite). Pro Plan: alle Texte aus §3 ersetzen. **Nur Text**: nie IDs, Klassen, `data-*`, Routen, Signalnamen ändern (I2-Regel).
 - [ ] **JS-seitige Texte** (Toasts, `confirm`, Label-Wechsel "Next: Back →") dürfen nicht im JS stehen: Server rendert sie in `data-*`-freie Elemente (`<template>`/versteckte `<span>`) oder liefert sie in der Datastar-Patch-Antwort. Kein i18n-JSON im Client.
 - [ ] `title`, `aria-label`, `placeholder`, `alt` werden **ebenfalls** übersetzt (häufig vergessen; Test 6.2 deckt Attribute ab).
 - [ ] Beispieltexte im Editor-Placeholder ("e.g. die Herausforderung") sind **Beispiele für Deutsch-Vokabeln**, keine UI-Texte: Entscheidung offen (§8), bis dahin eigener String pro Sprache.

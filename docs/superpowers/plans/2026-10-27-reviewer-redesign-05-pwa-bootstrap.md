@@ -2,7 +2,7 @@
 
 > Teil von [00-overview](2026-10-27-reviewer-redesign-00-overview.md). Voraussetzung: Pläne 1 bis 4 gemerged.
 
-**Ziel:** `/app/` ist als eigenständige PWA installierbar, alle drei Ansichten (Stapel, Review, Add) sind konsistent verbunden, der alte Client bleibt unter `/` funktionsfähig.
+**Ziel:** `/app/` ist als eigenständige PWA installierbar, alle drei Ansichten (Deck-Liste, Review, Add) sind konsistent verbunden, der alte Client bleibt unter `/` funktionsfähig.
 
 ## Ausgangslage (belegt, `pwa.py`, `REFERENCE.md` §4 bis §8)
 
@@ -29,7 +29,7 @@
 | Installations-UI | `beforeinstallprompt` → kleiner Button "Install app" in der Deck-Liste (nur wenn Ereignis feuerte); iOS: statischer Hinweis "Share → Add to Home Screen" nur in Standalone-Erkennung `!navigator.standalone` auf iOS | Chrome-Prompt braucht Nutzerinteraktion (RESEARCH-pwa §3); iOS installiert manuell |
 | Update-Strategie | `CACHE`-Konstante enthält Build-Hash der App-Assets (aus Dateimtime oder Paketversion), nicht manuelles `v1` | Verhindert vergessenes Bumping (REFERENCE §6 "Eviction nur per Konstante") |
 | Alter Client | Unverändert; `shell.html.jinja` behält Registrierung für `/service-worker.js` | Kein Eingriff in bestehende Seiten |
-| Navigation | Gemeinsame Leiste/Links in Layout (Plan 1) ergänzt: Stapel ↔ Review ↔ Add über die bereits in 2 bis 4 gebauten Links; Review-Sheet und Add-Header tragen Mode-Switch | Matrix siehe unten |
+| Navigation | Gemeinsame Leiste/Links in Layout (Plan 1) ergänzt: Deck-Liste ↔ Review ↔ Add über die bereits in 2 bis 4 gebauten Links; Review-Sheet und Add-Header tragen Mode-Switch | Matrix siehe unten |
 
 ## Link-Matrix (Soll, aus REFERENCE §2.5 auf Echt-URLs übertragen)
 
