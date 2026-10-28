@@ -415,43 +415,41 @@
   }
 
   .review-complete {
-    @apply shrink-0 animate-[review-arrive_0.4s_ease_both];
+    @apply shrink-0 animate-p3-complete-arrive motion-reduce:animate-none;
   }
   .review-celebration {
-    @apply relative grid place-items-center h-[6rem] [margin:0.5rem_auto] w-[10rem];
+    @apply relative grid place-items-center h-24 my-2 mx-auto w-40;
   }
   .review-sticker {
-    @apply grid place-items-center w-[5rem] h-[5rem] border-[length:2.5px] border-solid
-      border-[color:var(--color-neo-border)] [border-image:initial] rounded-[1.4rem]
-      [background:var(--color-accent)] [box-shadow:3px_3px_0_var(--color-neo-shadow)]
-      text-[length:2.5rem] [transform:rotate(-7deg)]
-      animate-[review-sticker_0.6s_cubic-bezier(0.175,0.885,0.32,1.275)_both];
+    @apply grid place-items-center size-20 border-neo border-solid border-neo-edge
+      border-image-reset rounded-p3-complete-sticker bg-accent shadow-neo
+      text-p3-complete-sticker animate-p3-complete-sticker motion-reduce:animate-none motion-reduce:-rotate-7;
   }
   .review-confetti {
-    @apply absolute [inset:0] pointer-events-none;
+    @apply absolute inset-0 pointer-events-none;
   }
   .review-confetti i {
-    @apply absolute top-[50%] left-[50%] w-[0.55rem] h-[0.8rem] rounded-[2px]
-      [background:var(--color-error-border)] [transform:translate(var(--x),var(--y))_rotate(var(--r))]
-      animate-[review-confetti_0.55s_ease-out_both];
+    @apply absolute top-1/2 left-1/2 w-p3-complete-confetti-width h-p3-complete-confetti-height
+      rounded-p3-complete-confetti bg-p3-complete-error animate-p3-complete-confetti
+      motion-reduce:animate-none;
   }
   .review-confetti i:nth-child(1) {
-    @apply [--x:-4.7rem] [--y:-2.2rem] [--r:-24deg];
+    @apply -translate-x-p3-complete-offset-47 -translate-y-p3-complete-offset-22 -rotate-24;
   }
   .review-confetti i:nth-child(2) {
-    @apply [--x:4.2rem] [--y:-2.4rem] [--r:35deg] [background:var(--color-info-border)];
+    @apply translate-x-p3-complete-offset-42 -translate-y-p3-complete-offset-24 rotate-35 bg-p3-complete-info;
   }
   .review-confetti i:nth-child(3) {
-    @apply [--x:-4.4rem] [--y:1.4rem] [--r:40deg] [background:var(--color-warning-border)];
+    @apply -translate-x-p3-complete-offset-44 translate-y-p3-complete-offset-14 rotate-40 bg-p3-complete-warning;
   }
   .review-confetti i:nth-child(4) {
-    @apply [--x:4.2rem] [--y:1.3rem] [--r:-35deg] [background:var(--color-success-border)];
+    @apply translate-x-p3-complete-offset-42 translate-y-p3-complete-offset-13 -rotate-35 bg-p3-complete-success;
   }
   .review-confetti i:nth-child(5) {
-    @apply [--x:-2.8rem] [--y:-2.9rem] [--r:25deg] [background:var(--color-info-border)];
+    @apply -translate-x-p3-complete-offset-28 -translate-y-p3-complete-offset-29 rotate-25 bg-p3-complete-info;
   }
   .review-confetti i:nth-child(6) {
-    @apply [--x:2.8rem] [--y:2.3rem] [--r:60deg] [background:var(--color-warning-border)];
+    @apply translate-x-p3-complete-offset-28 translate-y-p3-complete-offset-23 rotate-60 bg-p3-complete-warning;
   }
 
   @keyframes review-arrive {
@@ -463,10 +461,7 @@
     to { opacity: 1; transform: scale(1) rotate(-7deg); }
   }
   @keyframes review-confetti {
-    from { opacity: 0; transform: translate(0, 0) rotate(0); }
-    to { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .review-complete, .review-sticker, .review-confetti i { @apply animate-none; }
+    from { opacity: 0; translate: 0 0; rotate: 0deg; }
+    to { opacity: 1; }
   }
 }
