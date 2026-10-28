@@ -1,8 +1,11 @@
+from html import escape
 from pathlib import Path
 
 import anki.lang
 import pytest
+from fastapi.testclient import TestClient
 
+from ankiweb.app import create_app
 from ankiweb.core.app_client.lang import ResolvedLang, resolve_lang
 from ankiweb.core.config import Settings
 
@@ -109,3 +112,48 @@ def test_resolution_uses_settings_not_global_language(
         assert resolve_lang(settings) == ResolvedLang("de", "ltr", "de")
     finally:
         anki.lang.set_lang("en")
+
+
+@pytest.mark.parametrize(
+    ("code", "html_lang", "html_dir", "reference", "different"),
+    [
+        ("", "en", "ltr", "en", "de_DE"),
+        ("zh_HK", "zh-TW", "ltr", "zh_TW", "zh_CN"),
+        ("ga", "ga-IE", "ltr", "ga_IE", "en"),
+        ("pt_AO", "pt-BR", "ltr", "pt_BR", "pt_PT"),
+        ("pt", "pt-BR", "ltr", "pt_BR", "pt_PT"),
+        ("De", "de", "ltr", "de_DE", "en"),
+        ("nb-123", "nb-NO", "ltr", "nb_NO", "en"),
+        ("zh-Hant", "zh-CN", "ltr", "zh_CN", "zh_TW"),
+        ("zh-Hans-HK", "zh-TW", "ltr", "zh_TW", "zh_CN"),
+        ("de-Foo", "en", "ltr", "en", "de_DE"),
+        ("sv_FI", "sv-SE", "ltr", "sv_SE", "en"),
+        ("ar_SA", "ar", "rtl", "ar", "en"),
+    ],
+)
+def test_rendered_language_matches_anki_translation(
+    tmp_path: Path,
+    code: str,
+    html_lang: str,
+    html_dir: str,
+    reference: str,
+    different: str,
+) -> None:
+    tr = anki.lang.tr_legacyglobal
+    try:
+        anki.lang.set_lang(reference)
+        expected = (tr.actions_decks(), tr.studying_again())
+        anki.lang.set_lang(different)
+        assert (tr.actions_decks(), tr.studying_again()) != expected
+
+        settings = Settings(collection_path=tmp_path / "collection.anki2", lang=code)
+        with TestClient(create_app(settings)) as client:
+            response = client.get("/app/")
+            translated = (tr.actions_decks(), tr.studying_again())
+    finally:
+        anki.lang.set_lang("en")
+
+    assert response.status_code == 200
+    assert translated == expected
+    assert f'<html lang="{html_lang}" dir="{html_dir}">' in response.text
+    assert f"<title>{escape(expected[0])}</title>" in response.text

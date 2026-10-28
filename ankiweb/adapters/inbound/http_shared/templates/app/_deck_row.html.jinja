@@ -1,0 +1,23 @@
+<article id="deck-{{ view.row.deck_id }}" class="card deck-card bg-base-200" data-show="{{ view.show }}">
+  <div class="card-body gap-0 p-4">
+    <div class="flex min-w-0 items-center gap-3">
+      <span class="grid size-12 flex-none place-items-center rounded-deck border-2 border-base-content bg-secondary text-2xl leading-none" aria-hidden="true">{{ view.row.emoji }}</span>
+      <h3 class="min-w-0 text-deck-name leading-deck-name font-black tracking-deck-name wrap-anywhere">{{ view.row.name }}</h3>
+    </div>
+    <div class="my-3 flex flex-wrap gap-1.5">
+      <span class="badge badge-warning lowercase h-auto border-deck-pill border-current px-2.25 py-0.75 text-deck-pill leading-deck-pill font-extrabold">{{ view.row.due }} {{ tr.statistics_due_count() }}</span>
+      <span class="badge badge-info lowercase h-auto border-deck-pill border-current px-2.25 py-0.75 text-deck-pill leading-deck-pill font-extrabold">{{ view.row.new }} {{ tr.actions_new() }}</span>
+    </div>
+    <div class="mb-1.25 flex justify-between gap-2 text-deck-label font-black uppercase tracking-deck-label text-muted-fg">
+      <span>{{ s("app_decks_progress") }}</span>
+      <span>{{ view.row.progress_pct }}%</span>
+    </div>
+    <div class="h-3 overflow-hidden rounded-full border-2 border-base-content bg-deck-track" role="progressbar" aria-label="{{ s('app_decks_progress_for', deck=view.row.name) }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ view.row.progress_pct }}">
+      <div class="meter-fill" style="width: {{ view.row.progress_pct }}%"></div>
+    </div>
+    <div class="mt-3.75 grid grid-cols-2 gap-2.5 pr-0.75 pb-0.75">
+      <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" href="/app/review?deck={{ view.row.deck_id }}" aria-label="{{ s('app_decks_learn_deck', deck=view.row.name) }}">{{ s("app_decks_learn") }}</a>
+      <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none bg-base-200 dark:bg-base-300" href="/app/add?deck={{ view.row.deck_id }}">{{ s("app_decks_edit_add") }}</a>
+    </div>
+  </div>
+</article>

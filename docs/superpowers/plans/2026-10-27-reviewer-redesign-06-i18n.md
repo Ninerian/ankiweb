@@ -140,6 +140,7 @@ Jede Aufgabe: Test zuerst, dann Code, dann Commit.
 - [x] `app/base.html.jinja`: `<html lang>` und `dir` kommen aus `resolve_lang(settings)`; die Ping-Seite nutzt den Render-Kontext. Offline-Seite und Login-Weiterleitung bleiben bei Plan 5.
 - [x] Tests `tests/app_client/test_i18n_lang.py`: `zh`/`zh_CN` → `zh-CN`, `zh-Hant-TW`/`zh_HK` → `zh-TW`, `pt` → `pt-BR`, `nb`/`nb_NO`/`nb-123` → `nb-NO`, `no`/`nb-Foo` → `en`; `AR`/`ar-Arab-SA` → `ar/rtl`, `HE` → `he/rtl`, `DE` → `de/ltr`, `fa`/`xx` → `en/ltr`. Die gerenderte Anki-Übersetzung wird mit dem aufgelösten `html_lang` verglichen.
 - [x] `test_all_available_languages` vergleicht Anki-Texte und Richtung für alle Codes aus `anki.lang.langs`. Der Vergleich aller lokalisierten Seitentitel wartet auf Pläne 2–4; `fa` hat gegenwärtig ein defektes Anki-Bundle.
+- [x] End-to-End-Test `test_rendered_language_matches_anki_translation` (`/app/` mit echter App): vergleicht die gerenderte Seite mit Ankis Übersetzung für `zh_HK`, `ga`, `pt_AO`, `pt`, `De`, `nb-123`, `zh-Hant`, `zh-Hans-HK`, `de-Foo`, `sv_FI` und `ar_SA`. `sv_FI` → `sv-SE` ist gemessen (Anki rendert schwedisch); ein Resolver, der nur die Basissprache nimmt, scheitert hier.
 - [ ] Logische Tailwind-Klassen statt `left/right` (Review-Review beim Template-Umbau in den Plänen 2 bis 4), Pfeilzeichen per `rtl:`-Variante spiegeln.
 
 ### 6.5 Manifest, Offline, Cache-Hash

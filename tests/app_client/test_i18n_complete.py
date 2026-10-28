@@ -19,19 +19,7 @@ APP_TEMPLATES = (
 
 # One set per plan so parallel plans each delete only entries in their own set.
 # Each plan removes an entry as its templates use the key.
-PRESEEDED_UNUSED_DECKS = {
-    "app_decks_study_space",
-    "app_decks_my_decks",
-    "app_decks_search",
-    "app_decks_your_decks",
-    "app_decks_progress",
-    "app_decks_progress_for",
-    "app_decks_no_results",
-    "app_decks_try_search",
-    "app_decks_add_first",
-    "app_decks_edit_add",
-    "app_decks_learn_deck",
-}
+PRESEEDED_UNUSED_DECKS: set[str] = set()
 PRESEEDED_UNUSED_REVIEW = {
     "app_review_unmarked",
     "app_review_flag_removed",

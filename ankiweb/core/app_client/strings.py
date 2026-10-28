@@ -14,6 +14,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_decks_add_first": "Add your first deck",
         "app_decks_edit_add": "Edit / Add",
         "app_decks_learn_deck": "Learn {deck}",
+        "app_decks_learn": "Learn",
         # Review (plan 3)
         "app_review_streak": "Streak",
         "app_review_streak_title": "Study streak (cards mastered in a row)",
@@ -115,6 +116,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_decks_add_first": "Füge deinen ersten Stapel hinzu",
         "app_decks_edit_add": "Bearbeiten / Hinzufügen",
         "app_decks_learn_deck": "{deck} lernen",
+        "app_decks_learn": "Lernen",
         "app_review_streak": "Serie",
         "app_review_streak_title": "Lernserie (Karten in Folge gemeistert)",
         "app_review_progress": "Sitzungsfortschritt",

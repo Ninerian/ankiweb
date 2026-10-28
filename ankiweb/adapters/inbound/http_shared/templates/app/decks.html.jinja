@@ -1,0 +1,31 @@
+<main id="decks-page" class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pb-deck-safe pl-4" data-signals="{q: ''}">
+  <header class="mb-6">
+    <p class="mb-1.25 text-deck-label font-black uppercase tracking-deck-label text-muted-fg">{{ s("app_decks_study_space") }}</p>
+    <h1 class="mb-4.5 text-deck-title leading-none font-black tracking-deck-title">{{ s("app_decks_my_decks") }}</h1>
+{% if views %}
+    <label class="input flex h-12.5 w-full items-center gap-2.5 border-neo-edge bg-base-200 px-3.5 shadow-neo focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-primary">
+      <svg class="size-5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
+      <span class="sr-only">{{ s("app_decks_search") }}</span>
+      <input id="deck-search" class="grow text-base font-bold placeholder:text-muted-fg placeholder:opacity-100" type="search" placeholder="{{ s('app_decks_search') }}" autocomplete="off" data-bind:q>
+    </label>
+{% endif %}
+  </header>
+{% if views %}
+  <section aria-labelledby="decks-heading">
+    <h2 id="decks-heading" class="mb-2.5 ml-0.5 text-deck-label font-black uppercase tracking-deck-label text-muted-fg">{{ s("app_decks_your_decks") }}</h2>
+    <div id="deck-list" class="grid gap-3.5">
+{% for view in views %}
+{% include "app/_deck_row.html.jinja" %}
+{% endfor %}
+    </div>
+    <p id="empty-state" class="deck-card rounded-box bg-base-200 px-5 py-7 text-center font-bold text-muted-fg" role="status" style="display:none" data-show="{{ no_match }}">
+      <strong class="block text-deck-empty font-black text-base-content">{{ s("app_decks_no_results") }}</strong>
+      {{ s("app_decks_try_search") }}
+    </p>
+  </section>
+{% else %}
+  <section id="no-decks" class="deck-card rounded-box bg-base-200 px-5 py-7 text-center">
+    <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" href="/app/add">{{ s("app_decks_add_first") }}</a>
+  </section>
+{% endif %}
+</main>
