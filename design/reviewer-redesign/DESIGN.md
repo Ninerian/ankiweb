@@ -59,6 +59,7 @@ The prototype delivers instant dopamine and flow state without requiring backend
 4. **Mobile Bottom Sheet (Card Actions)**:
    - Replaces the desktop-style dropdown menu with a slide-up bottom drawer.
    - Provides clean 2-column quick-action tiles: **Mark Card**, **Flag (Red)**, **Bury Card**, **Suspend**, **Undo Review**, **Set Due Date**, **Card Info**, and **Delete Note**.
+   - In the real reviewer, tiles use inline SVG icons and theme-aware base, border, shadow, and danger colors; translated labels and mark/flag state remain unchanged.
    - Tap outside or tap **Dismiss** to close.
 
 ---
