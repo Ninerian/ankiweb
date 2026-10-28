@@ -261,7 +261,7 @@
 
   /* plan 2 */
   .deck-card {
-    border: var(--border) solid var(--color-neo-border);
-    box-shadow: 4px 4px 0 var(--color-neo-shadow);
+    @apply border-[length:var(--border)] border-solid border-[color:var(--color-neo-border)]
+      [box-shadow:4px_4px_0_var(--color-neo-shadow)];
   }
 }
