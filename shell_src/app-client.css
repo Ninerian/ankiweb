@@ -377,7 +377,7 @@
   }
 
   .review-complete {
-    @apply animate-[review-arrive_0.4s_ease_both];
+    @apply shrink-0 animate-[review-arrive_0.4s_ease_both];
   }
   .review-celebration {
     @apply relative grid place-items-center h-[6rem] [margin:0.5rem_auto] w-[10rem];
