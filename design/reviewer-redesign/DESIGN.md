@@ -197,6 +197,8 @@ What the server enforces on `addNote` (belegt, `actions/_helpers.py:43`): it rej
 
 `{{#Field}}...{{/Field}}` is Anki's built-in conditional, so empty Hint/Example render no element and the fast two-field path is unchanged. The back template repeats the front markup instead of using `{{FrontSide}}`, so the design can address each part by class.
 
+The reviewer adds a localized front label outside the Anki template for `AnkiWeb Vocab` cards. The card content is centered for this note type; other note types keep their own presentation.
+
 **Escaping and highlight (change from the prototype):** Anki fields are HTML. The prototype stored plain text and escaped at render time (`CardRender.renderCard`). With server-rendered HTML the contract is: the **writer escapes on save** (the quick-add view must HTML-escape `<`, `>`, `&` before `addNote`, otherwise typed `<` is interpreted as markup), and the `*word*` → `<mark>` conversion for `.av-example` happens in the **client** after render, because Anki has no template filter for it. The converted text is already escaped, so only `<mark>` is added.
 
 **Verified against a throwaway server (not the user's profile; separate `ANKIWEB_COLLECTION`, removed afterwards):**

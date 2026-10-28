@@ -20,14 +20,14 @@ pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import Page, expect, sync_playwright
 
 
-@pytest.fixture
-def review_server(
+def _populate_collection(
     tmp_path: Path, request: pytest.FixtureRequest
-) -> Iterator[tuple[str, int]]:
-    """Start the normal application with an isolated, pre-populated collection."""
+) -> tuple[Path, int]:
+    """Create the collection and notes for the requested review variant."""
     parameter = getattr(request, "param", 3)
-    vocab = parameter == "vocab"
-    count = 2 if vocab else parameter
+    vocab = parameter in ("vocab", "vocab_without_class")
+    marker_in_text = parameter == "nonvocab_with_marker"
+    count = 2 if vocab else 1 if marker_in_text else parameter
     collection_path = tmp_path / "review.anki2"
     col = Collection(str(collection_path))
     try:
@@ -36,14 +36,18 @@ def review_server(
         assert deck_id is not None and model is not None
         if vocab:
             model["name"] = "AnkiWeb Vocab"
-            model["tmpls"][0]["qfmt"] = '<div class="av-front-text">{{Front}}</div>'
+            model["tmpls"][0]["qfmt"] = (
+                "{{Front}}"
+                if parameter == "vocab_without_class"
+                else '<div class="av-front-text">{{Front}}</div>'
+            )
             model["tmpls"][0]["afmt"] = (
                 '{{FrontSide}}<div class="av-example">{{Back}}</div>'
             )
             col.models.update_dict(model)
         for index in range(count):
             note = col.new_note(model)
-            note["Front"] = f"Question {index}"
+            note["Front"] = "av-front-text" if marker_in_text else f"Question {index}"
             if vocab:
                 note["Back"] = escape(
                     f"Answer {index}: <b>*word*</b> "
@@ -55,6 +59,15 @@ def review_server(
             col.add_note(note, deck_id)
     finally:
         col.close()
+    return collection_path, deck_id
+
+
+@pytest.fixture
+def review_server(
+    tmp_path: Path, request: pytest.FixtureRequest
+) -> Iterator[tuple[str, int]]:
+    """Start the normal application with an isolated, pre-populated collection."""
+    collection_path, deck_id = _populate_collection(tmp_path, request)
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
@@ -199,6 +212,23 @@ def test_vocab_highlight_preserves_escaped_hostile_text_after_card_patch(
             ):
                 page.keyboard.press("4")
             expect(page.locator("#answer-box")).to_be_hidden()
+
+
+@pytest.mark.parametrize(
+    ("review_server", "vocab"),
+    [("vocab_without_class", True), ("nonvocab_with_marker", False)],
+    indirect=["review_server"],
+)
+def test_front_label_and_centering_follow_note_type(
+    page: Page, review_server: tuple[str, int], vocab: bool
+) -> None:
+    _open(page, review_server)
+    label = page.get_by_text("Vocabulary • Front", exact=True)
+    expect(label).to_have_count(1 if vocab else 0)
+    alignment = page.locator("#card-q").evaluate(
+        "element => getComputedStyle(element).textAlign"
+    )
+    assert (alignment == "center") is vocab
 
 
 def test_keyboard_guard_while_button_has_focus(

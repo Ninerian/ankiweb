@@ -9,7 +9,12 @@
         {% if view.flag %}<span id="flag-icon" class="badge badge-outline" title="{{ s('app_review_flagged') }}" aria-label="{{ s('app_review_flagged') }}">🚩</span>{% endif %}
       </div>
     </div>
+    {% if not view.other_notetype %}
+    <div class="flex flex-1 flex-col justify-center break-words py-8 text-center" dir="auto">
+      <div class="mb-2 text-[0.8rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-muted)]">{{ s('app_review_vocab_front') }}</div>
+    {% else %}
     <div class="flex flex-1 flex-col justify-center break-words py-8" dir="auto">
+    {% endif %}
       <div id="card-q" class="review-card-content">{{ view.question_html | safe }}</div>
       <div id="answer-box" class="review-card-content animate-reveal-answer motion-reduce:animate-none mt-6 border-t-2 border-dashed border-base-300 pt-6" data-show="$revealed" style="display:none">
         <div id="card-a">{{ view.answer_html | safe }}</div>
