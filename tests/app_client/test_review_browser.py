@@ -224,6 +224,25 @@ def test_keyboard_guard_while_button_has_focus(
     assert not any(url.endswith("/app/review/answer") for url in requests)
 
 
+def test_stale_tab_reloads_after_conflict(
+    page: Page, review_server: tuple[str, int]
+) -> None:
+    _open(page, review_server)
+    other = page.context.new_page()
+    _open(other, review_server)
+    _rate(page, 4)
+    _reveal(other)
+    with other.expect_response(
+        lambda response: (
+            response.url.endswith("/app/review/answer") and response.status == 409
+        )
+    ):
+        other.keyboard.press("4")
+    expect(other.locator("#stage")).to_contain_text("Question 1")
+    expect(other.locator("#answer-box")).to_be_hidden()
+    other.close()
+
+
 @pytest.mark.parametrize("ease", [1, 2, 3, 4])
 def test_each_digit_rates_the_card(
     page: Page, review_server: tuple[str, int], ease: int
@@ -367,6 +386,7 @@ def test_streak_reload_undo_and_again_reset(
     ) as response:
         page.locator("#action-undo").click()
     assert response.value.status == 200
+    expect(page.locator("#sheet")).not_to_have_class(re.compile(r"\bmodal-open\b"))
     expect(page.locator("#streak-count")).to_have_text("1")
     expect(page.locator("#stage")).to_contain_text("Question 1")
     _rate(page, 1)
