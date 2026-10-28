@@ -59,16 +59,19 @@ def test_layout_language_matches_rendered_anki_text(
     tmp_path: Path, code: str, html_lang: str, translated: str
 ) -> None:
     settings = Settings(collection_path=tmp_path / "collection.anki2", lang=code)
-    with TestClient(create_app(settings)) as client:
-        response = client.get("/app/ping")
-        anki.lang.set_lang(code)
-        page = render(
-            "app/base.html.jinja",
-            title=tr.studying_again(),
-            body="",
-            scripts=(),
-            app_lang=resolve_lang(settings),
-        )
+    try:
+        with TestClient(create_app(settings)) as client:
+            response = client.get("/app/ping")
+            anki.lang.set_lang(code)
+            page = render(
+                "app/base.html.jinja",
+                title=tr.studying_again(),
+                body="",
+                scripts=(),
+                app_lang=resolve_lang(settings),
+            )
+    finally:
+        anki.lang.set_lang("en")
     assert f'<html lang="{html_lang}" dir="ltr">' in response.text
     assert f'<html lang="{html_lang}" dir="ltr">' in page
     assert f"<title>{translated}</title>" in page
