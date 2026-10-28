@@ -10,9 +10,6 @@ from ankiweb.core.app_client.strings import STRINGS, s
 def test_catalog_uses_explicit_language_and_formats_values() -> None:
     assert s("app_decks_learn_deck", lang="en", deck="Biology") == "Learn Biology"
     assert s("app_decks_learn_deck", lang="de", deck="Biologie") == "Biologie lernen"
-    assert s("app_review_streak_increase", lang="de", count=3) == (
-        "Serie +1! (3 in Folge 🎯)"
-    )
 
 
 def test_catalog_falls_back_per_key_and_for_unknown_languages(monkeypatch) -> None:

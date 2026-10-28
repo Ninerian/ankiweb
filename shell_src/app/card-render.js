@@ -1,6 +1,5 @@
 // The server owns cards and ratings; this module handles only presentation.
 const focusable = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-const toastTimers = new WeakMap();
 const streakVersions = new WeakMap();
 const focusedCompletions = new WeakSet();
 let sheetWasOpen = false;
@@ -106,13 +105,6 @@ function syncReview() {
         badge.classList.add(animation);
       }
     }
-  }
-  const toast = document.getElementById('streak-toast');
-  if (toast && toastTimers.get(toast)?.version !== toast.dataset.ts) {
-    window.clearTimeout(toastTimers.get(toast)?.timer);
-    const version = toast.dataset.ts;
-    const timer = window.setTimeout(() => { toast.remove(); }, 2500);
-    toastTimers.set(toast, { version, timer });
   }
 }
 

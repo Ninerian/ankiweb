@@ -22,11 +22,6 @@
       <div id="meter-fill" class="meter-fill" style="width: {{ progress.percent }}%"></div>
     </div>
   </div>
-  {% if not completed and (rating|default(none) == 1 or (streak_before is not none and (streak > streak_before or (streak_before > 0 and streak == 0)))) %}
-  <div id="streak-toast" data-ts="{{ progress.done }}-{{ streak_before }}-{{ streak }}" class="toast toast-top toast-center z-50" role="status">
-    <div class="alert bg-base-200 neo-press font-bold">{% if streak == 0 %}{{ s('app_review_streak_reset') }}{% else %}{{ s('app_review_streak_increase', count=streak) }}{% endif %}</div>
-  </div>
-  {% endif %}
 </header>
 {% endmacro %}
 {% if fragment|default('page') == 'progress' %}

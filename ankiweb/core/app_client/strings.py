@@ -17,8 +17,6 @@ STRINGS: dict[str, dict[str, str]] = {
         # Review (plan 3)
         "app_review_streak": "Streak",
         "app_review_streak_title": "Study streak (cards mastered in a row)",
-        "app_review_streak_reset": "Streak Reset! Don't give up 💪",
-        "app_review_streak_increase": "Streak +1! ({count} in a row 🎯)",
         "app_review_progress": "Session Progress",
         "app_review_more_actions": "More actions",
         "app_review_card_actions": "Card Actions",
@@ -118,8 +116,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_decks_learn_deck": "{deck} lernen",
         "app_review_streak": "Serie",
         "app_review_streak_title": "Lernserie (Karten in Folge gemeistert)",
-        "app_review_streak_reset": "Serie zurückgesetzt! Gib nicht auf 💪",
-        "app_review_streak_increase": "Serie +1! ({count} in Folge 🎯)",
         "app_review_progress": "Sitzungsfortschritt",
         "app_review_more_actions": "Weitere Aktionen",
         "app_review_card_actions": "Kartenaktionen",

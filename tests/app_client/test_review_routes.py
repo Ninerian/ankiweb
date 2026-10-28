@@ -252,13 +252,13 @@ def test_new_start_resets_session_tally_but_streak_is_daily(client):
     assert _element_text(completed, "sc-reviewed") == "1"
 
 
-def test_again_displays_reset_toast_even_without_a_prior_streak(client):
+def test_again_resets_streak_even_without_a_prior_streak(client):
     deck, _ = seed(client, count=2)
     _, card = open_review(client, deck)
     response = answer(client, card, 1)
     assert response.status_code == 200
-    assert "Streak Reset!" in response.text
-    assert 'id="streak-count">0<' in response.text
+    assert _element_text(response, "streak-toast") is None
+    assert _element_text(response, "streak-count") == "0"
 
 
 def test_intervening_mark_undo_preserves_session_tally(client):

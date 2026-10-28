@@ -376,6 +376,7 @@ def test_streak_reload_undo_and_again_reset(
     _open(page, review_server)
     _rate(page, 4)
     expect(page.locator("#streak-count")).to_have_text("1")
+    expect(page.locator("#streak-toast")).to_have_count(0)
     page.reload()
     expect(page.locator("#streak-count")).to_have_text("1")
     _rate(page, 4)
@@ -388,10 +389,11 @@ def test_streak_reload_undo_and_again_reset(
     assert response.value.status == 200
     expect(page.locator("#sheet")).not_to_have_class(re.compile(r"\bmodal-open\b"))
     expect(page.locator("#streak-count")).to_have_text("1")
+    expect(page.locator("#streak-toast")).to_have_count(0)
     expect(page.locator("#stage")).to_contain_text("Question 1")
     _rate(page, 1)
     expect(page.locator("#streak-count")).to_have_text("0")
-    expect(page.get_by_text(re.compile("Streak Reset", re.IGNORECASE))).to_be_visible()
+    expect(page.locator("#streak-toast")).to_have_count(0)
 
 
 @pytest.mark.parametrize("review_server", [1], indirect=True)
