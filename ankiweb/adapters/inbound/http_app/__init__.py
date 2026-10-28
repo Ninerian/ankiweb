@@ -5,14 +5,20 @@ from fastapi.responses import HTMLResponse
 
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
 from ankiweb.adapters.inbound.http_shared.templating import render
+from ankiweb.core.app_client.lang import resolve_lang
+from ankiweb.core.config import Settings
 from ankiweb.core.ports import CollectionPort
 
 
-def build_app_router(get_service: Callable[[], CollectionPort]) -> APIRouter:
+def build_app_router(
+    get_service: Callable[[], CollectionPort], settings: Settings
+) -> APIRouter:
     router = APIRouter(prefix="/app")
+    lang = resolve_lang(settings)
 
     @router.get("/ping", response_class=HTMLResponse)
     def ping() -> str:
-        return render_app_page("AnkiWeb", render("app/ping.html.jinja"), active="")
+        body = render("app/ping.html.jinja", app_lang=lang)
+        return render_app_page("AnkiWeb", body, active="", lang=lang)
 
     return router
