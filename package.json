@@ -11,7 +11,8 @@
   "scripts": {
     "setup": "uv run python tools/fetch_web_assets.py && uv run python tools/fetch_datastar.py && npm run build",
     "build:css": "tailwindcss -i shell_src/app.css -o ankiweb/shell/static/app.css --minify",
-    "build": "node tools/build_shell.mjs && npm run build:css"
+    "build:css:app": "tailwindcss -i shell_src/app-client.css -o ankiweb/shell/static/app-client.css --minify",
+    "build": "node tools/build_shell.mjs && npm run build:css && npm run build:css:app"
   },
   "dependencies": {
     "@codemirror/lang-html": "6.4.12",
