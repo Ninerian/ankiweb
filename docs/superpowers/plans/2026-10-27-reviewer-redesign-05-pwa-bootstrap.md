@@ -29,7 +29,7 @@
 | Installations-UI | `beforeinstallprompt` → kleiner Button "Install app" in der Deck-Liste (nur wenn Ereignis feuerte); iOS: statischer Hinweis "Share → Add to Home Screen" nur in Standalone-Erkennung `!navigator.standalone` auf iOS | Chrome-Prompt braucht Nutzerinteraktion (RESEARCH-pwa §3); iOS installiert manuell |
 | Update-Strategie | `CACHE`-Konstante enthält Build-Hash der App-Assets (aus Dateimtime oder Paketversion), nicht manuelles `v1` | Verhindert vergessenes Bumping (REFERENCE §6 "Eviction nur per Konstante") |
 | Alter Client | Unverändert; `shell.html.jinja` behält Registrierung für `/service-worker.js` | Kein Eingriff in bestehende Seiten |
-| Navigation | Gemeinsame Leiste/Links in Layout (Plan 1) ergänzt: Deck-Liste ↔ Review ↔ Add über die bereits in 2 bis 4 gebauten Links; Review-Sheet und Add-Header tragen Mode-Switch | Matrix siehe unten |
+| Navigation | Links in Layout und Ansichten (Pläne 1 bis 4): Review → Deck-Liste → Add; der Editor hat keinen Mode-Switch, Done führt über die Summary zu Study | Matrix siehe unten |
 
 ## Link-Matrix (Soll, aus REFERENCE §2.5 auf Echt-URLs übertragen)
 
@@ -37,10 +37,10 @@
 |---|---|---|---|
 | Deck-Liste | Review | Learn → `/app/review?deck=<id>` | ja |
 | Deck-Liste | Add | Edit/Add → `/app/add?deck=<id>` | ja |
-| Review | Deck-Liste | Back → `/app/` | nein |
-| Review | Add | Sheet-Switch → `/app/add?deck=<id>` | ja |
+| Review | Deck-Liste | Back / Fertig: Back to decks → `/app/` | nein |
+| Add | Deck-Liste | Back → `/app/` | nein |
 | Add | Deck-Liste | Chip → `/app/` | nein (Mockup trug `?deck`, hier unnötig: Liste ist deck-unabhängig) |
-| Add | Review | Study / Finish → `/app/review?deck=<id>` | ja |
+| Add | Review | Done → Summary → Start studying → `/app/review?deck=<id>` | ja |
 | Offline | Deck-Liste | "Try again" → `/app/` | nein |
 
 Test: automatisierte Link-Matrix (alle Links je Seite crawlen, Ziel liefert 200/303-auf-200, kein 404).
@@ -89,7 +89,7 @@ Tests (`test_app_pwa.py`), nur Verhalten:
 
 ### 5.4 Link-Matrix und End-to-End
 - [ ] `test_app_links.py`: pro Seite alle `<a href>` einsammeln, intern folgen, Statuscodes prüfen, Matrix oben abgleichen.
-- [ ] Playwright-Gesamtfluss: Deck-Liste → Learn → 3 Karten bewerten → Back → Zähler gesunken → Edit/Add → Karte hinzufügen → Study → neue Karte erscheint im Review.
+- [ ] Playwright-Gesamtfluss: Deck-Liste → Learn → 3 Karten bewerten → Back → Zähler gesunken → Edit/Add → Karte hinzufügen → Done → Start studying → neue Karte erscheint im Review.
 - [ ] Playwright: Offline simulieren (`context.set_offline(True)`), Navigation zu `/app/` zeigt Offline-Seite statt Browserfehler; Online → Retry funktioniert.
 - [ ] Chromium-Installierbarkeit: `Page.getInstallabilityErrors` und `Page.getAppManifest` per CDP für `/app/` (Methode aus REFERENCE §5, "keine Fehler" erwartet).
 - [ ] Lighthouse-/Konsolencheck optional.

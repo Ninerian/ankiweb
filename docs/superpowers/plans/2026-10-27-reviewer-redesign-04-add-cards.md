@@ -27,7 +27,7 @@ Folgen fürs Design (ins `DESIGN.md` §5.D/§6 nachtragen): "Pop to editor" = Ka
 - Eingabe ist Klartext; Anzeige im Editor-Preview ebenfalls über Escape-first-Logik (`CardRender`-Prinzip), **nicht** über rohes Server-HTML.
 - Note-Type `AnkiWeb Vocab`: 4 Felder `Front, Back, Hint, Example` (Reihenfolge fix), Template `Card 1` wie DESIGN §5.F, `css == ""`. Kein `<style>`/`<script>` in Templates.
 - Unsaved-Text-Guard (`confirmDiscard`): wenn Front/Back/Hint/Example nicht leer, `confirm()` vor Verlassen/Edit-last/Deck-Wechsel. Kein Guard während Commit.
-- Deck: `/app/add?deck=<id>`; unbekannt/fehlend → 303 `/app/`. Chip → `/app/` , Switch Study → `/app/review?deck=<id>`.
+- Deck: `/app/add?deck=<id>`; unbekannt/fehlend → 303 `/app/`. Chip → `/app/` mit Guard; Done → Summary → Start studying → `/app/review?deck=<id>`. Kein Mode-Switch im Editor.
 
 ## Entscheidungen
 
@@ -75,18 +75,19 @@ Speichern: `html.escape(value, quote=False)` (nur `& < >`; Anführungszeichen un
 - [ ] `data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: 0, error: ''}"` am Wurzelelement (Gotcha #23).
 - [ ] Drei `<section>` mit `data-show="$step === N"` und `style="display:none"` (Gotcha #4). Step-Pills als Buttons mit `data-on:click="$step = N"`; Sprung nach 3 nur wenn Front und Back nicht leer (Ausdruck: `$front.trim() && $back.trim() ? ($step = 3) : ($error = 'Front and back are required')`, Ternär statt `if`).
 - [ ] Textareas `data-bind:front` usw.; Zeichenzähler `data-text="$front.length"`.
-- [ ] Enter-Shortcut: `data-on:keydown__window="window.avAddKey(evt)"` (Delegation, Gotcha #24); Funktion beachtet `isComposing`, Shift+Enter in Textarea = Umbruch.
+- [ ] Enter-Shortcut: `data-on:keydown__window="window.avAddKey(evt)"` (Delegation, Gotcha #24); Funktion beachtet `isComposing`, Shift+Enter in Textarea = Umbruch. Keine Tastatur-Badges oder Shortcut-Hinweise anzeigen; Step-Pills und Zeichen-Chips bleiben sichtbar.
 - [ ] Optionale Felder als `<details>`; Chips (`der/die/das`, `ä ö ü ß`, `Noun/Verb/Adj/(Plural:)`) schreiben per `data-on:click` in das jeweilige Signal (Cursorposition-Einfügen = Funktion in `add.js`).
 - [ ] Preview (Step 3): rendert aus Signalen mit Escape-first (`data-text` escaped automatisch) und Highlight für Example: Datastar `data-html` existiert nicht in den belegten Referenzen → **Preview vom Server rendern lassen** (`POST /app/add/preview` → patcht `#preview`), nutzt denselben `escape_field` + Highlight-Funktion wie Speichern. Verhindert Drift Preview/Gespeichert.
 - [ ] Commit-Button: `data-on:click="@post('/app/add/commit')"`, `data-indicator:saving`, `data-attr:disabled="$saving"` (verhindert Doppelklick = Doppelnote; Server prüft zusätzlich Duplikat).
-- [ ] Antwort SSE: patcht `#added-cards`, `#hud-count`, setzt Signale zurück (`front: ''`, … `step: 1`, `nid: 0`, `count`), Toast "Card #N added" (Text über `s()`, Plan 6).
+- [ ] Antwort SSE: patcht `#added-cards`, `#hud-count`, setzt Signale zurück (`front: ''`, … `step: 1`, `nid: 0`, `count`). Kein Erfolgstoast, der den aktualisierten Kartenzähler wiederholt.
 - [ ] Fehler: Duplikat/leer → `error_response`, Formular bleibt unverändert.
-- [ ] Ansicht der hinzugefügten Karten: letzte Karten mit Offsets/Rotationen aus `STACK_PRESETS` (Mockup), oberste markiert `TOP CARD ↩`; Peek-Bar.
+- [ ] Ansicht der hinzugefügten Karten: letzte Karten mit Offsets/Rotationen aus `STACK_PRESETS` (Mockup), oberste markiert `TOP CARD`; Peek-Bar.
 - [ ] Edit-last: Klick auf oberste Karte/Peek/HUD-Pill → Guard (Funktion `window.avConfirmDiscard`) → `@post('/app/add/edit/{nid}')` → patcht Signale (`front`, `back`, …, `nid`, `step: 1`) und blendet `<details>` je nach Inhalt auf; Toast "Editing…". Commit mit `nid != 0` aktualisiert und lässt die Position in den hinzugefügten Karten.
-- [ ] Finish: zeigt Summary-Modal mit Anzahl (`role="dialog"`, `aria-modal`, Fokus-Falle, Escape); Buttons "Keep adding" / "Start studying" → `/app/review?deck=<id>`. Guard bei ungespeichertem Text. Keine hinzugefügten Karten → Toast "Add a card first."
-- [ ] Exit/Chip/Study-Link: `onclick`-frei; Guard über `data-on:click="window.avGuardNav(evt)"` das bei Abbruch `evt.preventDefault()` aufruft. `beforeunload`-Warnung bei Tab-Schließen mit ungespeichertem Text ergänzen (Mockup hat nur den Klick-Guard; **Erweiterung**, klein, optional).
+- [ ] Finish: zeigt Summary-Modal mit Anzahl (`role="dialog"`, `aria-modal`, Fokus-Falle, Escape); "Keep adding" schließt es, "Start studying" führt zu `/app/review?deck=<id>`. Guard bei ungespeichertem Text. Keine hinzugefügten Karten → Toast "Add a card first."
+- [ ] Exit/Chip: `onclick`-frei; Guard über `data-on:click="window.avGuardNav(evt)"` das bei Abbruch `evt.preventDefault()` aufruft. `beforeunload`-Warnung bei Tab-Schließen mit ungespeichertem Text ergänzen (Mockup hat nur den Klick-Guard; **Erweiterung**, klein, optional).
 
 ### 4.2b Styling mit daisyUI und Tailwind (Vorlage `editor-mockup.html`)
+- [ ] Header: erste Zeile Back / Deck-Chip / Done, zweite Zeile Zähler der hinzugefügten Karten. Die Karte behält die Notiztyp-Pill, aber kein wiederholtes Deck-Badge.
 - [ ] Schritte: daisyUI `steps steps-horizontal` (Pills `step step-primary` per `data-class`), aktive Karte = `card` mit `neo-press`. Textareas = `textarea textarea-bordered textarea-lg w-full`; Zähler `text-xs opacity-70`.
 - [ ] Optionale Felder: daisyUI `collapse collapse-arrow` mit `<details>`-Verhalten (`<details class="collapse">`); Chips = `btn btn-xs btn-outline`.
 - [ ] Preview: `card` mit Abschnitts-`badge`; Hint/Example-Abschnitte nur gerendert, wenn gefüllt (Server-Fragment).

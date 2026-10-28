@@ -46,7 +46,7 @@ The prototype delivers instant dopamine and flow state without requiring backend
 1. **Top HUD**:
    - Left: Back to Decks button (chunky rounded square icon) → `decks-mockup.html`.
    - Center: Animated Streak pill badge.
-   - Right: More Actions button (`⋮`), which opens the actions sheet holding the `Study | Add` segmented mode switch. The day/night icon is intentionally not shown; dark mode follows `prefers-color-scheme` automatically.
+   - Right: More Actions button (`⋮`) opens the card actions sheet, without a mode switch. Use Back to Decks, then the deck's **Edit / Add** action to reach the editor. The day/night icon is intentionally not shown; dark mode follows `prefers-color-scheme` automatically.
    - Bottom: Session progress meter bar.
 2. **Card Stage**:
    - Contained inside an elevated white card with rounded corners (`border-radius: 24px`) and hard shadows.
@@ -54,8 +54,8 @@ The prototype delivers instant dopamine and flow state without requiring backend
    - Question presented prominently with phonetic/grammatical hints.
    - Reveal transition unfolds smoothly (`@keyframes revealAnswer`) into definition and contextual sample sentence with highlighted keyword `<mark>`.
 3. **Bottom Controls**:
-   - **Front State**: Giant, full-width thumb-friendly **Show Answer** button with keyboard indicator (`SPACE`).
-   - **Back State**: 4 large ease rating tiles (**Again**, **Hard**, **Good**, **Easy**), each displaying the keyboard shortcut (`1-4`), ease label, and scheduled interval (`< 10m`, `2 d`, `5 d`, `9 d`).
+   - **Front State**: Giant, full-width thumb-friendly **Show Answer** button, without a keyboard indicator.
+   - **Back State**: 4 large ease rating tiles (**Again**, **Hard**, **Good**, **Easy**), each displaying its ease label and scheduled interval (`< 10m`, `2 d`, `5 d`, `9 d`), without shortcut key badges.
 4. **Mobile Bottom Sheet (Card Actions)**:
    - Replaces the desktop-style dropdown menu with a slide-up bottom drawer.
    - Provides clean 2-column quick-action tiles: **Mark Card**, **Flag (Red)**, **Bury Card**, **Suspend**, **Undo Review**, **Set Due Date**, **Card Info**, and **Delete Note**.
@@ -70,7 +70,7 @@ When transitioning this design into the live production templates in `ankiweb/`,
 ### 1. `reviewer_page_body.html.jinja`
 - **Location**: `ankiweb/adapters/inbound/http_shared/templates/reviewer_page_body.html.jinja`
 - **Changes**:
-  - Replace the existing standard Bootstrap top header (`<header class="d-flex justify-content-between...">`) with the new `.top-hud` containing the streak container, theme switcher, and progress meter.
+  - Replace the existing standard Bootstrap top header (`<header class="d-flex justify-content-between...">`) with the new `.top-hud` containing the streak container, More Actions button, and progress meter.
   - Inject the client-only JS session state manager:
     ```javascript
     let _sessionStreak = 0;
@@ -85,7 +85,7 @@ When transitioning this design into the live production templates in `ankiweb/`,
 ### 2. `reviewer_show_answer_bar.html.jinja`
 - **Location**: `ankiweb/adapters/inbound/http_shared/templates/reviewer_show_answer_bar.html.jinja`
 - **Changes**:
-  - Restyle `<button id="ansbut">` with `.btn-show-answer` Neo-Pop styling (bold yellow background `#ffd13b`, hard black border, tactile drop-shadow, and `SPACE` badge).
+  - Restyle `<button id="ansbut">` with `.btn-show-answer` Neo-Pop styling (bold yellow background `#ffd13b`, hard black border, tactile drop-shadow), without a `SPACE` badge.
   - Retain the existing `onclick="ankiwebShowAnswer()"` bridge hook.
 
 ### 3. `reviewer_ease_buttons_bar.html.jinja`
@@ -93,7 +93,7 @@ When transitioning this design into the live production templates in `ankiweb/`,
 - **Changes**:
   - Replace the flex row of default Bootstrap outline buttons with the `.ease-grid` 4-column layout.
   - Apply the color classes `.btn-ease-again`, `.btn-ease-hard`, `.btn-ease-good`, `.btn-ease-easy` according to `c.i` index.
-  - Display the shortcut key badge in the top-right corner of each tile.
+  - Do not display shortcut key badges on the tiles.
   - Keep `onclick="pycmd('ease{{ c.i }}')"` intact, while wrapping it with local streak animation triggers.
 
 ### 4. `reviewer_actions_bar.html.jinja`
@@ -120,7 +120,7 @@ The editor presents a focused single-purpose card interface divided into three d
 1. **Step 1: Front (Prompt / Question)**:
    - Oversized, high-contrast `<textarea>` styled with chunky 2.5px borders and tactile focus depression.
    - Real-time character count and high-school helper chips (e.g. German articles `der`, `die`, `das` and umlauts `ä`, `ö`, `ü`, `ß`).
-   - Primary CTA: **Next: Back →** (`Enter` shortcut).
+   - Primary CTA: **Next: Back →**. The `Enter` shortcut works without an on-screen keyboard hint.
 2. **Step 2: Back (Answer / Definition)**:
    - Focus transitions directly to the definition/answer field.
    - Two optional, collapsed-by-default fields below it: **Hint** (part of speech, plural; the quick chips `Noun`, `Verb`, `Adj`, `(Plural:)` insert here) and **Example sentence** (wrap the key word in `*asterisks*` to highlight it).
@@ -141,9 +141,9 @@ The core psychological hook of the creator is the **physical growing card pile**
   - A fresh blank card simultaneously drops into place from above (`@keyframes popInFreshCard`).
 - **Dealt Physical Stack Layers**:
   - Completed cards accumulate beneath the editor at natural cascading offsets (`+32px`, `+64px`, `+96px`) and slight organic rotations (`-3.2°`, `+2.8°`, `-2.0°`), resembling an authentic pile of physical cards dealt onto a table.
-  - The top card displays a glowing cue badge: `TOP CARD ↩`.
-- **Top HUD Stack Counter (`🗂️ N CARDS ADDED`)**:
-  - Counter updates in real-time with an energetic pop-and-wobble animation (`@keyframes stackPillPop`) mirroring the reviewer streak counter.
+  - The top card displays a glowing cue badge: `TOP CARD`.
+- **Second-row HUD Stack Counter (`🗂️ N CARDS ADDED`)**:
+  - Counter updates in real-time with an energetic pop-and-wobble animation (`@keyframes stackPillPop`) mirroring the reviewer streak counter; no separate add-success count toast repeats it.
 
 ### D. Edit-Last-Card Affordance (Quick Mistake Correction)
 When rapidly typing cards on mobile, students inevitably make typos or notice mistakes right after submitting:
@@ -216,6 +216,23 @@ What the server enforces on `addNote` (belegt, `actions/_helpers.py:43`): it rej
 
 - **Deck list**: chunky card rows (emoji, name, due/new counts, mini candy-stripe progress bar) with live search and an empty state.
 - **Per-deck actions**: **Learn** → `mockup.html?deck=<id>`, **Edit / Add** → `editor-mockup.html?deck=<id>`.
-- **Mode switch**: the reviewer's More Actions sheet holds a `Study | Add` segmented control; the back button in the HUD returns to the deck list. The deck list itself has no chip or switch. Deck ids: `german-b1`, `spanish-a2`, `biology`, `history`, `chemistry`; invalid/missing falls back to `german-b1`.
-- **Editor**: shows "Adding to <deck>"; switching deck/mode with uncommitted text reuses the unsaved-text confirm guard.
+- **Navigation**: the reviewer HUD returns to the deck list, whose **Edit / Add** action opens the editor. The reviewer, deck list and editor have no mode switch. Deck ids: `german-b1`, `spanish-a2`, `biology`, `history`, `chemistry`; invalid/missing falls back to `german-b1`.
+- **Editor**: the header's first row contains Back, a deck-name chip and Done; the added-card counter is on the second row. The card retains its note-type pill without a repeated deck badge. The chip links back to the deck list and guards uncommitted text, as do leaving and finishing. Done opens the summary; **Start studying** returns to the reviewer for the same deck.
 - **Theme**: no toggle in any page; dark palette applied via `prefers-color-scheme`.
+
+---
+
+## 7. Session Completion (`mockup.html`)
+
+After the twentieth rating, `#session-complete` replaces the card and review controls while the progress HUD remains. The panel shows reviewed count, current streak, rating distribution, and **Recall**: `(Hard + Good + Easy) / all ratings`, not measured accuracy. Emoji and copy follow these ordered tiers, using unrounded ratios:
+
+| Tier | Condition |
+|---|---|
+| Perfect | No Again ratings and Easy ≥ 40% |
+| Great | Otherwise, Recall ≥ 85% |
+| Good | Otherwise, Recall ≥ 60% |
+| Tough | Otherwise |
+
+The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good, 2 Easy. **Study again** resets the mockup to `0/20` with an empty tally; **Back to decks** opens the deck list. Use `?complete=perfect` (or `great`, `good`, `tough` as the value) to preview each design. These demo histories are not production session data.
+
+The completion title receives focus, decorative graphics are hidden from assistive technology, and rating counts remain available as text. The screen follows the system theme and honors `prefers-reduced-motion` for its animations and transitions.

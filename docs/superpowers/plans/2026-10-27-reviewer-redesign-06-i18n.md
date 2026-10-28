@@ -72,6 +72,8 @@ Mockups enthalten ~110 sichtbare Textknoten plus JS-Toasts und `confirm()`. Zuor
 | Finish | Anki | `studying_finish` |
 | Close / Cancel / Save | Anki | `actions_close`, `actions_cancel`, `actions_save` |
 | Streak, Hint, Example sentence, "No decks found", "Your study space", "No cards added yet", "Keep adding more cards", "Cards ready", Toasts | **Eigen** | `strings.py` |
+| Erfolgsscreen (Plan 3): Again, Hard, Good, Easy | Anki | `studying_again`, `studying_hard`, `studying_good`, `studying_easy` (belegt per `getattr(col.tr, key)()`) |
+| Erfolgsscreen: "Session complete", "Reviewed", "Recall", "Current streak", "Your ratings", Recall-Hinweis, 4 Titel und 4 Untertitel (Flawless!, Great run!, Solid progress., You showed up.), Hard-Zusatzsatz, "Back to decks", "Study again" | **Eigen** | `strings.py`, Schlüssel `app_review_complete_*`. Geprüft: `statistics_reviews` ist ein Plural-Schlüssel mit Pflichtargument (kein Label), `studying_reviewed`/`studying_current_streak` existieren nicht. `scheduling_congratulations_finished` existiert, ist aber ein Satz für ein beendetes **Deck** und passt nicht zu den Tiers |
 
 Regel: **Schlüssel nie raten.** Jeder Anki-Schlüssel wird im Test per `getattr(tr, key)()` aufgelöst (ein Tippfehler = `AttributeError`, siehe I2). Vor Aufnahme in einen Plan/Template per `find`-Skript nach dem englischen Wortlaut suchen; ein Treffer wie `deck_config_…tooltip` (Langtext) ist **kein** Label.
 

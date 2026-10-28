@@ -20,14 +20,14 @@ source, not executed. *Not verified* = no evidence.
 | File | Kind | Purpose |
 |---|---|---|
 | `decks-mockup.html` | Static HTML | Deck list with search, empty state, and per-deck Learn / Edit / Add links |
-| `mockup.html` | Static HTML | Reviewer (card stage, ease tiles, streak, actions sheet) |
+| `mockup.html` | Static HTML | Reviewer (card stage, ease tiles, streak, actions sheet, completion feedback) |
 | `editor-mockup.html` | Static HTML | Quick-add wizard (Front, Back, Preview), card stack, edit-last-card |
 | `card-render.js` | Script | Shared card model and renderer used by the reviewer and the editor preview |
 | `study-api-spike.py` | Archived Python | Study JSON API spike. **Not imported anywhere.** Per RESEARCH-independent-client.md the router was removed from the server code after its test |
 | `DESIGN.md` | Doc | Design rationale and porting blueprint |
 | `REFERENCE.md` | Doc | This file |
 | `RESEARCH-enrichment.md`, `RESEARCH-independent-client.md`, `RESEARCH-pwa.md`, `RESEARCH-fastpwa.md` | Docs | Research notes |
-| `screenshot-*.webp`, `screenshot-editor-*.png` | Images | 9 screenshots from before the deck list and mode switch were added. **Not regenerated** |
+| `screenshot-*.webp`, `screenshot-editor-*.png` | Images | 9 historical screenshots from before the deck list and the former mode switch were added; they also predate the current editor header. **Not regenerated** |
 
 All three mockups are standalone: no build step, no external assets, no network access.
 
@@ -82,24 +82,38 @@ in all three pages). *Read.*
 |---|---|
 | Back button `#btn-back` | Links to `decks-mockup.html` (no `?deck=`) |
 | More button `#btn-actions-sheet` | Opens the actions bottom sheet |
-| Mode switch `nav.mode-switch` | Lives **inside the actions sheet**, not in the HUD. **Study** is `aria-current="page"`; **Add** links to `editor-mockup.html?deck=<id>` |
 | Deck label `#card-deck` | Shows the resolved deck's emoji and name |
 
-There is no deck chip in the reviewer. *Read.*
+There is no deck chip or mode switch in the reviewer; reach the editor through the deck list. *Read.*
+
+#### Session completion
+
+After the twentieth rating, `#session-complete` replaces the card stage and review controls; the progress HUD remains. The panel shows reviewed count, current streak, all four rating counts and **Recall** = `(Hard + Good + Easy) / all ratings`, not measured accuracy. The displayed percentage is rounded; tier selection uses unrounded ratios in this order:
+
+| Tier | Condition | Title |
+|---|---|---|
+| Perfect | No Again and Easy ≥ 40% | Flawless! |
+| Great | Otherwise, Recall ≥ 85% | Great run! |
+| Good | Otherwise, Recall ≥ 60% | Solid progress. |
+| Tough | Otherwise | You showed up. |
+
+The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good and 2 Easy. `?complete=perfect` (or `great`, `good`, `tough` as the value) selects a completed demo history for preview. **Study again** clears the tally and streak and starts at `0/20`; **Back to decks** opens `decks-mockup.html`. The title receives focus, decorative graphics are hidden from assistive technology, and the counts are text. The screen follows the system theme and reduced-motion preference. *Read.*
 
 ### 2.4 `editor-mockup.html` (editor)
 
 | Element | Behaviour |
 |---|---|
-| Deck chip `#deck-chip` | Shows emoji and name; links to `decks-mockup.html?deck=<id>` |
-| Mode switch | **Study** links to `mockup.html?deck=<id>`; **Add** is `aria-current="page"` |
-| "Adding to" label `#adding-to` | `Adding to <deck name>` |
-| Navigation guard | Chip, **Study**, **Add** and the finish/leave action call `guardNavigation()` |
+| Header | Back button, deck-name chip and Done on the first row; added-card count on the second row |
+| Deck chip `#deck-chip` | Shows emoji and name; guarded link to `decks-mockup.html?deck=<id>` |
+| Active card | Note-type pill, without a repeated deck badge |
+| Navigation | No editor mode switch; use the deck list to choose Learn or Edit / Add |
+| Feedback | The added-card count updates without a duplicate success toast; warnings and other action feedback remain |
+| Navigation guard | The chip, Back, and finish/leave actions guard uncommitted text |
 
 **Guard rule** (`confirmDiscard`): if any of the front, back, hint or example text is non-empty,
 the page shows `confirm("You have unsaved text in your current card. <action>")` and cancels the
-navigation on "Cancel". No guard runs while a card is committing (`state.isCommitting`).
-Used for leaving, editing a stacked card and finishing. *Read.*
+navigation on "Cancel". Navigation and edit/finish actions are blocked while a card is committing.
+The guard also applies when editing a stacked card and finishing.
 
 ### 2.5 Link matrix
 
@@ -107,14 +121,12 @@ Used for leaving, editing a stacked card and finishing. *Read.*
 |---|---|---|---|
 | Deck list | Reviewer | Learn | yes |
 | Deck list | Editor | Edit / Add | yes |
-| Reviewer | Deck list | Back button | **no** |
-| Reviewer | Editor | Sheet switch: Add | yes |
+| Reviewer | Deck list | Back button / completion: Back to decks | **no** |
+| Editor | Deck list | Back button | no |
 | Editor | Deck list | Chip | yes |
-| Editor | Reviewer | Switch: Study | yes |
-| Editor | Editor | Switch: Add | yes |
-| Editor | Reviewer | Finish (after the discard guard) | yes |
+| Editor | Reviewer | Done → summary → Start studying (after the discard guard) | yes |
 
-*QA-verified*, not observed by the author: a browser subagent opened all three pages at 375 x 812 in light and dark, ran 110 navigation clicks over the five deck ids, and reported no console errors, no uncaught exceptions and a scroll width of 375 px on every page. Its transcript is the only evidence; no screenshots from that run are kept in this folder.
+*Historical QA report*, not observed by the author: before the reviewer sheet, completion and current editor header changes, a browser subagent opened all three pages at 375 x 812 in light and dark, ran 110 navigation clicks over the five deck ids, and reported no console errors, no uncaught exceptions and a scroll width of 375 px on every page. Its transcript is the only evidence; no screenshots from that run are kept in this folder. It does not verify the current sheet, completion screen or editor header.
 
 ---
 
@@ -260,7 +272,7 @@ verified** on a device. The icon is a **placeholder** and has no approved design
 
 | Area | Status |
 |---|---|
-| Prototype pages: layout, links, `?deck=` fallback, theme, contrast | *QA-verified* by a browser subagent (see 2.5); not re-run by the author of this document |
+| Prototype pages: layout, links, `?deck=` fallback, theme, contrast | Historical *QA-verified* report (see 2.5), predating the reviewer sheet, completion and current editor header changes; not re-run by the author of this document |
 | PWA routes, auth exemption, tags, worker activation, cache contents, offline behaviour | *Verified* in headless Chromium on `127.0.0.1` |
 | Chromium installability errors | None reported |
 | Existing test suite | 736 passed after the PWA change |
@@ -268,5 +280,5 @@ verified** on a device. The icon is a **placeholder** and has no approved design
 | HTTPS deployment | *Not verified* (tested on localhost only) |
 | Maskable icon cropping on a launcher | *Not verified* |
 | Permanent tests for the manifest, worker or auth exemption | None written |
-| Screenshots in this folder | Pre-date the deck list and mode switch |
+| Screenshots in this folder | Pre-date the deck list, former mode switch and current editor header |
 | Unsaved-text guard under a real typed-in state | Reported by the editor agent, **not reproduced** by the QA agent or by me |

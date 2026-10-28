@@ -130,7 +130,7 @@
     }
 
     /* ==========================================================================
-       TOP HUD (Back, Stack Pill, Deck, Mode and Finish)
+       TOP HUD (Back, Deck, Finish and Stack Pill)
        ========================================================================== */
     .top-hud {
       padding: 12px 16px 8px 16px;
@@ -149,23 +149,13 @@
       gap: 8px;
     }
 
-    .deck-mode-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .deck-chip, .mode-switch {
+    .deck-chip {
       border: var(--border-width) solid var(--border-color);
       border-radius: var(--radius-sm);
       box-shadow: var(--shadow-sm);
       background: var(--bg-surface);
       font-family: var(--font-display);
       font-weight: 900;
-    }
-
-    .deck-chip {
       flex: 1;
       min-width: 0;
       padding: 8px;
@@ -177,14 +167,6 @@
       text-overflow: ellipsis;
     }
 
-    .mode-switch { display: flex; flex-shrink: 0; overflow: hidden; }
-    .mode-switch a {
-      padding: 8px 10px;
-      color: var(--text-main);
-      font-size: 0.78rem;
-      text-decoration: none;
-    }
-    .mode-switch a[aria-current="page"] { background: var(--color-meter-fill); color: #000; }
 
     .btn-icon-neo {
       width: 42px;
@@ -251,6 +233,7 @@
     /* Stack Counter Pill with Pop Effect */
     .stack-pill {
       display: flex;
+      align-self: center;
       align-items: center;
       gap: 6px;
       background-color: var(--color-streak-bg);
@@ -490,7 +473,6 @@
       letter-spacing: 0.04em;
       display: flex;
       align-items: center;
-      gap: 4px;
       animation: cueBob 1.6s ease-in-out infinite;
     }
 
@@ -567,27 +549,11 @@
 
     .card-top-bar {
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-end;
       align-items: center;
       margin-bottom: 14px;
-      gap: 8px;
-      flex-wrap: wrap;
     }
 
-    .deck-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background-color: var(--badge-bg);
-      color: var(--badge-text);
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      padding: 4px 10px;
-      border-radius: var(--radius-pill);
-      border: 1.5px solid var(--border-color);
-    }
 
     .note-type-pill {
       font-size: 0.7rem;
@@ -908,7 +874,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
       min-width: 0;
       padding: 0 8px;
       user-select: none;
@@ -924,16 +889,6 @@
       background-color: var(--color-success);
       color: #ffffff;
       box-shadow: 3px 3px 0px var(--border-color);
-    }
-
-    .btn-step-primary .key-shortcut {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      padding: 3px 7px;
-      background: rgba(0, 0, 0, 0.15);
-      border: 1.5px solid rgba(0, 0, 0, 0.25);
-      border-radius: 6px;
-      font-weight: 800;
     }
 
     [data-theme="dark"] .btn-step-primary.btn-commit {
@@ -1135,7 +1090,7 @@
 
   <div class="app-viewport">
     <!-- Top Floating Toast Notification -->
-    <div id="toast" class="toast-pill">Card Added to Stack!</div>
+    <div id="toast" class="toast-pill"></div>
 
     <!-- TOP HUD -->
     <header class="top-hud">
@@ -1145,30 +1100,22 @@
           <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
 
-        <!-- Stack Counter Pill with Tap Action to pop last card -->
-        <button type="button" class="stack-pill" id="stack-pill" title="Tap to pop and edit last added card" onclick="popLastCardToEditor()">
-          <span class="stack-pill-icon">🗂️</span>
-          <span class="stack-pill-label">
-            <span id="stack-count" class="stack-pill-number">0</span>
-            <span id="stack-unit">CARDS ADDED</span>
-          </span>
-        </button>
+        <a class="deck-chip" id="deck-chip" href="decks-mockup.html" onclick="return guardNavigation()">🇩🇪 German B1 Vocab</a>
 
         <!-- Finish session -->
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" class="btn-finish-neo" id="btn-finish" title="Finish and Save All" onclick="finishSession()">
-            Done
-          </button>
-        </div>
+        <button type="button" class="btn-finish-neo" id="btn-finish" title="Finish and Save All" onclick="finishSession()">
+          Done
+        </button>
       </div>
 
-      <div class="deck-mode-row">
-        <a class="deck-chip" id="deck-chip" href="decks-mockup.html" onclick="return guardNavigation()">🇩🇪 German B1 Vocab</a>
-        <nav class="mode-switch" aria-label="Mode">
-          <a id="study-link" href="mockup.html?deck=german-b1" onclick="return guardNavigation()">Study</a>
-          <a id="add-link" href="editor-mockup.html?deck=german-b1" aria-current="page" onclick="return guardNavigation()">Add</a>
-        </nav>
-      </div>
+      <!-- Stack Counter Pill with Tap Action to pop last card -->
+      <button type="button" class="stack-pill" id="stack-pill" title="Tap to pop and edit last added card" onclick="popLastCardToEditor()">
+        <span class="stack-pill-icon">🗂️</span>
+        <span class="stack-pill-label">
+          <span id="stack-count" class="stack-pill-number">0</span>
+          <span id="stack-unit">CARDS ADDED</span>
+        </span>
+      </button>
 
       <!-- Step Indicator Row (Step 1 Front -> Step 2 Back -> Step 3 Preview) -->
       <div class="step-indicator-row">
@@ -1195,9 +1142,6 @@
         <!-- ACTIVE EDITING FLASHCARD -->
         <article class="active-card" id="active-card">
           <div class="card-top-bar">
-            <div class="deck-badge">
-              <span id="adding-to">Adding to German B1 Vocab</span>
-            </div>
             <div class="note-type-pill">Basic (Front / Back)</div>
           </div>
 
@@ -1317,7 +1261,7 @@
           <span>Top of stack:</span>
           <span class="stack-peek-tag" id="peek-card-summary"></span>
         </span>
-        <span style="font-size: 0.72rem; color: var(--color-streak); font-weight: 900;">EDIT ↩</span>
+        <span style="font-size: 0.72rem; color: var(--color-streak); font-weight: 900;">EDIT</span>
       </button>
 
       <div class="bottom-btn-row">
@@ -1341,7 +1285,6 @@
           onclick="handlePrimaryAction()"
         >
           <span id="btn-primary-label">Next: Back &rarr;</span>
-          <span class="key-shortcut" id="btn-primary-shortcut">&#x21B5;</span>
         </button>
       </div>
     </footer>
@@ -1443,9 +1386,6 @@
     const [deckEmoji, deckName] = decks[deckId];
     document.getElementById('deck-chip').textContent = `${deckEmoji} ${deckName}`;
     document.getElementById('deck-chip').href = `decks-mockup.html?deck=${deckId}`;
-    document.getElementById('adding-to').textContent = `Adding to ${deckName}`;
-    document.getElementById('study-link').href = `mockup.html?deck=${deckId}`;
-    document.getElementById('add-link').href = `editor-mockup.html?deck=${deckId}`;
 
     /* ==========================================================================
        STEP NAVIGATION & WIZARD FLOW
@@ -1635,8 +1575,6 @@
         state.isCommitting = false;
         el.btnStepPrimary.disabled = false;
 
-        showToast(`Card #${state.cardStack.length} added to stack! 🗂️`);
-
         setTimeout(() => {
           el.activeCard.classList.remove('anim-fresh-card');
         }, 360);
@@ -1659,6 +1597,7 @@
 
       const topCard = state.cardStack[total - 1];
       el.peekCardSummary.textContent = topCard.front;
+      el.stackPeekBar.setAttribute('aria-label', `Top of stack: ${topCard.front} EDIT`);
 
       // Render cards from bottom to top (max 5 visible in DOM for optimal performance)
       const renderCount = Math.min(total, 5);
@@ -1705,8 +1644,8 @@
             <div class="stacked-card-back">${rendered.back}</div>
             ${rendered.example ? `<div class="stacked-card-example">${rendered.example}</div>` : ''}
           </div>
-          <div class="stacked-card-footer">Basic Note &bull; Tap to edit ↩</div>
-          ${isTop ? `<div class="stack-top-cue"><span>Top Card</span> <span>↩</span></div>` : ''}
+          <div class="stacked-card-footer">Basic Note &bull; Tap to edit</div>
+          ${isTop ? `<div class="stack-top-cue">Top Card</div>` : ''}
         `;
 
         el.stackPileLayer.appendChild(cardElem);
