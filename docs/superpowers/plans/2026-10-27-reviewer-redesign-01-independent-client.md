@@ -25,9 +25,9 @@
 | Thema | Wahl |
 |---|---|
 | Auth | `/app/*` bleibt hinter `_auth_guard` (Session-Cookie). Keine Änderung am Guard. Manifest/SW-Ausnahmen existieren bereits |
-| State der In-flight-Karte | Serverseitig, **eine `StudySession` je Browser-Session**, Schlüssel = zufälliges Cookie `app_sid` (httponly, samesite=lax), im Speicher (`dict`, LRU ≤ 8). Zwei Tabs im selben Browser teilen sie, Stale-Answer wird per `cardId`-Check mit 409 abgelehnt |
+| State der In-flight-Karte | Serverseitig, **eine `StudySession` je Browser-Session**, Schlüssel = zufälliges Cookie `app_sid` (httponly, samesite=lax), im Speicher (`dict`, LRU ≤ 8). Zwei Tabs im selben Browser teilen sie, Stale-Answer wird beim `cardId`-Check oder bei Ablehnung durch Anki mit 409 abgelehnt |
 | Fehlerform | Datastar-Signal `error` via vorhandenes `error_response` (`http_datastar/common.py`) |
-| CSS | **Tailwind 4 + daisyUI 5** über eigenen Entry `shell_src/app-client.css` → `ankiweb/shell/static/app-client.css` (Styling-Vertrag in Übersicht). Komponenten-Stile mit `@apply`; reines CSS nur für Keyframes, Gradienten und Animationsdeklarationen, die sich nicht durch Utilities ausdrücken lassen. Das alte `app.css`/`theme.css`/`components.css` wird **nicht** geladen |
+| CSS | **Tailwind 4 + daisyUI 5** über eigenen Entry `shell_src/app-client.css` → `ankiweb/shell/static/app-client.css` (Styling-Vertrag in Übersicht). Komponenten-Stile mit `@apply` unter `@layer components`; Klassen wie `.neo-press`, die daisyUI-Komponenten übersteuern, als Tailwind-`@utility`. Reines CSS für nötige eigene Utilities, Keyframes, Gradienten und Animationsdeklarationen. Das alte `app.css`/`theme.css`/`components.css` wird **nicht** geladen |
 | Build | `npm run build` erzeugt `app-client.css` zusätzlich (neues Skript `build:css:app`). JS bleibt unbundled: statische Dateien unter `shell_src/app/*.js`, kopiert nach `ankiweb/shell/static/app/` (wie `dialogs.js` in `tools/build_shell.mjs`, sonst wären sie gitignoriert und fehlten im Docker-Image). Datastar aus `/shell/static/datastar.js` |
 | i18n | UI-Texte Englisch wie Mockups; `tr.*` nur für Ease-Labels (kommen fertig von `describe_next_states`). Lokalisierung = ungeprüft, nicht im Scope |
 | Sanitizing | Karten-HTML kommt aus dedizierten Typen. Vor Einfügen `sanitize_html` (`core/html_sanitize.py`) anwenden (RESEARCH §3a: Felder können aus Importen stammen) |
@@ -42,7 +42,7 @@
 | `ankiweb/adapters/inbound/http_app/layout.py` | `render_app_page(title, body, *, active, scripts=())` |
 | `ankiweb/adapters/inbound/http_app/session.py` | Cookie `app_sid` + `SessionStore` |
 | `ankiweb/adapters/inbound/http_shared/templates/app/base.html.jinja` | Dokument-Gerüst (eigenes, **nicht** `shell.html.jinja`) |
-| `shell_src/app-client.css` | Tailwind-Entry: `@import "tailwindcss"`, `@plugin "daisyui" { themes: false; }`, zwei `@plugin "daisyui/theme"` (`aw-light` default, `aw-dark` prefersdark), `@source`-Zeilen, `@layer components` für `.neo-press`, Meter-Stripes, Keyframes |
+| `shell_src/app-client.css` | Tailwind-Entry: `@import "tailwindcss"`, `@plugin "daisyui" { themes: false; }`, zwei `@plugin "daisyui/theme"` (`aw-light` default, `aw-dark` prefersdark), `@source`-Zeilen, `@utility neo-press`, `@layer components` für Meter-Stripes und `@theme` für Keyframes |
 | `tools/build_shell.mjs`, `package.json` | `shell_src/app/*.js` kopieren; Skript `build:css:app` in `build` aufnehmen |
 | `ankiweb/app.py` | **eine** Zeile: `app.include_router(build_app_router(...))` vor Media-Router |
 | `tests/app_client/conftest.py` | Fixtures `col_with_vocab`, `client`, `live_app` |
@@ -55,7 +55,7 @@
 - [ ] `shell_src/app-client.css` nach Styling-Vertrag anlegen. Mockup-Palette (`mockup.html` `:root` und Dark-Block) auf daisyUI-Variablen abbilden; Mapping-Tabelle als Kommentar im CSS. Dunkel per `prefersdark: true` (Compile belegt `@media (prefers-color-scheme: dark) { :root:not([data-theme]) … }`), kein JS, kein Toggle.
 - [ ] `package.json`: `build:css:app`, in `build` einbinden; `tools/build_shell.mjs` kopiert `shell_src/app/*.js`.
 - [ ] `.gitignore` braucht keine Änderung (`ankiweb/shell/static/*` ignoriert Artefakte, Quellen liegen in `shell_src/`). **Dockerfile geprüft:** Frontend-Stage ruft `npm run build` (Zeile 14) und kopiert `shell_src/`; `build:css:app` muss deshalb nur in `build` stehen, der Dockerfile bleibt unverändert. Verifikation: `docker build` (oder lokal `npm ci && npm run build` im sauberen Checkout) und Datei `ankiweb/shell/static/app-client.css` prüfen.
-- [ ] Eigene Komponenten-CSS nur in `@layer components`; keine ungelayerten Regeln, die Utilities überstimmen.
+- [ ] Eigene Komponenten-CSS in `@layer components`; Klassen, die daisyUI-Komponenten übersteuern, als `@utility`. Keine ungelayerten Regeln, die Utilities überstimmen.
 - [ ] **Kontrast messen**, nicht annehmen: WCAG-Verhältnis für Ease-Text auf Ease-Fläche in beiden Themes ≥ 4.5:1 (kleines Skript im Test, sRGB-Luminanz). Mockup-Werte wurden in `REFERENCE.md` §3 nach zwei QA-Runden korrigiert; beim Mapping auf `--color-*` und `--color-*-content` können sie wieder abweichen.
 - [ ] Verifikation: `/app/ping` lädt nur `app-client.css`; `npm run build` läuft sauber; Datei enthält `aw-light` und `aw-dark`.
 
@@ -84,7 +84,7 @@ Regeln (alle aus RESEARCH §11 belegt):
 - **Feldnamen-Zuordnung (eine Stelle, mit Test):** Queue-Antwort `get_queued_cards` nutzt `new_count`, `learning_count`, `review_count`; `deck_due_tree`-Knoten nutzen `new_count`, `learn_count`, `review_count` (beide belegt per Probe). Das Mapping steht ausschließlich in `QueueCounts.from_queue(...)` (Plan 1) und `DeckRow` (Plan 2). Ein Test legt je eine Karte in New und Learning an und prüft beide Wege auf konkrete Werte ungleich 0, weil ein falscher Feldname sonst still 0 liefert.
 - `fetch_next`: `col.decks.set_current(deck_id)`, `queued = col.sched.get_queued_cards(fetch_limit=1)`; Zähler **aus `queued.new_count/learning_count/review_count`** (gleiche Antwort, kein zweiter Call). `card.start_timer()` **vor** Render. Labels via `col.sched.describe_next_states(top.states)`.
 - Unicode-Isolate (U+2068/U+2069) aus Labels entfernen, NBSP durch Leerzeichen (RESEARCH §11 letzter Punkt). `tr_clean`-Logik aus `templating.tr_clean` **nicht** importieren (Adapter); kleine eigene Funktion im Kern.
-- `answer`: `StaleCard` wenn `session.card is None or session.card.id != card_id`; `ValueError` bei `ease` ∉ 1..4. Mapping auf `CardAnswer.Rating` wie `answer_current`.
+- `answer`: `StaleCard` wenn `session.card is None or session.card.id != card_id`; `ValueError` bei `ease` ∉ 1..4. Lehnt Anki beim `answer_card` eine zwischenzeitlich geänderte oder gelöschte In-flight-Karte mit `InvalidInput` bzw. `NotFoundError` ab, werden `session.card`, `session.states` und `session.context` gelöscht und der Fehler als `StaleCard` weitergegeben. Mapping auf `CardAnswer.Rating` wie `answer_current`.
 - `<style></style>`-Präfix im Render entfernen (RESEARCH §10: leer, harmlos; vor `sanitize_html` strippen, damit Tests deterministisch sind).
 - AV-Tags: dedizierter Typ hat kein Audio. Falls `[anki:play:...]` im Render vorkommt: entfernen (nicht abspielbar im neuen Client), Log auf debug.
 - Type-in-Answer: **nicht unterstützt** (dedizierter Typ hat keinen `{{type:}}`).
@@ -92,7 +92,7 @@ Regeln (alle aus RESEARCH §11 belegt):
 Tests (`test_study_core.py`, `temp_collection` aus `tests/conftest.py`):
 - [ ] 5 neue Karten, Reihenfolge = Erstellungsreihenfolge, Zähler fallen 5→0 (Spike-Tabelle nachstellen).
 - [ ] Again/Hard: Karte kehrt zurück; `learning` steigt.
-- [ ] `StaleCard` bei falscher ID; `ValueError` bei ease 0 und 5; Karte in flight bleibt unverändert.
+- [ ] `StaleCard` bei falscher ID; `ValueError` bei ease 0 und 5; Karte in flight bleibt unverändert. Bei geänderter oder gelöschter In-flight-Karte führt Ankis Ablehnung zu `StaleCard` und leert Karte, States und Context.
 - [ ] **Zeitmessung:** `time.sleep(0.05)` zwischen `fetch_next` und `answer`, Review-Log `time` ≥ 40 ms (Regressionstest gegen `answerCards`-Problem, RESEARCH §3 Timing-Caveat).
 - [ ] Zweiter `fetch_next` für dieselbe Karte startet Timer neu (dokumentiert, kein Fehler).
 - [ ] Leere Queue → `None`.
@@ -105,21 +105,21 @@ Eine Stelle für die Tagesgrenze, damit Fortschritt (Plan 2) und Streak (Plan 3)
 
 - [ ] `core/app_client/revlog.py` (nur `anki`, keine Adapter-Imports):
   - `day_start_ms(col) -> int` = `(col.sched.day_cutoff - 86400) * 1000`. **Einzige** Stelle, die diese Rechnung kennt.
-  - `studied_by_deck(col) -> dict[int, int]`: **eine** SQL `select c.did, count(*) from revlog r join cards c on c.id=r.cid where r.id > ? group by c.did` (Plan 2).
-  - `recent_eases(col, limit) -> list[int]`: `select ease from revlog where id > ? order by id desc limit ?` (Plan 3 bildet daraus den Streak; Funktion `streak_from_revlog` bleibt rein und liegt in `streak.py`).
+  - `studied_by_deck(col) -> dict[int, int]`: **eine** SQL `select c.did, count(*) from revlog r join cards c on c.id=r.cid where r.id > ? and r.ease > 0 group by c.did` (Plan 2).
+  - `recent_eases(col, limit) -> list[int]`: `select ease from revlog where id > ? and ease > 0 order by id desc limit ?` (Plan 3 bildet daraus den Streak; Funktion `streak_from_revlog` bleibt rein und liegt in `streak.py`).
   - **Port und Ort (Antwort auf Review-Einwand):** Der Port ist der bestehende `CollectionPort` (`core/ports.py`, Methode `run(fn)`), die **eine** Naht zu pylib; kein neuer Port pro Abfrage. Die SQL liegt bewusst in `core/app_client/revlog.py`, **nicht** in einem Outbound-Adapter: Das Repo führt rohes `col.db`-SQL im Core bereits (`ankiconnect_actions/actions/stats.py:29,45,79,104`, `cards.py:260,286`, `notes.py:393`), und `tests/test_architecture_boundaries.py` verbietet nur `core → ankiweb.adapters`, nicht SQL. Eine Verlagerung in einen Adapter wäre ein neues Muster und eine eigene Entscheidung. Die Funktionen nehmen `col` und laufen nur als `fn` in `CollectionPort.run`; der Aufrufer (Inbound-Adapter) übergibt sie, importiert aber kein `anki`.
-  - **Abgleich:** `getNumCardsReviewedToday` (`actions/stats.py:29`) nutzt dieselbe Grenze `(col.sched.day_cutoff - 86400) * 1000`. `day_start_ms` ist die gemeinsame Quelle; die bestehende Aktion wird **nicht** umgebaut (kein Eingriff in AnkiConnect), ein Test prüft, dass beide denselben Wert liefern.
+  - **Abgleich:** `getNumCardsReviewedToday` (`actions/stats.py:29`) nutzt dieselbe Grenze `(col.sched.day_cutoff - 86400) * 1000`. Die bestehende Aktion wird **nicht** umgebaut (kein Eingriff in AnkiConnect). Der Test gleicht die Tagesgrenze anhand von Reviews ab; bei manuellen Änderungen mit `ease = 0` können die Zählungen abweichen.
 - [ ] Tests `tests/test_app_revlog.py` (echte Collection, kein Mock):
   - Review vor und nach der Tagesgrenze: nur der spätere zählt (Revlog-Zeile mit `id` knapp unter/über `day_start_ms` einfügen).
   - **Rollover-Fälle**: `rollover=4` (Standard), `0` und `23`; Review um 02:00 bei Rollover 4 gehört zum Vortag.
   - `studied_by_deck`: zwei Decks, Zählung je Deck; Wurzel-Deck zählt seine Kinder **nicht** automatisch (Aufsummieren macht Plan 2).
-  - `recent_eases`: Reihenfolge neueste zuerst, `limit` greift.
+  - `recent_eases`: Reihenfolge neueste zuerst, `limit` greift; beide Abfragen schließen manuelle Reschedule-Einträge mit `ease = 0` aus, bei `recent_eases` vor Anwendung des Limits.
 - [ ] Commit: `Add shared revlog read helpers with collection day boundary`
 
 ### 1.2 Router, Layout, Session
 - [ ] `http_app/__init__.py`: `build_app_router(get_service) -> APIRouter(prefix="/app")`; inkludiert Sub-Router der Pläne 2 bis 4 (jetzt leer, nur Healthprobe `GET /app/ping` → 200, für Smoke).
 - [ ] `layout.py::render_app_page` rendert `app/base.html.jinja`: `<meta viewport-fit=cover>`, `app-client.css`, `datastar.js` (module), Manifest/Theme-Color-Tags **noch nicht** (Plan 5, hält Schritte unabhängig).
-- [ ] `session.py`: `SessionStore` (LRU 8), `get_session(request) -> StudySession` setzt Cookie `app_sid` bei Bedarf. Kein `localStorage`, Server ist Quelle der Wahrheit (Tao).
+- [ ] `session.py`: `SessionStore` (LRU 8), `get_session(request) -> tuple[StudySession, str | None]` liefert Session und nur bei Bedarf eine neue Cookie-ID; `set_session_cookie(response, session_id)` setzt `app_sid` nur bei vorhandener ID auf der tatsächlich zurückgegebenen Response. Kein `localStorage`, Server ist Quelle der Wahrheit (Tao).
 - [ ] `app.py`: `app.include_router(build_app_router(lambda: app.state.service))` **vor** `build_media_router`. Test sichert Reihenfolge (`GET /app/ping` nicht 404 durch Catch-All).
 - [ ] Datastar-Basis: `<body data-signals="{error: ''}">`. Fehler als daisyUI `toast` + `alert alert-error` (`#app-error`) mit `data-show="$error"` + `style="display:none"` (Gotcha #4), `data-text="$error"`. Kein Tailwind-`hidden` zusammen mit `data-show`.
 

@@ -32,17 +32,72 @@ def test_app_css_is_built() -> None:
         assert expected in css
 
 
-def test_neo_press_uses_theme_border_width() -> None:
-    css = BUILT.read_text(encoding="utf-8")
-    rule = re.search(r"(?:^|[{}])\s*\.neo-press\s*\{([^{}]*)\}", css)
-    assert rule is not None, "missing .neo-press rule"
-    assert re.search(
-        r"(?:^|;)\s*(?:"
-        r"border-width\s*:\s*var\(\s*--border\s*\)\s*|"
-        r"border\s*:\s*var\(\s*--border\s*\)(?:\s+[^;]+)?\s*"
-        r")(?:;|$)",
-        rule.group(1),
-    ), ".neo-press must use var(--border) for its border width"
+@pytest.fixture
+def css_page():
+    playwright = pytest.importorskip("playwright.sync_api")
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page()
+            page.set_content(
+                '<div class="card neo-press" role="button" '
+                'style="width: 100px; height: 50px">Press</div>'
+                '<div dir="ltr"><div class="meter-fill" data-testid="ltr" '
+                'style="width: 80px; height: 20px"></div></div>'
+                '<div dir="rtl"><div class="meter-fill" data-testid="rtl" '
+                'style="width: 80px; height: 20px"></div></div>'
+            )
+            page.add_style_tag(content=BUILT.read_text(encoding="utf-8"))
+            page.add_style_tag(
+                content="*, *::before, *::after { transition: none !important; }"
+            )
+            yield page
+        finally:
+            browser.close()
+
+
+def test_neo_press_overrides_card_and_responds_to_press(css_page) -> None:
+    card = css_page.get_by_role("button", name="Press")
+    border = card.evaluate(
+        "(el) => { el.style.setProperty('--border', '5px'); "
+        "return getComputedStyle(el).borderTopWidth; }"
+    )
+    assert border == "5px"
+    shadow = card.evaluate("(el) => getComputedStyle(el).boxShadow")
+    assert "3px 3px 0px" in shadow
+    before = card.bounding_box()
+    assert before is not None
+    css_page.mouse.move(
+        before["x"] + before["width"] / 2, before["y"] + before["height"] / 2
+    )
+    css_page.mouse.down()
+    pressed = card.bounding_box()
+    assert pressed is not None
+    assert pressed["x"] - before["x"] == pytest.approx(2)
+    assert pressed["y"] - before["y"] == pytest.approx(2)
+    assert "3px 3px 0px" not in card.evaluate("(el) => getComputedStyle(el).boxShadow")
+    css_page.mouse.up()
+    assert card.evaluate("(el) => getComputedStyle(el).boxShadow") == shadow
+
+
+@pytest.mark.parametrize(
+    ("direction", "end", "start"), [("ltr", "right", "left"), ("rtl", "left", "right")]
+)
+def test_meter_fill_border_follows_text_direction(
+    css_page, direction, end, start
+) -> None:
+    border = css_page.get_by_test_id(direction).evaluate(
+        """(el) => {
+            const style = getComputedStyle(el);
+            return {
+                left: [style.borderLeftWidth, style.borderLeftStyle, style.borderLeftColor],
+                right: [style.borderRightWidth, style.borderRightStyle, style.borderRightColor],
+            };
+        }"""
+    )
+    assert border[end][:2] == ["2px", "solid"]
+    assert border[end][2] != "rgba(0, 0, 0, 0)"
+    assert border[start][0] == "0px"
 
 
 @pytest.mark.parametrize("theme", ["aw-light", "aw-dark"])

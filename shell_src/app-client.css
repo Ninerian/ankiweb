@@ -122,6 +122,8 @@
 @source "../ankiweb/shell/static/app";
 /* Emit animation utilities even when their classes are added dynamically. */
 @source inline("animate-{streak-pop,streak-reset,slide-to-added,fresh-card,added-pill-pop,reveal-answer}");
+/* Emit the shared press utility before app templates consume it. */
+@source inline("neo-press");
 
 @theme inline {
   --color-muted-fg: var(--color-muted);
@@ -216,19 +218,19 @@
   transition-property: width;
 }
 
-@layer components {
-  /* Component styles use @apply; plain CSS only for the stripe gradient. */
-  .neo-press {
-    @apply border-neo border-solid border-neo-edge border-image-reset shadow-neo
-      transition-neo duration-neo ease-neo motion-reduce:transition-none;
-  }
+@utility neo-press {
+  @apply border-neo border-solid border-neo-edge border-image-reset shadow-neo
+    transition-neo duration-neo ease-neo motion-reduce:transition-none;
 
-  .neo-press:active {
+  &:active {
     @apply translate-x-0.5 translate-y-0.5 shadow-none motion-reduce:translate-none;
   }
+}
 
+@layer components {
+  /* Component styles use @apply; plain CSS only for the stripe gradient. */
   .meter-fill {
-    @apply h-full rounded-full border-r-2 border-neo-edge bg-accent transition-meter
+    @apply h-full rounded-full border-e-2 border-neo-edge bg-accent transition-meter
       duration-meter ease-spring motion-reduce:transition-none;
     background-image: repeating-linear-gradient(
       45deg,
