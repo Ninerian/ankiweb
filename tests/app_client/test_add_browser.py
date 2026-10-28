@@ -299,6 +299,44 @@ def test_double_click_add_saves_only_one_note(page: Page, live_app: LiveApp) -> 
     assert live_app.notes() == saved
 
 
+def test_added_cards_overlap_without_horizontal_overflow(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/add?deck=1")
+    _add(page, "Hund", "dog")
+    _add(page, "Katze", "cat")
+
+    region = page.locator("#added-cards")
+    cards = region.locator(".card")
+    expect(cards).to_have_count(2)
+    expect(cards.nth(0)).to_contain_text("Katze")
+    expect(cards.nth(1)).to_contain_text("Hund")
+    expect(cards.nth(0)).to_be_visible()
+    expect(cards.nth(1)).to_be_visible()
+
+    area = region.bounding_box()
+    first = cards.nth(0).bounding_box()
+    second = cards.nth(1).bounding_box()
+    assert area is not None
+    assert first is not None
+    assert second is not None
+    for card in (first, second):
+        assert area["x"] <= card["x"]
+        assert card["x"] + card["width"] <= area["x"] + area["width"]
+        assert area["y"] <= card["y"]
+        assert card["y"] + card["height"] <= area["y"] + area["height"]
+    assert max(first["x"], second["x"]) < min(
+        first["x"] + first["width"], second["x"] + second["width"]
+    )
+    assert max(first["y"], second["y"]) < min(
+        first["y"] + first["height"], second["y"] + second["height"]
+    )
+    assert page.evaluate(
+        "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
+    )
+
+
 def test_required_fields_block_wizard_advancement(
     page: Page, live_app: LiveApp
 ) -> None:
