@@ -318,6 +318,59 @@
     @apply px-1 rounded-sm bg-accent text-accent-content font-bold;
   }
   /* plan 3 */
+  .review-app {
+    @apply mx-auto flex h-dvh min-h-[18rem] w-full max-w-[430px] flex-col bg-base-100 text-base-content;
+  }
+
+  .review-hud {
+    @apply w-full shrink-0 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-2;
+  }
+
+  .review-hud-nav {
+    @apply justify-between gap-2;
+  }
+
+  .review-streak {
+    @apply font-black uppercase tracking-[-0.02em] shadow-[2px_2px_0_var(--color-streak)];
+  }
+
+  .review-progress-caption {
+    @apply mb-1 flex justify-between gap-2 text-xs font-black uppercase tracking-wide text-muted-fg;
+  }
+
+  .review-meter-track {
+    @apply overflow-hidden rounded-full border-2 border-neo-edge;
+  }
+
+  .review-deck-label {
+    @apply max-w-full whitespace-normal [overflow-wrap:anywhere] leading-[1.4]
+      font-extrabold uppercase tracking-[0.06em];
+  }
+
+  .review-card-body {
+    @apply flex flex-1 flex-col justify-center break-words py-4;
+  }
+
+  .review-stage {
+    @apply flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-3 pt-2;
+  }
+
+  .review-vocab-label {
+    @apply mb-2 text-[0.8rem] font-extrabold uppercase tracking-[0.08em] text-muted-fg;
+  }
+
+  .review-answer {
+    @apply mt-6 border-t-2 border-dashed border-base-300 pt-6;
+  }
+
+  .review-bar {
+    @apply w-full shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2;
+  }
+
+  .review-ease-grid {
+    @apply grid grid-cols-4 gap-2;
+  }
+
   .review-actions-grid {
     @apply grid grid-cols-2 gap-review-sheet-grid-gap;
   }
@@ -386,7 +439,9 @@
     .review-action-tile:active, .review-sheet-close:active, .review-sheet-dismiss:active { @apply translate-none; }
   }
 
-  .flashcard { @apply min-w-0; }
+  .flashcard {
+    @apply min-w-0 my-auto min-h-[280px] shrink-0 bg-base-200 px-5 py-6;
+  }
 
   .review-card-content {
     @apply wrap-anywhere max-w-full;
@@ -396,6 +451,14 @@
   .review-card-content video,
   .review-card-content iframe {
     @apply max-w-full h-auto;
+  }
+
+  .review-ease {
+    @apply min-h-16 min-w-0 flex-col py-2;
+  }
+
+  .review-ease-label {
+    @apply max-w-full break-words text-center;
   }
 
   .review-ease-error {
@@ -415,8 +478,25 @@
   }
 
   .review-complete {
-    @apply shrink-0 animate-review-complete-arrive motion-reduce:animate-none;
+    @apply shrink-0 animate-review-complete-arrive motion-reduce:animate-none
+      my-auto w-full bg-base-200 p-5 text-center sm:p-8;
   }
+  .review-stats {
+    @apply mt-5 w-full grid-cols-3 border-2 border-neo-edge bg-base-100;
+  }
+
+  .review-stats > .stat {
+    @apply min-w-0;
+  }
+
+  .review-rating-counts {
+    @apply mt-3 flex flex-wrap gap-2;
+  }
+
+  .review-rating-count {
+    @apply whitespace-normal py-2 font-bold;
+  }
+
   .review-celebration {
     @apply relative grid place-items-center h-24 my-2 mx-auto w-40;
   }
