@@ -4,15 +4,18 @@ import unicodedata
 from dataclasses import dataclass
 
 from anki.collection import Collection
+from anki.decks import DEFAULT_DECK_ID
 
 from ankiweb.core.app_client.deck_progress import progress_by_deck
 from ankiweb.core.app_client.revlog import studied_by_deck
 
 DEFAULT_EMOJI = "🗂️"
-DEFAULT_DECK_NAME = "Default"
 _ZWJ = "\u200d"
 _KEYCAP = "\u20e3"
 _VARIATION_SELECTOR = "\ufe0f"
+_KEYCAP_BASES = "0123456789#*"
+_TAG_FIRST = "\U000e0020"
+_TAG_LAST = "\U000e007f"
 
 
 @dataclass(frozen=True)
@@ -34,10 +37,11 @@ def _is_pictograph(char: str) -> bool:
 
 
 def _modifier_end(text: str, index: int) -> int:
-    """Skip variation selectors, skin tones and keycap marks after a base symbol."""
+    """Skip variation selectors, skin tones, keycap marks and emoji tags."""
     while index < len(text) and (
         text[index] in (_VARIATION_SELECTOR, _KEYCAP)
         or unicodedata.category(text[index]) == "Sk"
+        or _TAG_FIRST <= text[index] <= _TAG_LAST
     ):
         index += 1
     return index
@@ -50,6 +54,9 @@ def _emoji_end(text: str) -> int:
     if _is_regional_indicator(text[0]):
         pair = len(text) > 1 and _is_regional_indicator(text[1])
         return 2 if pair else 0
+    if text[0] in _KEYCAP_BASES:
+        end = 2 if text[1:2] == _VARIATION_SELECTOR else 1
+        return end + 1 if text[end : end + 1] == _KEYCAP else 0
     if not _is_pictograph(text[0]):
         return 0
     end = _modifier_end(text, 1)
@@ -73,7 +80,7 @@ def deck_rows(col: Collection) -> list[DeckRow]:
         node
         for node in col.sched.deck_due_tree().children
         if not node.filtered
-        and not (node.name == DEFAULT_DECK_NAME and node.total_including_children == 0)
+        and not (node.deck_id == DEFAULT_DECK_ID and node.total_including_children == 0)
     ]
     progress = progress_by_deck(studied_by_deck(col), roots)
     rows = []

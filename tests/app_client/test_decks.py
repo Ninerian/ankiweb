@@ -3,9 +3,10 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
+from anki._backend import RustBackend
 from anki.cards import CardId
 from anki.collection import Collection
-from anki.decks import DeckId
+from anki.decks import DEFAULT_DECK_ID, DeckId
 from fastapi.testclient import TestClient
 
 from ankiweb.app import create_app
@@ -48,9 +49,23 @@ def _insert_review(col: Collection, card_id: int, offset_ms: int = 1) -> None:
         ("⚗️ Chemistry", ("⚗️", "Chemistry")),
         ("👩‍💻 Coding", ("👩‍💻", "Coding")),
         ("👍🏽 Skin tone", ("👍🏽", "Skin tone")),
+        ("1️⃣ Numbers", ("1️⃣", "Numbers")),
+        ("1\u20e3 Numbers", ("1\u20e3", "Numbers")),
+        ("#️⃣ Hashtags", ("#️⃣", "Hashtags")),
+        ("*️⃣ Stars", ("*️⃣", "Stars")),
+        (
+            "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f England",
+            (
+                "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f",
+                "England",
+            ),
+        ),
         ("Biology", (DEFAULT_EMOJI, "Biology")),
         ("🇩 Lone indicator", (DEFAULT_EMOJI, "🇩 Lone indicator")),
         ("1900s", (DEFAULT_EMOJI, "1900s")),
+        ("#topic", (DEFAULT_EMOJI, "#topic")),
+        ("1\ufe0f Numbers", (DEFAULT_EMOJI, "1\ufe0f Numbers")),
+        ("1️⃣", (DEFAULT_EMOJI, "1️⃣")),
         ("🧬", (DEFAULT_EMOJI, "🧬")),
     ],
 )
@@ -125,6 +140,57 @@ def test_default_deck_with_cards_is_listed(temp_collection: Collection) -> None:
     _add_cards(temp_collection, "Default")
 
     assert [row.name for row in deck_rows(temp_collection)] == ["Default"]
+
+
+def test_localized_empty_default_is_hidden(tmp_path: Path) -> None:
+    col = Collection(str(tmp_path / "german.anki2"), backend=RustBackend(langs=["de"]))
+    try:
+        (node,) = col.sched.deck_due_tree().children
+        assert node.deck_id == DEFAULT_DECK_ID
+        assert node.name == col.tr.deck_config_default_name()
+        assert node.name != "Default"
+        assert deck_rows(col) == []
+    finally:
+        col.close()
+
+
+def test_empty_default_is_identified_by_id_not_name(
+    temp_collection: Collection,
+) -> None:
+    col = temp_collection
+    col.decks.rename(DEFAULT_DECK_ID, "Standard")
+    default_node = next(
+        node
+        for node in col.sched.deck_due_tree().children
+        if node.deck_id == DEFAULT_DECK_ID
+    )
+    assert default_node.name == "Standard"
+    assert deck_rows(col) == []
+
+    user_deck_id = col.decks.id("Default")
+    assert user_deck_id is not None and user_deck_id != DEFAULT_DECK_ID
+    rows = deck_rows(col)
+    assert [(row.deck_id, row.name) for row in rows] == [(user_deck_id, "Default")]
+
+
+def test_default_deck_with_no_due_cards_is_listed(
+    temp_collection: Collection,
+) -> None:
+    card_id = _add_cards(temp_collection, "Default")[0]
+    temp_collection.sched.bury_cards([CardId(card_id)])
+
+    (row,) = deck_rows(temp_collection)
+    assert row.deck_id == DEFAULT_DECK_ID
+    assert (row.name, row.due, row.new) == ("Default", 0, 0)
+
+
+def test_default_deck_with_cards_only_in_child_is_listed(
+    temp_collection: Collection,
+) -> None:
+    _add_cards(temp_collection, "Default::Child")
+
+    (row,) = deck_rows(temp_collection)
+    assert (row.deck_id, row.name, row.new) == (DEFAULT_DECK_ID, "Default", 1)
 
 
 def test_progress_counts_reviews_in_subdecks(temp_collection: Collection) -> None:
@@ -204,6 +270,24 @@ def test_page_has_one_learn_and_add_link_per_deck(tmp_path: Path) -> None:
         for kind in ("review", "add")
     )
     assert "Child" not in html
+
+
+def test_page_renders_complete_emoji_and_deck_names(tmp_path: Path) -> None:
+    england = "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f"
+    expected = [
+        ("1️⃣", "Numbers"),
+        ("1\u20e3", "Digits"),
+        (england, "England"),
+        ("👩‍💻", "Coding"),
+        ("🇩🇪", "German"),
+    ]
+    client, _ = _client(tmp_path, [f"{emoji} {name}" for emoji, name in expected])
+    with client:
+        html = client.get("/app/").text
+
+    for emoji, name in expected:
+        assert f'aria-hidden="true">{emoji}</span>' in html
+        assert f">{name}</h3>" in html
 
 
 def test_rows_have_ids_and_names_are_escaped(tmp_path: Path) -> None:

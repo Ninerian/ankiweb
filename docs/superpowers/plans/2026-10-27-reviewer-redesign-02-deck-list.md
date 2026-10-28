@@ -59,9 +59,9 @@ class DeckRow:
 ```
 - [ ] Wurzel-Decks aus `col.sched.deck_due_tree().children`. Unterdecks: **nur oberste Ebene** (Mockup zeigt flache Liste); `due/new` verwenden `*_uncapped`? Nein: die gedeckelten Werte (`review_count`, `new_count`) entsprechen dem Anki-Deckbrowser. Unterdeck-Summen sind in den Knotenwerten enthalten (zu prüfen, siehe Test).
 - [ ] Filtered Decks (`filtered=True`) ausblenden (nicht Teil des Designs).
-- [ ] Default-Deck ausblenden wenn leer (`total_in_deck == 0` und Name `Default`), wie Anki Desktop.
+- [ ] Default-Deck anhand seiner festen ID ausblenden, wenn es einschließlich Unterdecks keine Karten enthält (`total_including_children == 0`); der lokalisierte oder geänderte Name ist dafür unerheblich.
 - [ ] **Alle Decks** werden gezeigt, kein Filter nach Notiztyp (entschieden, Plan 3 Task 0): Queue und Zähler sind pro Typ nicht filterbar, ein Filter würde sie von Anki abweichen lassen. Test: Deck mit nur `Basic`-Karten erscheint.
-- [ ] Emoji-Ableitung: erstes Zeichen mit `unicodedata.category` ∈ `So`/Regional-Indicator-Paar; Rest des Namens als Anzeigename ohne Emoji. Reine Funktion, parametrisiert testbar.
+- [ ] Emoji-Ableitung: führendes Emoji einschließlich Flaggenpaar, Keycap, Subdivision-Flaggen-Tags, Modifikatoren und ZWJ-Verbindungen; Rest des Namens als Anzeigename ohne Emoji. Reine Funktion, parametrisiert testbar.
 - [ ] `progress_pct`: ganzzahlig 0..100, geklemmt.
 
 Tests (TDD, `temp_collection`):
