@@ -33,7 +33,7 @@ def test_layout_defaults_to_english_and_accepts_explicit_language() -> None:
         ("fa_IR", ResolvedLang("en", "ltr", "en")),
         ("xx", ResolvedLang("en", "ltr", "en")),
         ("no", ResolvedLang("en", "ltr", "en")),
-        ("nb", ResolvedLang("nb", "ltr", "nb")),
+        ("nb", ResolvedLang("nb-NO", "ltr", "nb")),
     ],
 )
 def test_ping_uses_startup_language_not_accept_language(
@@ -53,7 +53,7 @@ def test_ping_uses_startup_language_not_accept_language(
 
 @pytest.mark.parametrize(
     ("code", "html_lang", "translated"),
-    [("no", "en", "Again"), ("nb", "nb", "Igjen"), ("nb_NO", "nb-NO", "Igjen")],
+    [("no", "en", "Again"), ("nb", "nb-NO", "Igjen"), ("nb_NO", "nb-NO", "Igjen")],
 )
 def test_layout_language_matches_rendered_anki_text(
     tmp_path: Path, code: str, html_lang: str, translated: str

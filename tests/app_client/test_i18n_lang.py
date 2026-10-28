@@ -12,20 +12,38 @@ from ankiweb.core.config import Settings
     [
         ("", "en", "ltr", "en"),
         ("en", "en", "ltr", "en"),
+        ("en_AU", "en-GB", "ltr", "en"),
+        ("en-Latn-US", "en", "ltr", "en"),
+        ("zh", "zh-CN", "ltr", "zh"),
+        ("zh-cn", "zh-CN", "ltr", "zh"),
         ("zh_CN", "zh-CN", "ltr", "zh"),
         ("zh-CN", "zh-CN", "ltr", "zh"),
+        ("zh-Hans-CN", "zh-CN", "ltr", "zh"),
+        ("zh-Hant-TW", "zh-TW", "ltr", "zh"),
+        ("zh_HK", "zh-TW", "ltr", "zh"),
         ("de_DE", "de", "ltr", "de"),
+        ("de-DE-1901", "de", "ltr", "de"),
+        ("DE", "de", "ltr", "de"),
+        ("de_DE.UTF-8", "en", "ltr", "en"),
+        ("pt", "pt-BR", "ltr", "pt"),
         ("pt_BR", "pt-BR", "ltr", "pt"),
+        ("pt_PT", "pt-PT", "ltr", "pt"),
+        ("ga", "ga-IE", "ltr", "ga"),
+        ("hy", "hy-AM", "ltr", "hy"),
+        ("sv_FI", "sv-SE", "ltr", "sv"),
         ("nb_NO", "nb-NO", "ltr", "nb"),
         ("no", "en", "ltr", "en"),
-        ("nb", "nb", "ltr", "nb"),
-        ("nb_NL", "nb", "ltr", "nb"),
-        ("nb_XX", "nb", "ltr", "nb"),
+        ("nb", "nb-NO", "ltr", "nb"),
+        ("nb_NL", "nb-NO", "ltr", "nb"),
+        ("nb_XX", "nb-NO", "ltr", "nb"),
         ("nb-Foo", "en", "ltr", "en"),
-        ("nb-123", "en", "ltr", "en"),
+        ("nb-123", "nb-NO", "ltr", "nb"),
         ("ar", "ar", "rtl", "ar"),
+        ("AR", "ar", "rtl", "ar"),
         ("ar_SA", "ar", "rtl", "ar"),
+        ("ar-Arab-SA", "ar", "rtl", "ar"),
         ("he", "he", "rtl", "he"),
+        ("HE", "he", "rtl", "he"),
         ("fa", "en", "ltr", "en"),
         ("fa_IR", "en", "ltr", "en"),
         ("xx", "en", "ltr", "en"),
@@ -35,18 +53,27 @@ def test_resolve_lang(
     tmp_path: Path, code: str, html_lang: str, html_dir: str, catalog_lang: str
 ) -> None:
     settings = Settings(collection_path=tmp_path / "collection.anki2", lang=code)
-    assert resolve_lang(settings) == ResolvedLang(html_lang, html_dir, catalog_lang)
+    result = resolve_lang(settings)
+    assert result == ResolvedLang(html_lang, html_dir, catalog_lang)
+    assert anki_text(code) == anki_text(result.html_lang)
+
+
+def anki_text(code: str) -> tuple[str, str]:
+    try:
+        anki.lang.set_lang(code)
+        tr = anki.lang.tr_legacyglobal
+        return tr.actions_decks(), tr.studying_again()
+    finally:
+        anki.lang.set_lang("en")
 
 
 @pytest.mark.parametrize("code", [code for _, code in anki.lang.langs])
 def test_all_available_languages(tmp_path: Path, code: str) -> None:
     settings = Settings(collection_path=tmp_path / "collection.anki2", lang=code)
-    disk = anki.lang.lang_to_disk_lang(code)
-    expected = "en" if disk == "fa" else disk
-    base = expected.split("-")[0].split("_")[0]
     result = resolve_lang(settings)
-    assert result.html_lang == expected
-    assert result.html_dir == ("rtl" if anki.lang.is_rtl(base) else "ltr")
+    base = result.html_lang.split("-")[0]
+    assert anki_text(code) == anki_text(result.html_lang)
+    assert result.html_dir == ("rtl" if base in {"ar", "he", "ug", "yi"} else "ltr")
     assert result.catalog_lang == base
 
 
@@ -62,17 +89,23 @@ def test_all_available_languages(tmp_path: Path, code: str) -> None:
 )
 def test_anki_bundle_fallbacks(code: str, expected: tuple[str, str, str]) -> None:
     # Fail when upstream fixes the Persian bundle or changes Norwegian alias behavior.
-    anki.lang.set_lang(code)
-    tr = anki.lang.tr_legacyglobal
-    assert (tr.actions_add(), tr.actions_decks(), tr.studying_again()) == expected
+    try:
+        anki.lang.set_lang(code)
+        tr = anki.lang.tr_legacyglobal
+        assert (tr.actions_add(), tr.actions_decks(), tr.studying_again()) == expected
+    finally:
+        anki.lang.set_lang("en")
 
 
 def test_resolution_uses_settings_not_global_language(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ANKIWEB_LANG", "ar")
-    anki.lang.set_lang("ar")
-    settings = Settings(collection_path=tmp_path / "collection.anki2", lang="de_DE")
-    assert resolve_lang(settings) == ResolvedLang("de", "ltr", "de")
-    anki.lang.set_lang("xx")
-    assert resolve_lang(settings) == ResolvedLang("de", "ltr", "de")
+    try:
+        anki.lang.set_lang("ar")
+        settings = Settings(collection_path=tmp_path / "collection.anki2", lang="de_DE")
+        assert resolve_lang(settings) == ResolvedLang("de", "ltr", "de")
+        anki.lang.set_lang("xx")
+        assert resolve_lang(settings) == ResolvedLang("de", "ltr", "de")
+    finally:
+        anki.lang.set_lang("en")
