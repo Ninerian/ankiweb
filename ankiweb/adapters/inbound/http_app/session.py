@@ -33,10 +33,15 @@ class SessionStore:
 _sessions = SessionStore()
 
 
-def get_session(request: Request, response: Response) -> StudySession:
+def get_session(request: Request) -> tuple[StudySession, str | None]:
+    """Return the session and a cookie value only when a new one is needed."""
     session_id, session, created = _sessions.get_or_create(
         request.cookies.get("app_sid")
     )
-    if created:
+    return session, session_id if created else None
+
+
+def set_session_cookie(response: Response, session_id: str | None) -> None:
+    """Set a new session cookie on the response that will actually be sent."""
+    if session_id is not None:
         response.set_cookie("app_sid", session_id, httponly=True, samesite="lax")
-    return session

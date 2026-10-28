@@ -6,6 +6,7 @@ from typing import Any, cast
 
 import jinja2
 
+from ankiweb.core.app_client.strings import s as app_string
 from ankiweb.core.i18n import tr
 
 
@@ -26,6 +27,11 @@ def tr_clean(val: str | None) -> str:
     return val.strip()
 
 
+@jinja2.pass_context
+def _app_string(context: jinja2.runtime.Context, key: str, **fmt: object) -> str:
+    return app_string(key, lang=context["app_lang"].catalog_lang, **fmt)
+
+
 _env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(str(Path(__file__).parent / "templates")),
     autoescape=True,
@@ -33,6 +39,7 @@ _env = jinja2.Environment(
     lstrip_blocks=True,
 )
 cast(dict[str, Any], _env.globals)["tr"] = tr
+cast(dict[str, Any], _env.globals)["s"] = _app_string
 _env.filters["tr_clean"] = tr_clean
 
 

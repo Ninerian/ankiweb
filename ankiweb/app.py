@@ -241,7 +241,9 @@ def create_app(
             settings=settings,
         )
     )  # GET / + /notify
-    app.include_router(build_app_router(lambda: app.state.service))  # GET /app/*
+    app.include_router(
+        build_app_router(lambda: app.state.service, settings)
+    )  # GET /app/*
     app.include_router(
         build_media_router(lambda: app.state.service)
     )  # GET  /{path} — LAST

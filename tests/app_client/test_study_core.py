@@ -310,6 +310,47 @@ def test_deleted_card_answer_clears_session_and_preserves_undo(temp_collection):
     assert col.get_card(card_ids[0]).id == card_ids[0]
 
 
+def test_stale_answer_then_serves_next_card(temp_collection):
+    col = temp_collection
+    deck_id, card_ids = add_cards(col, 2)
+    first_session = StudySession()
+    second_session = StudySession()
+    first = fetch_next(col, first_session, deck_id)
+    second = fetch_next(col, second_session, deck_id)
+    assert first is not None
+    assert second is not None
+    assert first.card_id == second.card_id == card_ids[0]
+
+    answer(col, first_session, first.card_id, 4)
+    with pytest.raises(StaleCard):
+        answer(col, second_session, second.card_id, 4)
+    assert (second_session.card, second_session.states, second_session.context) == (
+        None,
+        None,
+        None,
+    )
+    next_view = fetch_next(col, second_session, deck_id)
+    assert next_view is not None
+    assert next_view.card_id == card_ids[1]
+
+
+def test_deleted_card_answer_then_serves_next_card(temp_collection):
+    col = temp_collection
+    deck_id, card_ids = add_cards(col, 2)
+    session = StudySession()
+    view = fetch_next(col, session, deck_id)
+    assert view is not None
+    assert session.card is not None
+    col.remove_notes([session.card.nid])
+
+    with pytest.raises(StaleCard):
+        answer(col, session, view.card_id, 4)
+    assert (session.card, session.states, session.context) == (None, None, None)
+    next_view = fetch_next(col, session, deck_id)
+    assert next_view is not None
+    assert next_view.card_id == card_ids[1]
+
+
 @pytest.mark.parametrize("ease", [1, 2, 3, 4])
 def test_answer_records_the_requested_rating(temp_collection, ease):
     col = temp_collection

@@ -15,6 +15,7 @@ from typing import cast
 import anki.collection  # Initialize before anki.cards to avoid an import cycle.
 from anki.cards import Card, CardId
 from anki.decks import DeckId
+from anki.errors import InvalidInput, NotFoundError
 from anki.scheduler.v3 import (
     CardAnswer,
     QueuedCards,
@@ -162,7 +163,13 @@ def answer(
     response = scheduler.build_answer(
         card=card, states=session.states, rating=_RATINGS[ease]
     )
-    scheduler.answer_card(response)
+    try:
+        scheduler.answer_card(response)
+    except (InvalidInput, NotFoundError) as err:
+        session.card = None
+        session.states = None
+        session.context = None
+        raise StaleCard("Card is no longer current") from err
     session.card = None
     session.states = None
     session.context = None

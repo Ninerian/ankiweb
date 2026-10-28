@@ -2,7 +2,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
+from anki.cards import CardId
 from anki.collection import Collection
+from anki.decks import DeckId
+from anki.scheduler.v3 import CardAnswer
+from anki.scheduler.v3 import Scheduler as V3Scheduler
 from fastapi.testclient import TestClient
 
 from ankiweb.ankiconnect.app import create_ankiconnect_app
@@ -10,7 +14,7 @@ from ankiweb.core.app_client.revlog import day_start_ms, recent_eases, studied_b
 from ankiweb.core.config import Settings
 
 
-def _add_card(col: Collection, deck_name: str) -> tuple[int, int]:
+def _add_card(col: Collection, deck_name: str) -> tuple[int, CardId]:
     deck_id = col.decks.id(deck_name)
     model = col.models.by_name("Basic")
     assert deck_id is not None
@@ -126,6 +130,46 @@ def test_manual_entries_are_not_counted_as_reviews(temp_collection: Collection) 
     assert studied_by_deck(col) == {deck_id: 1}
     assert recent_eases(col, 10) == [4]
     assert recent_eases(col, 1) == [4]
+
+
+@pytest.mark.parametrize("operations", [("due",), ("forget",), ("due", "forget")])
+@pytest.mark.parametrize("helper", ["studied", "eases"])
+def test_manual_scheduling_does_not_count_as_study(
+    temp_collection: Collection, operations: tuple[str, ...], helper: str
+) -> None:
+    col = temp_collection
+    _, due_card = _add_card(col, "Manual")
+    _, forgotten_card = _add_card(col, "Manual")
+    for operation in operations:
+        if operation == "due":
+            col.sched.set_due_date([due_card], "1")
+        else:
+            col.sched.schedule_cards_as_new([forgotten_card])
+
+    if helper == "studied":
+        assert studied_by_deck(col) == {}
+    else:
+        assert recent_eases(col, 10) == []
+
+    studied_deck, _ = _add_card(col, "Study")
+    col.decks.set_current(DeckId(studied_deck))
+    assert isinstance(col.sched, V3Scheduler)
+    queued = col.sched.get_queued_cards(fetch_limit=1)
+    assert queued.cards
+    top = queued.cards[0]
+    card = col.get_card(CardId(top.card.id))
+    card.start_timer()
+    answer = col.sched.build_answer(
+        card=card, states=top.states, rating=CardAnswer.Rating.GOOD
+    )
+    col.sched.answer_card(answer)
+    col.sched.set_due_date([due_card], "3")
+
+    if helper == "studied":
+        assert studied_by_deck(col) == {studied_deck: 1}
+    else:
+        assert recent_eases(col, 10) == [3]
+        assert recent_eases(col, 1) == [3]
 
 
 @pytest.mark.parametrize("rollover", [4, 0, 23])
