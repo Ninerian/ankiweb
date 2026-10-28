@@ -543,6 +543,98 @@ def test_deleted_notes_are_removed_without_losing_other_decks(
     assert ">Other</p>" in client.get(f"/app/add?deck={other_deck}").text
 
 
+def test_changed_note_types_are_excluded_from_session_stack(
+    client: TestClient,
+) -> None:
+    assert client.portal is not None
+    service = client.app.state.service
+    other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
+    assert other_deck is not None
+    note_ids = []
+    for index in range(7):
+        response = client.post(
+            "/app/add/commit?deck=1",
+            json={"front": f"Front {index}", "back": f"Back {index}"},
+        )
+        assert _signals(response)["count"] == index + 1
+        match = re.search(r'data-note-id="(\d+)"', response.text)
+        assert match is not None
+        note_ids.append(NoteId(int(match.group(1))))
+    original_sid = client.cookies.get("app_sid")
+    assert original_sid
+    other = client.post(
+        f"/app/add/commit?deck={other_deck}",
+        json={"front": "Other deck", "back": "Answer"},
+    )
+    assert _signals(other)["count"] == 1
+
+    client.cookies.clear()
+    separate = client.post(
+        "/app/add/commit?deck=1", json={"front": "Other session", "back": "Answer"}
+    )
+    assert _signals(separate)["count"] == 1
+    separate_sid = client.cookies.get("app_sid")
+    assert separate_sid and separate_sid != original_sid
+
+    client.portal.call(
+        service.run, lambda col: _change_note_type(col, [note_ids[0], note_ids[5]])
+    )
+    client.cookies.clear()
+    client.cookies.set("app_sid", original_sid)
+    page = client.get("/app/add?deck=1")
+    assert page.status_code == 200
+    assert "count: 5" in page.text
+    for index in (2, 3, 4, 6):
+        assert f">Front {index}</p>" in page.text
+    for index in (0, 1, 5):
+        assert f">Front {index}</p>" not in page.text
+    assert page.text.index(">Front 6</p>") < page.text.index(">Front 4</p>")
+    other_page = client.get(f"/app/add?deck={other_deck}")
+    assert "count: 1" in other_page.text
+    assert ">Other deck</p>" in other_page.text
+
+    saved = client.post(
+        "/app/add/commit?deck=1", json={"front": "Front 7", "back": "Back 7"}
+    )
+    assert saved.status_code == 200
+    assert _signals(saved)["count"] == 6
+    for index in (3, 4, 6, 7):
+        assert f">Front {index}</p>" in saved.text
+    for index in (0, 1, 2, 5):
+        assert f">Front {index}</p>" not in saved.text
+    assert "count: 6" in client.get("/app/add?deck=1").text
+
+    client.cookies.clear()
+    client.cookies.set("app_sid", separate_sid)
+    separate_page = client.get("/app/add?deck=1")
+    assert "count: 1" in separate_page.text
+    assert ">Other session</p>" in separate_page.text
+    assert ">Front 7</p>" not in separate_page.text
+
+
+def test_added_stack_does_not_hide_incompatible_vocab_model(
+    client: TestClient,
+) -> None:
+    assert client.portal is not None
+    client.post("/app/add/commit?deck=1", json={"front": "First", "back": "Answer"})
+
+    def break_model(col: Collection) -> None:
+        model = col.models.by_name(NOTETYPE_NAME)
+        assert model is not None
+        model["css"] = "body { color: red; }"
+        col.models.update_dict(model)
+
+    client.portal.call(client.app.state.service.run, break_model)
+    with pytest.raises(ValueError, match="incompatible"):
+        client.get("/app/add?deck=1")
+    response = client.post(
+        "/app/add/commit?deck=1", json={"front": "Second", "back": "Answer"}
+    )
+    assert _signals(response) == {"error": "Could not add the card. Please try again."}
+    assert "datastar-patch-elements" not in response.text
+    assert len(_notes(client)) == 1
+
+
 def test_added_note_follows_card_moved_between_decks(client: TestClient) -> None:
     assert client.portal is not None
     service = client.app.state.service
@@ -760,31 +852,34 @@ def test_edit_and_update_follow_actual_deck_and_reject_deleted_notes(
     assert _notes(client) == []
 
 
+def _change_note_type(col: Collection, note_ids: list[NoteId]) -> None:
+    old = col.get_note(note_ids[0]).note_type()
+    new = col.models.by_name("Basic")
+    assert old is not None and new is not None
+    info = col.models.change_notetype_info(
+        old_notetype_id=old["id"], new_notetype_id=new["id"]
+    )
+    mapping = info.input
+    col._backend.change_notetype(
+        note_ids=note_ids,
+        new_fields=list(mapping.new_fields),
+        new_templates=list(mapping.new_templates),
+        old_notetype_id=old["id"],
+        new_notetype_id=new["id"],
+        current_schema=mapping.current_schema,
+        old_notetype_name=mapping.old_notetype_name,
+        is_cloze=mapping.is_cloze,
+    )
+
+
 def test_edit_and_update_reject_changed_note_type(client: TestClient) -> None:
     assert client.portal is not None
     client.post("/app/add/commit?deck=1", json={"front": "Typed", "back": "One"})
     nid = _notes(client)[0]
 
-    def change_type(col: Collection) -> None:
-        old = col.get_note(nid).note_type()
-        new = col.models.by_name("Basic")
-        assert old is not None and new is not None
-        info = col.models.change_notetype_info(
-            old_notetype_id=old["id"], new_notetype_id=new["id"]
-        )
-        mapping = info.input
-        col._backend.change_notetype(
-            note_ids=[nid],
-            new_fields=list(mapping.new_fields),
-            new_templates=list(mapping.new_templates),
-            old_notetype_id=old["id"],
-            new_notetype_id=new["id"],
-            current_schema=mapping.current_schema,
-            old_notetype_name=mapping.old_notetype_name,
-            is_cloze=mapping.is_cloze,
-        )
-
-    client.portal.call(client.app.state.service.run, change_type)
+    client.portal.call(
+        client.app.state.service.run, lambda col: _change_note_type(col, [nid])
+    )
     assert client.post(f"/app/add/edit/{nid}?deck=1").status_code in (404, 409)
     response = client.post(
         "/app/add/commit?deck=1",
@@ -798,6 +893,17 @@ def test_edit_and_update_reject_changed_note_type(client: TestClient) -> None:
         )
         == "Typed"
     )
+
+    saved = client.post(
+        "/app/add/commit?deck=1", json={"front": "New", "back": "Answer"}
+    )
+    assert _signals(saved)["count"] == 1
+    assert ">New</p>" in saved.text
+    assert ">Typed</p>" not in saved.text
+    page = client.get("/app/add?deck=1")
+    assert "count: 1" in page.text
+    assert ">New</p>" in page.text
+    assert ">Typed</p>" not in page.text
 
 
 @pytest.mark.parametrize("query", ["", "?deck=nope", "?deck=999999999"])

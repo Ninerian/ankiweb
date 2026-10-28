@@ -9,6 +9,7 @@ from time import monotonic_ns
 from anki.collection import Collection
 from anki.decks import DeckId
 from anki.errors import AnkiException
+from anki.models import NotetypeId
 from anki.notes import NoteId
 from datastar_py.fastapi import DatastarResponse
 from datastar_py.fastapi import ServerSentEventGenerator as SSE
@@ -106,6 +107,29 @@ def _editable_note(
         raise _NoteNotEditable from exc
 
 
+def _is_vocab_type(col: Collection, mid: int, cache: dict[int, bool]) -> bool:
+    if mid not in cache:
+        model = col.models.get(NotetypeId(mid))
+        if model is None:
+            raise ValueError(f"Note type {mid} is missing")
+        cache[mid] = model["name"] == NOTETYPE_NAME
+    return cache[mid]
+
+
+def _record_added_notes(
+    col: Collection,
+    rows: list[tuple[int, int, int]],
+    vocab_types: dict[int, bool],
+    present: set[int],
+    in_deck: set[int],
+) -> None:
+    for nid, mid, matches in rows:
+        if _is_vocab_type(col, mid, vocab_types):
+            present.add(nid)
+            if matches:
+                in_deck.add(nid)
+
+
 class _AddRoutes:
     def __init__(
         self, get_service: Callable[[], CollectionPort], settings: Settings
@@ -125,10 +149,11 @@ class _AddRoutes:
 
         present: set[int] = set()
         in_deck: set[int] = set()
+        vocab_types: dict[int, bool] = {}
         for start in range(0, len(ids), 32):
             batch = ids[start : start + 32]
             rows = db.all(
-                "select n.id, exists(select 1 from cards c where c.nid = n.id "
+                "select n.id, n.mid, exists(select 1 from cards c where c.nid = n.id "
                 "and c.did = ?) from notes n where n.id in ("
                 "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"
                 "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -136,10 +161,7 @@ class _AddRoutes:
                 *batch,
                 *([None] * (32 - len(batch))),
             )
-            for nid, matches in rows:
-                present.add(nid)
-                if matches:
-                    in_deck.add(nid)
+            _record_added_notes(col, rows, vocab_types, present, in_deck)
 
         if len(present) != len(ids):
             ids[:] = [nid for nid in ids if nid in present]
