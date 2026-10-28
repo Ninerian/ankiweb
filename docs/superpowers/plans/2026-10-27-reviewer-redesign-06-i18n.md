@@ -140,7 +140,7 @@ Jede Aufgabe: Test zuerst, dann Code, dann Commit.
 ### 6.4 `<html lang/dir>` und Layout
 - [x] `app/base.html.jinja`: `<html lang>` und `dir` kommen aus `resolve_lang(settings)`; die Ping-Seite nutzt den Render-Kontext. Offline-Seite und Login-Weiterleitung bleiben bei Plan 5.
 - [x] Tests `tests/app_client/test_i18n_lang.py`: `""`/`en`→`en/ltr`; `zh_CN`/`zh-CN`→`zh-CN/ltr`; `de_DE`→`de/ltr`; `pt_BR`→`pt-BR/ltr`; `nb`→`nb/ltr`, `nb_NO`→`nb-NO/ltr`, `no`→`en/ltr`; `ar`/`ar_SA`→`ar/rtl`; `he`→`he/rtl`; `fa`/`xx`→`en/ltr`. Für `no`/`nb`/`nb_NO` wird die tatsächlich gerenderte Anki-Übersetzung geprüft.
-- [x] Alle unterstützten Codes gegen die erwartete Richtung geprüft. Der Vergleich aller lokalisierten Seitentitel wartet auf Pläne 2–4; `fa` hat gegenwärtig ein defektes Anki-Bundle.
+- [x] `test_all_available_languages` prüft die aufgelöste Richtung für alle Codes aus `anki.lang.langs`. Der Vergleich aller lokalisierten Seitentitel wartet auf Pläne 2–4; `fa` hat gegenwärtig ein defektes Anki-Bundle.
 - [ ] Logische Tailwind-Klassen statt `left/right` (Review-Review beim Template-Umbau in den Plänen 2 bis 4), Pfeilzeichen per `rtl:`-Variante spiegeln.
 
 ### 6.5 Manifest, Offline, Cache-Hash
