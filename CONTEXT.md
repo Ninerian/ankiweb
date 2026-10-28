@@ -41,8 +41,8 @@ Anteil der heute erledigten Reviews eines Decks an erledigten plus noch offenen 
 _Avoid_: Lernstand, Fortschritt
 
 **Streak**:
-Anzahl der in dieser Review-Sitzung direkt nacheinander als gewusst bewerteten Karten.
-_Avoid_: Serie, Combo
+Anzahl der zuletzt direkt nacheinander mit Ease 2, 3 oder 4 bewerteten Reviews seit Tagesbeginn, ueber alle Decks. Wird aus dem Revlog gelesen, nicht gespeichert.
+_Avoid_: Serie, Combo, Sitzungs-Streak
 
 ## Flagged ambiguities
 

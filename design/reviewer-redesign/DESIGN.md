@@ -33,7 +33,7 @@ The prototype delivers instant dopamine and flow state without requiring backend
 - **Visual Feedback**:
   - **Success / Increment**: Triggers `@keyframes streakPop` (a bouncy `1.35x` scale pop with subtle rotation and orange halo) giving a rewarding physical chime-like sensation.
   - **Failure ('Again')**: When a student fails a card and presses **Again**, the streak does not punish with shame; it resets with a gentle sideways wobble `@keyframes streakReset` (`💔 0 STREAK`) accompanied by encouraging micro-copy (*"Streak Reset! Don’t give up 💪"*).
-- **Session Scope**: Lives purely in memory (`let streakCount = 7`). When the student leaves or closes the tab, it resets cleanly without dirtying backend user stats.
+- **Scope (implementation decision, differs from the prototype)**: The prototype keeps the streak in memory (`let streakCount = 7`). The implementation **derives it from the review log**: the run of most recent reviews with ease 2, 3 or 4 since the collection's day start, across all decks; ease 1 ends the run. It is read-only (no backend stats are written) and survives reload.
 
 ### B. Session Progress Meter
 - **Concept**: Visualizes study pacing (`14 / 20 CARDS` or dynamic deck due count) inside a candy-bar striped meter.

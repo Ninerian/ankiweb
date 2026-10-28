@@ -29,7 +29,7 @@ sequenceDiagram
 | Karten-HTML | `question_html`/`answer_html` aus dem Kern (sanitized) in `.flashcard` einsetzen | RESEARCH §3a Entscheidung |
 | Stilisierung | Server-HTML trägt Klassen `.av-front-text`, `.av-hint`, `.av-back-text`, `.av-example` (DESIGN §5.F); sie werden in `app-client.css` per `@apply` mit Tailwind-Utilities gestylt, weil das Karten-HTML nicht im Template steuerbar ist. Alles andere: daisyUI/Tailwind im Template | DESIGN §5.F Stable Class Names |
 | `*word*` → `<mark>` | Kleines Client-Skript `card-render.js`: arbeitet **nur** auf `.av-example` nach Einfügen. Text ist schon HTML-escaped, nur `<mark>` kommt hinzu | DESIGN §5.F ("Anki hat keinen Template-Filter") |
-| Streak | Client-only in einem Datastar-Signal `_streak` (Präfix `_` wird **nicht** an den Server gesendet, `references/guide-core.md`) | DESIGN §2.A: nur im Speicher, kein Backend |
+| Streak | **Aus dem Revlog abgeleitet (Entscheidung)**: Anzahl der letzten aufeinanderfolgenden Reviews mit Ease 2, 3 oder 4 seit Tagesbeginn (`day_cutoff - 86400`), **alle Decks**; Ease 1 beendet die Reihe. Nur Lesezugriff auf `revlog`, kein Schreiben, Server liefert den Wert in jedem Antwort-Fragment. Kein Signal, kein Client-Zustand | Überlebt Reload, Neustart und Gerätewechsel. Ändert DESIGN §2.A (dort: nur im Speicher), siehe Commit `Update DESIGN.md`. **Belegt (Probe):** `revlog.id` ist ms-Zeitstempel, eine Zeile pro Antwort; Reihe `[3,4,1,3,2,3]` → 3 (Mockup-Regel 2/3/4) |
 | Fortschritt | Serverseitig aus Queue-Zählern: `done = start_total - (new+learning+review)` | Echte Zahlen statt Mockup-Konstanten `14/20`; `start_total` bei Session-Start gespeichert |
 | Zeitmessung | `fetch_next` startet Timer, `answer` liest ihn (Plan 1) | Korrekte Antwortzeit (RESEARCH §11) |
 | Zweite Tab / Reload | Reload ruft `POST`-artiges Start-Verhalten: `GET /app/review` **ist** ein Start, startet Timer neu (dokumentiert). Folgeaufrufe nur per POST | RESEARCH §11: Timer-Reset bei Reload ist bekannt |
@@ -84,13 +84,13 @@ Spiegeln `_ReviewerHandler` (belegt, `reviewer.py:330-440`), aber **ohne** Hub/W
 - [ ] **Undo-Verhalten ungeprüft** (RESEARCH §8): Test, dass Undo nach Rating die Karte zurückbringt und Zähler wieder steigen. Schlägt er fehl → Aktion im Sheet ausblenden und im Plan vermerken, nicht stillschweigend lassen.
 
 ### 3.2 Seite und Fragmente
-- [ ] `review.html.jinja`: `<body data-signals="{revealed: false, _streak: 0, error: ''}">` (Gotcha #23). Alle Austausch-Ziele mit `id`: `#hud-progress`, `#stage`, `#bar`, `#sheet`.
+- [ ] `review.html.jinja`: `<body data-signals="{revealed: false, error: ''}">` (Gotcha #23). Alle Austausch-Ziele mit `id`: `#hud-progress`, `#stage`, `#bar`, `#sheet`.
 - [ ] Antwort-Bereich `#answer-box` mit `data-show="$revealed"` und `style="display:none"` (Gotcha #4). Beim Kartenwechsel patcht der Server `revealed: false` per `patch-signals`.
 - [ ] Show-Answer-Button: `data-on:click="$revealed = true"`. Ease-Kacheln: `data-on:click="@post('/app/review/answer')"` mit Signalen `cardId`/`ease` gesetzt vor dem Post (Gotcha #18: Geschwister-Signale): `data-on:click="$ease = 3; @post('/app/review/answer')"`. `;`-Ketten sind erlaubt, kein Block-Syntax (Gotcha #24).
 - [ ] Tastatur: `data-on:keydown__window="..."` mit Ausdruck ohne Block: `evt.key === ' ' && !$revealed ? ($revealed = true) : ...`. Fokus-Guard wie Mockup (`closest('a, button, input, textarea, select, [contenteditable]')`) liegt zu lang für Inline-Ausdruck → **kleine Funktion** in `card-render.js` (`window.avKeydown(evt)`), vom Attribut aufgerufen (Gotcha #24: "delegate to window.fn()"). Datastar-Sandbox erreicht `window`-Funktionen über Delegation, das ist der dokumentierte Weg.
-- [ ] Streak: `_streak` wird im selben Klick-Ausdruck verändert: `$ease == 1 ? ($_streak = 0) : ($_streak++)`. Animationsklassen per `data-class`, Neustart der Animation über `data-ts`-Muster (Gotcha #19) oder Reflow-Funktion in `card-render.js`. Texte "Streak Reset! Don’t give up 💪" aus Mockup.
+- [ ] Streak: reine Funktion `streak_from_revlog(rows) -> int` in `core/app_client/streak.py` (zählt rückwärts, solange `ease in {2,3,4}`), gespeist von **einer** Abfrage `select ease from revlog where id > ? order by id desc` (Parameter `(day_cutoff - 86400) * 1000`, bricht beim ersten Ease 1 ab, Limit nach Bedarf). Die Rating-Antwort enthält `streak` (neu) und `streak_before`; der Client setzt Pop-Klasse bei Anstieg und Reset-Klasse bei Fall auf 0 (vollständige Klassennamen, `data-ts`-Neustart, Gotcha #19). Texte "Streak Reset! Don’t give up 💪" aus Mockup (über `s()`, Plan 6). **Undo:** `undo` löscht den Revlog-Eintrag, der Streak fällt damit automatisch zurück (Test).
 - [ ] Progress: `#hud-progress` zeigt `done / total CARDS` und Balken `style="width: N%"`; Server liefert N.
-- [ ] Fertig-Zustand: eigener Block "All done 🎉" mit Link `/app/`; aktualisiert auch Streak-Anzeige nicht (bleibt bis Leave). Kein Redirect auf alten `/overview`.
+- [ ] Fertig-Zustand: eigener Block "All done 🎉" mit Link `/app/`; zeigt den Streak des Tages unverändert weiter. Kein Redirect auf alten `/overview`.
 - [ ] Sheet: Mode-Switch `Study | Add` (Add → `/app/add?deck=<id>`), 8 Aktionskacheln; **Card Info** als `<a>`; Rest als `@post`. Schließen: Backdrop-Klick, Dismiss, `Escape`. Fokus-Falle und `aria-modal="true"`, `role="dialog"` (im Mockup nicht belegt; **prüfen und ergänzen**).
 - [ ] Mark/Flag-Zustand im Sheet-Label ("Unmark Card", "Remove Flag") kommt vom Server (Fragment `#sheet`).
 - [ ] Fehler (`set_due` ungültig, Undo leer): `error_response` → Toast `#app-error` (Plan 1).
@@ -116,7 +116,7 @@ Routen (`TestClient`, Collection mit 3 Karten):
 - [ ] `Cache-Control: no-store` auf `GET /app/review`.
 
 Browser (Playwright, `importorskip`):
-- [ ] Space deckt auf, `1`..`4` bewertet, Streak steigt/fällt, Again zeigt Reset-Toast.
+- [ ] Space deckt auf, `1`..`4` bewertet, Streak steigt/fällt, Again zeigt Reset-Toast, **Reload behält den Streak**, Undo senkt ihn.
 - [ ] Space/Ziffern im Fokus eines Buttons ignoriert (Guard).
 - [ ] Sheet öffnen, Backdrop schließt, Escape schließt.
 - [ ] Bury/Suspend entfernt Karte; Undo bringt Rating zurück.
@@ -133,7 +133,7 @@ Browser (Playwright, `importorskip`):
 |---|---|
 | `data-class` mit dynamisch gebautem Klassennamen wird von Tailwind nicht erkannt | nur vollständige Namen (`modal-open`, `animate-streak-pop`) |
 | daisyUI-`modal` ohne `<dialog>` hat keine Fokus-Falle | Fokus-Falle und Escape in `window.avSheetKey` (Delegation), `aria-modal`/`role="dialog"` setzen, im Browser-Test prüfen |
-| Datastar-Ausdrücke mit Ternär/`++` auf `_`-Signal fehlerhaft | Smoke im Browser vor Tests; Fallback: Streak in `card-render.js` führen |
+| Streak-Abfrage bei sehr langen Reihen (hunderte Reviews) | Abfrage bricht beim ersten Ease 1 ab; Test mit 500 Einträgen und Zeitmessung |
 | Antwort steht im HTML vor Reveal (Spoiler im Quelltext) | Akzeptiert (Single-User-Lernapp, kein Wettbewerb); in Doku vermerken |
 | Fremde Note-Types brechen Layout | Task 0 Default (Anzeige "wie sie sind" + Badge) |
 | `run_op` broadcastet an offene alte Tabs | gewollt (hält alten Client aktuell), kein Handler nötig |
@@ -157,5 +157,5 @@ Browser (Playwright, `importorskip`):
 | Signale mit `_`-Präfix werden nicht gesendet | belegt | `references/guide-core.md:137`, `gotchas.md` #1 |
 | `@post` ohne Block, `;`-Ketten | belegt | `gotchas.md` #24 |
 | `if(...)`-Einzeiler wie in `guide-core.md:33` | **widersprüchlich** zu Gotcha #24 | nicht verwenden; Ternär oder `window.fn()` |
-| `$_streak++` und Ternär auf `_`-Signal | **ungeprüft** | Smoke 3.4 zuerst; Fallback Streak in `card-render.js` |
+| Streak aus Revlog (Regel 2/3/4, Tagesgrenze, Undo) | Probe belegt für Reihenfolge und Zeitstempel; **Undo-Verhalten und 500-Einträge-Laufzeit ungeprüft** | Tests in Plan 3 |
 | Animation-Neustart via `data-ts` | belegt (Gotcha #19), Details im Smoke prüfen | `gotchas.md` #19 |
