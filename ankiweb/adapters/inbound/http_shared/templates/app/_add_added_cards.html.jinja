@@ -3,7 +3,7 @@
   <div class="relative mx-3 h-72">
     {% for card in cards|reverse %}
     {% if loop.first %}
-    <article {% if animation_stamp|default(false) %}class="card card-border added-0 animate-slide-to-added motion-reduce:animate-none h-40 w-full overflow-hidden bg-base-100"{% else %}class="card card-border added-0 h-40 w-full overflow-hidden bg-base-100"{% endif %}
+    <article {% if animation_stamp|default(false) %}class="card card-border absolute added-0 animate-slide-to-added motion-reduce:animate-none h-40 w-full overflow-hidden bg-base-100"{% else %}class="card card-border absolute added-0 h-40 w-full overflow-hidden bg-base-100"{% endif %}
              data-note-id="{{ card.nid }}"{% if animation_stamp|default(false) %} data-ts="{{ animation_stamp }}"{% endif %}>
       <div class="card-body">
         <span class="badge badge-accent">{{ s('app_add_top_card') }}</span>
@@ -20,7 +20,7 @@
               data-on:click="$saving ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? @post('/app/add/edit/' + el.dataset.noteId + '?deck=' + document.getElementById('add-wizard').dataset.deckId) : null)"></button>
     </article>
     {% else %}
-    <div {% if loop.index0 == 1 %}class="card card-border added-1 h-40 w-full overflow-hidden bg-base-100"{% elif loop.index0 == 2 %}class="card card-border added-2 h-40 w-full overflow-hidden bg-base-100"{% else %}class="card card-border added-3 h-40 w-full overflow-hidden bg-base-100"{% endif %} aria-hidden="true">
+    <div {% if loop.index0 == 1 %}class="card card-border absolute added-1 h-40 w-full overflow-hidden bg-base-100"{% elif loop.index0 == 2 %}class="card card-border absolute added-2 h-40 w-full overflow-hidden bg-base-100"{% else %}class="card card-border absolute added-3 h-40 w-full overflow-hidden bg-base-100"{% endif %} aria-hidden="true">
       <div class="card-body">
         <p class="whitespace-pre-wrap">{{ card.front }}</p>
         <p class="whitespace-pre-wrap">{{ card.back }}</p>
