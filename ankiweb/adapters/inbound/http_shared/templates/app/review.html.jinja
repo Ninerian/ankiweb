@@ -16,7 +16,7 @@
   </div>
   <div class="mt-5">
     <div class="mb-1 flex justify-between gap-2 text-xs font-black uppercase tracking-wide text-[var(--color-muted)]">
-      <span>{{ s('app_review_progress') }}</span><span id="progress-text">{{ progress.done }} / {{ progress.total }}</span>
+      <span>{{ s('app_review_progress') }}</span><span><span id="progress-text">{{ progress.done }} / {{ progress.total }}</span> {{ tr.browsing_cards() | tr_clean }}</span>
     </div>
     <div class="h-4 overflow-hidden rounded-full border-2 border-[var(--color-neo-border)] bg-[var(--color-meter-track)]" role="progressbar" aria-label="{{ s('app_review_progress') }}" aria-valuemin="0" aria-valuemax="{{ progress.total if progress.total else 1 }}" aria-valuenow="{{ progress.done }}">
       <div id="meter-fill" class="meter-fill" style="width: {{ progress.percent }}%"></div>
