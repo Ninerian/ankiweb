@@ -1,11 +1,19 @@
+import json
+from html.parser import HTMLParser
+from pathlib import Path
+
 import pytest
 from anki.cards import CardId
 from anki.collection import Collection
 from anki.decks import DeckId
+from fastapi.testclient import TestClient
 
+from ankiweb.app import create_app
 from ankiweb.core.app_client.deck_progress import progress_pct
 from ankiweb.core.app_client.decks import DEFAULT_EMOJI, deck_rows, split_emoji
 from ankiweb.core.app_client.revlog import day_start_ms
+from ankiweb.core.auth import COOKIE, auth_token
+from ankiweb.core.config import Settings
 
 
 def _add_cards(col: Collection, deck_name: str, count: int = 1) -> list[int]:
@@ -144,3 +152,141 @@ def test_progress_is_100_when_nothing_is_open(temp_collection: Collection) -> No
 
     assert (row.due, row.new) == (0, 0)
     assert row.progress_pct == 100
+
+
+class _Page(HTMLParser):
+    """Collect element attributes of the deck page."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.tags: list[tuple[str, dict[str, str | None]]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.tags.append((tag, dict(attrs)))
+
+    def hrefs(self) -> list[str]:
+        return [a["href"] or "" for t, a in self.tags if t == "a" and "href" in a]
+
+    def by_id(self, element_id: str) -> dict[str, str | None]:
+        return next(a for _, a in self.tags if a.get("id") == element_id)
+
+
+def _parse(html: str) -> _Page:
+    page = _Page()
+    page.feed(html)
+    return page
+
+
+def _client(
+    tmp_path: Path, names: list[str], password: str = ""
+) -> tuple[TestClient, dict[str, int]]:
+    """Return a client over a collection holding one card per named deck."""
+    path = tmp_path / "http.anki2"
+    col = Collection(str(path))
+    try:
+        for name in names:
+            _add_cards(col, name)
+        ids = {node.name: node.deck_id for node in col.sched.deck_due_tree().children}
+    finally:
+        col.close()
+    app = create_app(Settings(collection_path=path, password=password))
+    return TestClient(app), ids
+
+
+def test_page_has_one_learn_and_add_link_per_deck(tmp_path: Path) -> None:
+    client, ids = _client(tmp_path, ["Alpha", "Beta::Child"])
+    with client:
+        html = client.get("/app/").text
+    hrefs = _parse(html).hrefs()
+    assert sorted(h for h in hrefs if h.startswith("/app/")) == sorted(
+        f"/app/{kind}?deck={ids[name]}"
+        for name in ("Alpha", "Beta")
+        for kind in ("review", "add")
+    )
+    assert "Child" not in html
+
+
+def test_rows_have_ids_and_names_are_escaped(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path, ["<b>x</b>", "Plain"])
+    with client:
+        html = client.get("/app/").text
+    page = _parse(html)
+    row_ids = [a["id"] for t, a in page.tags if t == "article"]
+    assert len(row_ids) == 2
+    assert all(row_id and row_id.startswith("deck-") for row_id in row_ids)
+    assert "<b>" not in html
+    assert "&lt;b&gt;x&lt;/b&gt;" in html
+
+
+def test_search_expression_survives_hostile_names(tmp_path: Path) -> None:
+    name = 'It\'s "Q" \\ $x <i>'
+    client, _ = _client(tmp_path, [name])
+    with client:
+        html = client.get("/app/").text
+    page = _parse(html)
+    row_show = next(a["data-show"] for t, a in page.tags if t == "article")
+    empty_show = page.by_id("empty-state")["data-show"]
+    assert row_show is not None
+    assert empty_show is not None
+    literal, _, rest = row_show.partition(".includes(")
+    assert json.loads(literal) == name.lower()
+    assert "$x" not in row_show
+    assert "$q" in rest
+    assert json.loads(empty_show.split("!", 2)[2].split(".some(")[0]) == [name.lower()]
+
+
+def test_empty_state_is_rendered_hidden(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path, ["Alpha"])
+    with client:
+        page = _parse(client.get("/app/").text)
+    empty = page.by_id("empty-state")
+    assert empty["style"] == "display:none"
+    assert page.by_id("deck-search")["type"] == "search"
+
+
+def test_empty_collection_offers_first_deck(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path, [])
+    with client:
+        html = client.get("/app/").text
+    page = _parse(html)
+    assert "/app/add" in page.hrefs()
+    assert not any(t == "article" for t, _ in page.tags)
+    assert "deck-search" not in html
+
+
+def test_app_root_redirects_to_deck_list(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path, ["Alpha"])
+    with client:
+        response = client.get("/app", follow_redirects=False)
+        assert response.status_code in {301, 302, 307, 308}
+        assert response.headers["location"] == "/app/"
+        assert client.get("/app").text == client.get("/app/").text
+
+
+def test_deck_list_follows_password_gate(tmp_path: Path) -> None:
+    password = f"test-{tmp_path.name}"
+    client, _ = _client(tmp_path, ["Alpha"], password)
+    with client:
+        response = client.get("/app/", follow_redirects=False)
+        assert response.status_code == 303
+        assert "set-cookie" not in response.headers
+        client.cookies.set(COOKIE, auth_token(password))
+        assert client.get("/app/").status_code == 200
+
+
+def test_page_does_not_reference_old_client(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path, ["Alpha"])
+    with client:
+        html = client.get("/app/").text
+    for forbidden in (
+        "/_anki/",
+        "reviewer.js",
+        "editor.js",
+        "bootstrap.js",
+        "/shell/static/app.css",
+        "theme.css",
+        "components.css",
+        "data-theme",
+    ):
+        assert forbidden not in html
+    assert "/shell/static/app-client.css" in html
