@@ -1,0 +1,29 @@
+<div id="sheet" class="modal modal-bottom" role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-hidden="true" inert data-class:modal-open="$sheetOpen" data-attr:aria-hidden="$sheetOpen ? 'false' : 'true'" data-attr:inert="!$sheetOpen">
+  {% if view and not completed %}
+  <div class="modal-box max-h-[85dvh] w-full max-w-xl overflow-y-auto rounded-t-[var(--radius-box)] border-2 border-[var(--color-neo-border)] bg-base-200 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+    <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-base-300" aria-hidden="true"></div>
+    <div class="mb-4 flex items-center justify-between gap-4">
+      <h2 id="sheet-title" class="text-xl font-black">{{ s('app_review_card_actions') }}</h2>
+      <button id="sheet-close" type="button" class="btn btn-square btn-sm neo-press" aria-label="{{ tr.actions_close() | tr_clean }}" data-on:click="$sheetOpen = false; $dueOpen = false"><span aria-hidden="true">✕</span></button>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <button id="action-mark" type="button" class="btn h-auto min-h-16 whitespace-normal" data-on:click="@post('/app/review/action/mark')"><span aria-hidden="true">⭐</span><span>{% if view.marked %}{{ s('app_review_unmark_card') }}{% else %}{{ tr.studying_mark_note() | tr_clean }}{% endif %}</span></button>
+      <button id="action-flag" type="button" class="btn h-auto min-h-16 whitespace-normal" data-on:click="$flag = {{ 0 if view.flag else 1 }}; @post('/app/review/action/flag')"><span aria-hidden="true">🚩</span><span>{% if view.flag %}{{ s('app_review_remove_flag') }}{% else %}{{ tr.studying_flag_card() | tr_clean }}{% endif %}</span></button>
+      <button id="action-bury" type="button" class="btn h-auto min-h-16 whitespace-normal" data-on:click="@post('/app/review/action/bury')"><span aria-hidden="true">📦</span><span>{{ tr.studying_bury_card() | tr_clean }}</span></button>
+      <button id="action-suspend" type="button" class="btn h-auto min-h-16 whitespace-normal" data-on:click="@post('/app/review/action/suspend')"><span aria-hidden="true">⏸</span><span>{{ tr.actions_suspend_card() | tr_clean }}</span></button>
+      <button id="action-undo" type="button" class="btn h-auto min-h-16 whitespace-normal" data-on:click="@post('/app/review/action/undo')"><span aria-hidden="true">↶</span><span>{{ tr.undo_undo() | tr_clean }}</span></button>
+      <button id="action-due" type="button" class="btn h-auto min-h-16 whitespace-normal" aria-expanded="false" data-attr:aria-expanded="$dueOpen ? 'true' : 'false'" aria-controls="due-form" data-on:click="$dueOpen = !$dueOpen"><span aria-hidden="true">📅</span><span>{{ tr.actions_set_due_date() | tr_clean }}</span></button>
+      <a id="action-info" class="btn h-auto min-h-16 whitespace-normal" href="/app/review/info/{{ view.card_id }}"><span aria-hidden="true">ⓘ</span><span>{{ tr.actions_card_info() | tr_clean }}</span></a>
+      <button id="action-delete" type="button" class="btn btn-error btn-outline h-auto min-h-16 whitespace-normal border-[var(--color-error-border)]! text-[var(--color-error-content)]!" data-on:click="@post('/app/review/action/delete')"><span aria-hidden="true">⌫</span><span>{{ tr.studying_delete_note() | tr_clean }}</span></button>
+    </div>
+    <form id="due-form" class="mt-3 flex flex-wrap items-end gap-2" data-show="$dueOpen" style="display:none" data-on:submit__prevent="@post('/app/review/due')">
+      <label class="min-w-0 flex-1 text-sm font-bold" for="due-spec">{{ tr.actions_set_due_date() | tr_clean }}
+        <input id="due-spec" class="input mt-1 w-full" type="text" autocomplete="off" placeholder="1-7" data-bind:spec>
+      </label>
+      <button id="due-submit" type="submit" class="btn btn-accent">{{ tr.actions_save() | tr_clean }}</button>
+    </form>
+    <button id="sheet-dismiss" type="button" class="btn btn-block mt-4" data-on:click="$sheetOpen = false; $dueOpen = false">{{ tr.actions_close() | tr_clean }}</button>
+  </div>
+  <div id="sheet-backdrop" class="modal-backdrop" data-on:click="$sheetOpen = false; $dueOpen = false"></div>
+  {% endif %}
+</div>

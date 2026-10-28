@@ -1,0 +1,26 @@
+<main id="stage" class="flex min-h-0 flex-1 flex-col px-4 py-4">
+  {% if view %}
+  <article id="current-card" class="flashcard card neo-press flex min-h-80 flex-1 flex-col overflow-hidden bg-base-200 p-5 sm:p-7">
+    <div class="flex flex-wrap items-start justify-between gap-2">
+      <span id="card-deck" class="badge h-auto max-w-full whitespace-normal border-2 border-[var(--color-neo-border)] bg-base-300 px-3 py-2 font-bold" dir="auto">{{ view.deck }}</span>
+      <div class="flex flex-wrap gap-2">
+        {% if view.other_notetype %}<span class="badge badge-outline h-auto whitespace-normal py-2">{{ s('app_review_other_note_type') }}</span>{% endif %}
+        {% if view.marked %}<span id="mark-icon" class="badge badge-outline" title="{{ s('app_review_marked') }}" aria-label="{{ s('app_review_marked') }}">⭐</span>{% endif %}
+        {% if view.flag %}<span id="flag-icon" class="badge badge-outline" title="{{ s('app_review_flagged') }}" aria-label="{{ s('app_review_flagged') }}">🚩</span>{% endif %}
+      </div>
+    </div>
+    <div class="flex flex-1 flex-col justify-center break-words py-8" dir="auto">
+      <div id="card-q" class="review-card-content">{{ view.question_html | safe }}</div>
+      <div id="answer-box" class="review-card-content animate-reveal-answer motion-reduce:animate-none mt-6 border-t-2 border-dashed border-base-300 pt-6" data-show="$revealed" style="display:none">
+        <div id="card-a">{{ view.answer_html | safe }}</div>
+      </div>
+    </div>
+  </article>
+  {% elif not completed %}
+  <section class="card neo-press my-auto bg-base-200 p-8 text-center">
+    <h1 class="text-2xl font-black">{{ s('app_review_no_cards_due') }}</h1>
+    <a class="btn btn-accent neo-press mt-6" href="/app/">{{ s('app_review_complete_back_to_decks') }}</a>
+  </section>
+  {% endif %}
+  {% include 'app/_review_complete.html.jinja' %}
+</main>

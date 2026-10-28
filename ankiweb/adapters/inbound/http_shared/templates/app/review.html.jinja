@@ -1,0 +1,41 @@
+{% macro progress_hud() %}
+<header id="hud-progress" class="w-full px-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+  <div class="navbar min-h-0 justify-between gap-3 p-0">
+    <a id="btn-back" href="/app/" class="btn btn-square neo-press bg-base-200" aria-label="{{ s('app_review_complete_back_to_decks') }}">
+      <span aria-hidden="true">←</span>
+    </a>
+    <div id="streak-pill" data-ts="{{ progress.done }}-{{ streak_before }}-{{ streak }}" title="{{ s('app_review_streak_title') }}" class="badge badge-lg h-auto gap-2 border-2 border-[var(--color-streak)] bg-[var(--color-streak-bg)] px-4 py-2 font-black text-[var(--color-streak-text)]" data-class:animate-streak-pop="{{ 'true' if streak_before is not none and streak > streak_before else 'false' }}" data-class:animate-streak-reset="{{ 'true' if streak_before is not none and streak_before > 0 and streak == 0 else 'false' }}">
+      <span aria-hidden="true">{% if rating|default(none) == 1 or (streak_before is not none and streak_before > 0 and streak == 0) %}💔{% else %}🔥{% endif %}</span>
+      <span id="streak-count">{{ streak }}</span><span class="text-xs uppercase">{{ s('app_review_streak') }}</span>
+    </div>
+    {% if view and not completed %}
+    <button id="btn-actions-sheet" type="button" class="btn btn-square neo-press bg-base-200" aria-label="{{ s('app_review_more_actions') }}" aria-controls="sheet" aria-expanded="false" data-attr:aria-expanded="$sheetOpen ? 'true' : 'false'" data-on:click="$sheetOpen = true">
+      <span aria-hidden="true">⋮</span>
+    </button>
+    {% else %}<span class="w-12" aria-hidden="true"></span>{% endif %}
+  </div>
+  <div class="mt-5">
+    <div class="mb-1 flex justify-between gap-2 text-xs font-black uppercase tracking-wide text-[var(--color-muted)]">
+      <span>{{ s('app_review_progress') }}</span><span id="progress-text">{{ progress.done }} / {{ progress.total }}</span>
+    </div>
+    <div class="h-4 overflow-hidden rounded-full border-2 border-[var(--color-neo-border)] bg-[var(--color-meter-track)]" role="progressbar" aria-label="{{ s('app_review_progress') }}" aria-valuemin="0" aria-valuemax="{{ progress.total if progress.total else 1 }}" aria-valuenow="{{ progress.done }}">
+      <div id="meter-fill" class="meter-fill" style="width: {{ progress.percent }}%"></div>
+    </div>
+  </div>
+  {% if not completed and (rating|default(none) == 1 or (streak_before is not none and (streak > streak_before or (streak_before > 0 and streak == 0)))) %}
+  <div id="streak-toast" data-ts="{{ progress.done }}-{{ streak_before }}-{{ streak }}" class="toast toast-top toast-center z-50" role="status">
+    <div class="alert bg-base-200 neo-press font-bold">{% if streak == 0 %}{{ s('app_review_streak_reset') }}{% else %}{{ s('app_review_streak_increase', count=streak) }}{% endif %}</div>
+  </div>
+  {% endif %}
+</header>
+{% endmacro %}
+{% if fragment|default('page') == 'progress' %}
+{{ progress_hud() }}
+{% else %}
+<div id="review-app" class="mx-auto flex min-h-dvh w-full max-w-xl flex-col bg-base-100 text-base-content" data-signals="{revealed: false, sheetOpen: false, dueOpen: false, cardId: {{ view.card_id if view else 0 }}, ease: 0, flag: 0, spec: ''}" data-on:keydown__window="evt.key === 'Escape' &amp;&amp; $sheetOpen ? ($sheetOpen = false, $dueOpen = false) : $sheetOpen ? window.avSheetKey(evt) : window.avKeydown(evt, $revealed, $sheetOpen)">
+  {{ progress_hud() }}
+  {% include 'app/_review_stage.html.jinja' %}
+  {% include 'app/_review_bar.html.jinja' %}
+  {% include 'app/_review_sheet.html.jinja' %}
+</div>
+{% endif %}
