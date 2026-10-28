@@ -1,24 +1,24 @@
 {% macro progress_hud() %}
 <header id="hud-progress" class="review-hud">
   <div class="navbar review-hud-nav min-h-0 p-0">
-    <a id="btn-back" href="/app/" class="btn btn-square neo-press h-[42px] min-h-0 w-[42px] shrink-0 rounded-[10px] border-2 border-[var(--color-neo-border)] bg-base-200 p-0 shadow-[2px_2px_0_var(--color-neo-shadow)]" aria-label="{{ s('app_review_complete_back_to_decks') }}">
+    <a id="btn-back" href="/app/" class="btn btn-square neo-press size-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 p-0 shadow-neo active:shadow-none" aria-label="{{ s('app_review_complete_back_to_decks') }}">
       <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
     </a>
-    <div id="streak-pill" data-ts="{{ progress.done }}-{{ streak_before }}-{{ streak }}" title="{{ s('app_review_streak_title') }}" class="badge review-streak h-auto gap-[6px] rounded-full border-2 border-[var(--color-streak)] bg-[var(--color-streak-bg)] px-[14px] py-[6px] text-[1.05rem] text-[var(--color-streak-text)]" data-class:animate-streak-pop="{{ 'true' if streak_before is not none and streak > streak_before else 'false' }}" data-class:animate-streak-reset="{{ 'true' if streak_before is not none and streak_before > 0 and streak == 0 else 'false' }}">
+    <div id="streak-pill" data-ts="{{ progress.done }}-{{ streak_before }}-{{ streak }}" title="{{ s('app_review_streak_title') }}" class="badge review-streak h-auto gap-review-streak-gap rounded-full border-2 border-review-streak-accent bg-review-streak-surface px-review-streak-x py-review-streak-y text-review-streak-label text-review-streak-foreground shadow-neo" data-class:animate-streak-pop="{{ 'true' if streak_before is not none and streak > streak_before else 'false' }}" data-class:animate-streak-reset="{{ 'true' if streak_before is not none and streak_before > 0 and streak == 0 else 'false' }}">
       <span class="text-xl leading-none" aria-hidden="true">{% if rating|default(none) == 1 or (streak_before is not none and streak_before > 0 and streak == 0) %}💔{% else %}🔥{% endif %}</span>
-      <span id="streak-count" class="text-[1.2rem] tabular-nums">{{ streak }}</span><span>{{ s('app_review_streak') }}</span>
+      <span id="streak-count" class="text-review-streak-count tabular-nums">{{ streak }}</span><span>{{ s('app_review_streak') }}</span>
     </div>
     {% if view and not completed %}
-    <button id="btn-actions-sheet" type="button" class="btn btn-square neo-press h-[42px] min-h-0 w-[42px] shrink-0 rounded-[10px] border-2 border-[var(--color-neo-border)] bg-base-200 p-0 shadow-[2px_2px_0_var(--color-neo-shadow)]" aria-label="{{ s('app_review_more_actions') }}" aria-controls="sheet" aria-expanded="false" data-attr:aria-expanded="$sheetOpen ? 'true' : 'false'" data-on:click="$sheetOpen = true">
+    <button id="btn-actions-sheet" type="button" class="btn btn-square neo-press size-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 p-0 shadow-neo active:shadow-none" aria-label="{{ s('app_review_more_actions') }}" aria-controls="sheet" aria-expanded="false" data-attr:aria-expanded="$sheetOpen ? 'true' : 'false'" data-on:click="$sheetOpen = true">
       <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
     </button>
-    {% else %}<span class="w-[42px] shrink-0" aria-hidden="true"></span>{% endif %}
+    {% else %}<span class="w-review-hud-control shrink-0" aria-hidden="true"></span>{% endif %}
   </div>
   <div class="mt-2.5">
     <div class="review-progress-caption">
       <span>{{ s('app_review_progress') }}</span><span><span id="progress-text">{{ progress.done }} / {{ progress.total }}</span> {{ tr.browsing_cards() | tr_clean }}</span>
     </div>
-    <div class="review-meter-track h-3 bg-[var(--color-meter-track)]" role="progressbar" aria-label="{{ s('app_review_progress') }}" aria-valuemin="0" aria-valuemax="{{ progress.total if progress.total else 1 }}" aria-valuenow="{{ progress.done }}">
+    <div class="review-meter-track h-3 bg-review-meter-track" role="progressbar" aria-label="{{ s('app_review_progress') }}" aria-valuemin="0" aria-valuemax="{{ progress.total if progress.total else 1 }}" aria-valuenow="{{ progress.done }}">
       <div id="meter-fill" class="meter-fill" style="width: {{ progress.percent }}%"></div>
     </div>
   </div>

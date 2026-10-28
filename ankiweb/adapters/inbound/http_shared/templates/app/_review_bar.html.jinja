@@ -1,11 +1,11 @@
 <footer id="bar" class="review-bar">
   {% if view and not completed %}
   <div id="bar-show-answer" data-show="!$revealed">
-    <button id="btn-show-ans" type="button" class="btn btn-accent btn-block neo-press h-16 min-h-0 rounded-2xl border-[3px] border-[var(--color-neo-border)] whitespace-normal text-[1.35rem] leading-tight font-black uppercase tracking-[-0.01em] shadow-[3px_3px_0_var(--color-neo-shadow)]" data-on:click="$revealed = true">{{ tr.studying_show_answer() | tr_clean }}</button>
+    <button id="btn-show-ans" type="button" class="btn btn-accent btn-block neo-press h-16 min-h-0 rounded-2xl border-3 border-neo-edge whitespace-normal text-review-reveal-label leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none" data-on:click="$revealed = true">{{ tr.studying_show_answer() | tr_clean }}</button>
   </div>
   <div id="bar-ease-buttons" class="review-ease-grid" data-show="$revealed" style="display:none">
     {% for number, name in [(1, tr.studying_again() | tr_clean), (2, tr.studying_hard() | tr_clean), (3, tr.studying_good() | tr_clean), (4, tr.studying_easy() | tr_clean)] %}
-    <button id="ease-{{ number }}" type="button" {% if number == 1 %}class="btn btn-error neo-press review-ease review-ease-error flex h-auto gap-1 px-1"{% elif number == 2 %}class="btn btn-warning neo-press review-ease review-ease-warning flex h-auto gap-1 px-1"{% elif number == 3 %}class="btn btn-success neo-press review-ease review-ease-success flex h-auto gap-1 px-1"{% else %}class="btn btn-info neo-press review-ease review-ease-info flex h-auto gap-1 px-1"{% endif %} data-on:click="$ease = {{ number }}; @post('/app/review/answer')">
+    <button id="ease-{{ number }}" type="button" {% if number == 1 %}class="btn btn-error neo-press review-ease review-ease-error flex h-auto gap-1 px-1 shadow-neo active:shadow-none"{% elif number == 2 %}class="btn btn-warning neo-press review-ease review-ease-warning flex h-auto gap-1 px-1 shadow-neo active:shadow-none"{% elif number == 3 %}class="btn btn-success neo-press review-ease review-ease-success flex h-auto gap-1 px-1 shadow-neo active:shadow-none"{% else %}class="btn btn-info neo-press review-ease review-ease-info flex h-auto gap-1 px-1 shadow-neo active:shadow-none"{% endif %} data-on:click="$ease = {{ number }}; @post('/app/review/answer')">
       <span class="review-ease-label text-sm font-black">{{ name }}</span><span class="review-ease-label font-mono text-xs">{{ view.labels[number - 1] }}</span>
     </button>
     {% endfor %}

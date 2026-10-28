@@ -56,7 +56,6 @@
   --color-streak-bg: #fff0eb;
   --color-neo-border: #18191f;
   --color-neo-shadow: #18191f;
-  --color-streak-glow: #ff4d00;
   --radius-selector: 1rem;
   --radius-field: 16px;
   --radius-box: 24px;
@@ -93,7 +92,6 @@
   --color-error-content: #ffbdbd;
   --color-neo-border: #f8f9fa;
   --color-neo-shadow: #000000;
-  --color-streak-glow: #ff6b35;
   --color-error-border: #ff6b6b;
   --color-error-shadow: #1a080a;
   --color-warning-border: #fcc419;
@@ -151,7 +149,7 @@
 
   @keyframes streakPop {
     0% { transform: scale(1); }
-    40% { transform: scale(1.35) rotate(-4deg); box-shadow: 0 0 16px var(--color-streak-glow); }
+    40% { transform: scale(1.35) rotate(-4deg); }
     75% { transform: scale(0.95) rotate(2deg); }
     100% { transform: scale(1) rotate(0); }
   }
@@ -177,7 +175,7 @@
 
   @keyframes addedPillPop {
     0% { transform: scale(1); }
-    40% { transform: scale(1.3) rotate(-3deg); box-shadow: 0 0 16px var(--color-streak-glow); }
+    40% { transform: scale(1.3) rotate(-3deg); }
     75% { transform: scale(0.95) rotate(2deg); }
     100% { transform: scale(1) rotate(0); }
   }
@@ -260,11 +258,11 @@
   }
   /* plan 3 */
   .review-app {
-    @apply mx-auto flex h-dvh min-h-[18rem] w-full max-w-[430px] flex-col bg-base-100 text-base-content;
+    @apply mx-auto flex h-dvh min-h-72 w-full max-w-review-shell flex-col bg-base-100 text-base-content;
   }
 
   .review-hud {
-    @apply w-full shrink-0 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-2;
+    @apply w-full shrink-0 px-4 pt-review-hud-safe-top pb-2;
   }
 
   .review-hud-nav {
@@ -272,7 +270,7 @@
   }
 
   .review-streak {
-    @apply font-black uppercase tracking-[-0.02em] shadow-[2px_2px_0_var(--color-streak)];
+    @apply font-black uppercase tracking-av-back;
   }
 
   .review-progress-caption {
@@ -284,8 +282,8 @@
   }
 
   .review-deck-label {
-    @apply max-w-full whitespace-normal [overflow-wrap:anywhere] leading-[1.4]
-      font-extrabold uppercase tracking-[0.06em];
+    @apply max-w-full whitespace-normal wrap-anywhere leading-review-deck
+      font-extrabold uppercase tracking-review-deck;
   }
 
   .review-card-body {
@@ -297,7 +295,7 @@
   }
 
   .review-vocab-label {
-    @apply mb-2 text-[0.8rem] font-extrabold uppercase tracking-[0.08em] text-muted-fg;
+    @apply mb-2 text-review-vocab-label font-extrabold uppercase tracking-review-vocab-label text-muted-fg;
   }
 
   .review-answer {
@@ -305,7 +303,7 @@
   }
 
   .review-bar {
-    @apply w-full shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2;
+    @apply w-full shrink-0 px-4 pb-review-bar-safe-bottom pt-2;
   }
 
   .review-ease-grid {
@@ -326,7 +324,7 @@
   .review-action-tile {
     @apply flex min-h-review-sheet-tile-height min-w-0 items-center gap-review-sheet-tile-gap
       py-review-sheet-tile-y px-review-sheet-control-x border-2 border-solid border-neo-edge
-      border-image-reset rounded-review-sheet-control bg-base-100 shadow-review-sheet-tile
+      border-image-reset rounded-review-sheet-control bg-base-100 shadow-neo
       text-review-sheet-tile leading-review-sheet-normal text-start no-underline wrap-anywhere;
   }
 
@@ -343,13 +341,13 @@
   }
 
   .review-action-tile--danger {
-    @apply border-review-sheet-danger-edge text-error-content shadow-review-sheet-danger;
+    @apply border-review-sheet-danger-edge text-error-content;
   }
 
   .review-sheet-close {
     @apply relative inline-flex size-review-sheet-close shrink-0 items-center justify-center p-0
       border-neo border-solid border-neo-edge border-image-reset rounded-review-sheet-control
-      bg-base-200 shadow-review-sheet-control text-review-sheet-close;
+      bg-base-200 shadow-neo text-review-sheet-close;
   }
 
   .review-sheet-close::before {
@@ -359,7 +357,7 @@
   .review-sheet-dismiss {
     @apply w-full min-h-review-sheet-dismiss-height mt-review-sheet-dismiss-top
       py-review-sheet-dismiss-y px-review-sheet-control-x border-2 border-solid border-neo-edge
-      border-image-reset rounded-field bg-review-sheet-dismiss-bg shadow-review-sheet-control
+      border-image-reset rounded-field bg-review-sheet-dismiss-bg shadow-neo
       text-review-sheet-dismiss leading-review-sheet-normal wrap-anywhere;
   }
 
@@ -381,7 +379,7 @@
   }
 
   .flashcard {
-    @apply min-w-0 my-auto min-h-[280px] shrink-0 bg-base-200 px-5 py-6;
+    @apply min-w-0 my-auto min-h-review-card-min-height shrink-0 bg-base-200 px-5 py-6;
   }
 
   .review-card-content {
@@ -403,16 +401,16 @@
   }
 
   .review-ease-error {
-    @apply border-review-ease-error-border shadow-review-ease-error;
+    @apply border-review-ease-error-border;
   }
   .review-ease-warning {
-    @apply border-review-ease-warning-border shadow-review-ease-warning;
+    @apply border-review-ease-warning-border;
   }
   .review-ease-success {
-    @apply border-review-ease-success-border shadow-review-ease-success;
+    @apply border-review-ease-success-border;
   }
   .review-ease-info {
-    @apply border-review-ease-info-border shadow-review-ease-info;
+    @apply border-review-ease-info-border;
   }
   .review-ease:active {
     @apply shadow-none;
@@ -493,22 +491,40 @@
   --color-review-ease-warning-border: var(--color-warning-border);
   --color-review-ease-success-border: var(--color-success-border);
   --color-review-ease-info-border: var(--color-info-border);
-  --shadow-review-ease-error: 3px 3px 0 var(--color-error-shadow);
-  --shadow-review-ease-warning: 3px 3px 0 var(--color-warning-shadow);
-  --shadow-review-ease-success: 3px 3px 0 var(--color-success-shadow);
-  --shadow-review-ease-info: 3px 3px 0 var(--color-info-shadow);
   --color-review-sheet-dismiss-bg: light-dark(var(--color-base-200), var(--color-base-300));
   --color-review-sheet-danger-edge: var(--color-error-border);
-  --shadow-review-sheet-tile: 2px 2px 0 var(--color-neo-border);
-  --shadow-review-sheet-control: 2px 2px 0 var(--color-neo-shadow);
-  --shadow-review-sheet-danger: 2px 2px 0 var(--color-error-border);
   --color-review-complete-error: var(--color-error-border);
   --color-review-complete-info: var(--color-info-border);
   --color-review-complete-warning: var(--color-warning-border);
   --color-review-complete-success: var(--color-success-border);
+  --color-review-streak-accent: var(--color-streak);
+  --color-review-streak-surface: var(--color-streak-bg);
+  --color-review-streak-foreground: var(--color-streak-text);
+  --color-review-meter-track: var(--color-meter-track);
 }
 
 @theme {
+  --container-review-shell: 430px;
+  --spacing-review-hud-safe-top: calc(0.75rem + env(safe-area-inset-top));
+  --spacing-review-hud-control: 42px;
+  --spacing-review-streak-gap: 6px;
+  --spacing-review-streak-x: 14px;
+  --spacing-review-streak-y: 6px;
+  --spacing-review-bar-safe-bottom: calc(1rem + env(safe-area-inset-bottom));
+  --spacing-review-card-min-height: 280px;
+  --spacing-review-deck-tag-x: 10px;
+  --spacing-review-sheet-max-height: 85dvh;
+  --spacing-review-sheet-safe-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  --border-width-review-deck-tag-width: 1.5px;
+  --leading-review-deck: 1.4;
+  --tracking-review-deck: 0.06em;
+  --tracking-review-vocab-label: 0.08em;
+  --tracking-review-reveal-label: -0.01em;
+  --text-review-vocab-label: 0.8rem;
+  --text-review-streak-label: 1.05rem;
+  --text-review-streak-count: 1.2rem;
+  --text-review-deck-tag: 0.72rem;
+  --text-review-reveal-label: 1.35rem;
   --font-review-sheet: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
   --text-review-sheet-tile: 0.9rem;
   --text-review-sheet-close: 1.1rem;

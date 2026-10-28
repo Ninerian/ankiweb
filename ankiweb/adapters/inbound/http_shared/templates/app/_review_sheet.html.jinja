@@ -1,6 +1,6 @@
 <div id="sheet" class="modal modal-bottom" role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-hidden="true" inert data-class:modal-open="$sheetOpen" data-attr:aria-hidden="$sheetOpen ? 'false' : 'true'" data-attr:inert="!$sheetOpen">
   {% if view and not completed %}
-  <div class="modal-box max-h-[85dvh] w-full max-w-xl overflow-y-auto rounded-t-[var(--radius-box)] border-2 border-[var(--color-neo-border)] bg-base-200 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+  <div class="modal-box max-h-review-sheet-max-height w-full max-w-xl overflow-y-auto rounded-t-box border-2 border-neo-edge bg-base-200 p-5 pb-review-sheet-safe-bottom shadow-neo">
     <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-base-300" aria-hidden="true"></div>
     <div class="mb-4 flex items-center justify-between gap-4">
       <h2 id="sheet-title" class="text-xl font-black">{{ s('app_review_card_actions') }}</h2>
@@ -18,9 +18,9 @@
     </div>
     <form id="due-form" class="mt-3 flex flex-wrap items-end gap-2" data-show="$dueOpen" style="display:none" data-on:submit__prevent="@post('/app/review/due')">
       <label class="min-w-0 flex-1 text-sm font-bold" for="due-spec">{{ tr.actions_set_due_date() | tr_clean }}
-        <input id="due-spec" class="input mt-1 w-full" type="text" autocomplete="off" placeholder="1-7" data-bind:spec>
+        <input id="due-spec" class="input mt-1 w-full shadow-neo focus:shadow-neo" type="text" autocomplete="off" placeholder="1-7" data-bind:spec>
       </label>
-      <button id="due-submit" type="submit" class="btn btn-accent">{{ tr.actions_save() | tr_clean }}</button>
+      <button id="due-submit" type="submit" class="btn btn-accent shadow-neo active:shadow-none">{{ tr.actions_save() | tr_clean }}</button>
     </form>
     <button id="sheet-dismiss" type="button" class="review-sheet-dismiss" data-on:click="$sheetOpen = false; $dueOpen = false">{{ tr.actions_close() | tr_clean }}</button>
   </div>
