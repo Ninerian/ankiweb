@@ -1,0 +1,14 @@
+<div id="add-toast" class="toast toast-end" role="status" aria-live="polite" style="display:none"><div class="alert"></div></div>
+<div id="add-summary" class="modal" role="dialog" aria-modal="true" aria-labelledby="add-summary-title" tabindex="-1"
+     data-show="$summaryOpen" data-class:modal-open="$summaryOpen" style="display:none"
+     data-on:keydown="evt.key === 'Escape' ? ($summaryOpen = false, window.avCloseSummary()) : window.avModalKey(evt)">
+  <div class="modal-box">
+    <h2 id="add-summary-title" class="text-xl font-bold">{{ s('app_add_cards_ready') }}</h2>
+    <p class="py-4"><span data-text="$count">{{ count }}</span> {{ s('app_add_cards_added') }}</p>
+    <div class="modal-action flex-wrap">
+      <button id="summary-keep-adding" type="button" class="btn btn-ghost"
+              data-on:click="$summaryOpen = false; window.avCloseSummary()">{{ s('app_add_keep_adding') }}</button>
+      <a class="btn btn-primary" href="/app/review?deck={{ deck_id }}">{{ s('app_add_start_studying') }}</a>
+    </div>
+  </div>
+</div>

@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable
 from itertools import islice
 from json import JSONDecodeError
+from time import monotonic_ns
 
 from anki.collection import Collection
 from anki.decks import DeckId
@@ -344,15 +345,21 @@ class _AddRoutes:
         if result is None:
             return RedirectResponse("/app/", status_code=303)
         cards, count = result
+        animation_stamp = monotonic_ns()
 
         fragment = render(
             "app/_add_added_cards.html.jinja",
             app_lang=self.lang,
             cards=cards,
             count=count,
+            animation_stamp=animation_stamp,
         )
         hud = render(
-            "app/add.html.jinja", app_lang=self.lang, hud_only=True, count=count
+            "app/add.html.jinja",
+            app_lang=self.lang,
+            hud_only=True,
+            count=count,
+            animation_stamp=animation_stamp,
         )
         response = DatastarResponse(
             [

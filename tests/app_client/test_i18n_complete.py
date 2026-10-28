@@ -71,16 +71,7 @@ PRESEEDED_UNUSED_REVIEW = {
     "app_review_complete_study_again",
 }
 PRESEEDED_UNUSED_ADD = {
-    "app_add_edit_last",
     "app_add_edit_preview",
-    "app_add_discard_leave",
-    "app_add_discard_finish",
-    "app_add_discard_edit",
-    "app_add_editing",
-    "app_add_card_first",
-    "app_add_cards_ready",
-    "app_add_keep_adding",
-    "app_add_start_studying",
 }
 PRESEEDED_UNUSED = (
     PRESEEDED_UNUSED_DECKS | PRESEEDED_UNUSED_REVIEW | PRESEEDED_UNUSED_ADD

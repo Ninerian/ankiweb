@@ -30,7 +30,11 @@
 {% endmacro %}
 {% macro hud() %}
 <div id="hud-count" class="mt-3">
-  <span class="badge badge-lg"><span data-text="$count">{{ count }}</span>&nbsp;{{ s('app_add_cards_added') }}</span>
+  <button type="button" {% if animation_stamp|default(false) %}class="badge badge-lg animate-added-pill-pop motion-reduce:animate-none" data-ts="{{ animation_stamp }}"{% else %}class="badge badge-lg"{% endif %}
+          aria-label="{{ s('app_add_edit_last') }}" data-discard="{{ s('app_add_discard_edit') }}"
+          data-save-failed="{{ s('app_add_save_failed') }}" data-attr:disabled="$count === 0 || $saving"
+          data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
+          data-on:click="$saving || !$count ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? @post('/app/add/edit/' + window.avLastNoteId() + '?deck=' + document.getElementById('add-wizard').dataset.deckId) : null)"><span data-text="$count">{{ count }}</span>&nbsp;{{ s('app_add_cards_added') }}</button>
 </div>
 {% endmacro %}
 {% if hud_only|default(false) %}
@@ -39,13 +43,20 @@
 {{ preview_card() }}
 {% else %}
 <main id="add-wizard" class="mx-auto w-full max-w-2xl p-4"
-      data-deck-id="{{ deck_id }}"
-      data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: {{ count }}, error: '', saving: false}"
+      data-deck-id="{{ deck_id }}" data-editing="{{ s('app_add_editing') }}" data-edit-last="{{ s('app_add_edit_last') }}"
+      data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: {{ count }}, error: '', saving: false, summaryOpen: false}"
+      data-on:datastar-fetch__document="evt.detail.type === 'finished' &amp;&amp; !$error ? (evt.detail.el.id === 'btn-add' ? window.avAnimateCommit() : (evt.detail.el.getAttribute('aria-label') === el.dataset.editLast ? window.avEditLoaded($hint, $example) : null)) : null"
       data-on:keydown__window="window.avAddKey(evt)">
   <header class="mb-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <a href="/app/" class="btn btn-ghost" aria-label="{{ s('app_add_exit') }}">{{ tr.actions_decks() }}</a>
-      <span class="badge badge-lg">{{ deck_name }}</span>
+      <a href="/app/" class="btn btn-ghost" aria-label="{{ s('app_add_exit') }}"
+         data-discard="{{ s('app_add_discard_leave') }}"
+         data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard)">{{ tr.actions_decks() }}</a>
+      <a href="/app/" class="badge badge-lg" data-discard="{{ s('app_add_discard_leave') }}"
+         data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard)">{{ deck_name }}</a>
+      <button type="button" class="btn btn-primary" data-attr:disabled="$saving"
+              data-discard="{{ s('app_add_discard_finish') }}" data-card-first="{{ s('app_add_card_first') }}"
+              data-on:click="$count === 0 ? window.avAddToast(el.dataset.cardFirst) : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? ($front = '', $back = '', $hint = '', $example = '', $nid = 0, $step = 1, $error = '', $summaryOpen = true, window.avOpenSummary(el)) : null)">{{ s('app_add_done') }}</button>
     </div>
     {{ hud() }}
   </header>
@@ -62,7 +73,7 @@
     </li>
   </ul>
 
-  <div class="card card-border neo-press mt-6">
+  <div id="add-editor" class="card card-border neo-press mt-6 motion-reduce:animate-none" data-class:animate-pop-card-up="$nid !== 0">
     <div class="card-body">
       <span class="badge">{{ note_type }}</span>
       <section data-show="$step === 1" style="display:none">
@@ -116,14 +127,14 @@
         {{ preview_card() }}
       </section>
 
-      <div class="mt-4 flex flex-wrap gap-2">
+      <div class="add-action-bar mt-4 flex flex-wrap gap-2">
         <button type="button" class="btn btn-ghost" data-show="$step > 1" style="display:none" data-on:click="$step = $step - 1; $error = ''; window.avFocus($step === 1 ? 'input-front' : 'input-back')">{{ s('app_add_previous_step') }}</button>
         <button id="btn-next" type="button" class="btn btn-primary" data-show="$step < 3" style="display:none"
                 data-front-required="{{ s('app_add_front_required') }}" data-back-required="{{ s('app_add_back_required') }}"
                 data-next-back="{{ s('app_add_next_back') }}" data-next-preview="{{ s('app_add_next_preview') }}"
                 data-text="$step === 1 ? el.dataset.nextBack : el.dataset.nextPreview"
                 data-on:click="$step === 1 ? ($front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.frontRequired)) : ($front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/add/preview')) : ($error = $front.trim() ? el.dataset.backRequired : el.dataset.frontRequired))">{{ s('app_add_next_back') }}</button>
-        <button id="btn-add" type="button" class="btn btn-success" data-show="$step === 3" style="display:none"
+        <button id="btn-add" type="button" class="btn btn-success btn-block btn-lg" data-show="$step === 3" style="display:none"
                 data-save-failed="{{ s('app_add_save_failed') }}"
                 data-error-duplicate="{{ s('app_add_duplicate') }}"
                 data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
@@ -133,5 +144,11 @@
     </div>
   </div>
   {% include "app/_add_added_cards.html.jinja" %}
+  <button type="button" class="btn btn-block mt-3" data-show="$count > 0" style="display:none"
+          aria-label="{{ s('app_add_edit_last') }}" data-discard="{{ s('app_add_discard_edit') }}"
+          data-save-failed="{{ s('app_add_save_failed') }}" data-attr:disabled="$saving"
+          data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
+          data-on:click="$saving ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? @post('/app/add/edit/' + window.avLastNoteId() + '?deck=' + document.getElementById('add-wizard').dataset.deckId) : null)">{{ s('app_add_edit_last') }}</button>
+  {% include "app/_add_summary.html.jinja" %}
 </main>
 {% endif %}

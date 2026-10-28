@@ -61,6 +61,7 @@ STRINGS: dict[str, dict[str, str]] = {
         # Add cards (plan 4)
         "app_add_cards_added": "Cards added",
         "app_add_exit": "Exit Creator",
+        "app_add_done": "Done",
         "app_add_edit_last": "Edit last added card",
         "app_add_front_prompt": "Front (Question / Prompt)",
         "app_add_front_help": "What will you test?",
@@ -173,6 +174,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_review_complete_study_again": "Erneut lernen",
         "app_add_cards_added": "Hinzugefügte Karten",
         "app_add_exit": "Kartenerstellung verlassen",
+        "app_add_done": "Fertig",
         "app_add_edit_last": "Zuletzt hinzugefügte Karte bearbeiten",
         "app_add_front_prompt": "Vorderseite (Frage / Stichwort)",
         "app_add_front_help": "Was möchtest du abfragen?",
