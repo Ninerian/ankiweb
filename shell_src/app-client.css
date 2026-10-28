@@ -376,46 +376,45 @@
     @apply [box-shadow:none];
   }
 
-  .review-complete { animation: review-arrive 0.4s ease both; }
+  .review-complete {
+    @apply animate-[review-arrive_0.4s_ease_both];
+  }
   .review-celebration {
-    position: relative;
-    display: grid;
-    place-items: center;
-    height: 6rem;
-    margin: 0.5rem auto;
-    width: 10rem;
+    @apply relative grid place-items-center h-[6rem] [margin:0.5rem_auto] w-[10rem];
   }
   .review-sticker {
-    display: grid;
-    place-items: center;
-    width: 5rem;
-    height: 5rem;
-    border: 2.5px solid var(--color-neo-border);
-    border-radius: 1.4rem;
-    background: var(--color-accent);
-    box-shadow: 3px 3px 0 var(--color-neo-shadow);
-    font-size: 2.5rem;
-    transform: rotate(-7deg);
-    animation: review-sticker 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    @apply grid place-items-center w-[5rem] h-[5rem] border-[length:2.5px] border-solid
+      border-[color:var(--color-neo-border)] [border-image:initial] rounded-[1.4rem]
+      [background:var(--color-accent)] [box-shadow:3px_3px_0_var(--color-neo-shadow)]
+      text-[length:2.5rem] [transform:rotate(-7deg)]
+      animate-[review-sticker_0.6s_cubic-bezier(0.175,0.885,0.32,1.275)_both];
   }
-  .review-confetti { position: absolute; inset: 0; pointer-events: none; }
+  .review-confetti {
+    @apply absolute [inset:0] pointer-events-none;
+  }
   .review-confetti i {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0.55rem;
-    height: 0.8rem;
-    border-radius: 2px;
-    background: var(--color-error-border);
-    transform: translate(var(--x), var(--y)) rotate(var(--r));
-    animation: review-confetti 0.55s ease-out both;
+    @apply absolute top-[50%] left-[50%] w-[0.55rem] h-[0.8rem] rounded-[2px]
+      [background:var(--color-error-border)] [transform:translate(var(--x),var(--y))_rotate(var(--r))]
+      animate-[review-confetti_0.55s_ease-out_both];
   }
-  .review-confetti i:nth-child(1) { --x: -4.7rem; --y: -2.2rem; --r: -24deg; }
-  .review-confetti i:nth-child(2) { --x: 4.2rem; --y: -2.4rem; --r: 35deg; background: var(--color-info-border); }
-  .review-confetti i:nth-child(3) { --x: -4.4rem; --y: 1.4rem; --r: 40deg; background: var(--color-warning-border); }
-  .review-confetti i:nth-child(4) { --x: 4.2rem; --y: 1.3rem; --r: -35deg; background: var(--color-success-border); }
-  .review-confetti i:nth-child(5) { --x: -2.8rem; --y: -2.9rem; --r: 25deg; background: var(--color-info-border); }
-  .review-confetti i:nth-child(6) { --x: 2.8rem; --y: 2.3rem; --r: 60deg; background: var(--color-warning-border); }
+  .review-confetti i:nth-child(1) {
+    @apply [--x:-4.7rem] [--y:-2.2rem] [--r:-24deg];
+  }
+  .review-confetti i:nth-child(2) {
+    @apply [--x:4.2rem] [--y:-2.4rem] [--r:35deg] [background:var(--color-info-border)];
+  }
+  .review-confetti i:nth-child(3) {
+    @apply [--x:-4.4rem] [--y:1.4rem] [--r:40deg] [background:var(--color-warning-border)];
+  }
+  .review-confetti i:nth-child(4) {
+    @apply [--x:4.2rem] [--y:1.3rem] [--r:-35deg] [background:var(--color-success-border)];
+  }
+  .review-confetti i:nth-child(5) {
+    @apply [--x:-2.8rem] [--y:-2.9rem] [--r:25deg] [background:var(--color-info-border)];
+  }
+  .review-confetti i:nth-child(6) {
+    @apply [--x:2.8rem] [--y:2.3rem] [--r:60deg] [background:var(--color-warning-border)];
+  }
 
   @keyframes review-arrive {
     from { opacity: 0; transform: translateY(1rem); }
@@ -430,6 +429,6 @@
     to { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .review-complete, .review-sticker, .review-confetti i { animation: none; }
+    .review-complete, .review-sticker, .review-confetti i { @apply animate-none; }
   }
 }
