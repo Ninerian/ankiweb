@@ -1,31 +1,31 @@
-<main id="decks-page" class="mx-auto flex w-full max-w-md flex-col gap-5 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]" data-signals="{q: ''}">
-  <header class="flex flex-col gap-1">
-    <p class="text-xs font-black uppercase tracking-widest text-base-content/70">{{ s("app_decks_study_space") }}</p>
-    <h1 class="mb-3 text-4xl leading-none font-black tracking-tight">{{ s("app_decks_my_decks") }}</h1>
+<main id="decks-page" class="mx-auto w-full max-w-[430px] pt-[max(1.5rem,env(safe-area-inset-top))] pr-5 pb-[max(2.25rem,env(safe-area-inset-bottom))] pl-4" data-signals="{q: ''}">
+  <header class="mb-6">
+    <p class="mb-[5px] text-[0.72rem] font-black uppercase tracking-[0.08em] text-[color:var(--color-muted)]">{{ s("app_decks_study_space") }}</p>
+    <h1 class="mb-[18px] text-[2.35rem] leading-none font-black tracking-[-0.04em]">{{ s("app_decks_my_decks") }}</h1>
 {% if views %}
-    <label class="input flex min-h-11 w-full items-center gap-2 border-base-content bg-base-200">
+    <label class="input flex h-[50px] w-full items-center gap-2.5 border-[color:var(--color-neo-border)] bg-base-200 px-3.5 shadow-[3px_3px_0_var(--color-neo-shadow)] focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-primary">
       <svg class="size-5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
       <span class="sr-only">{{ s("app_decks_search") }}</span>
-      <input id="deck-search" class="grow" type="search" placeholder="{{ s('app_decks_search') }}" autocomplete="off" data-bind:q>
+      <input id="deck-search" class="grow text-base font-bold placeholder:text-[color:var(--color-muted)] placeholder:opacity-100" type="search" placeholder="{{ s('app_decks_search') }}" autocomplete="off" data-bind:q>
     </label>
 {% endif %}
   </header>
 {% if views %}
-  <section class="flex flex-col gap-3" aria-labelledby="decks-heading">
-    <h2 id="decks-heading" class="text-xs font-black uppercase tracking-widest text-base-content/70">{{ s("app_decks_your_decks") }}</h2>
-    <div id="deck-list" class="flex flex-col gap-4">
+  <section aria-labelledby="decks-heading">
+    <h2 id="decks-heading" class="mb-2.5 ml-0.5 text-[0.72rem] font-black uppercase tracking-[0.08em] text-[color:var(--color-muted)]">{{ s("app_decks_your_decks") }}</h2>
+    <div id="deck-list" class="grid gap-3.5">
 {% for view in views %}
 {% include "app/_deck_row.html.jinja" %}
 {% endfor %}
     </div>
-    <p id="empty-state" class="deck-card rounded-box bg-base-200 p-6 text-center font-bold text-base-content/70" role="status" style="display:none" data-show="{{ no_match }}">
-      <strong class="block text-lg font-black text-base-content">{{ s("app_decks_no_results") }}</strong>
+    <p id="empty-state" class="deck-card rounded-box bg-base-200 px-5 py-7 text-center font-bold text-[color:var(--color-muted)]" role="status" style="display:none" data-show="{{ no_match }}">
+      <strong class="block text-[1.1rem] font-black text-base-content">{{ s("app_decks_no_results") }}</strong>
       {{ s("app_decks_try_search") }}
     </p>
   </section>
 {% else %}
-  <section id="no-decks" class="deck-card rounded-box bg-base-200 p-6 text-center">
-    <a class="btn btn-primary neo-press min-h-11" href="/app/add">{{ s("app_decks_add_first") }}</a>
+  <section id="no-decks" class="deck-card rounded-box bg-base-200 px-5 py-7 text-center">
+    <a class="btn [--depth:0] min-h-11 rounded-[10px] border-[color:var(--color-neo-border)] p-2 text-[0.9rem] font-black shadow-[3px_3px_0_var(--color-neo-shadow)] transition-[transform,box-shadow] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" href="/app/add">{{ s("app_decks_add_first") }}</a>
   </section>
 {% endif %}
 </main>
