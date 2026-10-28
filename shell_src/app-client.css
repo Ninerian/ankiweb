@@ -129,23 +129,23 @@
   --shadow-neo: 3px 3px 0 var(--color-neo-shadow);
 
   /* plan 3 */
-  --color-p3-ease-error-border: var(--color-error-border);
-  --color-p3-ease-warning-border: var(--color-warning-border);
-  --color-p3-ease-success-border: var(--color-success-border);
-  --color-p3-ease-info-border: var(--color-info-border);
-  --shadow-p3-ease-error: 3px 3px 0 var(--color-error-shadow);
-  --shadow-p3-ease-warning: 3px 3px 0 var(--color-warning-shadow);
-  --shadow-p3-ease-success: 3px 3px 0 var(--color-success-shadow);
-  --shadow-p3-ease-info: 3px 3px 0 var(--color-info-shadow);
-  --color-p3-sheet-dismiss-bg: light-dark(var(--color-base-200), var(--color-base-300));
-  --color-p3-sheet-danger-edge: var(--color-error-border);
-  --shadow-p3-sheet-tile: 2px 2px 0 var(--color-neo-border);
-  --shadow-p3-sheet-control: 2px 2px 0 var(--color-neo-shadow);
-  --shadow-p3-sheet-danger: 2px 2px 0 var(--color-error-border);
-  --color-p3-complete-error: var(--color-error-border);
-  --color-p3-complete-info: var(--color-info-border);
-  --color-p3-complete-warning: var(--color-warning-border);
-  --color-p3-complete-success: var(--color-success-border);
+  --color-review-ease-error-border: var(--color-error-border);
+  --color-review-ease-warning-border: var(--color-warning-border);
+  --color-review-ease-success-border: var(--color-success-border);
+  --color-review-ease-info-border: var(--color-info-border);
+  --shadow-review-ease-error: 3px 3px 0 var(--color-error-shadow);
+  --shadow-review-ease-warning: 3px 3px 0 var(--color-warning-shadow);
+  --shadow-review-ease-success: 3px 3px 0 var(--color-success-shadow);
+  --shadow-review-ease-info: 3px 3px 0 var(--color-info-shadow);
+  --color-review-sheet-dismiss-bg: light-dark(var(--color-base-200), var(--color-base-300));
+  --color-review-sheet-danger-edge: var(--color-error-border);
+  --shadow-review-sheet-tile: 2px 2px 0 var(--color-neo-border);
+  --shadow-review-sheet-control: 2px 2px 0 var(--color-neo-shadow);
+  --shadow-review-sheet-danger: 2px 2px 0 var(--color-error-border);
+  --color-review-complete-error: var(--color-error-border);
+  --color-review-complete-info: var(--color-info-border);
+  --color-review-complete-warning: var(--color-warning-border);
+  --color-review-complete-success: var(--color-success-border);
 }
 
 @theme {
@@ -162,44 +162,44 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* plan 3 */
-  --font-p3-sheet: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
-  --text-p3-sheet-tile: 0.9rem;
-  --text-p3-sheet-close: 1.1rem;
-  --text-p3-sheet-dismiss: 1rem;
-  --leading-p3-sheet-normal: normal;
-  --radius-p3-sheet-control: 10px;
-  --stroke-width-p3-sheet-icon: 2.2;
-  --content-p3-sheet-hit: "";
-  --spacing-p3-sheet-grid-gap: 10px;
-  --spacing-p3-sheet-tile-height: 46px;
-  --spacing-p3-sheet-tile-gap: 8px;
-  --spacing-p3-sheet-tile-y: 12px;
-  --spacing-p3-sheet-control-x: 14px;
-  --spacing-p3-sheet-icon: 18px;
-  --spacing-p3-sheet-close: 32px;
-  --spacing-p3-sheet-hit: 6px;
-  --spacing-p3-sheet-dismiss-height: 48px;
-  --spacing-p3-sheet-dismiss-top: 20px;
-  --spacing-p3-sheet-dismiss-y: 10px;
-  --spacing-p3-sheet-press: 2px;
-  --spacing-p3-complete-confetti-width: 0.55rem;
-  --spacing-p3-complete-confetti-height: 0.8rem;
-  --spacing-p3-complete-offset-47: 4.7rem;
-  --spacing-p3-complete-offset-42: 4.2rem;
-  --spacing-p3-complete-offset-44: 4.4rem;
-  --spacing-p3-complete-offset-28: 2.8rem;
-  --spacing-p3-complete-offset-22: 2.2rem;
-  --spacing-p3-complete-offset-24: 2.4rem;
-  --spacing-p3-complete-offset-14: 1.4rem;
-  --spacing-p3-complete-offset-13: 1.3rem;
-  --spacing-p3-complete-offset-29: 2.9rem;
-  --spacing-p3-complete-offset-23: 2.3rem;
-  --radius-p3-complete-sticker: 1.4rem;
-  --radius-p3-complete-confetti: 2px;
-  --text-p3-complete-sticker: 2.5rem;
-  --animate-p3-complete-arrive: review-arrive 0.4s ease both;
-  --animate-p3-complete-sticker: review-sticker 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-  --animate-p3-complete-confetti: review-confetti 0.55s ease-out both;
+  --font-review-sheet: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
+  --text-review-sheet-tile: 0.9rem;
+  --text-review-sheet-close: 1.1rem;
+  --text-review-sheet-dismiss: 1rem;
+  --leading-review-sheet-normal: normal;
+  --radius-review-sheet-control: 10px;
+  --stroke-width-review-sheet-icon: 2.2;
+  --content-review-sheet-hit: "";
+  --spacing-review-sheet-grid-gap: 10px;
+  --spacing-review-sheet-tile-height: 46px;
+  --spacing-review-sheet-tile-gap: 8px;
+  --spacing-review-sheet-tile-y: 12px;
+  --spacing-review-sheet-control-x: 14px;
+  --spacing-review-sheet-icon: 18px;
+  --spacing-review-sheet-close: 32px;
+  --spacing-review-sheet-hit: 6px;
+  --spacing-review-sheet-dismiss-height: 48px;
+  --spacing-review-sheet-dismiss-top: 20px;
+  --spacing-review-sheet-dismiss-y: 10px;
+  --spacing-review-sheet-press: 2px;
+  --spacing-review-complete-confetti-width: 0.55rem;
+  --spacing-review-complete-confetti-height: 0.8rem;
+  --spacing-review-complete-offset-47: 4.7rem;
+  --spacing-review-complete-offset-42: 4.2rem;
+  --spacing-review-complete-offset-44: 4.4rem;
+  --spacing-review-complete-offset-28: 2.8rem;
+  --spacing-review-complete-offset-22: 2.2rem;
+  --spacing-review-complete-offset-24: 2.4rem;
+  --spacing-review-complete-offset-14: 1.4rem;
+  --spacing-review-complete-offset-13: 1.3rem;
+  --spacing-review-complete-offset-29: 2.9rem;
+  --spacing-review-complete-offset-23: 2.3rem;
+  --radius-review-complete-sticker: 1.4rem;
+  --radius-review-complete-confetti: 2px;
+  --text-review-complete-sticker: 2.5rem;
+  --animate-review-complete-arrive: review-arrive 0.4s ease both;
+  --animate-review-complete-sticker: review-sticker 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  --animate-review-complete-confetti: review-confetti 0.55s ease-out both;
 
   --animate-streak-pop: streakPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --animate-streak-reset: streakReset 0.4s ease-in-out;
@@ -319,21 +319,21 @@
   }
   /* plan 3 */
   .review-actions-grid {
-    @apply grid grid-cols-2 gap-p3-sheet-grid-gap;
+    @apply grid grid-cols-2 gap-review-sheet-grid-gap;
   }
 
   .review-action-tile,
   .review-sheet-close,
   .review-sheet-dismiss {
-    @apply text-base-content cursor-pointer font-p3-sheet font-extrabold
+    @apply text-base-content cursor-pointer font-review-sheet font-extrabold
       transition-neo duration-neo ease-neo;
   }
 
   .review-action-tile {
-    @apply flex min-h-p3-sheet-tile-height min-w-0 items-center gap-p3-sheet-tile-gap
-      py-p3-sheet-tile-y px-p3-sheet-control-x border-2 border-solid border-neo-edge
-      border-image-reset rounded-p3-sheet-control bg-base-100 shadow-p3-sheet-tile
-      text-p3-sheet-tile leading-p3-sheet-normal text-start no-underline wrap-anywhere;
+    @apply flex min-h-review-sheet-tile-height min-w-0 items-center gap-review-sheet-tile-gap
+      py-review-sheet-tile-y px-review-sheet-control-x border-2 border-solid border-neo-edge
+      border-image-reset rounded-review-sheet-control bg-base-100 shadow-review-sheet-tile
+      text-review-sheet-tile leading-review-sheet-normal text-start no-underline wrap-anywhere;
   }
 
   .review-action-tile span {
@@ -345,34 +345,34 @@
   }
 
   .review-action-tile svg {
-    @apply size-p3-sheet-icon shrink-0 fill-none stroke-current stroke-p3-sheet-icon;
+    @apply size-review-sheet-icon shrink-0 fill-none stroke-current stroke-review-sheet-icon;
   }
 
   .review-action-tile--danger {
-    @apply border-p3-sheet-danger-edge text-error-content shadow-p3-sheet-danger;
+    @apply border-review-sheet-danger-edge text-error-content shadow-review-sheet-danger;
   }
 
   .review-sheet-close {
-    @apply relative inline-flex size-p3-sheet-close shrink-0 items-center justify-center p-0
-      border-neo border-solid border-neo-edge border-image-reset rounded-p3-sheet-control
-      bg-base-200 shadow-p3-sheet-control text-p3-sheet-close;
+    @apply relative inline-flex size-review-sheet-close shrink-0 items-center justify-center p-0
+      border-neo border-solid border-neo-edge border-image-reset rounded-review-sheet-control
+      bg-base-200 shadow-review-sheet-control text-review-sheet-close;
   }
 
   .review-sheet-close::before {
-    @apply absolute -inset-p3-sheet-hit content-p3-sheet-hit;
+    @apply absolute -inset-review-sheet-hit content-review-sheet-hit;
   }
 
   .review-sheet-dismiss {
-    @apply w-full min-h-p3-sheet-dismiss-height mt-p3-sheet-dismiss-top
-      py-p3-sheet-dismiss-y px-p3-sheet-control-x border-2 border-solid border-neo-edge
-      border-image-reset rounded-field bg-p3-sheet-dismiss-bg shadow-p3-sheet-control
-      text-p3-sheet-dismiss leading-p3-sheet-normal wrap-anywhere;
+    @apply w-full min-h-review-sheet-dismiss-height mt-review-sheet-dismiss-top
+      py-review-sheet-dismiss-y px-review-sheet-control-x border-2 border-solid border-neo-edge
+      border-image-reset rounded-field bg-review-sheet-dismiss-bg shadow-review-sheet-control
+      text-review-sheet-dismiss leading-review-sheet-normal wrap-anywhere;
   }
 
   .review-action-tile:active,
   .review-sheet-close:active,
   .review-sheet-dismiss:active {
-    @apply translate-p3-sheet-press shadow-none;
+    @apply translate-review-sheet-press shadow-none;
   }
 
   .review-action-tile:focus-visible,
@@ -399,57 +399,57 @@
   }
 
   .review-ease-error {
-    @apply border-p3-ease-error-border shadow-p3-ease-error;
+    @apply border-review-ease-error-border shadow-review-ease-error;
   }
   .review-ease-warning {
-    @apply border-p3-ease-warning-border shadow-p3-ease-warning;
+    @apply border-review-ease-warning-border shadow-review-ease-warning;
   }
   .review-ease-success {
-    @apply border-p3-ease-success-border shadow-p3-ease-success;
+    @apply border-review-ease-success-border shadow-review-ease-success;
   }
   .review-ease-info {
-    @apply border-p3-ease-info-border shadow-p3-ease-info;
+    @apply border-review-ease-info-border shadow-review-ease-info;
   }
   .review-ease:active {
     @apply shadow-none;
   }
 
   .review-complete {
-    @apply shrink-0 animate-p3-complete-arrive motion-reduce:animate-none;
+    @apply shrink-0 animate-review-complete-arrive motion-reduce:animate-none;
   }
   .review-celebration {
     @apply relative grid place-items-center h-24 my-2 mx-auto w-40;
   }
   .review-sticker {
     @apply grid place-items-center size-20 border-neo border-solid border-neo-edge
-      border-image-reset rounded-p3-complete-sticker bg-accent shadow-neo
-      text-p3-complete-sticker animate-p3-complete-sticker motion-reduce:animate-none motion-reduce:-rotate-7;
+      border-image-reset rounded-review-complete-sticker bg-accent shadow-neo
+      text-review-complete-sticker animate-review-complete-sticker motion-reduce:animate-none motion-reduce:-rotate-7;
   }
   .review-confetti {
     @apply absolute inset-0 pointer-events-none;
   }
   .review-confetti i {
-    @apply absolute top-1/2 left-1/2 w-p3-complete-confetti-width h-p3-complete-confetti-height
-      rounded-p3-complete-confetti bg-p3-complete-error animate-p3-complete-confetti
+    @apply absolute top-1/2 left-1/2 w-review-complete-confetti-width h-review-complete-confetti-height
+      rounded-review-complete-confetti bg-review-complete-error animate-review-complete-confetti
       motion-reduce:animate-none;
   }
   .review-confetti i:nth-child(1) {
-    @apply -translate-x-p3-complete-offset-47 -translate-y-p3-complete-offset-22 -rotate-24;
+    @apply -translate-x-review-complete-offset-47 -translate-y-review-complete-offset-22 -rotate-24;
   }
   .review-confetti i:nth-child(2) {
-    @apply translate-x-p3-complete-offset-42 -translate-y-p3-complete-offset-24 rotate-35 bg-p3-complete-info;
+    @apply translate-x-review-complete-offset-42 -translate-y-review-complete-offset-24 rotate-35 bg-review-complete-info;
   }
   .review-confetti i:nth-child(3) {
-    @apply -translate-x-p3-complete-offset-44 translate-y-p3-complete-offset-14 rotate-40 bg-p3-complete-warning;
+    @apply -translate-x-review-complete-offset-44 translate-y-review-complete-offset-14 rotate-40 bg-review-complete-warning;
   }
   .review-confetti i:nth-child(4) {
-    @apply translate-x-p3-complete-offset-42 translate-y-p3-complete-offset-13 -rotate-35 bg-p3-complete-success;
+    @apply translate-x-review-complete-offset-42 translate-y-review-complete-offset-13 -rotate-35 bg-review-complete-success;
   }
   .review-confetti i:nth-child(5) {
-    @apply -translate-x-p3-complete-offset-28 -translate-y-p3-complete-offset-29 rotate-25 bg-p3-complete-info;
+    @apply -translate-x-review-complete-offset-28 -translate-y-review-complete-offset-29 rotate-25 bg-review-complete-info;
   }
   .review-confetti i:nth-child(6) {
-    @apply translate-x-p3-complete-offset-28 translate-y-p3-complete-offset-23 rotate-60 bg-p3-complete-warning;
+    @apply translate-x-review-complete-offset-28 translate-y-review-complete-offset-23 rotate-60 bg-review-complete-warning;
   }
 
   @keyframes review-arrive {
