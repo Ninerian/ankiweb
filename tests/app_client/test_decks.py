@@ -290,3 +290,10 @@ def test_page_does_not_reference_old_client(tmp_path: Path) -> None:
     ):
         assert forbidden not in html
     assert "/shell/static/app-client.css" in html
+
+
+def test_deck_list_is_never_cached(tmp_path: Path) -> None:
+    # Back-navigation from review must show fresh counts, so no history cache.
+    client, _ = _client(tmp_path, ["Alpha"])
+    with client:
+        assert client.get("/app/").headers["cache-control"] == "no-store"

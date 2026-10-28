@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
@@ -50,7 +50,9 @@ def add_decks_routes(
         return RedirectResponse("/app/", status_code=307)
 
     @router.get("/", response_class=HTMLResponse)
-    async def decks() -> str:
+    async def decks(response: Response) -> str:
+        # Counts change while studying; never reuse on back-navigation.
+        response.headers["Cache-Control"] = "no-store"
         rows = await get_service().run(deck_rows)
         body = render(
             "app/decks.html.jinja",
