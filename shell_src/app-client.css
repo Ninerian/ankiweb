@@ -420,19 +420,19 @@
   }
 
   .review-ease-error {
-    @apply border-[color:var(--color-error-border)] [box-shadow:3px_3px_0_var(--color-error-shadow)];
+    @apply border-p3-ease-error-border shadow-p3-ease-error;
   }
   .review-ease-warning {
-    @apply border-[color:var(--color-warning-border)] [box-shadow:3px_3px_0_var(--color-warning-shadow)];
+    @apply border-p3-ease-warning-border shadow-p3-ease-warning;
   }
   .review-ease-success {
-    @apply border-[color:var(--color-success-border)] [box-shadow:3px_3px_0_var(--color-success-shadow)];
+    @apply border-p3-ease-success-border shadow-p3-ease-success;
   }
   .review-ease-info {
-    @apply border-[color:var(--color-info-border)] [box-shadow:3px_3px_0_var(--color-info-shadow)];
+    @apply border-p3-ease-info-border shadow-p3-ease-info;
   }
   .review-ease:active {
-    @apply [box-shadow:none];
+    @apply shadow-none;
   }
 
   .review-complete {
