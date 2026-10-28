@@ -1,8 +1,8 @@
-<main id="stage" class="flex min-h-0 flex-1 flex-col px-4 py-4">
+<main id="stage" class="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-3 pt-2">
   {% if view %}
-  <article id="current-card" class="flashcard card neo-press flex min-h-80 flex-1 flex-col overflow-hidden bg-base-200 p-5 sm:p-7">
+  <article id="current-card" class="flashcard card neo-press my-auto flex min-h-[280px] shrink-0 flex-col border-[3px] bg-base-200 px-5 py-6 shadow-[4px_4px_0_var(--color-neo-shadow)]">
     <div class="flex flex-wrap items-start justify-between gap-2">
-      <span id="card-deck" class="badge h-auto max-w-full whitespace-normal border-2 border-[var(--color-neo-border)] bg-base-300 px-3 py-2 font-bold" dir="auto">{{ view.deck }}</span>
+      <span id="card-deck" class="badge h-auto max-w-full rounded-full whitespace-normal [overflow-wrap:anywhere] border-[1.5px] border-[var(--color-neo-border)] bg-secondary px-[10px] py-1 text-[0.72rem] leading-[1.4] font-extrabold uppercase tracking-[0.06em] text-secondary-content" dir="auto">{{ view.deck }}</span>
       <div class="flex flex-wrap gap-2">
         {% if view.other_notetype %}<span class="badge badge-outline h-auto whitespace-normal py-2">{{ s('app_review_other_note_type') }}</span>{% endif %}
         {% if view.marked %}<span id="mark-icon" class="badge badge-outline" title="{{ s('app_review_marked') }}" aria-label="{{ s('app_review_marked') }}">⭐</span>{% endif %}
@@ -10,10 +10,10 @@
       </div>
     </div>
     {% if not view.other_notetype %}
-    <div class="flex flex-1 flex-col justify-center break-words py-8 text-center" dir="auto">
+    <div class="flex flex-1 flex-col justify-center break-words py-4 text-center" dir="auto">
       <div class="mb-2 text-[0.8rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-muted)]">{{ s('app_review_vocab_front') }}</div>
     {% else %}
-    <div class="flex flex-1 flex-col justify-center break-words py-8" dir="auto">
+    <div class="flex flex-1 flex-col justify-center break-words py-4" dir="auto">
     {% endif %}
       <div id="card-q" class="review-card-content">{{ view.question_html | safe }}</div>
       <div id="answer-box" class="review-card-content animate-reveal-answer motion-reduce:animate-none mt-6 border-t-2 border-dashed border-base-300 pt-6" data-show="$revealed" style="display:none">

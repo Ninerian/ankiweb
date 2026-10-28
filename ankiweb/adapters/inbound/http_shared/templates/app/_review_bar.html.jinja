@@ -1,7 +1,7 @@
-<footer id="bar" class="w-full px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
+<footer id="bar" class="w-full shrink-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
   {% if view and not completed %}
   <div id="bar-show-answer" data-show="!$revealed">
-    <button id="btn-show-ans" type="button" class="btn btn-accent btn-block btn-lg neo-press font-black" data-on:click="$revealed = true">{{ tr.studying_show_answer() | tr_clean }}</button>
+    <button id="btn-show-ans" type="button" class="btn btn-accent btn-block neo-press h-16 min-h-0 rounded-2xl border-[3px] border-[var(--color-neo-border)] whitespace-normal text-[1.35rem] leading-tight font-black uppercase tracking-[-0.01em] shadow-[3px_3px_0_var(--color-neo-shadow)]" data-on:click="$revealed = true">{{ tr.studying_show_answer() | tr_clean }}</button>
   </div>
   <div id="bar-ease-buttons" class="grid grid-cols-4 gap-2" data-show="$revealed" style="display:none">
     {% for number, name in [(1, tr.studying_again() | tr_clean), (2, tr.studying_hard() | tr_clean), (3, tr.studying_good() | tr_clean), (4, tr.studying_easy() | tr_clean)] %}
