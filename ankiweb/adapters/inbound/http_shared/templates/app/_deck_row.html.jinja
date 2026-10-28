@@ -1,21 +1,27 @@
-<article id="deck-{{ view.row.deck_id }}" data-show="{{ view.show }}">
-  <div>
-    <span aria-hidden="true">{{ view.row.emoji }}</span>
-    <h3>{{ view.row.name }}</h3>
-  </div>
-  <div>
-    <span>{{ view.row.due }} {{ tr.statistics_due_count() }}</span>
-    <span>{{ view.row.new }} {{ tr.actions_new() }}</span>
-  </div>
-  <div>
-    <span>{{ s("app_decks_progress") }}</span>
-    <span>{{ view.row.progress_pct }}%</span>
-  </div>
-  <div role="progressbar" aria-label="{{ s('app_decks_progress_for', deck=view.row.name) }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ view.row.progress_pct }}">
-    <div class="meter-fill" style="width: {{ view.row.progress_pct }}%"></div>
-  </div>
-  <div>
-    <a href="/app/review?deck={{ view.row.deck_id }}" aria-label="{{ s('app_decks_learn_deck', deck=view.row.name) }}">{{ tr.decks_learn_header() }}</a>
-    <a href="/app/add?deck={{ view.row.deck_id }}">{{ s("app_decks_edit_add") }}</a>
+<article id="deck-{{ view.row.deck_id }}" class="card deck-card bg-base-200" data-show="{{ view.show }}">
+  <div class="card-body gap-3 p-4">
+    <div class="flex items-center gap-3">
+      <span class="text-3xl" aria-hidden="true">{{ view.row.emoji }}</span>
+      <h3 class="min-w-0 text-xl font-black tracking-tight break-words">{{ view.row.name }}</h3>
+    </div>
+    <div class="flex flex-wrap gap-2">
+{% if view.row.due %}
+      <span class="badge badge-error font-bold">{{ view.row.due }} {{ tr.statistics_due_count() }}</span>
+{% else %}
+      <span class="badge badge-success font-bold">{{ view.row.due }} {{ tr.statistics_due_count() }}</span>
+{% endif %}
+      <span class="badge badge-info font-bold">{{ view.row.new }} {{ tr.actions_new() }}</span>
+    </div>
+    <div class="flex justify-between text-xs font-black uppercase tracking-widest text-base-content/70">
+      <span>{{ s("app_decks_progress") }}</span>
+      <span>{{ view.row.progress_pct }}%</span>
+    </div>
+    <div class="h-3 overflow-hidden rounded-full border-2 border-base-content bg-base-300" role="progressbar" aria-label="{{ s('app_decks_progress_for', deck=view.row.name) }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ view.row.progress_pct }}">
+      <div class="meter-fill" style="width: {{ view.row.progress_pct }}%"></div>
+    </div>
+    <div class="flex gap-2">
+      <a class="btn btn-primary neo-press min-h-11 flex-1" href="/app/review?deck={{ view.row.deck_id }}" aria-label="{{ s('app_decks_learn_deck', deck=view.row.name) }}">{{ tr.decks_learn_header() }}</a>
+      <a class="btn btn-ghost neo-press min-h-11 flex-1" href="/app/add?deck={{ view.row.deck_id }}">{{ s("app_decks_edit_add") }}</a>
+    </div>
   </div>
 </article>

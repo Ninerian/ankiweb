@@ -1,30 +1,31 @@
-<main id="decks-page" data-signals="{q: ''}">
-  <header>
-    <p>{{ s("app_decks_study_space") }}</p>
-    <h1>{{ s("app_decks_my_decks") }}</h1>
+<main id="decks-page" class="mx-auto flex w-full max-w-md flex-col gap-5 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]" data-signals="{q: ''}">
+  <header class="flex flex-col gap-1">
+    <p class="text-xs font-black uppercase tracking-widest text-base-content/70">{{ s("app_decks_study_space") }}</p>
+    <h1 class="mb-3 text-4xl leading-none font-black tracking-tight">{{ s("app_decks_my_decks") }}</h1>
 {% if views %}
-    <label>
+    <label class="input flex min-h-11 w-full items-center gap-2 border-base-content bg-base-200">
+      <svg class="size-5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
       <span class="sr-only">{{ s("app_decks_search") }}</span>
-      <input id="deck-search" type="search" placeholder="{{ s('app_decks_search') }}" autocomplete="off" data-bind:q>
+      <input id="deck-search" class="grow" type="search" placeholder="{{ s('app_decks_search') }}" autocomplete="off" data-bind:q>
     </label>
 {% endif %}
   </header>
 {% if views %}
-  <section aria-labelledby="decks-heading">
-    <h2 id="decks-heading">{{ s("app_decks_your_decks") }}</h2>
-    <div id="deck-list">
+  <section class="flex flex-col gap-3" aria-labelledby="decks-heading">
+    <h2 id="decks-heading" class="text-xs font-black uppercase tracking-widest text-base-content/70">{{ s("app_decks_your_decks") }}</h2>
+    <div id="deck-list" class="flex flex-col gap-4">
 {% for view in views %}
 {% include "app/_deck_row.html.jinja" %}
 {% endfor %}
     </div>
-    <p id="empty-state" role="status" style="display:none" data-show="{{ no_match }}">
-      <strong>{{ s("app_decks_no_results") }}</strong>
+    <p id="empty-state" class="deck-card rounded-box bg-base-200 p-6 text-center font-bold text-base-content/70" role="status" style="display:none" data-show="{{ no_match }}">
+      <strong class="block text-lg font-black text-base-content">{{ s("app_decks_no_results") }}</strong>
       {{ s("app_decks_try_search") }}
     </p>
   </section>
 {% else %}
-  <section id="no-decks">
-    <a href="/app/add">{{ s("app_decks_add_first") }}</a>
+  <section id="no-decks" class="deck-card rounded-box bg-base-200 p-6 text-center">
+    <a class="btn btn-primary neo-press min-h-11" href="/app/add">{{ s("app_decks_add_first") }}</a>
   </section>
 {% endif %}
 </main>

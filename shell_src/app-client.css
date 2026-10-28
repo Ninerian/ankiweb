@@ -258,4 +258,10 @@
   .av-example mark {
     @apply px-1 rounded-sm bg-accent text-accent-content font-bold;
   }
+
+  /* plan 2 */
+  .deck-card {
+    border: var(--border) solid var(--color-neo-border);
+    box-shadow: 3px 3px 0 var(--color-neo-shadow);
+  }
 }
