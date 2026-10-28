@@ -44,10 +44,12 @@ MANIFEST = {
     ],
 }
 
-# Cache-first only for /shell/static/ GETs (versioned by deploy: bump CACHE to evict).
-# Everything else is not intercepted, so the browser's normal network path applies.
+# Network-first for /shell/static/ GETs: a rebuilt asset under an unchanged URL must show up
+# on the next load, so every request revalidates (cache: "no-cache"). The cache only serves
+# as offline fallback. Bump CACHE when this script changes: its bytes change, the browser
+# installs the new worker, and activate evicts the old cache.
 SERVICE_WORKER_JS = """\
-const CACHE = "ankiweb-shell-v1";
+const CACHE = "ankiweb-shell-v2";
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -66,10 +68,12 @@ self.addEventListener("fetch", (event) => {
   if (!url.pathname.startsWith("/shell/static/")) return;
   event.respondWith(
     caches.open(CACHE).then((cache) =>
-      cache.match(req).then((hit) => hit || fetch(req).then((res) => {
-        if (res.ok) cache.put(req, res.clone());
-        return res;
-      }))
+      fetch(req, { cache: "no-cache" })
+        .then((res) => {
+          if (res.ok) cache.put(req, res.clone());
+          return res;
+        })
+        .catch(() => cache.match(req).then((hit) => hit || Response.error()))
     )
   );
 });
