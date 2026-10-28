@@ -1,0 +1,39 @@
+{% if completed and summary %}
+{% if summary.mood == 'perfect' %}
+  {% set emoji = '🏆' %}{% set title = s('app_review_complete_perfect_title') %}{% set subtitle = s('app_review_complete_perfect_subtitle') %}
+{% elif summary.mood == 'great' %}
+  {% set emoji = '🌟' %}{% set title = s('app_review_complete_great_title') %}{% set subtitle = s('app_review_complete_great_subtitle') %}
+{% elif summary.mood == 'good' %}
+  {% set emoji = '🌱' %}{% set title = s('app_review_complete_good_title') %}{% set subtitle = s('app_review_complete_good_subtitle') %}
+{% else %}
+  {% set emoji = '💪' %}{% set title = s('app_review_complete_tough_title') %}{% set subtitle = s('app_review_complete_tough_subtitle') %}
+{% endif %}
+<section id="session-complete" data-mood="{{ summary.mood }}" aria-labelledby="sc-title" class="review-complete card neo-press my-auto w-full bg-base-200 p-5 text-center sm:p-8">
+  <span class="text-xs font-black uppercase tracking-widest text-[var(--color-muted)]">{{ s('app_review_complete_session') }}</span>
+  <div class="review-celebration" aria-hidden="true"><div class="review-confetti"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="review-sticker">{{ emoji }}</div></div>
+  <h1 id="sc-title" tabindex="-1" class="text-3xl font-black tracking-tight sm:text-4xl">{{ title }}</h1>
+  <p id="sc-sub" class="mx-auto mt-2 max-w-sm text-sm text-[var(--color-muted)]">{{ subtitle }}{% if summary.hard_effort %} {{ s('app_review_complete_hard_extra') }}{% endif %}</p>
+  <div class="stats mt-5 grid w-full grid-cols-3 border-2 border-[var(--color-neo-border)] bg-base-100" aria-label="{{ s('app_review_complete_statistics') }}">
+    <div class="stat min-w-0 px-1 py-3"><strong id="sc-reviewed" class="stat-value text-xl sm:text-2xl">{{ summary.reviewed }}</strong><span class="stat-title whitespace-normal text-xs">{{ s('app_review_complete_reviewed') }}</span></div>
+    <div class="stat min-w-0 px-1 py-3"><strong id="sc-recall" class="stat-value text-xl sm:text-2xl">{{ summary.recall_percent }}%</strong><span class="stat-title whitespace-normal text-xs">{{ s('app_review_complete_recall') }}</span></div>
+    <div class="stat min-w-0 px-1 py-3"><strong id="sc-streak" class="stat-value text-xl sm:text-2xl">{{ streak }}</strong><span class="stat-title whitespace-normal text-xs">{{ s('app_review_complete_streak') }}</span></div>
+  </div>
+  <div class="mt-5 text-start">
+    <h2 class="text-sm font-black">{{ s('app_review_complete_ratings') }}</h2>
+    {% set ratings = [(1, 'again', tr.studying_again() | tr_clean), (2, 'hard', tr.studying_hard() | tr_clean), (3, 'good', tr.studying_good() | tr_clean), (4, 'easy', tr.studying_easy() | tr_clean)] %}
+    <div class="mt-2 flex h-4 overflow-hidden rounded-full border-2 border-[var(--color-neo-border)] bg-base-300" aria-hidden="true">
+      {% for number, name, label in ratings %}<span id="sc-bar-{{ name }}" {% if number == 1 %}class="bg-error"{% elif number == 2 %}class="bg-warning"{% elif number == 3 %}class="bg-success"{% else %}class="bg-info"{% endif %} style="width: {{ summary.percentages[number] }}%"></span>{% endfor %}
+    </div>
+    <div class="mt-3 flex flex-wrap gap-2">
+      {% for number, name, label in ratings %}<span id="sc-count-{{ name }}" {% if number == 1 %}class="badge h-auto whitespace-normal border-2 py-2 font-bold bg-error text-error-content border-[var(--color-error-border)]"{% elif number == 2 %}class="badge h-auto whitespace-normal border-2 py-2 font-bold bg-warning text-warning-content border-[var(--color-warning-border)]"{% elif number == 3 %}class="badge h-auto whitespace-normal border-2 py-2 font-bold bg-success text-success-content border-[var(--color-success-border)]"{% else %}class="badge h-auto whitespace-normal border-2 py-2 font-bold bg-info text-info-content border-[var(--color-info-border)]"{% endif %}>{{ label }} {{ summary.tally[number] }}</span>{% endfor %}
+    </div>
+  </div>
+  <p class="mt-4 text-start text-xs text-[var(--color-muted)]">{{ s('app_review_complete_recall_note') }}</p>
+  <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+    <a class="btn neo-press flex-1" href="/app/">{{ s('app_review_complete_back_to_decks') }}</a>
+    {% if study_again %}<a id="sc-restart" class="btn btn-accent neo-press flex-1" href="/app/review?deck={{ deck_id }}">{{ s('app_review_complete_study_again') }}</a>{% endif %}
+  </div>
+</section>
+{% else %}
+<section id="session-complete" hidden></section>
+{% endif %}
