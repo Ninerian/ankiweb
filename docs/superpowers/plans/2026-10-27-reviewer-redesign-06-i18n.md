@@ -55,6 +55,8 @@ Bestehende Lösung: `docs/superpowers/plans/2026-06-02-ankiweb-i18n-i1-language-
 6. **Anki-Schlüssel** nie raten: `getattr(tr, key)()` in `en` und `de` (Test 6.2).
 7. **Vor der Parallelphase zurückgestellt:** 6.3 (Plan 2 bis 4 schreiben lokalisiert), 6.5 (Plan 5), Browser-Smoke 6.6 und `README`/`DESIGN`/`REFERENCE` in 6.7 (Dateien außerhalb des Besitzes dieses Schritts), `test_no_hardcoded_text` (Plan 1 `ping.html.jinja` ist absichtlich Klartext; Gate kommt mit Plan 5, wenn `ping` entfällt) und der Text-Vergleich in `test_html_lang_matches_rendered_text` (braucht lokalisierte Seiten aus Plan 2 bis 4). Der Prozess-Global-Test (`Accept-Language` ändert nichts) läuft mit 6.4, weil er das `/app`-Layout rendert.
 
+**Status:** Das Klartext-Gate ist inzwischen aktiv (§6.2), mit einer engen Ausnahme für `Ready` auf der temporären Ping-Seite. Der Browser-Smoke von `/app/ping` ist ausgeführt (§6.6); der Smoke der Seiten aus Plänen 2–4 bleibt zurückgestellt.
+
 ## 3. Texte klassifizieren (Inventur aus den Mockups, belegt)
 
 Mockups enthalten ~110 sichtbare Textknoten plus JS-Toasts und `confirm()`. Zuordnung (Auszug, Vollständigkeit prüft Test 6.4):
@@ -98,12 +100,13 @@ Regel: **Schlüssel nie raten.** Jeder Anki-Schlüssel wird im Test per `getattr
 
 - `<html lang="{{ html_lang }}" dir="{{ html_dir }}">` im `/app/*`-Layout (Plan 1 Basis-Template). **Quelle der Wahrheit ist `Settings.lang`, nicht `anki.lang.current_lang`.** Belegt: `set_lang("xx")` lässt `current_lang == "xx"`, die Texte sind aber Englisch; aus `current_lang` käme `<html lang="xx">` über englischem Inhalt. `set_lang` selbst prüft nichts, und `tr_legacyglobal` hat keinen Getter für die wirksame Sprache.
 - Ableitung in `core/app_client/lang.py` (reine Funktion, nur `anki.lang`):
-  1. `disk = anki.lang.lang_to_disk_lang(settings.lang or "en")` normalisiert `_`/`-` und Aliase (belegt: `zh_CN`→`zh-CN`, `de_DE`→`de`, `ar_SA`→`ar`, `pt_BR`→`pt-BR`, `no`→`nb`).
-  2. Bekannt nur, wenn `disk in {lang_to_disk_lang(c) for _, c in anki.lang.langs}`. Belegt: das erkennt `de_DE`, `nb_NO`, `ar_SA` und verwirft `xx`. **Nicht** gegen die Rohcodes prüfen (`"de" in {c}` ist falsch, die Liste führt `de_DE`) und **nicht** gegen `lang_to_disk_lang`-Ausgabe allein (`nb` fehlt dort, obwohl `no` darauf zeigt).
-  3. Unbekannt → `html_lang = "en"`, `html_dir = "ltr"` (deckungsgleich mit dem tatsächlich englischen Text).
+  1. `disk = anki.lang.lang_to_disk_lang(settings.lang or "en")` normalisiert `_`/`-` und Aliase (belegt: `zh_CN`→`zh-CN`, `de_DE`→`de`, `ar_SA`→`ar`, `pt_BR`→`pt-BR`). Der Disk-Code allein bestimmt nicht, welche Texte Anki tatsächlich lädt.
+  2. Bekannt, wenn `disk in {lang_to_disk_lang(c) for _, c in anki.lang.langs}`. Ausnahme bei Anki 26.9.2: Ein Eingabecode mit Basissprache `nb` wird auch mit Disk-Code `nb` als Norwegisch erkannt. `no` ergibt zwar Disk-Code `nb`, lädt aber tatsächlich englische Texte und fällt deshalb auf `en` zurück; `nb_NO` ergibt `nb-NO` und lädt Norwegisch. Verifiziert mit `actions_decks()`.
+  3. Unbekannt → `html_lang = "en"`, `html_dir = "ltr"` (englischer Fallback).
   4. `html_lang = disk` (BCP-47 mit Bindestrich, direkt als `lang=` gültig).
   5. `html_dir = "rtl"` wenn `anki.lang.is_rtl(disk.split("_")[0].split("-")[0])`.
 - Eine Funktion `resolve_lang(settings) -> ResolvedLang(html_lang, html_dir, catalog_lang)` liefert alle drei Werte; `catalog_lang` (Basissprache, z. B. `de`) wählt den Block in `strings.py`. Genau eine Stelle, die Sprache deutet. `html_dir = "rtl"` wenn `anki.lang.is_rtl(base)` mit **Basissprache** (`lang.split("_")[0]`). Belegt: `is_rtl` vergleicht den vollen Code gegen `he, ar, fa, ug, yi`, also ist `is_rtl("ar")` wahr, `is_rtl("ar_SA")` aber **falsch**; ohne Basissprache bliebe `ar_SA` fälschlich LTR. Das alte `shell.html.jinja`/`login.html.jinja` (fest `en`) bleibt unberührt.
+- **Upstream-Defekt (Anki 26.9.2, 2026-10-28 gemessen):** `set_lang("fa")` meldet `Failed to create bundle` und Anki fällt auf Englisch zurück. Bis das Bundle repariert ist, löst `fa` nach `en/ltr` auf; ein Test schlägt bei Reparatur des Bundles bewusst fehl. Der Vergleich einzelner Schlüssel ist keine zuverlässige Laufzeit-Erkennung: `tl` übersetzt `actions_add` und `actions_decks`, verwendet aber für `studying_again()` den englischen Fallback „Again“; Fallback pro Schlüssel ist dort korrekt.
 - RTL und Layout: Das Mockup nutzt physische Richtungen (`left/right`, `translateX`). Für RTL **logische** Tailwind-Klassen (`ms-*`, `me-*`, `ps-*`, `text-start`, `start-0`) und `rtl:`-Varianten bei Pfeilen ("Next →", "Back ←" spiegeln). *Ungeprüft:* wie `daisyUI 5` `join`, `steps`, `modal-bottom` unter `dir=rtl` aussehen.
 - Manifest (Plan 5): `name`/`short_name`/`description` sind bisher fest ("AnkiWeb"). Pro Start-Sprache ableiten, `lang` und `dir` im Manifest setzen. `name` bleibt Markenname und wird **nicht** übersetzt; `description` ja (eigener String).
 - Service Worker/Offline-Seite (Plan 5): Die precachte Offline-Seite wird in der Start-Sprache gerendert. Da die Sprache beim Start fest ist, genügt ein Cache-Name ohne Sprachanteil; **ändert sich `ANKIWEB_LANG`, ändert sich die Offline-Seite → Cache-Hash muss `lang` einschließen** (Plan 5, 5.1 ergänzen).
@@ -114,19 +117,19 @@ Regel: **Schlüssel nie raten.** Jeder Anki-Schlüssel wird im Test per `getattr
 Jede Aufgabe: Test zuerst, dann Code, dann Commit.
 
 ### 6.0 Gate: Sprachvertrag festschreiben (kein Code)
-- [ ] Test `test_lang_is_process_global` wandert nach 6.4 (braucht das gerenderte Layout, siehe §2a Punkt 7).
+- [x] Prozessglobaler Sprachvertrag: `test_ping_uses_startup_language_not_accept_language` prüft unterschiedliche `Accept-Language`-Header gegen dieselbe Startsprache.
 - [x] Entscheidung dokumentiert (§2a): kein In-App-Switcher, kein Toggle im Mockup.
 
 ### 6.1 `core/app_client/strings.py` und Jinja-Funktion `s`
-- [ ] `STRINGS: dict[str, dict[str, str]] = {"en": {...}, "de": {...}}`. Schlüssel `snake_case`, Namensraum `app_*`.
-- [ ] `def s(key: str, **fmt: object) -> str`: Sprache aus `resolve_lang(settings).catalog_lang` (siehe §5), **nicht** aus `anki.lang.current_lang` (kann bei unbekanntem Code `xx` stehen, Texte sind dann Englisch). Wird zur Aufrufzeit aufgelöst, nicht beim Import (sonst eingefroren, I2-Fehler `_TOOLBAR_HTML`). Fallback: Block `catalog_lang` → `en`; unbekannter Schlüssel → `KeyError` (kein stilles Durchreichen).
-- [ ] In `templating.py` als Global `s` registrieren, daneben `tr`, `tr_clean`. **Architekturregel:** `core/app_client/strings.py` importiert nur `anki.lang`, nichts aus `adapters` (`tests/test_architecture_boundaries.py`).
-- [ ] Tests: Fallback-Kette, `KeyError`, Platzhalter, Sprachwechsel zur Laufzeit wirkt (`set_lang("de")` dann Aufruf).
+- [x] `STRINGS: dict[str, dict[str, str]]` mit `en`/`de`, `snake_case` und den Schlüsselbereichen `app_*`.
+- [x] `s(key, *, lang, **fmt)` verwendet die aufgelöste Katalogsprache aus dem Kontext, nicht `anki.lang.current_lang`: Sprachblock → Englisch → `KeyError`.
+- [x] Jinja-Global `s` neben `tr`/`tr_clean`; Core importiert keine Adapter.
+- [x] Tests für Fallback, `KeyError`, Platzhalter, Jinja-Escaping und unterschiedliche Render-Kontexte. Ein `set_lang`-Wechsel allein beeinflusst eigene Strings absichtlich nicht: Quelle bleibt `Settings.lang`.
 
 ### 6.2 Vollständigkeits-Test (Quelle der Wahrheit)
-- [ ] `test_strings_complete`: jeder Schlüssel in `de` existiert in `en`; **jeder in `en` vorhandene Schlüssel wird in einem `/app`-Template referenziert** (`{{ s("…") }}`) und umgekehrt. Fängt Tippfehler und tote Strings.
-- [ ] `test_anki_keys_resolve`: alle aus `/app`-Templates referenzierten `tr.<key>`-Namen werden per `getattr(tr, key)` aufgelöst, in `en` und `de`.
-- [ ] `test_no_hardcoded_text`: Template-Parse (Jinja AST oder HTML) findet **keine** sichtbaren Textknoten ohne `{{ … }}`; Whitelist für Symbole/Emoji/Zahlen. Verhindert, dass Mockup-Text wieder hardcodiert hineinrutscht.
+- [x] `test_strings_complete`: referenzierte Schlüssel müssen in `en` stehen, alle nicht-englischen Schlüssel in `en`; nur ausdrücklich benannte Seed-Schlüssel dürfen vor Plänen 2–4 noch ungenutzt sein.
+- [x] `test_anki_keys_resolve`: Anki-Inventur und referenzierte Methoden werden in `en` und `de` geprüft; erforderliche Argumente werden anhand der Signatur berücksichtigt.
+- [x] `test_no_hardcoded_text` prüft sichtbare Textknoten und Attribute; ausdrücklich ausgenommen sind der Markenname und `Ready` auf der temporären Ping-Seite.
 
 ### 6.3 Templates der Pläne 2 bis 5 umstellen
 - [ ] Plan 2 (Deck-Liste), Plan 3 (Review, Actions-Sheet, Toasts), Plan 4 (Wizard, Summary, Toasts, `confirm`-Ersatz), Plan 5 (Offline-Seite). Pro Plan: alle Texte aus §3 ersetzen. **Nur Text**: nie IDs, Klassen, `data-*`, Routen, Signalnamen ändern (I2-Regel).
@@ -135,9 +138,9 @@ Jede Aufgabe: Test zuerst, dann Code, dann Commit.
 - [ ] Beispieltexte im Editor-Placeholder ("e.g. die Herausforderung") sind **Beispiele für Deutsch-Vokabeln**, keine UI-Texte: Entscheidung offen (§8), bis dahin eigener String pro Sprache.
 
 ### 6.4 `<html lang/dir>` und Layout
-- [ ] `app/layout.html.jinja` (Plan 1 Basis-Template, **nicht** das alte `shell.html.jinja:2`/`login.html.jinja:2`): `<html lang="{{ html_lang }}" dir="{{ html_dir }}">`. Werte aus `resolve_lang(settings)` in `core/app_client/lang.py`, als Jinja-Globals bzw. Render-Kontext gesetzt. Auch die Offline-Seite und die Login-Weiterleitung nutzen dasselbe Layout.
-- [ ] Tests `tests/test_app_lang.py` (Tabelle, alle belegt): `""`→`en/ltr`; `en`→`en/ltr`; `zh_CN` und `zh-CN`→`zh-CN/ltr`; `de_DE`→`de/ltr`; `pt_BR`→`pt-BR/ltr`; `nb_NO` und `no`→`nb/ltr` (Aliaskette); `ar`→`ar/rtl`; **`ar_SA`→`ar/rtl`** (Regression: `is_rtl("ar_SA")` ist falsch, Basissprache nötig); `he`, `fa`→`rtl`; **`xx`→`en/ltr`** (Regression: `current_lang` würde `xx` liefern).
-- [ ] Test `test_html_lang_matches_rendered_text`: für jede der 55 Sprachen `ANKIWEB_LANG` setzen, rendern, `lang=` gegen `lang_to_disk_lang` prüfen und sicherstellen, dass bei bekannter Sprache der Titel nicht dem englischen entspricht (außer `en`). Fängt Abweichung zwischen `lang`-Attribut und Inhalt.
+- [x] `app/base.html.jinja`: `<html lang>` und `dir` kommen aus `resolve_lang(settings)`; die Ping-Seite nutzt den Render-Kontext. Offline-Seite und Login-Weiterleitung bleiben bei Plan 5.
+- [x] Tests `tests/app_client/test_i18n_lang.py`: `""`/`en`→`en/ltr`; `zh_CN`/`zh-CN`→`zh-CN/ltr`; `de_DE`→`de/ltr`; `pt_BR`→`pt-BR/ltr`; `nb`→`nb/ltr`, `nb_NO`→`nb-NO/ltr`, `no`→`en/ltr`; `ar`/`ar_SA`→`ar/rtl`; `he`→`he/rtl`; `fa`/`xx`→`en/ltr`. Für `no`/`nb`/`nb_NO` wird die tatsächlich gerenderte Anki-Übersetzung geprüft.
+- [x] Alle unterstützten Codes gegen die erwartete Richtung geprüft. Der Vergleich aller lokalisierten Seitentitel wartet auf Pläne 2–4; `fa` hat gegenwärtig ein defektes Anki-Bundle.
 - [ ] Logische Tailwind-Klassen statt `left/right` (Review-Review beim Template-Umbau in den Plänen 2 bis 4), Pfeilzeichen per `rtl:`-Variante spiegeln.
 
 ### 6.5 Manifest, Offline, Cache-Hash
@@ -146,13 +149,15 @@ Jede Aufgabe: Test zuerst, dann Code, dann Commit.
 
 ### 6.6 Sprachsmoke (echter Browser, ungeprüft bis ausgeführt)
 - [ ] Server mit `ANKIWEB_LANG=de` und `ANKIWEB_LANG=ar` starten; `/app/`, `/app/review`, `/app/add` bei 375x812 prüfen: keine englischen Reste außer Markenname, kein Textüberlauf (deutsche Wörter sind länger: "Fälligkeitsdatum setzen", "Karte bis morgen aufschieben"), RTL spiegelt korrekt.
+  Vorab-Smoke auf `/app/ping` im Chromium bei 375×812: `ANKIWEB_LANG=de` → `<html lang="de" dir="ltr">`, `ANKIWEB_LANG=ar_SA` → `<html lang="ar" dir="rtl">`. `Ready` ist das unveränderte Plan-1-Ping-Label.
 - [ ] Überlauf-Test: längste Anki-Übersetzung pro Schlüssel über alle 55 Sprachen messen (`max(len(getattr(tr,k)()))` mit `set_lang` je Sprache) und gegen Button-Breite prüfen; Ease-Kacheln und Actions-Sheet sind die engsten Stellen.
+  Messung 2026-10-28 über alle Anki-Sprachcodes für 12 Review-/Aktions-Labels: längste Ease-Labels `Again` 11, `Hard` 9, `Good` 8, `Easy` 10 Zeichen; `studying_flag_card` 29 und `studying_bury_card` 28 Zeichen. Vergleich mit realen Button-Breiten und übrigen Labels erst mit Plan 3 möglich. Zeichenlänge ist kein Ersatz für gemessene Pixelbreite.
 - [ ] Screenshots de/ar neben `en` in `design/reviewer-redesign/` nur auf Wunsch (Repo-Größe).
 
 ### 6.7 Dokumentation
 - [ ] `README.md` "Language": Satz ergänzen, dass `/app/*` dieselbe Variable nutzt; eigene Strings nur en/de, sonst Fallback Englisch.
 - [ ] `DESIGN.md`/`REFERENCE.md`: Abschnitt "Sprachen" (Mechanismus, Fallback, RTL-Status).
-- [ ] Anleitung "Sprache ergänzen": `strings.py` um einen Block erweitern, Test 6.2 muss grün sein.
+- [x] Anleitung in diesem Plan: Sprache ergänzen durch neuen Sprachblock in `strings.py`; Schlüssel müssen in `en` existieren und dieselben Format-Platzhalter haben. Fehlende Übersetzungen fallen pro Schlüssel auf Englisch zurück. Anschließend `uv run pytest tests/app_client/test_i18n_complete.py` ausführen.
 
 ## 7. Commits
 
