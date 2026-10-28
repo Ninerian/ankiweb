@@ -261,13 +261,12 @@
 
   /* plan 2 */
   .deck-card {
-    @apply border-neo border-solid border-neo-edge shadow-deck-card;
+    @apply border-neo border-solid border-neo-edge shadow-neo;
   }
 }
 
 /* plan 2 */
 @theme inline {
-  --shadow-deck-card: 4px 4px 0 var(--color-neo-shadow);
   --color-deck-track: var(--color-meter-track);
 }
 
