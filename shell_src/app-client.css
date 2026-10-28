@@ -268,4 +268,37 @@
 /* plan 2 */
 @theme inline {
   --shadow-deck-card: 4px 4px 0 var(--color-neo-shadow);
+  --color-deck-track: var(--color-meter-track);
+}
+
+@theme {
+  --container-deck: 430px;
+  --radius-deck: 10px;
+  --text-deck-label: 0.72rem;
+  --text-deck-title: 2.35rem;
+  --text-deck-name: 1.18rem;
+  --text-deck-pill: 0.73rem;
+  --text-deck-btn: 0.9rem;
+  --text-deck-empty: 1.1rem;
+  --tracking-deck-label: 0.08em;
+  --tracking-deck-title: -0.04em;
+  --tracking-deck-name: -0.03em;
+  --leading-deck-name: 1.15;
+  --leading-deck-pill: 1.3;
+}
+
+@utility depth-flat {
+  --depth: 0;
+}
+
+@utility border-deck-pill {
+  border-width: 1.5px;
+}
+
+@utility pt-deck-safe {
+  padding-top: max(1.5rem, env(safe-area-inset-top));
+}
+
+@utility pb-deck-safe {
+  padding-bottom: max(2.25rem, env(safe-area-inset-bottom));
 }
