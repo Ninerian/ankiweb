@@ -126,6 +126,16 @@ def test_five_hundred_reviews_expand_without_a_streak_cap(temp_collection):
     assert col.db.scalar("select count(*) from revlog") == 501
 
 
+def test_long_streak_stops_at_most_recent_reset(temp_collection):
+    col = temp_collection
+    _, card_id = _add_card(col, "Reset in long history")
+    start = day_start_ms(col)
+    for index in range(500):
+        _insert_review(col, card_id, start + index + 1, 1 if index == 496 else 3)
+
+    assert streak.current_streak(col) == 3
+
+
 @pytest.mark.parametrize(("ease", "rated_streak"), [(1, 0), (3, 3)])
 def test_undo_removes_rating_from_revlog_and_restores_streak(
     temp_collection, ease, rated_streak
