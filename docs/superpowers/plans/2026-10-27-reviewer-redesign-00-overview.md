@@ -123,7 +123,7 @@ Ein Commit je abgeschlossener, grüner Teilaufgabe (siehe "Commits" in jedem Pla
 | Frage | Quelle | Default im Plan |
 |---|---|---|
 | Karten anderer Note-Types im neuen Client | RESEARCH §3a.2 | Ausblenden per Suche `note:"AnkiWeb Vocab"`; alter Client bleibt zugänglich |
-| Queue-Filter bei gemischten Decks | RESEARCH §3a.3 | **ungeprüft**, siehe Plan 3 Spike-Task 0 |
+| Queue-Filter bei gemischten Decks | RESEARCH §3a.3 | **Gemessen und entschieden** (Plan 3 Task 0): kein Per-Typ-Filter möglich, fremde Karten werden mit Badge angezeigt; Überspringen scheitert am Tageslimit |
 | Enrichment (Hint/Example-Vorschläge) | RESEARCH-enrichment | **Out of scope** (nur Doku-Verweis) |
 | Icon-Design | REFERENCE §7 | Platzhalter bleibt |
 | HTTPS | RESEARCH-pwa §1 | Betriebsdoku, kein Code |

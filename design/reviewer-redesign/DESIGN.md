@@ -208,7 +208,7 @@ What the server enforces on `addNote` (belegt, `actions/_helpers.py:43`): it rej
 
 **Scope of the type:** Basic (front/back) with two further fields that may be left empty (hint, example). Not covered: cloze, reversed cards, type-in-answer, audio, images, math. Each would be a separate dedicated type with its own contract.
 
-**Existing cards of other note types** are outside the design (not shown in the new reviewer). Handling them (hidden, old reviewer, `changeNotetype` conversion) is not decided; see `RESEARCH-independent-client.md` §3a.
+**Existing cards of other note types** are shown **as they are** (server-rendered HTML without the design classes) with an "Other note type" badge. They are **not** skipped: measured, the daily new-card limit (20) fills the queue with the other type and a dedicated-type card becomes unreachable while the counter still shows 20 (`get_queued_cards` and `deck_due_tree` have no note-type filter). Layout of foreign HTML (images, cloze, math) is not guaranteed.
 
 ---
 

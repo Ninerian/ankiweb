@@ -37,15 +37,18 @@ sequenceDiagram
 
 > **Hinweis zur Spike-Lehre:** `next` war im Spike ein GET mit Seiteneffekt. Hier ist die Seite selbst ein GET (Browser-Navigation, unvermeidbar bei Links aus Plan 2), jedes **Folge-Kommando** (answer, Aktionen) ist POST. `no-store` verhindert Prefetch-Cache. Kein separater JSON-`/next`.
 
-## Task 0: Spike vor Implementierung (Queue-Filter, offen aus RESEARCH §3a.3)
+## Task 0: Queue-Filter (Ergebnis, Entscheidung getroffen)
 
-> **Gate:** Task 0 läuft **vor** den Aufgaben 3.1 bis 3.4. Sein Ergebnis entscheidet, ob fremde Note-Types angezeigt oder gefiltert werden und prägt Template (Badge), Zähler und Tests. Nicht mit 3.1 beginnen, bevor das Ergebnis im Plan steht.
+**Entscheidung:** Karten anderer Notiztypen werden im Review **angezeigt wie sie sind** (server-gerendertes HTML ohne Design-Klassen) mit Hinweis-Badge "Other note type". Nicht überspringen, nicht aus Zählern nehmen.
 
-Offen und **ungeprüft** laut Recherche: Verhalten der Queue bei Decks mit gemischten Note-Types.
-- [ ] Wegwerf-Collection: ein Deck mit 3 `AnkiWeb Vocab`-Noten und 3 `Basic`-Noten. `get_queued_cards` zeigt gemischte Karten? (erwartet: ja, Queue ist pro Deck).
-- [ ] Prüfen, ob `col.sched` einen Such-Filter erlaubt (Custom-Study/Filtered-Deck mit `note:"AnkiWeb Vocab"` wäre ein Umweg, ändert aber Collection-State).
-- [ ] **Default-Entscheidung, falls nicht lösbar:** Karten fremder Typen werden im neuen Client **angezeigt wie sie sind** (server-HTML, ohne Design-Klassen) statt versteckt, mit Hinweis-Badge "Other note type". Ausblenden würde Zähler und Queue verfälschen. Ergebnis im Plan-Dokument und in `DESIGN.md` §5.F nachtragen.
-- Ergebnis blockiert Task 1 nicht; es steuert nur die Anzeige fremder Typen.
+**Gemessen (Wegwerf-Collection, anki 25.9.4):**
+- `get_queued_cards(*, fetch_limit, intraday_learning_only)` hat **keinen** Such- oder Notiztyp-Parameter. Die Queue mischt Typen (`B0,B1,B2,V0,V1`).
+- `deck_due_tree` zählt alle Typen (5) und ist nicht nach Typ filterbar.
+- Einzig `custom_study` (gefiltertes Deck) filtert nach Suche, **ändert aber Collection-Zustand**.
+- **Überspringen scheitert am Tageslimit:** 200 Basic- plus 1 Vocab-Karte im Deck → Queue enthält 20 Karten (Limit), die Vocab-Karte ist **nicht erreichbar**, der Zähler zeigt 20. "Queue lesen, Fremde verwerfen" lässt Vocab-Karten unlernbar und den Zähler lügen.
+
+**Folgen:** Zähler und Queue bleiben identisch zu Anki. Test (`tests/test_app_review_mixed.py`): Deck mit 200 Basic + 1 Vocab bei Limit 20 → Queue enthält Basic, Badge erscheint, Zähler = Anki. **Pflicht-Fall: Tageslimit erreicht.** Ein reines 3+3-Deck hätte den Fehler nicht gezeigt. Fremdes HTML (Bilder, Cloze, Math) kann das Layout sprengen: dokumentierte Einschränkung, kein Filter.
+
 
 ## Dateien
 
