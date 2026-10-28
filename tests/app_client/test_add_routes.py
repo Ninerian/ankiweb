@@ -98,6 +98,7 @@ def test_add_routes_follow_password_gate(tmp_path: Path) -> None:
             client.get("/app/add?deck=1", follow_redirects=False),
             client.post("/app/add/preview", json={}, follow_redirects=False),
             client.post("/app/add/commit?deck=1", json={}, follow_redirects=False),
+            client.post("/app/add/edit/1?deck=1", follow_redirects=False),
         ):
             assert response.status_code == 303
             assert response.headers["location"] == "/login"
@@ -380,14 +381,12 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     other_page = client.get(f"/app/add?deck={other_deck}")
     assert ">B</p>" in other_page.text
     assert ">A</p>" not in other_page.text
-    for deck in (1, other_deck):
-        denied = client.post(
-            f"/app/add/commit?deck={deck}",
-            json={"nid": first_nid, "front": "Changed", "back": "changed"},
-        )
-        assert _signals(denied) == {
-            "error": "Could not add the card. Please try again."
-        }
+    denied = client.post(
+        f"/app/add/commit?deck={other_deck}",
+        json={"nid": first_nid, "front": "Changed", "back": "changed"},
+    )
+    assert denied.status_code == 404
+    assert _signals(denied) == {"error": "Could not add the card. Please try again."}
     assert len(_notes(client)) == 2
     assert ">A</p>" in client.get("/app/add?deck=1").text
 
@@ -400,6 +399,7 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
         "/app/add/commit?deck=1",
         json={"nid": first_nid, "front": "Changed", "back": "changed"},
     )
+    assert denied.status_code == 404
     assert _signals(denied) == {"error": "Could not add the card. Please try again."}
     third = client.post("/app/add/commit?deck=1", json={"front": "C", "back": "c"})
     assert _signals(third)["count"] == 1
@@ -416,7 +416,7 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
 
 
 @pytest.mark.parametrize("nid", [1, -1, "1", True, None])
-def test_commit_rejects_nonzero_or_invalid_note_id(
+def test_commit_rejects_unowned_or_invalid_note_id(
     client: TestClient, nid: object
 ) -> None:
     response = client.post(
@@ -566,3 +566,243 @@ def test_added_note_follows_card_moved_between_decks(client: TestClient) -> None
     page = client.get("/app/add?deck=1")
     assert "count: 1" in page.text
     assert ">Moved</p>" in page.text
+
+
+def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
+    client: TestClient,
+) -> None:
+    values = {
+        "front": "a < b & c\n*x* 😀",
+        "back": 'answer & "quotes"\n<line>',
+        "hint": "first < hint",
+        "example": "one *word*\n& two",
+    }
+    first = client.post("/app/add/commit?deck=1", json=values)
+    assert _signals(first)["count"] == 1
+    nid = _notes(client)[0]
+    client.post("/app/add/commit?deck=1", json={"front": "Second", "back": "Two"})
+    before_ids = set(_notes(client))
+    sid = client.cookies.get("app_sid")
+
+    edit = client.post(f"/app/add/edit/{nid}?deck=1")
+    assert edit.status_code == 200
+    assert edit.headers["content-type"].startswith("text/event-stream")
+    assert _signals(edit) == {**values, "nid": nid, "step": 1, "error": ""}
+    assert "set-cookie" not in edit.headers
+
+    unchanged = client.post("/app/add/commit?deck=1", json={**values, "nid": nid})
+    assert unchanged.status_code == 200
+    assert _signals(unchanged)["count"] == 2
+    assert set(_notes(client)) == before_ids
+
+    updated = {**values, "front": "Updated <front> &\n*yes*"}
+    response = client.post("/app/add/commit?deck=1", json={**updated, "nid": nid})
+    assert response.status_code == 200
+    assert _signals(response) == {
+        "front": "",
+        "back": "",
+        "hint": "",
+        "example": "",
+        "step": 1,
+        "nid": 0,
+        "count": 2,
+        "error": "",
+    }
+    assert response.text.index("Second") < response.text.index("Updated")
+    assert "&lt;front&gt; &amp;" in response.text
+    assert set(_notes(client)) == before_ids
+    assert client.cookies.get("app_sid") == sid
+    assert "set-cookie" not in response.headers
+    assert _signals(client.post(f"/app/add/edit/{nid}?deck=1")) == {
+        **updated,
+        "nid": nid,
+        "step": 1,
+        "error": "",
+    }
+    assert client.portal is not None
+    fields = client.portal.call(
+        client.app.state.service.run,
+        lambda col: [
+            col.get_note(nid)[key] for key in ("Front", "Back", "Hint", "Example")
+        ],
+    )
+    assert fields == [escape_field(updated[key]) for key in updated]
+
+
+def test_edit_duplicate_and_invalid_values_keep_form_and_existing_note(
+    client: TestClient,
+) -> None:
+    client.post("/app/add/commit?deck=1", json={"front": "First", "back": "One"})
+    nid = _notes(client)[0]
+    client.post("/app/add/commit?deck=1", json={"front": "Second", "back": "Two"})
+    duplicate = client.post(
+        "/app/add/commit?deck=1",
+        json={"nid": nid, "front": "Second", "back": "Changed"},
+    )
+    assert _signals(duplicate) == {"error": "A card with this front already exists."}
+    assert "datastar-patch-elements" not in duplicate.text
+    invalid = client.post(
+        "/app/add/commit?deck=1", json={"nid": nid, "front": " ", "back": "Changed"}
+    )
+    assert _signals(invalid) == {"error": "Front and back are required"}
+    assert "datastar-patch-elements" not in invalid.text
+    assert len(_notes(client)) == 2
+    assert _signals(client.post(f"/app/add/edit/{nid}?deck=1")) == {
+        "front": "First",
+        "back": "One",
+        "hint": "",
+        "example": "",
+        "nid": nid,
+        "step": 1,
+        "error": "",
+    }
+
+
+def test_update_failure_preserves_form_and_note(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client.post("/app/add/commit?deck=1", json={"front": "First", "back": "One"})
+    nid = _notes(client)[0]
+
+    def fail(*args, **kwargs):
+        raise ValueError("private backend detail")
+
+    monkeypatch.setattr("ankiweb.adapters.inbound.http_app.add.update_vocab_note", fail)
+    response = client.post(
+        "/app/add/commit?deck=1",
+        json={"nid": nid, "front": "Changed", "back": "Changed"},
+    )
+    assert _signals(response) == {"error": "Could not add the card. Please try again."}
+    assert "private backend detail" not in response.text
+    assert "datastar-patch-elements" not in response.text
+    assert _signals(client.post(f"/app/add/edit/{nid}?deck=1"))["front"] == "First"
+    assert set(_notes(client)) == {nid}
+
+
+def test_edit_and_update_reject_cross_session_and_preserve_new_cookie(
+    client: TestClient,
+) -> None:
+    client.post("/app/add/commit?deck=1", json={"front": "First", "back": "One"})
+    nid = _notes(client)[0]
+    original_sid = client.cookies.get("app_sid")
+    assert original_sid
+    client.cookies.clear()
+    edit = client.post(f"/app/add/edit/{nid}?deck=1")
+    assert edit.status_code == 404
+    assert "app_sid" in edit.cookies
+    assert "HttpOnly" in edit.headers["set-cookie"]
+    new_sid = client.cookies.get("app_sid")
+    assert new_sid and new_sid != original_sid
+    update = client.post(
+        "/app/add/commit?deck=1", json={"nid": nid, "front": "", "back": "Changed"}
+    )
+    assert update.status_code == 404
+    assert _signals(update) == {"error": "Could not add the card. Please try again."}
+    assert "datastar-patch-elements" not in update.text
+    assert client.cookies.get("app_sid") == new_sid
+    client.cookies.clear()
+    client.cookies.set("app_sid", original_sid)
+    assert _signals(client.post(f"/app/add/edit/{nid}?deck=1"))["front"] == "First"
+    assert len(_notes(client)) == 1
+
+
+def test_unauthorized_update_sets_new_session_cookie(client: TestClient) -> None:
+    client.post("/app/add/commit?deck=1", json={"front": "First", "back": "One"})
+    nid = _notes(client)[0]
+    client.cookies.clear()
+    response = client.post(
+        "/app/add/commit?deck=1",
+        json={"nid": nid, "front": "Changed", "back": "Changed"},
+    )
+    assert response.status_code == 404
+    assert "app_sid" in response.cookies
+    assert "HttpOnly" in response.headers["set-cookie"]
+    assert "SameSite=lax" in response.headers["set-cookie"]
+    assert set(_notes(client)) == {nid}
+
+
+def test_edit_and_update_follow_actual_deck_and_reject_deleted_notes(
+    client: TestClient,
+) -> None:
+    assert client.portal is not None
+    service = client.app.state.service
+    other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
+    assert other_deck is not None
+    client.post("/app/add/commit?deck=1", json={"front": "Moved", "back": "One"})
+    nid = _notes(client)[0]
+
+    def move(col: Collection) -> None:
+        col.set_deck([card.id for card in col.get_note(nid).cards()], other_deck)
+
+    client.portal.call(service.run, move)
+    assert client.post(f"/app/add/edit/{nid}?deck=1").status_code == 404
+    denied = client.post(
+        "/app/add/commit?deck=1",
+        json={"nid": nid, "front": "Changed", "back": "One"},
+    )
+    assert denied.status_code == 404
+    assert _signals(client.post(f"/app/add/edit/{nid}?deck={other_deck}"))["front"] == (
+        "Moved"
+    )
+    updated = client.post(
+        f"/app/add/commit?deck={other_deck}",
+        json={"nid": nid, "front": "Changed", "back": "One"},
+    )
+    assert _signals(updated)["count"] == 1
+    assert set(_notes(client)) == {nid}
+    client.portal.call(service.run, lambda col: col.remove_notes([nid]))
+    assert client.post(f"/app/add/edit/{nid}?deck={other_deck}").status_code == 404
+    stale = client.post(
+        f"/app/add/commit?deck={other_deck}",
+        json={"nid": nid, "front": "Stale", "back": "One"},
+    )
+    assert stale.status_code == 404
+    assert _notes(client) == []
+
+
+def test_edit_and_update_reject_changed_note_type(client: TestClient) -> None:
+    assert client.portal is not None
+    client.post("/app/add/commit?deck=1", json={"front": "Typed", "back": "One"})
+    nid = _notes(client)[0]
+
+    def change_type(col: Collection) -> None:
+        old = col.get_note(nid).note_type()
+        new = col.models.by_name("Basic")
+        assert old is not None and new is not None
+        info = col.models.change_notetype_info(
+            old_notetype_id=old["id"], new_notetype_id=new["id"]
+        )
+        mapping = info.input
+        col._backend.change_notetype(
+            note_ids=[nid],
+            new_fields=list(mapping.new_fields),
+            new_templates=list(mapping.new_templates),
+            old_notetype_id=old["id"],
+            new_notetype_id=new["id"],
+            current_schema=mapping.current_schema,
+            old_notetype_name=mapping.old_notetype_name,
+            is_cloze=mapping.is_cloze,
+        )
+
+    client.portal.call(client.app.state.service.run, change_type)
+    assert client.post(f"/app/add/edit/{nid}?deck=1").status_code in (404, 409)
+    response = client.post(
+        "/app/add/commit?deck=1",
+        json={"nid": nid, "front": "Changed", "back": "Changed"},
+    )
+    assert response.status_code in (404, 409)
+    assert set(_notes(client)) == {nid}
+    assert (
+        client.portal.call(
+            client.app.state.service.run, lambda col: col.get_note(nid)["Front"]
+        )
+        == "Typed"
+    )
+
+
+@pytest.mark.parametrize("query", ["", "?deck=nope", "?deck=999999999"])
+def test_edit_rejects_invalid_deck(client: TestClient, query: str) -> None:
+    response = client.post(f"/app/add/edit/1{query}", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/app/"
+    assert "app_sid" not in response.cookies

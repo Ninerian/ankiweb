@@ -19,6 +19,7 @@ from ankiweb.adapters.inbound.http_app.session import get_session
 from ankiweb.adapters.inbound.http_datastar.common import (
     elements_response,
     error_response,
+    signals_response,
 )
 from ankiweb.adapters.inbound.http_shared.templating import render
 from ankiweb.core.app_client.lang import resolve_lang
@@ -32,12 +33,21 @@ from ankiweb.core.app_client.vocab import (
     escape_field,
     highlight_example,
     read_vocab_note,
+    update_vocab_note,
 )
 from ankiweb.core.config import Settings
 from ankiweb.core.i18n import tr
 from ankiweb.core.ports import CollectionPort
 
 logger = logging.getLogger(__name__)
+
+
+class _NoteNotEditable(Exception):
+    pass
+
+
+class _InvalidFields(Exception):
+    pass
 
 
 def _parse_deck(request: Request) -> int | None:
@@ -72,6 +82,27 @@ def _deck_name(col: Collection, deck_id: int) -> str | None:
         return None
     ensure_vocab_model(col)
     return deck["name"]
+
+
+def _editable_note(
+    col: Collection, session: StudySession, deck_id: int, nid: int
+) -> dict[str, str]:
+    if nid not in session.added_note_ids:
+        raise _NoteNotEditable
+    db = col.db
+    if db is None:
+        raise RuntimeError("Collection database is not available")
+    if not db.scalar(
+        "select 1 from notes n where n.id = ? and exists "
+        "(select 1 from cards c where c.nid = n.id and c.did = ?)",
+        nid,
+        deck_id,
+    ):
+        raise _NoteNotEditable
+    try:
+        return read_vocab_note(col, NoteId(nid))
+    except ValueError as exc:
+        raise _NoteNotEditable from exc
 
 
 class _AddRoutes:
@@ -169,6 +200,36 @@ class _AddRoutes:
         )
         return elements_response(fragment)
 
+    async def edit(self, request: Request, nid: int) -> Response:
+        deck_id = _parse_deck(request)
+        if deck_id is None:
+            return RedirectResponse("/app/", status_code=303)
+        try:
+            exists = await self.get_service().run(
+                lambda col: col.decks.get(DeckId(deck_id), default=False) is not None
+            )
+        except AnkiException:
+            logger.exception("Failed to validate add deck")
+            return error_response(s("app_add_save_failed", lang=self.lang.catalog_lang))
+        if not exists:
+            return RedirectResponse("/app/", status_code=303)
+        cookie_response = Response()
+        session = get_session(request, cookie_response)
+        try:
+            values = await self.get_service().run(
+                lambda col: _editable_note(col, session, deck_id, nid)
+            )
+        except _NoteNotEditable:
+            return _with_session_cookie(Response(status_code=404), cookie_response)
+        except AnkiException:
+            logger.exception("Failed to load vocabulary note")
+            return _with_session_cookie(
+                error_response(s("app_add_save_failed", lang=self.lang.catalog_lang)),
+                cookie_response,
+            )
+        response = signals_response({**values, "nid": nid, "step": 1, "error": ""})
+        return _with_session_cookie(response, cookie_response)
+
     async def commit(self, request: Request) -> Response:
         deck_id = _parse_deck(request)
         if deck_id is None:
@@ -182,12 +243,15 @@ class _AddRoutes:
             return error_response(s("app_add_save_failed", lang=self.lang.catalog_lang))
         if not exists:
             return RedirectResponse("/app/", status_code=303)
-        values = await self.commit_input(request)
-        if isinstance(values, Response):
-            return values
-        return await self.save(request, deck_id, values)
+        input_data = await self.commit_input(request)
+        if isinstance(input_data, Response):
+            return input_data
+        nid, values = input_data
+        return await self.save(request, deck_id, nid, values)
 
-    async def commit_input(self, request: Request) -> dict[str, str] | Response:
+    async def commit_input(
+        self, request: Request
+    ) -> tuple[int, dict[str, str] | None] | Response:
         try:
             payload = await request.json()
         except (JSONDecodeError, UnicodeDecodeError):
@@ -197,24 +261,39 @@ class _AddRoutes:
                 s("app_add_both_required", lang=self.lang.catalog_lang)
             )
         nid = payload.get("nid", 0)
-        if not isinstance(nid, int) or isinstance(nid, bool) or nid != 0:
+        if not isinstance(nid, int) or isinstance(nid, bool) or not 0 <= nid < 2**63:
             return error_response(s("app_add_save_failed", lang=self.lang.catalog_lang))
         values = _commit_values(payload)
-        if values is None:
+        if values is None and nid == 0:
             return error_response(
                 s("app_add_both_required", lang=self.lang.catalog_lang)
             )
-        return values
+        return nid, values
 
     def add_card(
         self,
         col: Collection,
         session: StudySession,
         deck_id: int,
-        values: dict[str, str],
+        nid: int,
+        values: dict[str, str] | None,
     ) -> tuple[list[dict[str, str | int]], int] | None:
         if col.decks.get(DeckId(deck_id), default=False) is None:
             return None
+        if nid:
+            _editable_note(col, session, deck_id, nid)
+        if values is None:
+            raise _InvalidFields
+        if nid:
+            update_vocab_note(
+                col,
+                NoteId(nid),
+                values["front"],
+                values["back"],
+                values["hint"],
+                values["example"],
+            )
+            return self.added_cards(col, session, deck_id)
         cards, count = self.added_cards(col, session, deck_id)
         note_id = add_vocab_note(
             col,
@@ -231,14 +310,25 @@ class _AddRoutes:
         return cards, count + 1
 
     async def save(
-        self, request: Request, deck_id: int, values: dict[str, str]
+        self, request: Request, deck_id: int, nid: int, values: dict[str, str] | None
     ) -> Response:
         cookie_response = Response()
         session = get_session(request, cookie_response)
 
         try:
             result = await self.get_service().run(
-                lambda col: self.add_card(col, session, deck_id, values)
+                lambda col: self.add_card(col, session, deck_id, nid, values)
+            )
+        except _NoteNotEditable:
+            response = error_response(
+                s("app_add_save_failed", lang=self.lang.catalog_lang)
+            )
+            response.status_code = 404
+            return _with_session_cookie(response, cookie_response)
+        except _InvalidFields:
+            return _with_session_cookie(
+                error_response(s("app_add_both_required", lang=self.lang.catalog_lang)),
+                cookie_response,
             )
         except DuplicateNote:
             return _with_session_cookie(
@@ -293,4 +383,5 @@ def build_add_router(
     router.add_api_route("/add", routes.add_page, methods=["GET"])
     router.add_api_route("/add/preview", routes.preview, methods=["POST"])
     router.add_api_route("/add/commit", routes.commit, methods=["POST"])
+    router.add_api_route("/add/edit/{nid}", routes.edit, methods=["POST"])
     return router
