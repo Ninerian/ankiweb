@@ -406,6 +406,9 @@ def test_streak_reload_undo_and_again_reset(
     _open(page, review_server)
     _rate(page, 4)
     expect(page.locator("#streak-count")).to_have_text("1")
+    expect(page.locator("#streak-pill")).to_have_class(
+        re.compile(r"\banimate-streak-pop\b")
+    )
     expect(page.locator("#streak-toast")).to_have_count(0)
     page.reload()
     expect(page.locator("#streak-count")).to_have_text("1")
@@ -423,6 +426,9 @@ def test_streak_reload_undo_and_again_reset(
     expect(page.locator("#stage")).to_contain_text("Question 1")
     _rate(page, 1)
     expect(page.locator("#streak-count")).to_have_text("0")
+    expect(page.locator("#streak-pill")).to_have_class(
+        re.compile(r"\banimate-streak-reset\b")
+    )
     expect(page.locator("#streak-toast")).to_have_count(0)
 
 
