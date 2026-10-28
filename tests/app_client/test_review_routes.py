@@ -1,11 +1,13 @@
 import json
 import re
 import time
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
 from anki.cards import CardId
 from anki.collection import Collection
+from conftest import parse_datastar_events
 from fastapi.testclient import TestClient
 
 from ankiweb.app import create_app
@@ -54,6 +56,49 @@ def next_card(response):
         if line.startswith("data: signals "):
             return int(json.loads(line.removeprefix("data: signals "))["cardId"])
     raise AssertionError("missing signal patch")
+
+
+class _ElementText(HTMLParser):
+    def __init__(self, element_id: str) -> None:
+        super().__init__()
+        self.element_id = element_id
+        self.tag: str | None = None
+        self.depth = 0
+        self.parts: list[str] = []
+        self.found = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self.depth and tag == self.tag:
+            self.depth += 1
+        elif not self.found and dict(attrs).get("id") == self.element_id:
+            self.found = True
+            self.tag = tag
+            self.depth = 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if self.depth and tag == self.tag:
+            self.depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self.depth:
+            self.parts.append(data)
+
+
+def _element_text(response, element_id: str) -> str | None:
+    parser = _ElementText(element_id)
+    if response.headers["content-type"].startswith("text/event-stream"):
+        for event_type, data in parse_datastar_events(response.text):
+            if event_type == "datastar-patch-elements":
+                fragment = "\n".join(
+                    line.removeprefix("elements ")
+                    for line in data.splitlines()
+                    if line.startswith("elements ")
+                )
+                parser.feed(fragment)
+    else:
+        parser.feed(response.text)
+    parser.close()
+    return "".join(parser.parts).strip() if parser.found else None
 
 
 def answer(client, card, ease=4):
@@ -170,7 +215,7 @@ def test_last_answer_completes_and_fresh_session_is_empty(client):
     page, next_id = open_review(client, deck)
     assert next_id == 0
     assert "No cards due" in page.text and "Flawless!" not in page.text
-    assert 'id="streak-count">1<' in page.text
+    assert _element_text(page, "streak-count") == "1"
 
 
 def test_empty_queue_is_not_a_completed_session(client):
@@ -201,10 +246,10 @@ def test_new_start_resets_session_tally_but_streak_is_daily(client):
     _, card = open_review(client, deck)
     assert answer(client, card, 4).status_code == 200
     page, card = open_review(client, deck)
-    assert 'id="streak-count">1<' in page.text
+    assert _element_text(page, "streak-count") == "1"
     completed = answer(client, card, 4)
-    assert 'id="streak-count">2<' in completed.text
-    assert re.search(r'id="sc-reviewed"[^>]*>1<', completed.text)
+    assert _element_text(completed, "streak-count") == "2"
+    assert _element_text(completed, "sc-reviewed") == "1"
 
 
 def test_again_displays_reset_toast_even_without_a_prior_streak(client):
