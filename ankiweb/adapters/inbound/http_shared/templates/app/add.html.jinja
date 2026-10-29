@@ -52,8 +52,8 @@
       <a href="/app/" class="btn btn-ghost" aria-label="{{ s('app_add_exit') }}"
          data-discard="{{ s('app_add_discard_leave') }}"
          data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard)">{{ tr.actions_decks() }}</a>
-      <a href="/app/" class="badge badge-lg" data-discard="{{ s('app_add_discard_leave') }}"
-         data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard)">{{ deck_name }}</a>
+      <a id="deck-chip" href="/app/" class="badge badge-lg" data-discard="{{ s('app_add_discard_leave') }}"
+         data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard)"><span>{{ deck_emoji }}</span> <span>{{ deck_name }}</span></a>
       <button type="button" class="btn btn-primary" data-attr:disabled="$saving"
               data-discard="{{ s('app_add_discard_finish') }}" data-card-first="{{ s('app_add_card_first') }}"
               data-on:click="$count === 0 ? window.avAddToast(el.dataset.cardFirst) : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? ($front = '', $back = '', $hint = '', $example = '', $nid = 0, $step = 1, $error = '', $summaryOpen = true, window.avOpenSummary(el)) : null)">{{ s('app_add_done') }}</button>

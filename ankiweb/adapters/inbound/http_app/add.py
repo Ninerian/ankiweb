@@ -24,6 +24,7 @@ from ankiweb.adapters.inbound.http_datastar.common import (
     signals_response,
 )
 from ankiweb.adapters.inbound.http_shared.templating import render
+from ankiweb.core.app_client.decks import split_emoji
 from ankiweb.core.app_client.lang import resolve_lang
 from ankiweb.core.app_client.strings import s
 from ankiweb.core.app_client.study import StudySession
@@ -77,12 +78,12 @@ def _commit_values(payload: dict) -> dict[str, str] | None:
     return values
 
 
-def _deck_name(col: Collection, deck_id: int) -> str | None:
+def _deck_name(col: Collection, deck_id: int) -> tuple[str, str] | None:
     deck = col.decks.get(DeckId(deck_id), default=False)
     if deck is None:
         return None
     ensure_vocab_model(col)
-    return deck["name"]
+    return split_emoji(deck["name"])
 
 
 def _editable_note(
@@ -175,9 +176,12 @@ class _AddRoutes:
         deck_id = _parse_deck(request)
         if deck_id is None:
             return RedirectResponse("/app/", status_code=303)
-        deck_name = await self.get_service().run(lambda col: _deck_name(col, deck_id))
-        if deck_name is None:
+        deck_display = await self.get_service().run(
+            lambda col: _deck_name(col, deck_id)
+        )
+        if deck_display is None:
             return RedirectResponse("/app/", status_code=303)
+        deck_emoji, deck_name = deck_display
         session, new_session_id = get_session(request)
         cards, count = await self.get_service().run(
             lambda col: self.added_cards(col, session, deck_id)
@@ -187,6 +191,7 @@ class _AddRoutes:
             app_lang=self.lang,
             deck_id=deck_id,
             note_type=NOTETYPE_NAME,
+            deck_emoji=deck_emoji,
             deck_name=deck_name,
             cards=cards,
             count=count,

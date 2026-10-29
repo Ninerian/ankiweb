@@ -438,7 +438,7 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     assert live_app.notes() == saved
 
 
-@pytest.mark.parametrize("link_name", ["Exit Creator", "Default"])
+@pytest.mark.parametrize("link_name", ["Exit Creator", "🗂️ Default"])
 def test_exit_and_deck_links_guard_unsaved_text(
     page: Page, live_app: LiveApp, link_name: str
 ) -> None:
@@ -460,7 +460,7 @@ def test_exit_and_deck_links_guard_unsaved_text(
     expect(page).to_have_url(f"{live_app}/app/")
 
 
-@pytest.mark.parametrize("link_name", ["Exit Creator", "Default"])
+@pytest.mark.parametrize("link_name", ["Exit Creator", "🗂️ Default"])
 def test_clean_exit_and_deck_links_navigate_without_confirmation(
     page: Page, live_app: LiveApp, link_name: str
 ) -> None:

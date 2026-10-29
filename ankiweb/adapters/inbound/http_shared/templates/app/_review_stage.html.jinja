@@ -2,7 +2,7 @@
   {% if view %}
   <article id="current-card" class="flashcard card flex flex-col border-3 shadow-neo active:shadow-none">
     <div class="flex flex-wrap items-start justify-between gap-2">
-      <span id="card-deck" class="badge review-deck-label h-auto rounded-full border-review-deck-tag-width border-neo-edge bg-secondary px-review-deck-tag-x py-1 text-review-deck-tag text-secondary-content" dir="auto">{{ view.deck }}</span>
+      <span id="card-deck" class="badge review-deck-label h-auto rounded-full border-review-deck-tag-width border-neo-edge bg-secondary px-review-deck-tag-x py-1 text-review-deck-tag text-secondary-content" dir="auto"><span>{{ view.deck_emoji }}</span> <span>{{ view.deck }}</span></span>
       <div class="flex flex-wrap gap-2">
         {% if view.other_notetype %}<span class="badge badge-outline h-auto whitespace-normal py-2">{{ s('app_review_other_note_type') }}</span>{% endif %}
         {% if view.marked %}<span id="mark-icon" title="{{ s('app_review_marked') }}" aria-label="{{ s('app_review_marked') }}">⭐</span>{% endif %}

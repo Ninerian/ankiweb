@@ -30,6 +30,7 @@ from anki.scheduler.v3 import (
 )
 from anki.sound import AV_REF_RE
 
+from ankiweb.core.app_client.decks import split_emoji
 from ankiweb.core.html_sanitize import _HTMLSanitizer
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ class QueueCounts:
 class CardView:
     card_id: int
     deck: str
+    deck_emoji: str
     question_html: str
     answer_html: str
     labels: tuple[str, str, str, str]
@@ -174,9 +176,11 @@ def _view(
     note = stored.note()
     notetype = note.note_type()
     again, hard, good, easy = scheduler.describe_next_states(states)
+    deck_emoji, deck_name = split_emoji(col.decks.name(card.did))
     return CardView(
         card_id=card.id,
-        deck=col.decks.name(card.did),
+        deck=deck_name,
+        deck_emoji=deck_emoji,
         question_html=_render_html(card.question()),
         answer_html=_render_html(card.answer()),
         labels=(
