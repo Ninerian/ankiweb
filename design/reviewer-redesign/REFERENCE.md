@@ -19,7 +19,7 @@ source, not executed. *Not verified* = no evidence.
 
 | File | Kind | Purpose |
 |---|---|---|
-| `decks-mockup.html` | Static HTML | Deck list with search, empty state, and per-deck Learn / Edit / Add links |
+| `decks-mockup.html` | Static HTML | Deck list with search, empty state, per-deck Learn / Edit / Add links and a New deck sheet (name and emoji picker) |
 | `mockup.html` | Static HTML | Reviewer (card stage, ease tiles, streak, actions sheet, completion feedback) |
 | `editor-mockup.html` | Static HTML | Quick-add wizard (Front, Back, Preview), card stack, edit-last-card |
 | `card-render.js` | Script | Shared card model and renderer used by the reviewer and the editor preview |
