@@ -11,7 +11,14 @@ from fastapi.testclient import TestClient
 
 from ankiweb.app import create_app
 from ankiweb.core.app_client.deck_progress import progress_pct
-from ankiweb.core.app_client.decks import DEFAULT_EMOJI, deck_rows, split_emoji
+from ankiweb.core.app_client.decks import (
+    DEFAULT_EMOJI,
+    _emoji_end,
+    deck_rows,
+    join_emoji,
+    split_emoji,
+)
+from ankiweb.core.app_client.emoji_picker import ALL_EMOJI, EMOJI_GROUPS
 from ankiweb.core.app_client.revlog import day_start_ms
 from ankiweb.core.auth import COOKIE, auth_token
 from ankiweb.core.config import Settings
@@ -44,33 +51,59 @@ def _insert_review(col: Collection, card_id: int, offset_ms: int = 1) -> None:
 @pytest.mark.parametrize(
     ("name", "expected"),
     [
-        ("🇩🇪 German B1 Vocab", ("🇩🇪", "German B1 Vocab")),
-        ("🧬Biology", ("🧬", "Biology")),
-        ("⚗️ Chemistry", ("⚗️", "Chemistry")),
-        ("👩‍💻 Coding", ("👩‍💻", "Coding")),
-        ("👍🏽 Skin tone", ("👍🏽", "Skin tone")),
-        ("1️⃣ Numbers", ("1️⃣", "Numbers")),
-        ("1\u20e3 Numbers", ("1\u20e3", "Numbers")),
-        ("#️⃣ Hashtags", ("#️⃣", "Hashtags")),
-        ("*️⃣ Stars", ("*️⃣", "Stars")),
+        ("German B1 Vocab · 🇩🇪", ("🇩🇪", "German B1 Vocab")),
+        ("Family · 👨‍👩‍👧‍👦", ("👨‍👩‍👧‍👦", "Family")),
+        ("Skin tone · 👍🏽", ("👍🏽", "Skin tone")),
+        ("Numbers · 1️⃣", ("1️⃣", "Numbers")),
+        ("Digits · 1\u20e3", ("1\u20e3", "Digits")),
+        ("Chemistry · ⚗️", ("⚗️", "Chemistry")),
         (
-            "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f England",
+            "England · \U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f",
             (
                 "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f",
                 "England",
             ),
         ),
+        ("A · B · 🧬", ("🧬", "A · B")),
+        ("  Biology  · 🧬", ("🧬", "Biology")),
         ("Biology", (DEFAULT_EMOJI, "Biology")),
-        ("🇩 Lone indicator", (DEFAULT_EMOJI, "🇩 Lone indicator")),
-        ("1900s", (DEFAULT_EMOJI, "1900s")),
-        ("#topic", (DEFAULT_EMOJI, "#topic")),
-        ("1\ufe0f Numbers", (DEFAULT_EMOJI, "1\ufe0f Numbers")),
-        ("1️⃣", (DEFAULT_EMOJI, "1️⃣")),
+        ("Mathe · Klasse 5", (DEFAULT_EMOJI, "Mathe · Klasse 5")),
+        ("Algebra ·", (DEFAULT_EMOJI, "Algebra ·")),
+        ("· 🧬", (DEFAULT_EMOJI, "· 🧬")),
+        ("Bio · 🧬🧪", (DEFAULT_EMOJI, "Bio · 🧬🧪")),
+        ("Bio · x", (DEFAULT_EMOJI, "Bio · x")),
+        ("Bio·🧬", (DEFAULT_EMOJI, "Bio·🧬")),
+        ("Bio · 🧬 ", (DEFAULT_EMOJI, "Bio · 🧬 ")),
+        ("Bio · 🇩", (DEFAULT_EMOJI, "Bio · 🇩")),
+        ("🇩🇪 German B1 Vocab", (DEFAULT_EMOJI, "🇩🇪 German B1 Vocab")),
+        ("🧬Biology", (DEFAULT_EMOJI, "🧬Biology")),
         ("🧬", (DEFAULT_EMOJI, "🧬")),
     ],
 )
 def test_split_emoji(name: str, expected: tuple[str, str]) -> None:
     assert split_emoji(name) == expected
+
+
+def test_emoji_groups_are_distinct_single_graphemes() -> None:
+    assert [group.key for group in EMOJI_GROUPS] == ["study", "nature", "fun", "world"]
+    assert all(len(group.emojis) == 18 for group in EMOJI_GROUPS)
+    assert len(ALL_EMOJI) == 72
+    assert DEFAULT_EMOJI not in ALL_EMOJI
+    assert all(_emoji_end(emoji) == len(emoji) for emoji in ALL_EMOJI)
+
+
+@pytest.mark.parametrize("name", ["A · B", "It's", 'A "quote"', "Back\\slash"])
+def test_join_emoji_round_trips_picker_choices(name: str) -> None:
+    for group in EMOJI_GROUPS:
+        for emoji in group.emojis:
+            assert split_emoji(join_emoji(name, emoji)) == (emoji, name)
+            assert join_emoji(f"  {name}  ", emoji) == f"{name} · {emoji}"
+
+
+@pytest.mark.parametrize("emoji", ["", "x", "🧬🧪", "🧬 ", "🇩", "1"])
+def test_join_emoji_rejects_invalid_graphemes(emoji: str) -> None:
+    with pytest.raises(ValueError):
+        join_emoji("Bio", emoji)
 
 
 @pytest.mark.parametrize(
@@ -281,7 +314,7 @@ def test_page_renders_complete_emoji_and_deck_names(tmp_path: Path) -> None:
         ("👩‍💻", "Coding"),
         ("🇩🇪", "German"),
     ]
-    client, _ = _client(tmp_path, [f"{emoji} {name}" for emoji, name in expected])
+    client, _ = _client(tmp_path, [f"{name} · {emoji}" for emoji, name in expected])
     with client:
         html = client.get("/app/").text
 

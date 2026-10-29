@@ -66,12 +66,23 @@ def _emoji_end(text: str) -> int:
 
 
 def split_emoji(name: str) -> tuple[str, str]:
-    """Split a leading emoji from a deck name; fall back to the default emoji."""
-    end = _emoji_end(name)
-    rest = name[end:].strip()
-    if end == 0 or not rest:
+    """Split an emoji suffix from a deck name, or use the default emoji."""
+    display_name, separator, emoji = name.rpartition(" · ")
+    if (
+        not separator
+        or not display_name.strip()
+        or _emoji_end(emoji) != len(emoji)
+        or not emoji
+    ):
         return DEFAULT_EMOJI, name
-    return name[:end], rest
+    return emoji, display_name.strip()
+
+
+def join_emoji(name: str, emoji: str) -> str:
+    """Join a deck name and exactly one emoji grapheme."""
+    if not emoji or _emoji_end(emoji) != len(emoji):
+        raise ValueError("emoji must be exactly one emoji grapheme")
+    return f"{name.strip()} · {emoji}"
 
 
 def deck_rows(col: Collection) -> list[DeckRow]:
