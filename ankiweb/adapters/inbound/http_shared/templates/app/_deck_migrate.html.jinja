@@ -1,0 +1,38 @@
+<div id="deck-migrate-region" data-signals:migrate-ids__ifmissing="{{ migration_ids_js }}" data-signals:migrate-open__ifmissing="false" data-signals:migrate-done__ifmissing="false" data-signals:migrate-error__ifmissing="''">
+  {% if migration_result %}
+  <div class="alert" role="status">{{ s('app_decks_migrate_result', ok=migration_result.ok, skipped=migration_result.skipped, failed=migration_result.failed) }}</div>
+  {% endif %}
+  {% if migration_ready %}
+  <div class="alert">
+    <span>{{ s('app_decks_migrate_banner', count=migration_ready) }}</span>
+    <button type="button" class="btn btn-sm" data-on:click="$migrateOpen = true">{{ s('app_decks_migrate_preview') }}</button>
+  </div>
+  <div id="deck-migrate-sheet" class="modal modal-bottom" role="dialog" aria-modal="true" aria-labelledby="deck-migrate-title" aria-hidden="true" inert data-class:modal-open="$migrateOpen" data-attr:aria-hidden="$migrateOpen ? 'false' : 'true'" data-attr:inert="!$migrateOpen" data-on:keydown__escape="$migrateOpen = false">
+    <div class="modal-box">
+      <h2 id="deck-migrate-title">{{ s('app_decks_migrate_title') }}</h2>
+      <p>{{ s('app_decks_migrate_sync_warning') }}</p>
+      <p>{{ s('app_decks_migrate_desktop') }}</p>
+      {% if migration_filtered_count %}
+      <p class="alert alert-warning">{{ s('app_decks_migrate_filtered_warning', count=migration_filtered_count) }}</p>
+      {% endif %}
+      <ul>
+        {% for item in migration_plan %}
+        <li>
+          <label>
+            <input class="checkbox" type="checkbox" value="{{ item.deck_id }}" {% if item.status == 'ready' %}checked data-attr:checked="$migrateIds.includes({{ migration_id_literals[item.deck_id] }})" data-on:change="$migrateIds = el.checked ? [...$migrateIds, {{ migration_id_literals[item.deck_id] }}] : $migrateIds.filter(id => id !== {{ migration_id_literals[item.deck_id] }})"{% else %}disabled{% endif %}>
+            <span>{{ item.old }}</span> <span aria-hidden="true">→</span> <span>{{ item.new }}</span>
+            {% if item.status == 'conflict' %}<span>{{ s('app_decks_migrate_conflict') }}</span>{% elif item.status == 'skipped' %}<span>{{ s('app_decks_migrate_skipped') }}</span>{% endif %}
+          </label>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="alert alert-error" role="alert" data-show="$migrateError" data-text="$migrateError" style="display:none">{{ s('app_decks_migrate_select') }}</p>
+      <div class="modal-action">
+        <button type="button" class="btn" data-on:click="$migrateOpen = false">{{ s('app_decks_migrate_cancel') }}</button>
+        <button type="button" class="btn btn-accent" data-on:click="$migrateDone = false; @post('/app/decks/migrate-emoji')">{{ s('app_decks_migrate_rename') }}</button>
+      </div>
+    </div>
+    <div class="modal-backdrop" data-on:click="$migrateOpen = false"></div>
+  </div>
+  {% endif %}
+</div>
