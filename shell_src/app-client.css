@@ -771,5 +771,30 @@
   @media (prefers-reduced-motion: reduce) {
     :root { --animate-bump: none; --animate-badge-spin: none; }
   }
+
+  /*
+   * Validation toast, lifted above the action bar. daisyUI's .toast lives in
+   * @layer utilities and wins over this layer, so only its own hooks are used:
+   * --toast-y lifts it by the bar height (pt-2 + h-16 + safe-bottom token).
+   */
+  body:has(#add-wizard) #app-error {
+    @apply pointer-events-none z-50 p-0;
+    --toast-y: calc(-1 * (var(--spacing-review-bar-safe-bottom) + 4.25rem));
+  }
+
+  body:has(#add-wizard) #app-error .alert {
+    @apply pointer-events-auto w-[calc(100vw-2rem)] max-w-full justify-center rounded-2xl border-3
+      border-solid border-error px-4 py-3 text-center text-sm font-black shadow-neo;
+    animation: add-toast-in 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  }
+
+  @keyframes add-toast-in {
+    from { opacity: 0; transform: translateY(0.75rem) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body:has(#add-wizard) #app-error .alert { animation: none; }
+  }
 }
 /* end plan 4 */
