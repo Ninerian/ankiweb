@@ -51,16 +51,6 @@ window.avAddToast = (message) => {
   toastTimer = setTimeout(() => { toast.style.display = "none"; }, 4000);
 };
 
-window.avEditLoaded = (hint, example) => {
-  for (const [id, value] of [["input-hint", hint], ["input-example", example]]) {
-    const details = document.getElementById(id)?.closest("details");
-    if (details && value) details.open = true;
-  }
-  const wizard = document.getElementById("add-wizard");
-  window.avAddToast(wizard.dataset.editing);
-  window.avFocus("input-front");
-};
-
 window.avAnimateCommit = () => {
   const editor = document.getElementById("add-editor");
   const stack = document.getElementById("added-cards");
@@ -71,16 +61,12 @@ window.avAnimateCommit = () => {
   const animations = [
     [editor, "animate-fresh-card"],
     [stack.querySelector("[data-note-id]"), "animate-slide-to-added"],
-    [document.querySelector("#hud-count button"), "animate-added-pill-pop"],
   ];
   for (const [element, name] of animations) element?.classList.remove(name);
   // Restart CSS animations even when morphing retains the same elements.
   void editor.offsetWidth;
   for (const [element, name] of animations) element?.classList.add(name);
 };
-
-window.avLastNoteId = () =>
-  document.querySelector("#added-cards [data-note-id]")?.dataset.noteId;
 
 let summaryTrigger;
 window.avOpenSummary = (trigger) => {

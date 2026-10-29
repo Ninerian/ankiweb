@@ -38,7 +38,7 @@ def test_add_page_initializes_model_and_session(client: TestClient) -> None:
     for name in ("front", "back", "hint", "example"):
         assert f'id="input-{name}"' in page.text
         assert f"data-bind:{name}" in page.text
-    for name in ("preview", "btn-next", "btn-add", "hud-count", "added-cards"):
+    for name in ("preview", "btn-next", "btn-add", "added-cards"):
         assert f'id="{name}"' in page.text
     for step in (1, 2, 3):
         assert f'data-show="$step === {step}" style="display:none"' in page.text
@@ -183,7 +183,7 @@ def test_preview_matches_saved_example_after_client_highlighting(
         'Say <mark>&lt;b&gt; &amp; "x"</mark>.<br>'
         "Then <mark>&lt;img src=x onerror=alert(1)&gt;</mark>."
     )
-    assert f"<p>{rendered}</p>" in preview.text
+    assert f'<p class="av-example">{rendered}</p>' in preview.text
     assert "<img src=x" not in preview.text
     assert "<img src=x" not in answer
 
@@ -194,18 +194,31 @@ def test_add_page_uses_resolved_language(tmp_path: Path) -> None:
         with TestClient(create_app(settings)) as client:
             response = client.get("/app/add?deck=1")
             preview = client.post("/app/add/preview", json={"front": "Frage"})
-            client.post(
+            first = client.post(
                 "/app/add/commit?deck=1", json={"front": "Frage", "back": "Antwort"}
             )
             duplicate = client.post(
                 "/app/add/commit?deck=1", json={"front": "Frage", "back": "Antwort"}
             )
+            second = client.post(
+                "/app/add/commit?deck=1", json={"front": "Zweite", "back": "Antwort"}
+            )
+            for index in range(3, 6):
+                last = client.post(
+                    "/app/add/commit?deck=1",
+                    json={"front": f"Frage {index}", "back": "Antwort"},
+                )
+            reloaded = client.get("/app/add?deck=1")
     finally:
         anki.lang.set_lang("en")
     assert response.status_code == 200
     assert '<html lang="de" dir="ltr">' in response.text
     assert "Vorderseite (Frage / Stichwort)" in response.text
     assert "Kartenvorschau" in preview.text
+    assert ">1 Karte</span>" in first.text
+    assert ">2 Karten</span>" in second.text
+    assert ">5 Karten</span>" in last.text
+    assert ">5 Karten</span>" in reloaded.text
     assert _signals(duplicate) == {
         "error": "Eine Karte mit dieser Vorderseite existiert bereits."
     }
@@ -246,11 +259,9 @@ def test_commit_persists_escaped_note_and_patches_session_cards(
     )
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
-    assert response.text.count("event: datastar-patch-elements") == 2
+    assert "event: datastar-patch-elements" in response.text
     assert 'id="added-cards"' in response.text
-    assert 'id="hud-count"' in response.text
-    assert "1 Cards added" in response.text
-    assert "Top card" in response.text
+    assert ">1 card</span>" in response.text
     assert "&lt;img src=x onerror=&#34;alert(1)&#34;&gt; &amp;" in response.text
     assert "&lt;script&gt;alert(1)&lt;/script&gt; &amp; answer" in response.text
     assert "&lt;b&gt;hint&lt;/b&gt; &amp;" in response.text
@@ -288,7 +299,7 @@ def test_commit_persists_escaped_note_and_patches_session_cards(
 
     page = client.get(f"/app/add?deck={deck_id}")
     assert "count: 1" in page.text
-    assert '<span data-text="$count">1</span>' in page.text
+    assert ">1 card</span>" in page.text
     assert "&lt;img src=x onerror=&#34;alert(1)&#34;&gt;" in page.text
     assert "<img src=x" not in page.text
 
@@ -375,11 +386,13 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
         f"/app/add/commit?deck={other_deck}", json={"front": "B", "back": "b"}
     )
     assert _signals(second)["count"] == 1
+    assert ">1 card</span>" in second.text
     assert ">B</p>" in second.text
     assert ">A</p>" not in second.text
     assert ">A</p>" in client.get("/app/add?deck=1").text
     other_page = client.get(f"/app/add?deck={other_deck}")
     assert ">B</p>" in other_page.text
+    assert ">1 card</span>" in other_page.text
     assert ">A</p>" not in other_page.text
     denied = client.post(
         f"/app/add/commit?deck={other_deck}",
@@ -395,6 +408,7 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     assert "count: 0" in empty_page.text
     assert ">A</p>" not in empty_page.text
     assert "No cards added yet" in empty_page.text
+    assert ">0 cards</span>" not in empty_page.text
     denied = client.post(
         "/app/add/commit?deck=1",
         json={"nid": first_nid, "front": "Changed", "back": "changed"},
@@ -403,6 +417,7 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     assert _signals(denied) == {"error": "Could not add the card. Please try again."}
     third = client.post("/app/add/commit?deck=1", json={"front": "C", "back": "c"})
     assert _signals(third)["count"] == 1
+    assert ">1 card</span>" in third.text
     assert ">C</p>" in third.text
     assert ">A</p>" not in third.text
 
@@ -410,6 +425,7 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     client.cookies.set("app_sid", session_a)
     page = client.get("/app/add?deck=1")
     assert "count: 1" in page.text
+    assert ">1 card</span>" in page.text
     assert ">A</p>" in page.text
     assert ">C</p>" not in page.text
     assert len(_notes(client)) == 3
@@ -467,11 +483,11 @@ def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> Non
     for index in range(1, 5):
         assert f"Front {index}" in response.text
     assert response.text.index("Front 4") < response.text.index("Front 3")
-    assert response.text.index("Top card") < response.text.index("Front 4")
-    assert "5 Cards added" in response.text
-    assert response.text.count("Top card") == 1
+    assert response.text.index(">5 cards</span>") < response.text.index("Front 4")
+    assert response.text.count(">5 cards</span>") == 1
     page = client.get("/app/add?deck=1")
     assert "count: 5" in page.text
+    assert ">5 cards</span>" in page.text
     assert "Front 0" not in page.text
     assert "Front 4" in page.text
 
@@ -484,6 +500,7 @@ def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> Non
     )
     page = client.get("/app/add?deck=1")
     assert "count: 4" in page.text
+    assert ">4 cards</span>" in page.text
     assert "Front 0" in page.text
     assert "Front 4" not in page.text
 

@@ -11,7 +11,6 @@ from typing import Literal
 import pytest
 import uvicorn
 from anki.collection import Collection
-from anki.notes import NoteId
 from fastapi import FastAPI
 
 from ankiweb.app import create_app
@@ -95,9 +94,9 @@ class LiveApp:
 
 
 @pytest.fixture
-def live_app(tmp_path: Path) -> Iterator[LiveApp]:
+def live_app(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[LiveApp]:
     path = tmp_path / "live.anki2"
-    app = create_app(Settings(collection_path=path))
+    app = create_app(Settings(collection_path=path, lang=getattr(request, "param", "")))
     server = uvicorn.Server(uvicorn.Config(app, log_level="warning"))
     loop_ready: Future[asyncio.AbstractEventLoop] = Future()
 
@@ -194,7 +193,7 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
     expect(page.get_by_label("Hint", exact=True)).to_have_value("")
     expect(page.get_by_label("Example sentence", exact=True)).to_have_value("")
     expect(page.get_by_role("button", name="Add", exact=True)).not_to_be_visible()
-    expect(page.locator("#hud-count")).to_contain_text(re.compile(r"1\s+Cards added"))
+    expect(page.locator("#added-cards .badge")).to_have_text("1 card")
     expect(page.locator("#added-cards")).to_contain_text(front)
     saved = live_app.notes()
     assert len(saved) == 1
@@ -208,7 +207,7 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
 
     page.reload()
     expect(page.locator("#added-cards")).to_contain_text(front)
-    expect(page.locator("#hud-count")).to_contain_text(re.compile(r"1\s+Cards added"))
+    expect(page.locator("#added-cards .badge")).to_have_text("1 card")
     expect(_front(page)).to_have_value("")
     assert live_app.notes() == saved
 
@@ -220,13 +219,17 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
         other = isolated.new_page()
         other.goto(f"{live_app}/app/add?deck=1")
         expect(other.locator("#added-cards")).not_to_contain_text(front)
+        expect(other.locator("#added-cards .badge")).to_have_count(0)
         assert live_app.notes() == saved
     finally:
         isolated.close()
     assert live_app.persisted_notes() == saved
 
 
-def test_edit_last_discard_guard_and_round_trip(page: Page, live_app: LiveApp) -> None:
+def test_added_stack_is_noninteractive_and_preserves_draft(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/add?deck=1")
     _front(page).fill("a < b & c")
     _front(page).press("Enter")
@@ -242,74 +245,89 @@ def test_edit_last_discard_guard_and_round_trip(page: Page, live_app: LiveApp) -
     expect(page.locator("#added-cards")).to_contain_text("a < b & c")
     original = live_app.notes()
     assert len(original) == 1
-    _front(page).fill("unsaved draft")
-    edit = page.locator("#added-cards").get_by_role(
-        "button", name="Edit last added card", exact=True
-    )
-    cancelled = _respond_to_confirm(page, accept=False)
-    edit.click()
-    assert len(cancelled) == 1
-    expect(_front(page)).to_have_value("unsaved draft")
-    assert live_app.notes() == original
-
-    accepted = _respond_to_confirm(page, accept=True)
-    edit.click()
-    assert len(accepted) == 1
-    expect(_front(page)).to_have_value("a < b & c")
-    _front(page).fill("Updated <front> & text")
-    _front(page).press("Enter")
-    expect(_back(page)).to_have_value("first answer")
-    expect(page.get_by_label("Hint", exact=True)).to_be_visible()
-    expect(page.get_by_label("Hint", exact=True)).to_have_value("hint <one> & two")
-    expect(page.get_by_label("Example sentence", exact=True)).to_be_visible()
-    expect(page.get_by_label("Example sentence", exact=True)).to_have_value(
-        "A *word*\nnext line"
-    )
-    _back(page).fill("updated answer")
-    _back(page).press("Enter")
-    expect(page.locator("#preview")).to_contain_text("Updated <front> & text")
-    page.get_by_role("button", name="Add", exact=True).click()
-    expect(_front(page)).to_be_visible()
-    expect(page.locator("#added-cards")).to_contain_text("Updated <front> & text")
-    expect(page.locator("#hud-count")).to_contain_text(re.compile(r"1\s+Cards added"))
-    updated = live_app.notes()
-    assert len(updated) == 1
-    assert updated[0][0] == original[0][0]
-    assert updated[0][1] == [
-        "Updated &lt;front&gt; &amp; text",
-        "updated answer",
+    assert original[0][1] == [
+        "a &lt; b &amp; c",
+        "first answer",
         "hint &lt;one&gt; &amp; two",
         "A *word*<br>next line",
     ]
-    page.reload()
-    expect(page.locator("#added-cards")).to_contain_text("Updated <front> & text")
-    assert live_app.notes() == updated
-    assert live_app.persisted_notes() == updated
+
+    region = page.locator("#added-cards")
+    expect(region.locator("button, a, [role='button'], [tabindex]")).to_have_count(0)
+    expect(
+        page.locator("#add-wizard footer").get_by_role(
+            "button", name=re.compile("edit", re.IGNORECASE), include_hidden=True
+        )
+    ).to_have_count(0)
+    _front(page).fill("unsaved draft")
+    _front(page).press("Enter")
+    expect(_back(page)).to_be_visible()
+    _back(page).fill("draft answer")
+
+    dialogs: list[str] = []
+
+    def dismiss_dialog(dialog: Dialog) -> None:
+        dialogs.append(dialog.message)
+        dialog.dismiss()
+
+    page.on("dialog", dismiss_dialog)
+    region.locator("article").click()
+    page.remove_listener("dialog", dismiss_dialog)
+    assert not dialogs
+    expect(_back(page)).to_be_visible()
+    expect(_front(page)).to_have_value("unsaved draft")
+    expect(_back(page)).to_have_value("draft answer")
+    expect(region.locator(".badge")).to_have_text("1 card")
+    assert live_app.notes() == original
+    assert live_app.persisted_notes() == original
 
 
-def test_edit_deleted_card_shows_unavailable_error(
-    page: Page, live_app: LiveApp
+@pytest.mark.parametrize(
+    ("live_app", "one", "two", "five"),
+    [
+        ("", "1 card", "2 cards", "5 cards"),
+        ("de_DE", "1 Karte", "2 Karten", "5 Karten"),
+    ],
+    indirect=["live_app"],
+)
+def test_added_stack_badge_counts_session_cards(
+    page: Page, live_app: LiveApp, one: str, two: str, five: str
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/add?deck=1")
-    _add(page)
-    notes = live_app.notes()
-    assert len(notes) == 1
-    nid = NoteId(notes[0][0])
-    asyncio.run_coroutine_threadsafe(
-        live_app.app.state.service.run(lambda col: col.remove_notes([nid])),
-        live_app.loop,
-    ).result(timeout=10)
-    assert live_app.notes() == []
+    region = page.locator("#added-cards")
+    badge = region.locator(".badge")
+    expect(page.locator("#hud-count")).to_have_count(0)
+    expect(badge).to_have_count(0)
+    expect(region.locator(".card")).to_have_count(0)
 
-    page.locator("#added-cards").get_by_role(
-        "button", name="Edit last added card", exact=True
-    ).click()
-    error = page.get_by_role("alert")
-    expect(error).to_be_visible()
-    expect(error).to_have_text(
-        "This card is unavailable for editing. Please try again."
-    )
+    for index in range(1, 6):
+        front = f"Question {index}"
+        page.locator("#input-front").fill(front)
+        page.locator("#input-front").press("Enter")
+        expect(page.locator("#input-back")).to_be_visible()
+        page.locator("#input-back").fill(f"Answer {index}")
+        page.locator("#input-back").press("Enter")
+        expect(page.locator("#preview")).to_contain_text(front)
+        expect(page.locator("#btn-add")).to_be_visible()
+        page.locator("#btn-add").click()
+        expect(region).to_contain_text(front)
+        expect(badge).to_be_visible()
+        expect(page.locator("#input-front")).to_have_value("")
+        if index == 1:
+            expect(badge).to_have_text(one)
+        elif index == 2:
+            expect(badge).to_have_text(two)
+        elif index == 5:
+            expect(badge).to_have_text(five)
+
+    expect(region.locator(".card")).to_have_count(4)
+    saved = live_app.notes()
+    assert len(saved) == 5
+    page.reload()
+    expect(badge).to_have_text(five)
+    expect(region.locator(".card")).to_have_count(4)
+    assert live_app.notes() == saved
 
 
 def test_double_click_add_saves_only_one_note(page: Page, live_app: LiveApp) -> None:
@@ -317,7 +335,7 @@ def test_double_click_add_saves_only_one_note(page: Page, live_app: LiveApp) -> 
     _to_preview(page, "Double click", "one note")
     page.get_by_role("button", name="Add", exact=True).dblclick()
     expect(_front(page)).to_be_visible()
-    expect(page.locator("#hud-count")).to_contain_text(re.compile(r"1\s+Cards added"))
+    expect(page.locator("#added-cards .badge")).to_have_text("1 card")
     saved = live_app.notes()
     assert len(saved) == 1
     assert saved[0][1][:2] == ["Double click", "one note"]

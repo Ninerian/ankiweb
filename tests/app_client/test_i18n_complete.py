@@ -27,9 +27,9 @@ PRESEEDED_UNUSED_REVIEW = {
     "app_review_suspended",
     "app_review_note_deleted",
 }
-PRESEEDED_UNUSED_ADD = {
-    "app_add_edit_preview",
-}
+PRESEEDED_UNUSED_ADD: set[str] = set()
+# Used by the retained edit endpoint's 404 response, not by a template.
+BACKEND_ONLY_STRINGS = {"app_add_edit_unavailable"}
 PRESEEDED_UNUSED = (
     PRESEEDED_UNUSED_DECKS | PRESEEDED_UNUSED_REVIEW | PRESEEDED_UNUSED_ADD
 )
@@ -302,6 +302,7 @@ def test_no_hardcoded_text() -> None:
 def test_strings_complete() -> None:
     english = set(STRINGS["en"])
     referenced, _ = _template_references()
+    referenced.update(BACKEND_ONLY_STRINGS)
     for language, catalog in STRINGS.items():
         assert set(catalog) <= english, f"{language}: {set(catalog) - english}"
     assert referenced <= english, f"Missing English strings: {referenced - english}"

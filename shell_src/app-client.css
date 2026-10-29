@@ -119,7 +119,7 @@
 @source "../ankiweb/adapters/inbound/http_shared/templates/app";
 @source "../ankiweb/shell/static/app";
 /* Emit animation utilities even when their classes are added dynamically. */
-@source inline("animate-{streak-pop,streak-reset,slide-to-added,fresh-card,added-pill-pop,reveal-answer}");
+@source inline("animate-{streak-pop,streak-reset,slide-to-added,fresh-card,reveal-answer}");
 /* Emit the shared press utility before app templates consume it. */
 @source inline("neo-press");
 
@@ -146,7 +146,6 @@
   --animate-streak-reset: streakReset 0.4s ease-in-out;
   --animate-slide-to-added: slideToAdded 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
   --animate-fresh-card: popInFreshCard 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-  --animate-added-pill-pop: addedPillPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --animate-reveal-answer: revealAnswer 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 
   @keyframes streakPop {
@@ -175,13 +174,6 @@
     100% { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  @keyframes addedPillPop {
-    0% { transform: scale(1); }
-    40% { transform: scale(1.3) rotate(-3deg); }
-    75% { transform: scale(0.95) rotate(2deg); }
-    100% { transform: scale(1) rotate(0); }
-  }
-
   @keyframes revealAnswer {
     0% { opacity: 0; transform: translateY(16px) scale(0.95); }
     100% { opacity: 1; transform: translateY(0) scale(1); }
@@ -195,7 +187,6 @@
     --animate-streak-reset: none;
     --animate-slide-to-added: none;
     --animate-fresh-card: none;
-    --animate-added-pill-pop: none;
     --animate-reveal-answer: none;
   }
 }
@@ -611,8 +602,8 @@
 
 /* plan 4 */
 @theme static {
-  --spacing-add-safe: max(1rem, env(safe-area-inset-bottom));
-  --animate-add-pop-card: popCardUp 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --text-add-input: 1.35rem;
+  --text-add-step-num: 0.68rem;
   --add-target-x-0: -6px;
   --add-target-y-0: 32px;
   --add-target-scale-0: 1;
@@ -629,11 +620,6 @@
   --add-target-y-3: 128px;
   --add-target-scale-3: 0.94;
   --add-target-rot-3: 3deg;
-
-  @keyframes popCardUp {
-    0% { opacity: 0.6; transform: translateY(30px) scale(0.95); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-  }
 }
 
 @utility add-card-transform {
@@ -648,7 +634,101 @@
 }
 
 @layer components {
-  .add-action-bar { @apply pb-add-safe; }
+  .add-card {
+    @apply flex flex-col rounded-box border-3 border-solid border-neo-edge bg-base-200 p-4.5 shadow-neo;
+  }
+
+  .add-step {
+    @apply flex min-w-0 flex-auto cursor-pointer items-center justify-center gap-1 rounded-full
+      border-2 border-solid border-neo-edge bg-base-200 px-1 py-1.5 text-add-step-num font-black uppercase
+      tracking-normal text-muted-fg transition-neo duration-neo ease-neo motion-reduce:transition-none;
+  }
+
+  .add-step > span:last-child {
+    @apply min-w-0 truncate;
+  }
+
+  .add-step-active {
+    @apply -translate-y-px bg-accent text-accent-content shadow-neo;
+  }
+
+  .add-step-done {
+    @apply bg-success text-success-content;
+  }
+
+  .add-step-num {
+    @apply grid size-4 shrink-0 place-items-center rounded-full bg-secondary text-secondary-content text-add-step-num;
+  }
+
+  .add-label-row {
+    @apply mb-1.5 flex flex-wrap items-baseline justify-between gap-1;
+  }
+
+  .add-label {
+    @apply text-xs font-black uppercase tracking-deck-label text-muted-fg;
+  }
+
+  .add-help {
+    @apply text-xs font-semibold text-muted-fg;
+  }
+
+  .add-input {
+    @apply min-h-36 w-full resize-none rounded-field border-neo border-solid border-neo-edge bg-base-100
+      px-4 py-3.5 text-add-input leading-snug font-extrabold text-base-content transition-neo
+      duration-neo ease-neo placeholder:font-bold placeholder:text-muted-fg placeholder:opacity-100
+      motion-reduce:transition-none;
+  }
+
+  .add-input:focus {
+    @apply bg-base-200 shadow-neo outline-3 outline-offset-3 outline-primary;
+  }
+
+  .add-input-sm {
+    @apply min-h-20 p-2.5 text-base;
+  }
+
+  .add-counter {
+    @apply mt-1.5 text-end font-mono text-xs font-bold text-muted-fg;
+  }
+
+  .add-chips {
+    @apply mt-2.5 flex flex-wrap gap-1.5;
+  }
+
+  .add-chip {
+    @apply cursor-pointer select-none rounded-full border-deck-pill border-solid border-neo-edge
+      bg-base-100 px-2.5 py-1 text-xs font-extrabold text-base-content transition-neo duration-neo
+      ease-neo active:bg-accent active:text-accent-content motion-reduce:transition-none;
+  }
+
+  .add-optional {
+    @apply mt-2.5 rounded-review-sheet-control border-deck-pill border-solid border-neo-edge bg-base-200;
+  }
+
+  .add-preview {
+    @apply flex flex-col gap-3 rounded-field border-neo border-dashed border-neo-edge bg-base-100 p-4 text-center;
+  }
+
+  .add-preview-section {
+    @apply flex min-w-0 flex-col gap-1 wrap-anywhere;
+  }
+
+  .add-preview-tag {
+    @apply text-xs font-black uppercase tracking-deck-label text-muted-fg;
+  }
+
+  .add-preview-divider {
+    @apply my-1 border-t-2 border-base-300;
+  }
+
+  .add-preview-edit {
+    @apply cursor-pointer self-center p-2 text-xs font-extrabold text-muted-fg underline;
+  }
+
+  .add-empty {
+    @apply mt-1 flex flex-col gap-1 rounded-box border-2 border-dashed border-base-300 p-3 text-center
+      text-xs font-black uppercase tracking-wide text-muted-fg;
+  }
 
   .added-0, .added-1, .added-2, .added-3 {
     @apply absolute inset-x-0 top-0 bottom-auto add-card-transform origin-top;
@@ -658,7 +738,5 @@
   .added-1 { @apply add-target-1 z-3 opacity-90; }
   .added-2 { @apply add-target-2 z-2 opacity-80; }
   .added-3 { @apply add-target-3 z-1 opacity-70; }
-
-  .animate-pop-card-up { @apply animate-add-pop-card motion-reduce:animate-none; }
 }
 /* end plan 4 */
