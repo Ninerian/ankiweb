@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 import pytest
-from anki.decks import DeckId
 from fastapi.testclient import TestClient
 from httpx import Response
 
@@ -35,18 +34,19 @@ def _decks(client: TestClient) -> dict[int, str]:
 
 
 def test_create_renders_searchable_list_toast_and_reset(client: TestClient) -> None:
+    before = _decks(client)
     response = client.post("/app/decks", json={"newName": "Biology", "newEmoji": "🧬"})
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
-    deck_id = next(
-        key for key, name in _decks(client).items() if name == "Biology · 🧬"
-    )
-    assert _decks(client)[deck_id] == join_emoji("Biology", "🧬")
+    created = {key: name for key, name in _decks(client).items() if key not in before}
+    assert list(created.values()) == ["Biology · 🧬"]
+    (deck_id,) = created
     assert "data: selector #decks-content" in response.text
     assert f'id="deck-{deck_id}"' in response.text
     assert 'id="toast"' in response.text
     assert s("app_decks_created", lang="en") in response.text
     assert _signals(response) == {
+        "q": "",
         "newName": "",
         "newEmoji": "📚",
         "newError": "",
@@ -138,16 +138,42 @@ def test_foreign_origin_cannot_create_deck(client: TestClient) -> None:
 
 def test_special_characters_are_escaped_in_markup_and_js(client: TestClient) -> None:
     name = 'It\'s "Q" \\ <b>x</b> & $x'
+    before = _decks(client)
     response = client.post("/app/decks", json={"newName": name, "newEmoji": "📚"})
     assert response.status_code == 200
     assert "&lt;b&gt;x&lt;/b&gt;" in response.text
     assert "<b>x</b>" not in response.text
     assert "\\u0024" in html.unescape(response.text)
-    decks = _decks(client)
-    deck_id = next(
-        key for key, stored in decks.items() if stored == join_emoji(name, "📚")
+    created = {
+        key: stored for key, stored in _decks(client).items() if key not in before
+    }
+    assert list(created.values()) == [join_emoji(name, "📚")]
+
+
+def test_list_shows_saved_name_for_anki_normalized_input(client: TestClient) -> None:
+    before = _decks(client)
+    response = client.post("/app/decks", json={"newName": ":Bio:", "newEmoji": "🧬"})
+    assert response.status_code == 200
+    created = [name for key, name in _decks(client).items() if key not in before]
+    assert created == ["Bio · 🧬"]
+    assert ":Bio" not in html.unescape(response.text)
+
+
+def test_colon_prefixed_duplicate_is_rejected_without_row(client: TestClient) -> None:
+    assert (
+        client.post("/app/decks", json={"newName": "Bio", "newEmoji": "📚"}).status_code
+        == 200
     )
-    assert client.portal is not None
-    assert client.portal.call(
-        client.app.state.service.run, lambda col: col.decks.name(DeckId(deck_id))
-    ) == join_emoji(name, "📚")
+    before = _decks(client)
+    response = client.post("/app/decks", json={"newName": ":Bio", "newEmoji": "📚"})
+    assert response.status_code == 200
+    assert _signals(response) == {"newError": s("app_decks_name_taken", lang="en")}
+    assert "#decks-content" not in response.text
+    assert _decks(client) == before
+
+
+def test_created_row_has_no_leading_colon(client: TestClient) -> None:
+    response = client.post("/app/decks", json={"newName": ":Bio2", "newEmoji": "📚"})
+    content = response.text.split("data: selector #decks-content")[1]
+    assert "Bio2" in content
+    assert ":Bio2" not in html.unescape(content)

@@ -102,9 +102,6 @@ def add_decks_routes(
             return DatastarResponse(SSE.patch_signals({"newError": message}))
 
         rows = await service.run(deck_rows)
-        rows = [
-            row if existing.deck_id == row.deck_id else existing for existing in rows
-        ]
         return DatastarResponse(
             [
                 SSE.patch_elements(
@@ -119,6 +116,7 @@ def add_decks_routes(
                 ),
                 SSE.patch_signals(
                     {
+                        "q": "",
                         "newName": "",
                         "newEmoji": "📚",
                         "newError": "",
