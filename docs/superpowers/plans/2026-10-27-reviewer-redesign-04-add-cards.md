@@ -82,8 +82,9 @@ Speichern: `html.escape(value, quote=False)` (nur `& < >`; Anführungszeichen un
 - [ ] Antwort SSE: patcht `#added-cards`, `#hud-count`, setzt Signale zurück (`front: ''`, … `step: 1`, `nid: 0`, `count`). Kein Erfolgstoast, der den aktualisierten Kartenzähler wiederholt.
 - [ ] Fehler: Duplikat/leer → `error_response`, Formular bleibt unverändert.
 - [ ] Ansicht der hinzugefügten Karten: letzte Karten mit Offsets/Rotationen aus `STACK_PRESETS` (Mockup), oberste markiert `TOP CARD`; Peek-Bar.
+- [ ] Der Zähler der hinzugefügten Karten enthält für Screenreader die lokalisierte Anzahl und Beschriftung; das SVG-Badge ist dekorativ.
 - [ ] Edit-last: Klick auf oberste Karte/Peek/HUD-Pill → Guard (Funktion `window.avConfirmDiscard`) → `@post('/app/add/edit/{nid}')` → patcht Signale (`front`, `back`, …, `nid`, `step: 1`) und blendet `<details>` je nach Inhalt auf; Toast "Editing…". Commit mit `nid != 0` aktualisiert und lässt die Position in den hinzugefügten Karten.
-- [ ] Finish: zeigt Summary-Modal mit Anzahl (`role="dialog"`, `aria-modal`, Fokus-Falle, Escape); "Back to decks" führt zu `/app/`, "Start studying" zu `/app/review?deck=<id>`. Guard bei ungespeichertem Text. Keine hinzugefügten Karten → Toast "Add a card first."
+- [ ] Finish: zeigt Summary-Modal mit Anzahl (`role="dialog"`, `aria-modal`, Fokus-Falle, Escape); "Close" schließt ohne Navigation und setzt den Fokus auf "Done" zurück. "Back to decks" führt zu `/app/`, "Start studying" zu `/app/review?deck=<id>`. Guard bei ungespeichertem Text. Keine hinzugefügten Karten → Toast "Add a card first."
 - [ ] Exit/Chip: `onclick`-frei; Guard über `data-on:click="window.avGuardNav(evt)"` das bei Abbruch `evt.preventDefault()` aufruft. `beforeunload`-Warnung bei Tab-Schließen mit ungespeichertem Text ergänzen (Mockup hat nur den Klick-Guard; **Erweiterung**, klein, optional).
 
 ### 4.2b Styling mit daisyUI und Tailwind (Vorlage `editor-mockup.html`)

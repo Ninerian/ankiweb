@@ -714,10 +714,6 @@
       ease-neo active:bg-accent active:text-accent-content motion-reduce:transition-none;
   }
 
-  .add-optional {
-    @apply mt-2.5 rounded-review-sheet-control border-deck-pill border-solid border-neo-edge bg-base-200;
-  }
-
   .add-preview {
     @apply flex flex-col gap-3 rounded-field border-neo border-dashed border-neo-edge bg-base-100 p-4 text-center;
   }
@@ -772,11 +768,15 @@
     :root { --animate-bump: none; --animate-badge-spin: none; }
   }
 
-  /*
-   * Validation toast, lifted above the action bar. daisyUI's .toast lives in
-   * @layer utilities and wins over this layer, so only its own hooks are used:
-   * --toast-y lifts it by the bar height (pt-2 + h-16 + safe-bottom token).
-   */
+}
+
+@layer utilities {
+  /* daisyUI's collapse and alert rules also live in the utility layer. */
+  #add-wizard .add-optional {
+    @apply mt-2.5 rounded-review-sheet-control border-deck-pill border-solid border-neo-edge bg-base-200;
+  }
+
+  /* Lift the validation toast above the action bar, including its safe area. */
   body:has(#add-wizard) #app-error {
     @apply pointer-events-none z-50 p-0;
     --toast-y: calc(-1 * (var(--spacing-review-bar-safe-bottom) + 4.25rem));

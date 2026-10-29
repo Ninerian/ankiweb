@@ -283,15 +283,20 @@ def test_added_stack_is_noninteractive_and_preserves_draft(
 
 
 @pytest.mark.parametrize(
-    ("live_app", "one", "two", "five"),
+    ("live_app", "one", "two", "five", "accessible_label"),
     [
-        ("", "1 card", "2 cards", "5 cards"),
-        ("de_DE", "1 Karte", "2 Karten", "5 Karten"),
+        ("", "1 card", "2 cards", "5 cards", "Cards added"),
+        ("de_DE", "1 Karte", "2 Karten", "5 Karten", "Hinzugefügte Karten"),
     ],
     indirect=["live_app"],
 )
 def test_added_stack_badge_counts_session_cards(
-    page: Page, live_app: LiveApp, one: str, two: str, five: str
+    page: Page,
+    live_app: LiveApp,
+    one: str,
+    two: str,
+    five: str,
+    accessible_label: str,
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/add?deck=1")
@@ -313,6 +318,8 @@ def test_added_stack_badge_counts_session_cards(
         page.locator("#btn-add").click()
         expect(region).to_contain_text(front)
         expect(badge).to_be_visible()
+        expect(badge).to_have_attribute("aria-hidden", "true")
+        assert f"{index} {accessible_label}" in region.aria_snapshot()
         expect(page.locator("#input-front")).to_have_value("")
         if index == 1:
             expect(badge).to_have_text(one)
@@ -326,6 +333,7 @@ def test_added_stack_badge_counts_session_cards(
     assert len(saved) == 5
     page.reload()
     expect(badge).to_have_text(five)
+    assert f"5 {accessible_label}" in region.aria_snapshot()
     expect(region.locator(".card")).to_have_count(4)
     assert live_app.notes() == saved
 
@@ -396,6 +404,55 @@ def test_required_fields_block_wizard_advancement(
     expect(_back(page)).to_be_visible()
 
 
+def test_validation_toast_and_optional_fields_keep_add_styles(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/add?deck=1")
+    page.get_by_role("button", name=re.compile(r"Next: Back")).click()
+    alert = page.get_by_role("alert")
+    expect(alert).to_contain_text("Front cannot be empty")
+    expect(alert).to_be_visible()
+    expect(alert).to_have_css("border-top-width", "3px")
+    expect(alert).to_have_css("border-top-style", "solid")
+    expect(alert).to_have_css("border-top-left-radius", "16px")
+    expect(alert).to_have_css("text-align", "center")
+    expect(alert).to_have_css("font-weight", "900")
+    expect(alert).to_have_css("animation-name", "none")
+    expect(page.locator("#app-error")).to_have_css("z-index", "50")
+    toast_box = alert.bounding_box()
+    footer_box = page.locator("#add-wizard footer").bounding_box()
+    assert toast_box is not None and footer_box is not None
+    assert toast_box["y"] + toast_box["height"] <= footer_box["y"]
+
+    _front(page).fill("Question")
+    _front(page).press("Enter")
+    editor_style = page.locator("#add-editor").evaluate(
+        """el => ({
+            background: getComputedStyle(el).backgroundColor,
+            border: getComputedStyle(el).borderTopColor
+        })"""
+    )
+    for label, field in (
+        ("Hint · Optional", "Hint"),
+        ("Example sentence · Optional", "Example sentence"),
+    ):
+        summary = page.get_by_text(label, exact=True)
+        details = summary.locator("..")
+        expect(details).to_have_css("margin-top", "10px")
+        expect(details).to_have_css("border-top-style", "solid")
+        assert (
+            details.evaluate("el => parseFloat(getComputedStyle(el).borderTopWidth)")
+            > 0
+        )
+        expect(details).to_have_css("border-top-color", editor_style["border"])
+        expect(details).to_have_css("background-color", editor_style["background"])
+        expect(details).to_have_css("border-top-left-radius", "10px")
+        expect(page.get_by_label(field, exact=True)).not_to_be_visible()
+        summary.click()
+        expect(page.get_by_label(field, exact=True)).to_be_visible()
+
+
 def test_duplicate_preserves_preview_and_saved_note(
     page: Page, live_app: LiveApp
 ) -> None:
@@ -437,6 +494,19 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     expect(decks).to_have_attribute("href", "/app/")
     study = dialog.get_by_role("link", name="Start studying", exact=True)
     expect(study).to_have_attribute("href", "/app/review?deck=1")
+    close = dialog.get_by_role("button", name="Close", exact=True)
+    expect(close).to_be_visible()
+    close.focus()
+    expect(close).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(dialog).not_to_be_visible()
+    expect(page).to_have_url(f"{live_app}/app/add?deck=1")
+    expect(_front(page)).to_be_visible()
+    expect(done).to_be_focused()
+    assert live_app.notes() == saved
+
+    done.click()
+    expect(dialog).to_be_visible()
     study.focus()
     page.keyboard.press("Tab")
     assert dialog.evaluate("el => el.contains(document.activeElement)")

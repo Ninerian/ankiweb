@@ -9,6 +9,7 @@
     <div class="modal-action flex-wrap justify-center">
       <a id="summary-keep-adding" class="btn neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 font-black shadow-neo active:shadow-none" href="/app/">{{ s('app_review_complete_back_to_decks') }}</a>
       <a class="btn btn-accent neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge font-black shadow-neo active:shadow-none" href="/app/review?deck={{ deck_id }}">{{ s('app_add_start_studying') }}</a>
+      <button id="summary-close" type="button" class="btn neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 font-black shadow-neo active:shadow-none" data-on:click="$summaryOpen = false; window.avCloseSummary()">{{ tr.actions_close() | tr_clean }}</button>
     </div>
   </div>
   <div class="modal-backdrop" data-on:click="$summaryOpen = false; window.avCloseSummary()"></div>
