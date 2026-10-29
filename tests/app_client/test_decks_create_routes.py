@@ -151,3 +151,25 @@ def test_special_characters_are_escaped_in_markup_and_js(client: TestClient) -> 
     assert client.portal.call(
         client.app.state.service.run, lambda col: col.decks.name(DeckId(deck_id))
     ) == join_emoji(name, "📚")
+
+
+def test_migration_refresh_renders_split_name_and_emoji(client: TestClient) -> None:
+    assert client.portal is not None
+    deck_id = client.portal.call(
+        client.app.state.service.run,
+        lambda col: col.decks.add_normal_deck_with_name("🧬 Biology").id,
+    )
+    page = client.get("/app/")
+    assert "decks/refresh" in page.text
+    assert 'id="deck-migrate-region"' in page.text
+    assert "decks use the old emoji format" in page.text
+    response = client.post("/app/decks/migrate-emoji", json={"migrateIds": [deck_id]})
+    assert _signals(response)["migrateDone"] is True
+    refreshed = client.get("/app/decks/refresh")
+    assert refreshed.status_code == 200
+    assert "data: selector #decks-content" in refreshed.text
+    assert f'id="deck-{deck_id}"' in refreshed.text
+    assert ">🧬</span>" in refreshed.text
+    assert ">Biology</h3>" in refreshed.text
+    assert "🧬 Biology" not in refreshed.text
+    assert _signals(refreshed) == {"migrateDone": False}
