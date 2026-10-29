@@ -16,19 +16,21 @@
           <label class="fieldset-legend" for="deck-name">{{ s('app_decks_name') }}</label>
           <span class="text-xs font-bold text-muted-fg" data-class:text-error-content="$newName.length >= 40" data-text="$newName.length + ' / 40'"></span>
         </div>
-        <input id="deck-name" class="input w-full" type="text" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="{{ s('app_decks_name_placeholder') }}" data-bind:new-name data-on:input="$newError = ''">
+        <label class="input flex h-12.5 w-full items-center gap-2.5 border-neo-edge bg-base-200 px-3.5 shadow-neo focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-primary">
+          <input id="deck-name" class="grow text-base font-bold placeholder:text-muted-fg placeholder:opacity-100" type="text" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="{{ s('app_decks_name_placeholder') }}" data-bind:new-name data-on:input="$newError = ''">
+        </label>
       </fieldset>
       <p id="deck-name-error" class="mb-3 text-sm font-bold text-error-content" role="alert" style="display:none" data-show="$newError" data-text="$newError"></p>
       <p class="mb-2 text-sm font-black">{{ s('app_decks_pick_emoji') }}</p>
       <div class="tabs tabs-box mb-3 flex-nowrap overflow-x-auto" role="tablist" aria-label="{{ s('app_decks_pick_category') }}">
         {% for group in emoji_groups %}
-        <button id="emoji-tab-{{ group.key }}" type="button" class="tab flex-none" role="tab" aria-controls="emoji-group-{{ group.key }}" aria-selected="{{ 'true' if loop.first else 'false' }}" data-attr:aria-selected="$emojiGroup === {{ js_literal(group.key) }} ? 'true' : 'false'" data-class:tab-active="$emojiGroup === {{ js_literal(group.key) }}" data-on:click="$emojiGroup = {{ js_literal(group.key) }}">{{ group_labels[group.key] }}</button>
+        <button id="emoji-tab-{{ group.key }}" type="button" class="btn btn-sm flex-none rounded-full border-2 border-neo-edge bg-base-200 font-black uppercase shadow-none aria-selected:bg-accent aria-selected:text-accent-content aria-selected:shadow-[2px_2px_0_var(--color-neo-shadow)]" role="tab" aria-controls="emoji-group-{{ group.key }}" aria-selected="{{ 'true' if loop.first else 'false' }}" data-attr:aria-selected="$emojiGroup === {{ js_literal(group.key) }} ? 'true' : 'false'" data-on:click="$emojiGroup = {{ js_literal(group.key) }}">{{ group_labels[group.key] }}</button>
         {% endfor %}
       </div>
       {% for group in emoji_groups %}
       <div id="emoji-group-{{ group.key }}" class="mb-4 grid grid-cols-6 gap-2" role="radiogroup" aria-label="{{ s('app_decks_pick_emoji') }}" data-show="$emojiGroup === {{ js_literal(group.key) }}"{% if not loop.first %} style="display:none"{% endif %}>
         {% for emoji in group.emojis %}
-        <label class="btn btn-square w-full text-2xl" data-class:btn-accent="$newEmoji === {{ js_literal(emoji) }}">
+        <label class="btn btn-square aspect-square h-auto min-h-0 w-full max-w-13.5 justify-self-center rounded-[10px] border-2 border-neo-edge bg-base-100 p-0 text-2xl leading-none shadow-[2px_2px_0_var(--color-neo-shadow)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none has-checked:translate-x-0.5 has-checked:translate-y-0.5 has-checked:bg-accent has-checked:shadow-none">
           <input class="sr-only" type="radio" name="deck-emoji" value="{{ emoji }}" aria-label="{{ emoji }}" data-bind:new-emoji{% if emoji == '📚' %} checked{% endif %}>
           <span aria-hidden="true">{{ emoji }}</span>
         </label>
