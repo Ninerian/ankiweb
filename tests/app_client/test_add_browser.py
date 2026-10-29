@@ -193,7 +193,7 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
     expect(page.get_by_label("Hint", exact=True)).to_have_value("")
     expect(page.get_by_label("Example sentence", exact=True)).to_have_value("")
     expect(page.get_by_role("button", name="Add", exact=True)).not_to_be_visible()
-    expect(page.locator("#added-cards .badge")).to_have_text("1 card")
+    expect(page.locator("#added-cards .add-stack-badge")).to_have_text("1 card")
     expect(page.locator("#added-cards")).to_contain_text(front)
     saved = live_app.notes()
     assert len(saved) == 1
@@ -207,7 +207,7 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
 
     page.reload()
     expect(page.locator("#added-cards")).to_contain_text(front)
-    expect(page.locator("#added-cards .badge")).to_have_text("1 card")
+    expect(page.locator("#added-cards .add-stack-badge")).to_have_text("1 card")
     expect(_front(page)).to_have_value("")
     assert live_app.notes() == saved
 
@@ -219,7 +219,7 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
         other = isolated.new_page()
         other.goto(f"{live_app}/app/add?deck=1")
         expect(other.locator("#added-cards")).not_to_contain_text(front)
-        expect(other.locator("#added-cards .badge")).to_have_count(0)
+        expect(other.locator("#added-cards .add-stack-badge")).to_have_count(0)
         assert live_app.notes() == saved
     finally:
         isolated.close()
@@ -277,7 +277,7 @@ def test_added_stack_is_noninteractive_and_preserves_draft(
     expect(_back(page)).to_be_visible()
     expect(_front(page)).to_have_value("unsaved draft")
     expect(_back(page)).to_have_value("draft answer")
-    expect(region.locator(".badge")).to_have_text("1 card")
+    expect(region.locator(".add-stack-badge")).to_have_text("1 card")
     assert live_app.notes() == original
     assert live_app.persisted_notes() == original
 
@@ -296,7 +296,7 @@ def test_added_stack_badge_counts_session_cards(
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/add?deck=1")
     region = page.locator("#added-cards")
-    badge = region.locator(".badge")
+    badge = region.locator(".add-stack-badge")
     expect(page.locator("#hud-count")).to_have_count(0)
     expect(badge).to_have_count(0)
     expect(region.locator(".card")).to_have_count(0)
@@ -335,7 +335,7 @@ def test_double_click_add_saves_only_one_note(page: Page, live_app: LiveApp) -> 
     _to_preview(page, "Double click", "one note")
     page.get_by_role("button", name="Add", exact=True).dblclick()
     expect(_front(page)).to_be_visible()
-    expect(page.locator("#added-cards .badge")).to_have_text("1 card")
+    expect(page.locator("#added-cards .add-stack-badge")).to_have_text("1 card")
     saved = live_app.notes()
     assert len(saved) == 1
     assert saved[0][1][:2] == ["Double click", "one note"]

@@ -620,6 +620,19 @@
   --add-target-y-3: 128px;
   --add-target-scale-3: 0.94;
   --add-target-rot-3: 3deg;
+  --animate-bump: bump 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-badge-spin: badge-spin 28s linear infinite;
+
+  /* Reusable: element briefly grows, then settles. Add the animate-bump class, re-add to replay. */
+  @keyframes bump {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.7); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes badge-spin {
+    to { transform: rotate(360deg); }
+  }
 }
 
 @utility add-card-transform {
@@ -738,5 +751,25 @@
   .added-1 { @apply add-target-1 z-3 opacity-90; }
   .added-2 { @apply add-target-2 z-2 opacity-80; }
   .added-3 { @apply add-target-3 z-1 opacity-70; }
+
+  /* Count badge: starburst on the laid-down cards (top-right of the stack). Only the star spins. */
+  .add-stack-badge {
+    @apply pointer-events-none absolute top-2 -right-1 z-20 size-16 overflow-visible font-black;
+    filter: drop-shadow(2px 2px 0 var(--color-neo-edge));
+  }
+
+  .add-stack-star {
+    @apply animate-badge-spin fill-primary stroke-neo-edge;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .add-stack-count { @apply fill-primary-content text-[40px]; transform-box: fill-box; transform-origin: center; }
+  .add-stack-unit { @apply fill-primary-content text-[11px] uppercase; letter-spacing: 0.08em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root { --animate-bump: none; --animate-badge-spin: none; }
+  }
 }
 /* end plan 4 */

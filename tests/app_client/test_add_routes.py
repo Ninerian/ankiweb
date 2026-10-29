@@ -215,13 +215,20 @@ def test_add_page_uses_resolved_language(tmp_path: Path) -> None:
     assert '<html lang="de" dir="ltr">' in response.text
     assert "Vorderseite (Frage / Stichwort)" in response.text
     assert "Kartenvorschau" in preview.text
-    assert ">1 Karte</span>" in first.text
-    assert ">2 Karten</span>" in second.text
-    assert ">5 Karten</span>" in last.text
-    assert ">5 Karten</span>" in reloaded.text
+    assert _badge(first.text) == "1 Karte"
+    assert _badge(second.text) == "2 Karten"
+    assert _badge(last.text) == "5 Karten"
+    assert _badge(reloaded.text) == "5 Karten"
     assert _signals(duplicate) == {
         "error": "Eine Karte mit dieser Vorderseite existiert bereits."
     }
+
+
+def _badge(text: str) -> str:
+    count = re.search(r'class="add-stack-count"[^>]*>(\d+)</text>', text)
+    unit = re.search(r"<textPath[^>]*>([^<]+)</textPath>", text)
+    assert count is not None and unit is not None
+    return f"{count.group(1)} {unit.group(1)}"
 
 
 def _signals(response: Response) -> dict[str, object]:
@@ -261,7 +268,7 @@ def test_commit_persists_escaped_note_and_patches_session_cards(
     assert response.headers["content-type"].startswith("text/event-stream")
     assert "event: datastar-patch-elements" in response.text
     assert 'id="added-cards"' in response.text
-    assert ">1 card</span>" in response.text
+    assert _badge(response.text) == "1 card"
     assert "&lt;img src=x onerror=&#34;alert(1)&#34;&gt; &amp;" in response.text
     assert "&lt;script&gt;alert(1)&lt;/script&gt; &amp; answer" in response.text
     assert "&lt;b&gt;hint&lt;/b&gt; &amp;" in response.text
@@ -299,7 +306,7 @@ def test_commit_persists_escaped_note_and_patches_session_cards(
 
     page = client.get(f"/app/add?deck={deck_id}")
     assert "count: 1" in page.text
-    assert ">1 card</span>" in page.text
+    assert _badge(page.text) == "1 card"
     assert "&lt;img src=x onerror=&#34;alert(1)&#34;&gt;" in page.text
     assert "<img src=x" not in page.text
 
@@ -386,13 +393,13 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
         f"/app/add/commit?deck={other_deck}", json={"front": "B", "back": "b"}
     )
     assert _signals(second)["count"] == 1
-    assert ">1 card</span>" in second.text
+    assert _badge(second.text) == "1 card"
     assert ">B</p>" in second.text
     assert ">A</p>" not in second.text
     assert ">A</p>" in client.get("/app/add?deck=1").text
     other_page = client.get(f"/app/add?deck={other_deck}")
     assert ">B</p>" in other_page.text
-    assert ">1 card</span>" in other_page.text
+    assert _badge(other_page.text) == "1 card"
     assert ">A</p>" not in other_page.text
     denied = client.post(
         f"/app/add/commit?deck={other_deck}",
@@ -408,7 +415,7 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     assert "count: 0" in empty_page.text
     assert ">A</p>" not in empty_page.text
     assert "No cards added yet" in empty_page.text
-    assert ">0 cards</span>" not in empty_page.text
+    assert "add-stack-badge" not in empty_page.text
     denied = client.post(
         "/app/add/commit?deck=1",
         json={"nid": first_nid, "front": "Changed", "back": "changed"},
@@ -417,7 +424,7 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     assert _signals(denied) == {"error": "Could not add the card. Please try again."}
     third = client.post("/app/add/commit?deck=1", json={"front": "C", "back": "c"})
     assert _signals(third)["count"] == 1
-    assert ">1 card</span>" in third.text
+    assert _badge(third.text) == "1 card"
     assert ">C</p>" in third.text
     assert ">A</p>" not in third.text
 
@@ -425,7 +432,7 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     client.cookies.set("app_sid", session_a)
     page = client.get("/app/add?deck=1")
     assert "count: 1" in page.text
-    assert ">1 card</span>" in page.text
+    assert _badge(page.text) == "1 card"
     assert ">A</p>" in page.text
     assert ">C</p>" not in page.text
     assert len(_notes(client)) == 3
@@ -483,11 +490,12 @@ def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> Non
     for index in range(1, 5):
         assert f"Front {index}" in response.text
     assert response.text.index("Front 4") < response.text.index("Front 3")
-    assert response.text.index(">5 cards</span>") < response.text.index("Front 4")
-    assert response.text.count(">5 cards</span>") == 1
+    assert response.text.index("add-stack-badge") < response.text.index("Front 4")
+    assert _badge(response.text) == "5 cards"
+    assert response.text.count("add-stack-badge") == 1
     page = client.get("/app/add?deck=1")
     assert "count: 5" in page.text
-    assert ">5 cards</span>" in page.text
+    assert _badge(page.text) == "5 cards"
     assert "Front 0" not in page.text
     assert "Front 4" in page.text
 
@@ -500,7 +508,7 @@ def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> Non
     )
     page = client.get("/app/add?deck=1")
     assert "count: 4" in page.text
-    assert ">4 cards</span>" in page.text
+    assert _badge(page.text) == "4 cards"
     assert "Front 0" in page.text
     assert "Front 4" not in page.text
 

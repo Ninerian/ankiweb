@@ -61,6 +61,7 @@ window.avAnimateCommit = () => {
   const animations = [
     [editor, "animate-fresh-card"],
     [stack.querySelector("[data-note-id]"), "animate-slide-to-added"],
+    [stack.querySelector(".add-stack-count"), "animate-bump"],
   ];
   for (const [element, name] of animations) element?.classList.remove(name);
   // Restart CSS animations even when morphing retains the same elements.
