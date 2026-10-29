@@ -192,7 +192,7 @@ Alle Klassen unten wurden in `node_modules/daisyui/components` gefunden. **Nicht
 - [ ] **Rückfall:** Anki Desktop zeigt danach `German · 🇩🇪` im Klartext. Das ist das beabsichtigte Format (Suffix); in `CONTEXT.md` und im Sheet-Text erwähnen.
 
 ## Akzeptanz
-- Ein Stapel lässt sich mit Name und Emoji anlegen; Anki speichert `"<Name> · <Emoji>"` byte-identisch.
+- Ein Stapel lässt sich mit Name und Emoji anlegen; Anki speichert `"<Name> · <Emoji>"`. Für NFC-Eingaben byte-identisch; NFD-Eingaben normalisiert Anki zu NFC (gemessen: `e` + U+0301 wird U+00E9), die Zeile zeigt den gespeicherten Namen.
 - Die Liste zeigt Name und Emoji getrennt; **Sortierung entspricht Anki Desktop**.
 - Duplikate, leere Namen, `::`, zu lange Namen und fremde Emoji werden vom **Server** abgelehnt; der Dialog bleibt mit Fehlertext offen.
 - Keine IDs aus Slugs; Zeile trägt die echte Deck-ID, Learn und Edit/Add führen dorthin.
@@ -207,7 +207,7 @@ Alle Klassen unten wurden in `node_modules/daisyui/components` gefunden. **Nicht
 | Bestehende Präfix-Namen (Plan 2) | Einmalige, bestätigte Umbenennung (Aufgabe 7.7); bis dahin zeigen sie `🗂️`. Nie automatisch |
 | Unterdeck `Name::Kind` und Emoji | Nur der **Wurzelname** trägt das Emoji; `::` im Eingabenamen wird abgelehnt |
 | Veraltetes Such-Literal nach dem Patch | Aufgabe 7.3: Listenrahmen samt `no_match` neu rendern; Test |
-| Zwei gleichzeitige Anlegevorgänge | Anki lehnt den zweiten Namen ab; Fehlerpfad `taken` greift |
+| Zwei gleichzeitige Anlegevorgänge | Anki vergleicht nur **volle** Namen: `Bio · 🧬` und `Bio · 🌱` kollidieren dort nicht. Die Anzeigenamen-Prüfung in `create_deck` und die Serialisierung über `service.run_op` verhindern das; der Fehlerpfad `taken` greift |
 | Emoji-Darstellung unterscheidet sich je System | Nur in macOS-Chromium geprüft; Kacheln nutzen System-Emoji-Schrift, kein Bildsatz |
 | Systemtastatur verdeckt das Sheet auf Geräten | **Nicht geprüft** (nur Headless). Auf echtem Gerät testen, `max-h` mit `dvh` |
 | Geteilter Headless-Browser friert ein | Eigener Chromium-Start im Smoke (Aufgabe 7.6) |
