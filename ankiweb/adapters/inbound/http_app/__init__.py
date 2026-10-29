@@ -1,11 +1,12 @@
 from collections.abc import Callable
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 
 from ankiweb.adapters.inbound.http_app.add import build_add_router
 from ankiweb.adapters.inbound.http_app.decks import add_decks_routes
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
+from ankiweb.adapters.inbound.http_app.origin_guard import reject_cross_site_writes
 from ankiweb.adapters.inbound.http_app.review import make_review_router
 from ankiweb.adapters.inbound.http_shared.templating import render
 from ankiweb.core.app_client.lang import resolve_lang
@@ -16,7 +17,7 @@ from ankiweb.core.ports import CollectionPort
 def build_app_router(
     get_service: Callable[[], CollectionPort], settings: Settings
 ) -> APIRouter:
-    router = APIRouter(prefix="/app")
+    router = APIRouter(prefix="/app", dependencies=[Depends(reject_cross_site_writes)])
     lang = resolve_lang(settings)
     router.include_router(make_review_router(get_service, settings))
 
