@@ -25,7 +25,7 @@ Die Vorlage einer Notiz mit Feldern und Kartenvorlagen. Der mobile Client nutzt 
 _Avoid_: Note-Type, Modell, Template
 
 **Hinzugefuegte Karten**:
-Die in der laufenden Hinzufuegen-Sitzung gespeicherten Notizen, sichtbar im Wizard. Sie sind sofort im Deck gespeichert. Die Anzeige zeigt hoechstens vier zuletzt hinzugefuegte Karten; ihr Badge zaehlt alle Karten dieser Sitzung im aktuellen Deck. Die oberste Karte ist anklickbar und oeffnet "Edit last" (Update der gespeicherten Notiz). Anki-Wortlaut: `adding_added` ("Hinzugefuegt").
+Die in der laufenden Hinzufuegen-Sitzung gespeicherten Notizen, sichtbar im Wizard. Sie sind sofort im Deck gespeichert. Die Anzeige zeigt hoechstens vier zuletzt hinzugefuegte Karten; ihr Badge zaehlt alle Karten dieser Sitzung im aktuellen Deck. Die Karten sind nicht anklickbar. Anki-Wortlaut: `adding_added` ("Hinzugefuegt").
 _Avoid_: Stack, Stapel, Batch, Neue Karten
 
 **Neue Karten**:

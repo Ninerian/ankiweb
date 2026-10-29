@@ -62,7 +62,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_cards_added": "Cards added",
         "app_add_exit": "Exit Creator",
         "app_add_done": "Done",
-        "app_add_edit_last": "Edit last added card",
         "app_add_front_prompt": "Front (Question / Prompt)",
         "app_add_front_help": "What will you test?",
         "app_add_back_prompt": "Back (Answer / Meaning)",
@@ -96,7 +95,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_unavailable": (
             "This card is unavailable for editing. Please try again."
         ),
-        "app_add_editing": "Editing…",
         "app_add_card_first": "Add a card first.",
         "app_add_cards_ready": "Cards Ready!",
         "app_add_keep_adding": "Keep adding more cards",
@@ -106,9 +104,6 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "app_add_discard_finish": (
             "You have unsaved text in your current card. Discard it and finish?"
-        ),
-        "app_add_discard_edit": (
-            "You have unsaved text in your current card. Discard it and edit the card?"
         ),
         "app_add_chip_der": "der",
         "app_add_chip_die": "die",
@@ -179,7 +174,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_cards_added": "Hinzugefügte Karten",
         "app_add_exit": "Kartenerstellung verlassen",
         "app_add_done": "Fertig",
-        "app_add_edit_last": "Zuletzt hinzugefügte Karte bearbeiten",
         "app_add_front_prompt": "Vorderseite (Frage / Stichwort)",
         "app_add_front_help": "Was möchtest du abfragen?",
         "app_add_back_prompt": "Rückseite (Antwort / Bedeutung)",
@@ -217,7 +211,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_unavailable": (
             "Diese Karte kann nicht bearbeitet werden. Bitte erneut versuchen."
         ),
-        "app_add_editing": "Wird bearbeitet…",
         "app_add_card_first": "Füge zuerst eine Karte hinzu.",
         "app_add_cards_ready": "Karten bereit!",
         "app_add_keep_adding": "Weitere Karten hinzufügen",
@@ -226,10 +219,6 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "app_add_discard_finish": (
             "Die aktuelle Karte enthält ungespeicherten Text. Verwerfen und abschließen?"
-        ),
-        "app_add_discard_edit": (
-            "Die aktuelle Karte enthält ungespeicherten Text. "
-            "Verwerfen und die Karte bearbeiten?"
         ),
         "app_add_start_studying": "Lernen beginnen",
         "app_add_chip_der": "der",

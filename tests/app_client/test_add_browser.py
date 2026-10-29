@@ -11,7 +11,6 @@ from typing import Literal
 import pytest
 import uvicorn
 from anki.collection import Collection
-from anki.notes import NoteId
 from fastapi import FastAPI
 
 from ankiweb.app import create_app
@@ -227,7 +226,9 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
     assert live_app.persisted_notes() == saved
 
 
-def test_edit_last_discard_guard_and_round_trip(page: Page, live_app: LiveApp) -> None:
+def test_added_stack_is_noninteractive_and_preserves_draft(
+    page: Page, live_app: LiveApp
+) -> None:
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/add?deck=1")
     _front(page).fill("a < b & c")
@@ -244,74 +245,41 @@ def test_edit_last_discard_guard_and_round_trip(page: Page, live_app: LiveApp) -
     expect(page.locator("#added-cards")).to_contain_text("a < b & c")
     original = live_app.notes()
     assert len(original) == 1
-    _front(page).fill("unsaved draft")
-    edit = page.locator("#added-cards").get_by_role(
-        "button", name="Edit last added card", exact=True
-    )
-    cancelled = _respond_to_confirm(page, accept=False)
-    edit.click()
-    assert len(cancelled) == 1
-    expect(_front(page)).to_have_value("unsaved draft")
-    assert live_app.notes() == original
-
-    accepted = _respond_to_confirm(page, accept=True)
-    edit.click()
-    assert len(accepted) == 1
-    expect(_front(page)).to_have_value("a < b & c")
-    _front(page).fill("Updated <front> & text")
-    _front(page).press("Enter")
-    expect(_back(page)).to_have_value("first answer")
-    expect(page.get_by_label("Hint", exact=True)).to_be_visible()
-    expect(page.get_by_label("Hint", exact=True)).to_have_value("hint <one> & two")
-    expect(page.get_by_label("Example sentence", exact=True)).to_be_visible()
-    expect(page.get_by_label("Example sentence", exact=True)).to_have_value(
-        "A *word*\nnext line"
-    )
-    _back(page).fill("updated answer")
-    _back(page).press("Enter")
-    expect(page.locator("#preview")).to_contain_text("Updated <front> & text")
-    page.get_by_role("button", name="Add", exact=True).click()
-    expect(_front(page)).to_be_visible()
-    expect(page.locator("#added-cards")).to_contain_text("Updated <front> & text")
-    expect(page.locator("#added-cards .badge")).to_have_text("1 card")
-    updated = live_app.notes()
-    assert len(updated) == 1
-    assert updated[0][0] == original[0][0]
-    assert updated[0][1] == [
-        "Updated &lt;front&gt; &amp; text",
-        "updated answer",
+    assert original[0][1] == [
+        "a &lt; b &amp; c",
+        "first answer",
         "hint &lt;one&gt; &amp; two",
         "A *word*<br>next line",
     ]
-    page.reload()
-    expect(page.locator("#added-cards")).to_contain_text("Updated <front> & text")
-    assert live_app.notes() == updated
-    assert live_app.persisted_notes() == updated
 
+    region = page.locator("#added-cards")
+    expect(region.locator("button, a, [role='button'], [tabindex]")).to_have_count(0)
+    expect(
+        page.locator("#add-wizard footer").get_by_role(
+            "button", name=re.compile("edit", re.IGNORECASE), include_hidden=True
+        )
+    ).to_have_count(0)
+    _front(page).fill("unsaved draft")
+    _front(page).press("Enter")
+    expect(_back(page)).to_be_visible()
+    _back(page).fill("draft answer")
 
-def test_edit_deleted_card_shows_unavailable_error(
-    page: Page, live_app: LiveApp
-) -> None:
-    page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/add?deck=1")
-    _add(page)
-    notes = live_app.notes()
-    assert len(notes) == 1
-    nid = NoteId(notes[0][0])
-    asyncio.run_coroutine_threadsafe(
-        live_app.app.state.service.run(lambda col: col.remove_notes([nid])),
-        live_app.loop,
-    ).result(timeout=10)
-    assert live_app.notes() == []
+    dialogs: list[str] = []
 
-    page.locator("#added-cards").get_by_role(
-        "button", name="Edit last added card", exact=True
-    ).click()
-    error = page.get_by_role("alert")
-    expect(error).to_be_visible()
-    expect(error).to_have_text(
-        "This card is unavailable for editing. Please try again."
-    )
+    def dismiss_dialog(dialog: Dialog) -> None:
+        dialogs.append(dialog.message)
+        dialog.dismiss()
+
+    page.on("dialog", dismiss_dialog)
+    region.locator("article").click()
+    page.remove_listener("dialog", dismiss_dialog)
+    assert not dialogs
+    expect(_back(page)).to_be_visible()
+    expect(_front(page)).to_have_value("unsaved draft")
+    expect(_back(page)).to_have_value("draft answer")
+    expect(region.locator(".badge")).to_have_text("1 card")
+    assert live_app.notes() == original
+    assert live_app.persisted_notes() == original
 
 
 @pytest.mark.parametrize(

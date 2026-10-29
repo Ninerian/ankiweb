@@ -42,9 +42,9 @@
 {{ preview_card() }}
 {% else %}
 <main id="add-wizard" class="review-app"
-      data-deck-id="{{ deck_id }}" data-editing="{{ s('app_add_editing') }}" data-edit-last="{{ s('app_add_edit_last') }}"
+      data-deck-id="{{ deck_id }}"
       data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: {{ count }}, error: '', saving: false, summaryOpen: false}"
-      data-on:datastar-fetch__document="evt.detail.type === 'finished' &amp;&amp; !$error ? (evt.detail.el.id === 'btn-add' ? window.avAnimateCommit() : (evt.detail.el.getAttribute('aria-label') === el.dataset.editLast ? window.avEditLoaded($hint, $example) : null)) : null"
+      data-on:datastar-fetch__document="evt.detail.type === 'finished' &amp;&amp; !$error &amp;&amp; evt.detail.el.id === 'btn-add' ? window.avAnimateCommit() : null"
       data-on:keydown__window="window.avAddKey(evt)">
   <header class="review-hud">
     <div class="navbar review-hud-nav min-h-0 p-0">
