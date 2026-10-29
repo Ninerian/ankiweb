@@ -68,3 +68,31 @@ def test_review_and_add_show_the_same_deck_display(
         client.portal.call(service.run, lambda col: col.decks.name(DeckId(deck_id)))
         == stored
     )
+
+
+def test_review_header_of_subdeck_card_uses_root_emoji(client: TestClient) -> None:
+    def seed(col: Collection) -> int:
+        root_id = col.decks.id("Biologie · 🧬")
+        child_id = col.decks.id("Biologie · 🧬::Zellen")
+        model = col.models.by_name("Basic")
+        assert root_id is not None and child_id is not None and model is not None
+        note = col.new_note(model)
+        note["Front"] = "Question"
+        note["Back"] = "Answer"
+        col.add_note(note, child_id)
+        return int(root_id)
+
+    assert client.portal is not None
+    service = client.app.state.service
+    root_id = client.portal.call(service.run, seed)
+
+    review = client.get("/app/review", params={"deck": root_id})
+    assert review.status_code == 200
+    match = re.search(
+        r'id="card-deck"[^>]*><span>(.*?)</span> <span>(.*?)</span>', review.text
+    )
+    assert match is not None
+    assert (html.unescape(match[1]), html.unescape(match[2])) == (
+        "🧬",
+        "Biologie::Zellen",
+    )

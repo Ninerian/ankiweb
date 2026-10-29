@@ -176,10 +176,11 @@ def _view(
     note = stored.note()
     notetype = note.note_type()
     again, hard, good, easy = scheduler.describe_next_states(states)
-    deck_emoji, deck_name = split_emoji(col.decks.name(card.did))
+    root, separator, path = col.decks.name(card.did).partition("::")
+    deck_emoji, deck_name = split_emoji(root)
     return CardView(
         card_id=card.id,
-        deck=deck_name,
+        deck=deck_name + separator + path,
         deck_emoji=deck_emoji,
         question_html=_render_html(card.question()),
         answer_html=_render_html(card.answer()),
