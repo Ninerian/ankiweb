@@ -12,6 +12,10 @@ _Avoid_: Stack, Ordner
 Die Startseite des mobilen Clients mit allen Decks, Suche und Zaehlern.
 _Avoid_: Stapelansicht, Home
 
+**Deck-Emoji**:
+Das eine Emoji eines Decks, gespeichert als Suffix im Anki-Namen: `Biologie · 🧬` (Name, Leerzeichen, Mittelpunkt, Leerzeichen, genau ein Emoji). Der Mittelpunkt ist der Trenner, nicht `::` (das waere ein Unterdeck). Die App zeigt Emoji und Name getrennt; ohne passendes Suffix gilt `🗂️` und der volle Name. Das Suffix haelt die Sortierung wie in Anki Desktop. Anki Desktop zeigt das Suffix im Klartext, und ein dort umbenanntes Deck verliert sein Emoji (kein Datenfehler). Aeltere Decks mit Emoji als Praefix (`🇩🇪 German`) zeigt die App mit `🗂️`, bis die einmalige Umbenennung bestaetigt ist.
+_Avoid_: Icon, Praefix-Emoji
+
 **Karte**:
 Eine einzelne Lerneinheit, die im Review beantwortet wird.
 _Avoid_: Flashcard, Item
