@@ -2,11 +2,13 @@
 
 import unicodedata
 from dataclasses import dataclass
+from typing import Literal
 
 from anki.collection import Collection
 from anki.decks import DEFAULT_DECK_ID
 
 from ankiweb.core.app_client.deck_progress import progress_by_deck
+from ankiweb.core.app_client.emoji_picker import ALL_EMOJI
 from ankiweb.core.app_client.revlog import studied_by_deck
 
 DEFAULT_EMOJI = "🗂️"
@@ -26,6 +28,12 @@ class DeckRow:
     due: int
     new: int
     progress_pct: int
+
+
+class DeckNameError(Exception):
+    def __init__(self, kind: Literal["empty", "too_long", "invalid", "taken"]) -> None:
+        self.kind = kind
+        super().__init__(kind)
 
 
 def _is_regional_indicator(char: str) -> bool:
@@ -83,6 +91,42 @@ def join_emoji(name: str, emoji: str) -> str:
     if not emoji or _emoji_end(emoji) != len(emoji):
         raise ValueError("emoji must be exactly one emoji grapheme")
     return f"{name.strip()} · {emoji}"
+
+
+def _emoji_only(name: str) -> bool:
+    while name:
+        end = _emoji_end(name)
+        if not end:
+            return False
+        name = name[end:].lstrip()
+    return True
+
+
+def _comparison_name(name: str) -> str:
+    return unicodedata.normalize("NFC", name.casefold())
+
+
+def create_deck(col: Collection, name: str, emoji: str) -> DeckRow:
+    """Create a root deck; names consisting only of emoji are invalid."""
+    name = name.strip()
+    if not name:
+        raise DeckNameError("empty")
+    if len(name) > 40:
+        raise DeckNameError("too_long")
+    if "::" in name or emoji not in ALL_EMOJI or _emoji_only(name):
+        raise DeckNameError("invalid")
+    comparison_name = _comparison_name(name)
+    if any(
+        _comparison_name(split_emoji(deck.name)[1]) == comparison_name
+        for deck in col.decks.all_names_and_ids()
+        if "::" not in deck.name
+    ):
+        raise DeckNameError("taken")
+    name = unicodedata.normalize("NFC", name)
+    deck_id = col.decks.add_normal_deck_with_name(join_emoji(name, emoji)).id
+    return DeckRow(
+        deck_id=deck_id, name=name, emoji=emoji, due=0, new=0, progress_pct=0
+    )
 
 
 def deck_rows(col: Collection) -> list[DeckRow]:

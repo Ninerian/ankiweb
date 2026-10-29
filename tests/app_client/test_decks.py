@@ -13,7 +13,10 @@ from ankiweb.app import create_app
 from ankiweb.core.app_client.deck_progress import progress_pct
 from ankiweb.core.app_client.decks import (
     DEFAULT_EMOJI,
+    DeckNameError,
+    DeckRow,
     _emoji_end,
+    create_deck,
     deck_rows,
     join_emoji,
     split_emoji,
@@ -104,6 +107,117 @@ def test_join_emoji_round_trips_picker_choices(name: str) -> None:
 def test_join_emoji_rejects_invalid_graphemes(emoji: str) -> None:
     with pytest.raises(ValueError):
         join_emoji("Bio", emoji)
+
+
+def test_create_deck_returns_row_and_stores_name(temp_collection: Collection) -> None:
+    name = '  It\'s "Bio" \\ <b>x</b> & $  '
+    row = create_deck(temp_collection, name, "🧬")
+
+    assert row == DeckRow(
+        deck_id=row.deck_id,
+        name=name.strip(),
+        emoji="🧬",
+        due=0,
+        new=0,
+        progress_pct=0,
+    )
+    assert row.deck_id > 0
+    assert temp_collection.decks.name(DeckId(row.deck_id)) == join_emoji(name, "🧬")
+    assert row in deck_rows(temp_collection)
+
+
+@pytest.mark.parametrize(
+    ("name", "emoji", "kind"),
+    [
+        ("", "🧬", "empty"),
+        (" \t ", "🧬", "empty"),
+        ("🧬", "📚", "invalid"),
+        ("🧬 🌱", "📚", "invalid"),
+        ("Name::Child", "🧬", "invalid"),
+        ("x" * 41, "🧬", "too_long"),
+        ("Name", "🗂️", "invalid"),
+        ("Name", "🦄", "invalid"),
+        ("Name", "🧬🧪", "invalid"),
+        ("Name", "", "invalid"),
+    ],
+)
+def test_create_deck_rejects_invalid_input_without_writing(
+    temp_collection: Collection, name: str, emoji: str, kind: str
+) -> None:
+    before = [
+        (deck.id, deck.name) for deck in temp_collection.decks.all_names_and_ids()
+    ]
+    with pytest.raises(DeckNameError) as error:
+        create_deck(temp_collection, name, emoji)
+    assert error.value.kind == kind
+    assert [
+        (deck.id, deck.name) for deck in temp_collection.decks.all_names_and_ids()
+    ] == before
+
+
+def test_create_deck_accepts_40_characters(temp_collection: Collection) -> None:
+    name = "x" * 40
+    row = create_deck(temp_collection, name, "📚")
+    assert row.name == name
+    assert temp_collection.decks.name(DeckId(row.deck_id)) == join_emoji(name, "📚")
+
+
+@pytest.mark.parametrize(
+    ("existing", "name", "emoji"),
+    [
+        ("German B1 Vocab", "german b1 vocab", "📚"),
+        ("Bio · 🧬", "bio", "🌱"),
+        ("Café · 🧬", "Cafe\u0301", "🌱"),
+        ("Straße · 🧬", "STRASSE", "🌱"),
+        ("Default", "default", "📚"),
+    ],
+)
+def test_create_deck_rejects_existing_root_display_name(
+    temp_collection: Collection, existing: str, name: str, emoji: str
+) -> None:
+    temp_collection.decks.add_normal_deck_with_name(existing)
+    before = [
+        (deck.id, deck.name) for deck in temp_collection.decks.all_names_and_ids()
+    ]
+    with pytest.raises(DeckNameError) as error:
+        create_deck(temp_collection, name, emoji)
+    assert error.value.kind == "taken"
+    assert [
+        (deck.id, deck.name) for deck in temp_collection.decks.all_names_and_ids()
+    ] == before
+
+
+def test_create_deck_ignores_child_names(temp_collection: Collection) -> None:
+    temp_collection.decks.add_normal_deck_with_name("Other::Bio")
+    row = create_deck(temp_collection, "Bio", "🧬")
+    assert temp_collection.decks.name(DeckId(row.deck_id)) == "Bio · 🧬"
+
+
+def test_create_deck_normalizes_stored_and_display_name(
+    temp_collection: Collection,
+) -> None:
+    row = create_deck(temp_collection, "Cafe\u0301", "🧬")
+    assert row.name == "Café"
+    assert temp_collection.decks.name(DeckId(row.deck_id)) == "Café · 🧬"
+    assert row in deck_rows(temp_collection)
+
+
+def test_created_deck_follows_anki_tree_order(temp_collection: Collection) -> None:
+    temp_collection.decks.add_normal_deck_with_name("Alpha")
+    temp_collection.decks.add_normal_deck_with_name("🧬 Prefix")
+    row = create_deck(temp_collection, "Zebra", "🧬")
+
+    rows = deck_rows(temp_collection)
+    tree = temp_collection.sched.deck_due_tree()
+    tree_ids = [
+        node.deck_id
+        for node in tree.children
+        if not node.filtered
+        and not (node.deck_id == DEFAULT_DECK_ID and node.total_including_children == 0)
+    ]
+    assert [item.deck_id for item in rows] == tree_ids
+    assert [item.name for item in rows] == ["Alpha", "Zebra", "🧬 Prefix"]
+    assert rows.index(row) < len(rows) - 1
 
 
 @pytest.mark.parametrize(
