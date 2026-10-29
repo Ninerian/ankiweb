@@ -27,7 +27,7 @@ Folgen fürs Design (ins `DESIGN.md` §5.D/§6 nachtragen): "Pop to editor" = Ka
 - Eingabe ist Klartext; Anzeige im Editor-Preview ebenfalls über Escape-first-Logik (`CardRender`-Prinzip), **nicht** über rohes Server-HTML.
 - Note-Type `AnkiWeb Vocab`: 4 Felder `Front, Back, Hint, Example` (Reihenfolge fix), Template `Card 1` wie DESIGN §5.F, `css == ""`. Kein `<style>`/`<script>` in Templates.
 - Unsaved-Text-Guard (`confirmDiscard`): wenn Front/Back/Hint/Example nicht leer, `confirm()` vor Verlassen/Edit-last/Deck-Wechsel. Kein Guard während Commit.
-- Deck: `/app/add?deck=<id>`; unbekannt/fehlend → 303 `/app/`. Chip → `/app/` mit Guard; Done → Summary → Start studying → `/app/review?deck=<id>`. Kein Mode-Switch im Editor.
+- Deck: `/app/add?deck=<id>`; unbekannt/fehlend → 303 `/app/`. Chip → `/app/` mit Guard; Done → Summary → Back to decks → `/app/` oder Start studying → `/app/review?deck=<id>`. Kein Mode-Switch im Editor.
 
 ## Entscheidungen
 
@@ -83,7 +83,7 @@ Speichern: `html.escape(value, quote=False)` (nur `& < >`; Anführungszeichen un
 - [ ] Fehler: Duplikat/leer → `error_response`, Formular bleibt unverändert.
 - [ ] Ansicht der hinzugefügten Karten: letzte Karten mit Offsets/Rotationen aus `STACK_PRESETS` (Mockup), oberste markiert `TOP CARD`; Peek-Bar.
 - [ ] Edit-last: Klick auf oberste Karte/Peek/HUD-Pill → Guard (Funktion `window.avConfirmDiscard`) → `@post('/app/add/edit/{nid}')` → patcht Signale (`front`, `back`, …, `nid`, `step: 1`) und blendet `<details>` je nach Inhalt auf; Toast "Editing…". Commit mit `nid != 0` aktualisiert und lässt die Position in den hinzugefügten Karten.
-- [ ] Finish: zeigt Summary-Modal mit Anzahl (`role="dialog"`, `aria-modal`, Fokus-Falle, Escape); "Keep adding" schließt es, "Start studying" führt zu `/app/review?deck=<id>`. Guard bei ungespeichertem Text. Keine hinzugefügten Karten → Toast "Add a card first."
+- [ ] Finish: zeigt Summary-Modal mit Anzahl (`role="dialog"`, `aria-modal`, Fokus-Falle, Escape); "Back to decks" führt zu `/app/`, "Start studying" zu `/app/review?deck=<id>`. Guard bei ungespeichertem Text. Keine hinzugefügten Karten → Toast "Add a card first."
 - [ ] Exit/Chip: `onclick`-frei; Guard über `data-on:click="window.avGuardNav(evt)"` das bei Abbruch `evt.preventDefault()` aufruft. `beforeunload`-Warnung bei Tab-Schließen mit ungespeichertem Text ergänzen (Mockup hat nur den Klick-Guard; **Erweiterung**, klein, optional).
 
 ### 4.2b Styling mit daisyUI und Tailwind (Vorlage `editor-mockup.html`)

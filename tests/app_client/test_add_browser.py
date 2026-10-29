@@ -433,7 +433,8 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     expect(dialog).to_be_visible()
     expect(dialog).to_have_attribute("aria-modal", "true")
     expect(dialog).to_contain_text("1")
-    keep = dialog.get_by_role("button", name="Keep adding more cards", exact=True)
+    decks = dialog.get_by_role("link", name="Back to decks", exact=True)
+    expect(decks).to_have_attribute("href", "/app/")
     study = dialog.get_by_role("link", name="Start studying", exact=True)
     expect(study).to_have_attribute("href", "/app/review?deck=1")
     study.focus()
@@ -444,7 +445,7 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
 
     done.click()
     expect(dialog).to_be_visible()
-    keep.click()
+    dialog.locator(".modal-backdrop").click(position={"x": 5, "y": 5})
     expect(dialog).not_to_be_visible()
     assert live_app.notes() == saved
     done.click()
@@ -453,6 +454,13 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     page.route("**/app/review?deck=1", lambda route: route.fulfill(body="Review"))
     study.click()
     expect(page).to_have_url(f"{live_app}/app/review?deck=1")
+    assert live_app.notes() == saved
+
+    page.goto(f"{live_app}/app/add?deck=1")
+    done.click()
+    expect(dialog).to_be_visible()
+    decks.click()
+    expect(page).to_have_url(f"{live_app}/app/")
     assert live_app.notes() == saved
 
 

@@ -97,7 +97,6 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "app_add_card_first": "Add a card first.",
         "app_add_cards_ready": "Cards Ready!",
-        "app_add_keep_adding": "Keep adding more cards",
         "app_add_start_studying": "Start studying",
         "app_add_discard_leave": (
             "You have unsaved text in your current card. Discard it and leave?"
@@ -213,7 +212,6 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "app_add_card_first": "Füge zuerst eine Karte hinzu.",
         "app_add_cards_ready": "Karten bereit!",
-        "app_add_keep_adding": "Weitere Karten hinzufügen",
         "app_add_discard_leave": (
             "Die aktuelle Karte enthält ungespeicherten Text. Verwerfen und verlassen?"
         ),

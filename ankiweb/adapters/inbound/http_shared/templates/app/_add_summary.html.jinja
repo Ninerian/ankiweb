@@ -7,8 +7,7 @@
     <h2 id="add-summary-title" class="text-3xl font-black tracking-tight">{{ s('app_add_cards_ready') }}</h2>
     <p class="mt-2 text-sm font-bold text-muted-fg"><span class="text-2xl font-black text-review-streak-foreground" data-text="$count">{{ count }}</span> {{ s('app_add_cards_added') }}</p>
     <div class="modal-action flex-wrap justify-center">
-      <button id="summary-keep-adding" type="button" class="btn neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 font-black shadow-neo active:shadow-none"
-              data-on:click="$summaryOpen = false; window.avCloseSummary()">{{ s('app_add_keep_adding') }}</button>
+      <a id="summary-keep-adding" class="btn neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 font-black shadow-neo active:shadow-none" href="/app/">{{ s('app_review_complete_back_to_decks') }}</a>
       <a class="btn btn-accent neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge font-black shadow-neo active:shadow-none" href="/app/review?deck={{ deck_id }}">{{ s('app_add_start_studying') }}</a>
     </div>
   </div>
