@@ -381,17 +381,10 @@ class _AddRoutes:
             count=count,
             animation_stamp=animation_stamp,
         )
-        hud = render(
-            "app/add.html.jinja",
-            app_lang=self.lang,
-            hud_only=True,
-            count=count,
-            animation_stamp=animation_stamp,
-        )
+
         response = DatastarResponse(
             [
                 SSE.patch_elements(fragment),
-                SSE.patch_elements(hud),
                 SSE.patch_signals(
                     {
                         "front": "",

@@ -1,14 +1,16 @@
-<div id="add-toast" class="toast toast-end" role="status" aria-live="polite" style="display:none"><div class="alert"></div></div>
+<div id="add-toast" class="toast toast-top toast-center" role="status" aria-live="polite" style="display:none"><div class="alert rounded-full border-2 border-neo-edge bg-base-content px-4 py-2 font-black text-base-100 shadow-neo"></div></div>
 <div id="add-summary" class="modal" role="dialog" aria-modal="true" aria-labelledby="add-summary-title" tabindex="-1"
      data-show="$summaryOpen" data-class:modal-open="$summaryOpen" style="display:none"
      data-on:keydown="evt.key === 'Escape' ? ($summaryOpen = false, window.avCloseSummary()) : window.avModalKey(evt)">
-  <div class="modal-box">
-    <h2 id="add-summary-title" class="text-xl font-bold">{{ s('app_add_cards_ready') }}</h2>
-    <p class="py-4"><span data-text="$count">{{ count }}</span> {{ s('app_add_cards_added') }}</p>
-    <div class="modal-action flex-wrap">
-      <button id="summary-keep-adding" type="button" class="btn btn-ghost"
-              data-on:click="$summaryOpen = false; window.avCloseSummary()">{{ s('app_add_keep_adding') }}</button>
-      <a class="btn btn-primary" href="/app/review?deck={{ deck_id }}">{{ s('app_add_start_studying') }}</a>
+  <div class="modal-box rounded-box border-3 border-neo-edge bg-base-200 p-6 text-center shadow-neo">
+    <div class="review-celebration" aria-hidden="true"><div class="review-confetti"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="review-sticker">🎉</div></div>
+    <h2 id="add-summary-title" class="text-3xl font-black tracking-tight">{{ s('app_add_cards_ready') }}</h2>
+    <p class="mt-2 text-sm font-bold text-muted-fg"><span class="text-2xl font-black text-review-streak-foreground" data-text="$count">{{ count }}</span> {{ s('app_add_cards_added') }}</p>
+    <div class="modal-action flex-wrap justify-center">
+      <a id="summary-keep-adding" class="btn neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 font-black shadow-neo active:shadow-none" href="/app/">{{ s('app_review_complete_back_to_decks') }}</a>
+      <a class="btn btn-accent neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge font-black shadow-neo active:shadow-none" href="/app/review?deck={{ deck_id }}">{{ s('app_add_start_studying') }}</a>
+      <button id="summary-close" type="button" class="btn neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 font-black shadow-neo active:shadow-none" data-on:click="$summaryOpen = false; window.avCloseSummary()">{{ tr.actions_close() | tr_clean }}</button>
     </div>
   </div>
+  <div class="modal-backdrop" data-on:click="$summaryOpen = false; window.avCloseSummary()"></div>
 </div>

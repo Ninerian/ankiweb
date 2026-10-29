@@ -78,7 +78,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_cards_added": "Cards added",
         "app_add_exit": "Exit Creator",
         "app_add_done": "Done",
-        "app_add_edit_last": "Edit last added card",
         "app_add_front_prompt": "Front (Question / Prompt)",
         "app_add_front_help": "What will you test?",
         "app_add_back_prompt": "Back (Answer / Meaning)",
@@ -99,7 +98,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_preview": "Edit text before adding",
         "app_add_no_cards": "No cards added yet",
         "app_add_first_card": "Add your first card above!",
-        "app_add_top_card": "Top card",
+        "app_add_stack_cards_one": "card",
+        "app_add_stack_cards_other": "cards",
         "app_add_next_back": "Next: Back →",
         "app_add_next_preview": "Next: Preview →",
         "app_add_previous_step": "Previous Step",
@@ -111,19 +111,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_unavailable": (
             "This card is unavailable for editing. Please try again."
         ),
-        "app_add_editing": "Editing…",
         "app_add_card_first": "Add a card first.",
         "app_add_cards_ready": "Cards Ready!",
-        "app_add_keep_adding": "Keep adding more cards",
         "app_add_start_studying": "Start studying",
         "app_add_discard_leave": (
             "You have unsaved text in your current card. Discard it and leave?"
         ),
         "app_add_discard_finish": (
             "You have unsaved text in your current card. Discard it and finish?"
-        ),
-        "app_add_discard_edit": (
-            "You have unsaved text in your current card. Discard it and edit the card?"
         ),
         "app_add_chip_der": "der",
         "app_add_chip_die": "die",
@@ -210,7 +205,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_cards_added": "Hinzugefügte Karten",
         "app_add_exit": "Kartenerstellung verlassen",
         "app_add_done": "Fertig",
-        "app_add_edit_last": "Zuletzt hinzugefügte Karte bearbeiten",
         "app_add_front_prompt": "Vorderseite (Frage / Stichwort)",
         "app_add_front_help": "Was möchtest du abfragen?",
         "app_add_back_prompt": "Rückseite (Antwort / Bedeutung)",
@@ -233,7 +227,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_preview": "Text vor dem Hinzufügen bearbeiten",
         "app_add_no_cards": "Noch keine Karten hinzugefügt",
         "app_add_first_card": "Füge oben deine erste Karte hinzu!",
-        "app_add_top_card": "Oberste Karte",
+        "app_add_stack_cards_one": "Karte",
+        "app_add_stack_cards_other": "Karten",
         "app_add_next_back": "Weiter: Rückseite →",
         "app_add_next_preview": "Weiter: Vorschau →",
         "app_add_previous_step": "Vorheriger Schritt",
@@ -247,19 +242,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_unavailable": (
             "Diese Karte kann nicht bearbeitet werden. Bitte erneut versuchen."
         ),
-        "app_add_editing": "Wird bearbeitet…",
         "app_add_card_first": "Füge zuerst eine Karte hinzu.",
         "app_add_cards_ready": "Karten bereit!",
-        "app_add_keep_adding": "Weitere Karten hinzufügen",
         "app_add_discard_leave": (
             "Die aktuelle Karte enthält ungespeicherten Text. Verwerfen und verlassen?"
         ),
         "app_add_discard_finish": (
             "Die aktuelle Karte enthält ungespeicherten Text. Verwerfen und abschließen?"
-        ),
-        "app_add_discard_edit": (
-            "Die aktuelle Karte enthält ungespeicherten Text. "
-            "Verwerfen und die Karte bearbeiten?"
         ),
         "app_add_start_studying": "Lernen beginnen",
         "app_add_chip_der": "der",

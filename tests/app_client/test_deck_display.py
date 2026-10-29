@@ -40,7 +40,7 @@ def test_review_and_add_show_the_same_deck_display(
 
     def display(markup: str, element_id: str) -> tuple[str, str]:
         match = re.search(
-            rf'id="{element_id}"[^>]*><span>(.*?)</span> <span>(.*?)</span>',
+            rf'id="{element_id}"[^>]*><span[^>]*>(.*?)</span> <span[^>]*>(.*?)</span>',
             markup,
         )
         assert match is not None

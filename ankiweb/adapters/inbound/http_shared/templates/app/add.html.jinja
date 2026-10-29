@@ -1,87 +1,85 @@
 {% macro preview_card() %}
-<div id="preview" class="card card-border">
-  <div class="card-body">
-    <h2 class="card-title">{{ s('app_add_card_preview') }}</h2>
-    <div>
-      <span class="badge">{{ s('app_add_front_preview') }}</span>
-      <p class="whitespace-pre-wrap">{{ preview.front|default('') }}</p>
-    </div>
-    {% if preview.hint|default('') %}
-    <div>
-      <span class="badge">{{ s('app_add_hint') }}</span>
-      <p class="whitespace-pre-wrap">{{ preview.hint }}</p>
-    </div>
-    {% endif %}
-    <div>
-      <span class="badge">{{ s('app_add_back_preview') }}</span>
-      <p class="whitespace-pre-wrap">{{ preview.back|default('') }}</p>
-    </div>
-    {% if preview.example|default('') %}
-    <div>
-      <span class="badge">{{ s('app_add_example') }}</span>
-      <p>{{ example_html|safe }}</p>
-    </div>
-    {% endif %}
+<div id="preview" class="add-preview">
+  <div class="add-label-row mb-0">
+    <h2 class="add-label">{{ s('app_add_card_preview') }}</h2>
+    <span class="add-help">{{ s('app_add_ready_to_add') }}</span>
   </div>
+  <div class="add-preview-section">
+    <span class="add-preview-tag">{{ s('app_add_front_preview') }}</span>
+    <p class="av-front-text whitespace-pre-wrap">{{ preview.front|default('') }}</p>
+  </div>
+  {% if preview.hint|default('') %}
+  <div class="add-preview-section">
+    <span class="add-preview-tag">{{ s('app_add_hint') }}</span>
+    <p class="av-hint whitespace-pre-wrap">{{ preview.hint }}</p>
+  </div>
+  {% endif %}
+  <hr class="add-preview-divider">
+  <div class="add-preview-section">
+    <span class="add-preview-tag">{{ s('app_add_back_preview') }}</span>
+    <p class="av-back-text whitespace-pre-wrap">{{ preview.back|default('') }}</p>
+  </div>
+  {% if preview.example|default('') %}
+  <div class="add-preview-section">
+    <span class="add-preview-tag">{{ s('app_add_example') }}</span>
+    <p class="av-example">{{ example_html|safe }}</p>
+  </div>
+  {% endif %}
+  <button type="button" class="add-preview-edit" data-on:click="$step = 1; $error = ''; window.avFocus('input-front')">{{ s('app_add_edit_preview') }}</button>
 </div>
 {% endmacro %}
 {% macro chip(label, target, space=false) %}
-<button type="button" class="btn btn-xs btn-outline" data-target="{{ target }}" data-value="{{ label }}{% if space %} {% endif %}" data-on:click="window.avInsert(el)">{{ label }}</button>
+<button type="button" class="add-chip" data-target="{{ target }}" data-value="{{ label }}{% if space %} {% endif %}" data-on:click="window.avInsert(el)">{{ label }}</button>
 {% endmacro %}
-{% macro hud() %}
-<div id="hud-count" class="mt-3">
-  <button type="button" {% if animation_stamp|default(false) %}class="badge badge-lg animate-added-pill-pop motion-reduce:animate-none" data-ts="{{ animation_stamp }}"{% else %}class="badge badge-lg"{% endif %}
-          aria-label="{{ s('app_add_edit_last') }}" data-discard="{{ s('app_add_discard_edit') }}"
-          data-edit-unavailable="{{ s('app_add_edit_unavailable') }}" data-attr:disabled="$count === 0 || $saving"
-          data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.editUnavailable) : null"
-          data-on:click="$saving || !$count ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? @post('/app/add/edit/' + window.avLastNoteId() + '?deck=' + document.getElementById('add-wizard').dataset.deckId) : null)"><span data-text="$count">{{ count }}</span>&nbsp;{{ s('app_add_cards_added') }}</button>
+
+{% macro field_label(for_id, label, help) %}
+<div class="add-label-row">
+  <label for="{{ for_id }}" class="add-label">{{ label }}</label>
+  {% if help %}<span id="{{ for_id }}-help" class="add-help">{{ help }}</span>{% endif %}
 </div>
 {% endmacro %}
-{% if hud_only|default(false) %}
-{{ hud() }}
-{% elif preview_only|default(false) %}
+{% if preview_only|default(false) %}
 {{ preview_card() }}
 {% else %}
-<main id="add-wizard" class="mx-auto w-full max-w-2xl p-4"
-      data-deck-id="{{ deck_id }}" data-editing="{{ s('app_add_editing') }}" data-edit-last="{{ s('app_add_edit_last') }}"
+<main id="add-wizard" class="review-app"
+      data-deck-id="{{ deck_id }}"
       data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: {{ count }}, error: '', saving: false, summaryOpen: false}"
-      data-on:datastar-fetch__document="evt.detail.type === 'finished' &amp;&amp; !$error ? (evt.detail.el.id === 'btn-add' ? window.avAnimateCommit() : (evt.detail.el.getAttribute('aria-label') === el.dataset.editLast ? window.avEditLoaded($hint, $example) : null)) : null"
+      data-on:datastar-fetch__document="evt.detail.type === 'finished' &amp;&amp; !$error &amp;&amp; evt.detail.el.id === 'btn-add' ? window.avAnimateCommit() : null"
       data-on:keydown__window="window.avAddKey(evt)">
-  <header class="mb-6">
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <a href="/app/" class="btn btn-ghost" aria-label="{{ s('app_add_exit') }}"
+  <header class="review-hud">
+    <div class="navbar review-hud-nav min-h-0 p-0">
+      <a href="/app/" class="btn btn-square neo-press size-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 p-0 shadow-neo active:shadow-none" aria-label="{{ s('app_add_exit') }}"
          data-discard="{{ s('app_add_discard_leave') }}"
-         data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard)">{{ tr.actions_decks() }}</a>
-      <a id="deck-chip" href="/app/" class="badge badge-lg" data-discard="{{ s('app_add_discard_leave') }}"
-         data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard)"><span>{{ deck_emoji }}</span> <span>{{ deck_name }}</span></a>
-      <button type="button" class="btn btn-primary" data-attr:disabled="$saving"
+         data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard)">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </a>
+      <a id="deck-chip" href="/app/" class="flex h-review-hud-control min-w-0 flex-1 items-center gap-2 px-2 text-left" data-discard="{{ s('app_add_discard_leave') }}"
+         data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard)"><span>{{ deck_emoji }}</span> <span class="truncate text-xl font-black" dir="auto">{{ deck_name }}</span></a>
+      <button type="button" class="btn btn-accent neo-press h-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge px-3.5 text-sm font-black uppercase shadow-neo active:shadow-none" data-attr:disabled="$saving"
               data-discard="{{ s('app_add_discard_finish') }}" data-card-first="{{ s('app_add_card_first') }}"
               data-on:click="$count === 0 ? window.avAddToast(el.dataset.cardFirst) : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? ($front = '', $back = '', $hint = '', $example = '', $nid = 0, $step = 1, $error = '', $summaryOpen = true, window.avOpenSummary(el)) : null)">{{ s('app_add_done') }}</button>
     </div>
-    {{ hud() }}
+
+    <div class="mt-2.5 flex items-center justify-between gap-2">
+      <button type="button" class="add-step" data-class:add-step-active="$step === 1" data-class:add-step-done="$step > 1"
+              data-on:click="$step = 1; $error = ''; window.avFocus('input-front')"><span class="add-step-num" aria-hidden="true">1</span><span>{{ tr.notetypes_front_field() }}</span></button>
+      <button type="button" class="add-step" data-class:add-step-active="$step === 2" data-class:add-step-done="$step > 2"
+              data-required="{{ s('app_add_front_required') }}" data-on:click="$front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.required)"><span class="add-step-num" aria-hidden="true">2</span><span>{{ tr.notetypes_back_field() }}</span></button>
+      <button type="button" class="add-step" data-class:add-step-active="$step === 3"
+              data-required="{{ s('app_add_both_required') }}" data-on:click="$front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/add/preview')) : ($error = el.dataset.required)"><span class="add-step-num" aria-hidden="true">3</span><span>{{ tr.actions_preview() }}</span></button>
+    </div>
   </header>
 
-  <ul class="steps steps-horizontal w-full">
-    <li class="step" data-class:step-primary="$step >= 1">
-      <button type="button" data-on:click="$step = 1; $error = ''; window.avFocus('input-front')">{{ tr.notetypes_front_field() }}</button>
-    </li>
-    <li class="step" data-class:step-primary="$step >= 2">
-      <button type="button" data-required="{{ s('app_add_front_required') }}" data-on:click="$front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.required)">{{ tr.notetypes_back_field() }}</button>
-    </li>
-    <li class="step" data-class:step-primary="$step >= 3">
-      <button type="button" data-required="{{ s('app_add_both_required') }}" data-on:click="$front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/add/preview')) : ($error = el.dataset.required)">{{ tr.actions_preview() }}</button>
-    </li>
-  </ul>
-
-  <div id="add-editor" class="card card-border neo-press mt-6 motion-reduce:animate-none" data-class:animate-pop-card-up="$nid !== 0">
-    <div class="card-body">
-      <span class="badge">{{ note_type }}</span>
+  <div id="add-stage" class="review-stage">
+    <div id="add-editor" class="add-card motion-reduce:animate-none">
+      <div class="mb-3.5 flex justify-end">
+        <span class="badge h-auto rounded-md border-deck-pill border-neo-edge bg-base-100 px-2 py-0.5 font-mono text-review-deck-tag font-extrabold text-muted-fg">{{ note_type }}</span>
+      </div>
       <section data-show="$step === 1" style="display:none">
-        <label for="input-front" class="card-title">{{ s('app_add_front_prompt') }}</label>
-        <p>{{ s('app_add_front_help') }}</p>
-        <textarea id="input-front" class="textarea textarea-lg w-full" data-bind:front placeholder="{{ s('app_add_front_placeholder') }}" required></textarea>
-        <p class="text-xs opacity-70"><span data-text="$front.length">0</span> {{ s('app_add_characters') }}</p>
-        <div class="mt-3 flex flex-wrap gap-1">
+        {{ field_label('input-front', s('app_add_front_prompt'), s('app_add_front_help')) }}
+        <textarea id="input-front" class="add-input" rows="4" data-bind:front aria-describedby="input-front-help" placeholder="{{ s('app_add_front_placeholder') }}" required></textarea>
+        <p class="add-counter"><span data-text="$front.length">0</span> {{ s('app_add_characters') }}</p>
+        <div class="add-chips">
           {{ chip(s('app_add_chip_der'), 'input-front', true) }}
           {{ chip(s('app_add_chip_die'), 'input-front', true) }}
           {{ chip(s('app_add_chip_das'), 'input-front', true) }}
@@ -93,17 +91,16 @@
       </section>
 
       <section data-show="$step === 2" style="display:none">
-        <label for="input-back" class="card-title">{{ s('app_add_back_prompt') }}</label>
-        <p>{{ s('app_add_back_help') }}</p>
-        <textarea id="input-back" class="textarea textarea-lg w-full" data-bind:back placeholder="{{ s('app_add_back_placeholder') }}" required></textarea>
-        <p class="text-xs opacity-70"><span data-text="$back.length">0</span> {{ s('app_add_characters') }}</p>
-        <details class="collapse collapse-arrow mt-3">
-          <summary class="collapse-title">{{ s('app_add_hint') }} · {{ s('app_add_optional') }}</summary>
+        {{ field_label('input-back', s('app_add_back_prompt'), s('app_add_back_help')) }}
+        <textarea id="input-back" class="add-input" rows="4" data-bind:back aria-describedby="input-back-help" placeholder="{{ s('app_add_back_placeholder') }}" required></textarea>
+        <p class="add-counter"><span data-text="$back.length">0</span> {{ s('app_add_characters') }}</p>
+        <details class="collapse collapse-arrow add-optional">
+          <summary class="collapse-title font-extrabold">{{ s('app_add_hint') }} · {{ s('app_add_optional') }}</summary>
           <div class="collapse-content">
-            <label for="input-hint">{{ s('app_add_hint') }}</label>
-            <textarea id="input-hint" class="textarea w-full" data-bind:hint placeholder="{{ s('app_add_hint_placeholder') }}"></textarea>
-            <p class="text-xs opacity-70"><span data-text="$hint.length">0</span> {{ s('app_add_characters') }}</p>
-            <div class="mt-3 flex flex-wrap gap-1">
+            {{ field_label('input-hint', s('app_add_hint'), '') }}
+            <textarea id="input-hint" class="add-input add-input-sm" rows="2" data-bind:hint placeholder="{{ s('app_add_hint_placeholder') }}"></textarea>
+            <p class="add-counter"><span data-text="$hint.length">0</span> {{ s('app_add_characters') }}</p>
+            <div class="add-chips">
               {{ chip(s('app_add_chip_noun'), 'input-hint', true) }}
               {{ chip(s('app_add_chip_verb'), 'input-hint', true) }}
               {{ chip(s('app_add_chip_adjective'), 'input-hint', true) }}
@@ -111,44 +108,42 @@
             </div>
           </div>
         </details>
-        <details class="collapse collapse-arrow mt-3">
-          <summary class="collapse-title">{{ s('app_add_example') }} · {{ s('app_add_optional') }}</summary>
+        <details class="collapse collapse-arrow add-optional">
+          <summary class="collapse-title font-extrabold">{{ s('app_add_example') }} · {{ s('app_add_optional') }}</summary>
           <div class="collapse-content">
-            <label for="input-example">{{ s('app_add_example') }}</label>
-            <p>{{ s('app_add_example_help') }}</p>
-            <textarea id="input-example" class="textarea w-full" data-bind:example placeholder="{{ s('app_add_example_placeholder') }}"></textarea>
-            <p class="text-xs opacity-70"><span data-text="$example.length">0</span> {{ s('app_add_characters') }}</p>
+            {{ field_label('input-example', s('app_add_example'), s('app_add_example_help')) }}
+            <textarea id="input-example" class="add-input add-input-sm" rows="2" data-bind:example aria-describedby="input-example-help" placeholder="{{ s('app_add_example_placeholder') }}"></textarea>
+            <p class="add-counter"><span data-text="$example.length">0</span> {{ s('app_add_characters') }}</p>
           </div>
         </details>
       </section>
 
       <section data-show="$step === 3" style="display:none">
-        <h2 class="card-title">{{ s('app_add_ready_to_add') }}</h2>
         {{ preview_card() }}
       </section>
-
-      <div class="add-action-bar mt-4 flex flex-wrap gap-2">
-        <button type="button" class="btn btn-ghost" data-show="$step > 1" style="display:none" data-on:click="$step = $step - 1; $error = ''; window.avFocus($step === 1 ? 'input-front' : 'input-back')">{{ s('app_add_previous_step') }}</button>
-        <button id="btn-next" type="button" class="btn btn-primary" data-show="$step < 3" style="display:none"
-                data-front-required="{{ s('app_add_front_required') }}" data-back-required="{{ s('app_add_back_required') }}"
-                data-next-back="{{ s('app_add_next_back') }}" data-next-preview="{{ s('app_add_next_preview') }}"
-                data-text="$step === 1 ? el.dataset.nextBack : el.dataset.nextPreview"
-                data-on:click="$step === 1 ? ($front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.frontRequired)) : ($front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/add/preview')) : ($error = $front.trim() ? el.dataset.backRequired : el.dataset.frontRequired))">{{ s('app_add_next_back') }}</button>
-        <button id="btn-add" type="button" class="btn btn-success btn-block btn-lg" data-show="$step === 3" style="display:none"
-                data-save-failed="{{ s('app_add_save_failed') }}"
-                data-error-duplicate="{{ s('app_add_duplicate') }}"
-                data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
-                data-on:click="$saving ? null : @post('/app/add/commit?deck={{ deck_id }}')"
-                data-indicator:saving data-attr:disabled="$saving">{{ tr.actions_add() }}</button>
-      </div>
     </div>
+    {% include "app/_add_added_cards.html.jinja" %}
   </div>
-  {% include "app/_add_added_cards.html.jinja" %}
-  <button type="button" class="btn btn-block mt-3" data-show="$count > 0" style="display:none"
-          aria-label="{{ s('app_add_edit_last') }}" data-discard="{{ s('app_add_discard_edit') }}"
-          data-edit-unavailable="{{ s('app_add_edit_unavailable') }}" data-attr:disabled="$saving"
-          data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.editUnavailable) : null"
-          data-on:click="$saving ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? @post('/app/add/edit/' + window.avLastNoteId() + '?deck=' + document.getElementById('add-wizard').dataset.deckId) : null)">{{ s('app_add_edit_last') }}</button>
+
+  <footer class="review-bar">
+    <div class="flex gap-2.5">
+      <button type="button" class="btn btn-square neo-press h-16 min-h-0 w-14.5 shrink-0 rounded-2xl border-3 border-neo-edge bg-base-200 p-0 shadow-neo active:shadow-none" data-show="$step > 1" style="display:none"
+              aria-label="{{ s('app_add_previous_step') }}" data-on:click="$step = $step - 1; $error = ''; window.avFocus($step === 1 ? 'input-front' : 'input-back')">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5.5 w-5.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button id="btn-next" type="button" class="btn btn-accent neo-press h-16 min-h-0 min-w-0 flex-1 whitespace-normal rounded-2xl border-3 border-neo-edge text-review-reveal-label leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none" data-show="$step < 3" style="display:none"
+              data-front-required="{{ s('app_add_front_required') }}" data-back-required="{{ s('app_add_back_required') }}"
+              data-next-back="{{ s('app_add_next_back') }}" data-next-preview="{{ s('app_add_next_preview') }}"
+              data-text="$step === 1 ? el.dataset.nextBack : el.dataset.nextPreview"
+              data-on:click="$step === 1 ? ($front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.frontRequired)) : ($front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/add/preview')) : ($error = $front.trim() ? el.dataset.backRequired : el.dataset.frontRequired))">{{ s('app_add_next_back') }}</button>
+      <button id="btn-add" type="button" class="btn btn-success neo-press h-16 min-h-0 min-w-0 flex-1 whitespace-normal rounded-2xl border-3 border-neo-edge text-review-reveal-label leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none" data-show="$step === 3" style="display:none"
+              data-save-failed="{{ s('app_add_save_failed') }}"
+              data-error-duplicate="{{ s('app_add_duplicate') }}"
+              data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
+              data-on:click="$saving ? null : @post('/app/add/commit?deck={{ deck_id }}')"
+              data-indicator:saving data-attr:disabled="$saving">{{ tr.actions_add() }}</button>
+    </div>
+  </footer>
   {% include "app/_add_summary.html.jinja" %}
 </main>
 {% endif %}
