@@ -1,7 +1,7 @@
 """Deck list rows for the app client's home page."""
 
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from anki.collection import Collection
@@ -28,6 +28,7 @@ class DeckRow:
     due: int
     new: int
     progress_pct: int
+    changes: object | None = field(default=None, compare=False, repr=False)
 
 
 class DeckNameError(Exception):
@@ -123,9 +124,15 @@ def create_deck(col: Collection, name: str, emoji: str) -> DeckRow:
     ):
         raise DeckNameError("taken")
     name = unicodedata.normalize("NFC", name)
-    deck_id = col.decks.add_normal_deck_with_name(join_emoji(name, emoji)).id
+    result = col.decks.add_normal_deck_with_name(join_emoji(name, emoji))
     return DeckRow(
-        deck_id=deck_id, name=name, emoji=emoji, due=0, new=0, progress_pct=0
+        deck_id=result.id,
+        name=name,
+        emoji=emoji,
+        due=0,
+        new=0,
+        progress_pct=0,
+        changes=result.changes,
     )
 
 

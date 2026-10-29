@@ -25,6 +25,7 @@ from ankiweb.core.app_client.emoji_picker import ALL_EMOJI, EMOJI_GROUPS
 from ankiweb.core.app_client.revlog import day_start_ms
 from ankiweb.core.auth import COOKIE, auth_token
 from ankiweb.core.config import Settings
+from ankiweb.core.op_changes import op_changes_to_flags
 
 
 def _add_cards(col: Collection, deck_name: str, count: int = 1) -> list[int]:
@@ -124,6 +125,18 @@ def test_create_deck_returns_row_and_stores_name(temp_collection: Collection) ->
     assert row.deck_id > 0
     assert temp_collection.decks.name(DeckId(row.deck_id)) == join_emoji(name, "🧬")
     assert row in deck_rows(temp_collection)
+
+
+def test_created_row_carries_operation_changes(temp_collection: Collection) -> None:
+    row = create_deck(temp_collection, "Biology", "🧬")
+    assert row.changes is not None
+    flags = op_changes_to_flags(row.changes)
+    assert flags["deck"] is True
+    listed = next(
+        item for item in deck_rows(temp_collection) if item.deck_id == row.deck_id
+    )
+    assert listed.changes is None
+    assert row == listed
 
 
 @pytest.mark.parametrize(
