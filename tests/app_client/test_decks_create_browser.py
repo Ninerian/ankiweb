@@ -157,26 +157,3 @@ def test_create_decks_in_browser(
     saved = asyncio.run(service.run(stored))
     assert sorted(name for name, _ in saved) == ["Biology two · 🧬", "Biology · 🧬"]
     assert all(cards == [] for _, cards in saved)
-
-
-def test_migration_refreshes_the_visible_list(
-    create_server: tuple[str, CollectionPort], tmp_path: Path
-) -> None:
-    base, service = create_server
-    deck_id = asyncio.run(
-        service.run(lambda col: col.decks.add_normal_deck_with_name("🧬 Legacy").id)
-    )
-    with sync_playwright() as playwright:
-        context = playwright.chromium.launch_persistent_context(
-            str(tmp_path / "migration-profile"),
-            headless=True,
-            viewport={"width": 375, "height": 812},
-        )
-        page = context.pages[0]
-        page.goto(f"{base}/app/")
-        page.get_by_role("button", name="Review changes").click()
-        page.get_by_role("button", name="Rename", exact=True).click()
-        row = page.locator(f"#deck-{deck_id}")
-        expect(row.locator("h3")).to_have_text("Legacy")
-        expect(row.locator("span").first).to_have_text("🧬")
-        context.close()

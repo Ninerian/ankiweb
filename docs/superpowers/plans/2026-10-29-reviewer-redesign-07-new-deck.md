@@ -54,10 +54,10 @@ Sonst bleibt der Name unverändert und das Standard-Emoji `🗂️` greift. Gepr
 |---|---|---|
 | Emoji als **Präfix** (`🧬 Biologie`) | **Suffix** (`Biologie · 🧬`) | Sortierung wie Anki; Nutzerentscheidung |
 | `split_emoji(name)` zerlegt Präfix | `split_emoji(name)` zerlegt **Suffix** | gleiche Signatur `(emoji, anzeige_name)`, Aufrufer unverändert |
-| Bestehende Präfix-Namen werden zerlegt | Präfix-Namen bleiben **ungeteilt** mit Standard-Emoji | Clean Cutover; kein zweites Format, keine Doppelzerlegung. Hinweis unten |
+| Bestehende Präfix-Namen werden zerlegt | Präfix-Namen bleiben **ungeteilt** mit Standard-Emoji | Clean Cutover; kein zweites Format, keine Doppelzerlegung, keine Migration (keine Bestandsdaten) |
 | Tests mit Präfix-Fällen | Tests werden **ersetzt**, nicht ergänzt | keine toten Fälle |
 
-**Bruch für Bestandsdaten (nicht nur "umstellen"):** Plan 2 ist bereits umgesetzt und trennt das Emoji als **Präfix** (`split_emoji` in `core/app_client/decks.py`, 17 Testfälle in `test_decks.py`, gezählt). Mit Plan 7 gilt nur noch der Suffix. Jeder bestehende Stapel mit Präfix-Emoji, z. B. `🇩🇪 German B1`, würde danach auf der **Startseite** als ein Name mit dem Standard-Emoji `🗂️` angezeigt. **Nur dort:** Review-Kopf (`view.deck`, `study.py:179`) und Add-Badge (`add.py:_deck_name`) zeigen heute den **rohen** Namen; siehe Aufgabe 7.4a. **Entscheidung (Nutzer): Option b.** Eine **einmalige, ausdrücklich bestätigte Umbenennung** `🇩🇪 German B1` -> `German B1 · 🇩🇪` als Aufgabe 7.7. Nie automatisch beim Start, immer mit Vorschau und Abbruch, weil sie Anki-Namen umschreibt (Sync, andere Geräte, AnkiConnect-Skripte, Filtered Decks mit `deck:`-Suche).
+**Keine Migration (Nutzerentscheidung):** Es gibt in Produktion keine Stapel mit Emoji. Deshalb entfällt eine Umbenennung alter Präfix-Namen samt Banner, Vorschau und Route. Wer dennoch einen Präfix-Stapel hat, sieht ihn mit `🗂️` und vollem Namen. Der Review-Kopf (`view.deck`, `study.py:179`) und der Add-Badge (`add.py:_deck_name`) zeigten den **rohen** Namen; siehe Aufgabe 7.4a.
 
 ## Vorgabe aus Design (`DESIGN.md` §6, `decks-mockup.html`)
 
@@ -181,16 +181,6 @@ Alle Klassen unten wurden in `node_modules/daisyui/components` gefunden. **Nicht
 - [ ] Suche findet den neuen Stapel; `scrollWidth == 375`; keine Konsolenfehler.
 - [ ] Screenshot neben `decks-mockup.html`.
 
-### 7.7 Einmalige Umbenennung Präfix -> Suffix (Nutzerentscheidung b)
-- [ ] **Kern** `plan_emoji_migration(col) -> list[Rename]` (rein lesend): für jeden Stapel, dessen Name mit **genau einem** Emoji-Graphem aus der Auswahl plus Leerzeichen beginnt und **keinen** ` · <Emoji>`-Suffix hat. `Rename(deck_id, alt, neu)` mit `neu = "<Rest> · <Emoji>"`. Nur **Wurzelnamen** (ohne `::`) werden umbenannt, das Emoji gehört an den Wurzelnamen. Stapel mit `::` im Namen, deren Kindebene ein Präfix-Emoji trägt, bleiben **unberührt** und erscheinen als `übersprungen` in der Vorschau.
-- [ ] **Kollisionen vorab:** `neu` existiert schon, oder zwei Alt-Namen ergeben dasselbe `neu` -> Eintrag als `Konflikt` markiert, **nicht** umbenannt. Namen länger als das Limit werden `übersprungen`. Reine Emoji-Namen (leerer Rest) werden übersprungen.
-- [ ] **Anwenden** `apply_emoji_migration(col, ids)`: nur die vom Nutzer **bestätigten** IDs, in **einem** Undo-Schritt über `service.run_op(..., initiator="app")` mit `col.decks.rename`. IDs bleiben, damit Karten, Optionen und Filtered Decks nicht brechen. Schlägt ein Eintrag fehl, bleiben die anderen angewendet; das Ergebnis nennt `ok`, `übersprungen`, `Fehler` je mit Anzahl.
-- [ ] **Filtered Decks:** Suchtext `deck:"🇩🇪 German"` in Filtered Decks wird von Anki bei `rename` **nicht** umgeschrieben. Die Vorschau zeigt vorab die Zahl der Filtered Decks, deren Suche den Alt-Namen enthält, als Warnung. **Vor Umsetzung messen**, ob `rename` die Suche anpasst; nicht annehmen.
-- [ ] **UI:** Hinweis-Banner auf der Startseite **nur wenn** `plan_emoji_migration` nicht leer ist: "N Stapel nutzen das alte Format". Button öffnet ein Sheet mit Liste `alt -> neu`, Checkboxen (alle vorgewählt außer Konflikt), Warnung zu Sync/Skripten, **Umbenennen** und **Abbrechen**. Nach Erfolg ist das Banner weg, weil nichts mehr zu tun ist; es gibt keinen Dauerzustand und keinen Schalter.
-- [ ] **Route** `POST /app/decks/migrate-emoji` mit Signal `migrateIds` (Liste), liegt unter dem Origin-Guard, Passwort-Gate wie die anderen Routen. Ohne Auswahl: Fehlerpfad, kein 500.
-- [ ] Tests (`temp_collection`): Präfix wird zu Suffix, ID gleich, Karten bleiben im Stapel; Konflikt wird nicht angewendet; `::`-Kind bleibt; ein Undo macht **alle** Umbenennungen rückgängig; zweiter Lauf ist leer (idempotent); Namen mit `'`, `"`, `<b>` bleiben escaped; Cross-Site-POST -> 403 ohne Änderung.
-- [ ] **Rückfall:** Anki Desktop zeigt danach `German · 🇩🇪` im Klartext. Das ist das beabsichtigte Format (Suffix); in `CONTEXT.md` und im Sheet-Text erwähnen.
-
 ## Akzeptanz
 - Ein Stapel lässt sich mit Name und Emoji anlegen; Anki speichert `"<Name> · <Emoji>"`. Für NFC-Eingaben byte-identisch; NFD-Eingaben normalisiert Anki zu NFC (gemessen: `e` + U+0301 wird U+00E9), die Zeile zeigt den gespeicherten Namen.
 - Die Liste zeigt Name und Emoji getrennt; **Sortierung entspricht Anki Desktop**.
@@ -204,7 +194,6 @@ Alle Klassen unten wurden in `node_modules/daisyui/components` gefunden. **Nicht
 |---|---|
 | Nutzer benennt in Anki Desktop um und verliert das Emoji | Kein Datenfehler; Standard-Emoji greift. In `CONTEXT.md` dokumentieren |
 | Eigener Name enthält ` · <Emoji>` und wird ungewollt zerlegt | Eindeutig und gewollt (Parser verlangt genau ein Emoji); Test dokumentiert das |
-| Bestehende Präfix-Namen (Plan 2) | Einmalige, bestätigte Umbenennung (Aufgabe 7.7); bis dahin zeigen sie `🗂️`. Nie automatisch |
 | Unterdeck `Name::Kind` und Emoji | Nur der **Wurzelname** trägt das Emoji; `::` im Eingabenamen wird abgelehnt |
 | Veraltetes Such-Literal nach dem Patch | Aufgabe 7.3: Listenrahmen samt `no_match` neu rendern; Test |
 | Zwei gleichzeitige Anlegevorgänge | Anki vergleicht nur **volle** Namen: `Bio · 🧬` und `Bio · 🌱` kollidieren dort nicht. Die Anzeigenamen-Prüfung in `create_deck` und die Serialisierung über `service.run_op` verhindern das; der Fehlerpfad `taken` greift |
@@ -220,5 +209,4 @@ Alle Klassen unten wurden in `node_modules/daisyui/components` gefunden. **Nicht
 5. `Add new-deck strings for de and en`
 6. `Add create-deck route tests`
 7. `Add create-deck browser smoke test`
-8. `Add one-time prefix-to-suffix deck rename with preview and confirmation`
-9. `Document emoji suffix format in CONTEXT.md`
+8. `Document emoji suffix format in CONTEXT.md`

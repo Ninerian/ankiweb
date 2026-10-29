@@ -40,8 +40,6 @@
 </div>
 {% else %}
 <main id="decks-page" class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pb-30 pl-4" data-signals="{q: '', newName: '', newEmoji: '📚', newOpen: false, creating: false, newError: ''}">
-  {{ migration_region | safe }}
-  <div data-effect="$migrateDone && @get('/app/decks/refresh')"></div>
   {{ content() }}
   <div class="deck-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-5 pt-7 pb-[max(18px,env(safe-area-inset-bottom))]">
     <button id="btn-new-deck" type="button" class="btn btn-accent btn-block neo-press pointer-events-auto min-h-14 max-w-deck text-lg font-black" aria-haspopup="dialog" data-on:click="$newError = ''; window.avDeckOpener(el); $newOpen = true"><span aria-hidden="true">+</span> {{ s("app_decks_new") }}</button>

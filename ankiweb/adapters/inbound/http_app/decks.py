@@ -49,7 +49,6 @@ def _render_decks(
     lang: ResolvedLang,
     *,
     fragment: str = "page",
-    migration_region: str = "",
     created_id: int = 0,
 ) -> str:
     return render(
@@ -60,7 +59,6 @@ def _render_decks(
         emoji_groups=EMOJI_GROUPS,
         js_literal=_js_literal,
         fragment=fragment,
-        migration_region=migration_region,
         created_id=created_id,
     )
 
@@ -69,12 +67,6 @@ def add_decks_routes(
     router: APIRouter, get_service: Callable[[], CollectionPort], lang: ResolvedLang
 ) -> None:
     """Attach GET /app/ and the /app redirect to the router prefixed with /app."""
-    from ankiweb.adapters.inbound.http_app.decks_migrate import (
-        add_decks_migrate_routes,
-        render_migration_region,
-    )
-
-    add_decks_migrate_routes(router, get_service, lang)
 
     @router.get("", include_in_schema=False)
     def app_root() -> RedirectResponse:
@@ -84,29 +76,14 @@ def add_decks_routes(
     async def decks(response: Response) -> str:
         # Counts change while studying; never reuse on back-navigation.
         response.headers["Cache-Control"] = "no-store"
-        rows, migration_region = await get_service().run(
-            lambda col: (deck_rows(col), render_migration_region(col, lang))
-        )
-        body = _render_decks(rows, lang, migration_region=migration_region)
+        rows = await get_service().run(deck_rows)
+        body = _render_decks(rows, lang)
         return render_app_page(
             tr.actions_decks(),
             body,
             active="decks",
             scripts=("/shell/static/app/decks.js",),
             lang=lang,
-        )
-
-    @router.get("/decks/refresh")
-    async def refresh() -> DatastarResponse:
-        rows = await get_service().run(deck_rows)
-        return DatastarResponse(
-            [
-                SSE.patch_elements(
-                    _render_decks(rows, lang, fragment="content"),
-                    selector="#decks-content",
-                ),
-                SSE.patch_signals({"migrateDone": False}),
-            ]
         )
 
     @router.post("/decks")
