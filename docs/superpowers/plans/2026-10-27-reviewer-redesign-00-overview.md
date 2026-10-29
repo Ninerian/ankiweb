@@ -11,6 +11,7 @@ Dieses Dokument = Index, Entscheidungen, Abhängigkeiten. Details je Schritt in 
 | 4 | [04-add-cards](2026-10-27-reviewer-redesign-04-add-cards.md) | `/app/add` Wizard, Hinzugefügte Karten, Notiztyp `AnkiWeb Vocab`, Edit-last |
 | 5 | [05-pwa-bootstrap](2026-10-27-reviewer-redesign-05-pwa-bootstrap.md) | Einbindung aller Views, Manifest/SW auf `/app/`, Navigation, Doku |
 | 6 | [06-i18n](2026-10-27-reviewer-redesign-06-i18n.md) | Mehrsprachigkeit: Anki-Katalog plus kleiner eigener Katalog, `<html lang/dir>`, RTL, lokalisiertes Manifest |
+| 7 | [07-new-deck](2026-10-29-reviewer-redesign-07-new-deck.md) | Stapel anlegen: Name und Emoji (Suffix ` · 🧬` im Deck-Namen), `POST /app/decks`, Bottom-Sheet mit daisyUI; stellt `split_emoji` aus Plan 2 von Präfix auf Suffix um |
 
 ## Festgelegte Entscheidungen
 
@@ -78,12 +79,13 @@ flowchart LR
   P6 --> P2[2 Deck-Liste]
   P6 --> P3[3 Review]
   P6 --> P4[4 Karten hinzufügen]
-  P2 --> P5[5 PWA + Einbindung]
+  P2 --> P7[7 Stapel anlegen]
+  P7 --> P5[5 PWA + Einbindung]
   P3 --> P5
   P4 --> P5
 ```
 
-**Ausführungsreihenfolge (Entscheidung):** 1, dann 6, dann 2/3/4 **parallel**, dann 5. Plan 6 ist also eine **harte** Voraussetzung für 2 bis 4: Sie nutzen von Anfang an `{{ tr.… }}`/`{{ s("…") }}` statt Klartext, sonst muss jedes Template ein zweites Mal angefasst werden. Aus Plan 6 laufen **vor** der Parallelphase nur 6.0 bis 6.2 und 6.4 (Sprachvertrag, `s()`, Gate-Tests, `lang/dir`); die Template-Umstellung 6.3 entfällt, weil 2 bis 4 gleich lokalisiert schreiben. 6.5 (Manifest, Cache-Hash) gehört zu Plan 5.
+**Ausführungsreihenfolge (Entscheidung):** 1, dann 6, dann 2/3/4 **parallel**, dann 7, dann 5. Plan 6 ist also eine **harte** Voraussetzung für 2 bis 4: Sie nutzen von Anfang an `{{ tr.… }}`/`{{ s("…") }}` statt Klartext, sonst muss jedes Template ein zweites Mal angefasst werden. Aus Plan 6 laufen **vor** der Parallelphase nur 6.0 bis 6.2 und 6.4 (Sprachvertrag, `s()`, Gate-Tests, `lang/dir`); die Template-Umstellung 6.3 entfällt, weil 2 bis 4 gleich lokalisiert schreiben. 6.5 (Manifest, Cache-Hash) gehört zu Plan 5. Plan 7 setzt Plan 2 voraus (Deck-Liste, `split_emoji`) und Plan 6 (`s()`), und läuft vor Plan 5, damit die Einbindung die fertige Startseite sieht.
 
 **Parallelphase 2/3/4.** Gemeinsame Dateien und Regel gegen Konflikte:
 - `http_app/__init__.py` (Router-Aggregation): jeder Plan hängt **genau eine Zeile** an.
