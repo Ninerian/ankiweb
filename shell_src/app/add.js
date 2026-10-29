@@ -51,6 +51,16 @@ window.avAddToast = (message) => {
   toastTimer = setTimeout(() => { toast.style.display = "none"; }, 4000);
 };
 
+window.avEditLoaded = (hint, example) => {
+  for (const [id, value] of [["input-hint", hint], ["input-example", example]]) {
+    const details = document.getElementById(id)?.closest("details");
+    if (details && value) details.open = true;
+  }
+  const wizard = document.getElementById("add-wizard");
+  window.avAddToast(wizard.dataset.editing);
+  window.avFocus("input-front");
+};
+
 window.avAnimateCommit = () => {
   const editor = document.getElementById("add-editor");
   const stack = document.getElementById("added-cards");

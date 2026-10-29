@@ -12,6 +12,12 @@
         {% if card.hint %}<p class="line-clamp-1 wrap-anywhere whitespace-pre-wrap text-sm font-bold text-muted-fg">{{ card.hint }}</p>{% endif %}
         {% if card.example %}<p class="line-clamp-1 wrap-anywhere whitespace-pre-wrap text-sm font-bold text-muted-fg">{{ card.example }}</p>{% endif %}
       </div>
+      <button type="button" class="absolute inset-0 h-full w-full cursor-pointer"
+              data-note-id="{{ card.nid }}" aria-label="{{ s('app_add_edit_last') }}"
+              data-discard="{{ s('app_add_discard_edit') }}" data-edit-unavailable="{{ s('app_add_edit_unavailable') }}"
+              data-attr:disabled="$saving"
+              data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.editUnavailable) : null"
+              data-on:click="$saving ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard) ? @post('/app/add/edit/' + el.dataset.noteId + '?deck=' + document.getElementById('add-wizard').dataset.deckId) : null)"></button>
     </article>
     {% else %}
     <div {% if loop.index0 == 1 %}class="card absolute added-1 h-40 w-full overflow-hidden border-3 border-neo-edge bg-base-200 shadow-neo"{% elif loop.index0 == 2 %}class="card absolute added-2 h-40 w-full overflow-hidden border-3 border-neo-edge bg-base-200 shadow-neo"{% else %}class="card absolute added-3 h-40 w-full overflow-hidden border-3 border-neo-edge bg-base-200 shadow-neo"{% endif %} aria-hidden="true">
