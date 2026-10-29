@@ -106,6 +106,9 @@ def test_create_decks_in_browser(
         name.fill("")
         expect(submit).to_be_disabled()
         name.fill("📚")
+        assert problems == []
+        expect(sheet).to_have_attribute("aria-hidden", "false")
+        expect(submit).to_be_enabled()
         submit.click()
         expect(page.locator("#deck-name-error")).to_contain_text("valid deck name")
         name.fill("Biology two")
