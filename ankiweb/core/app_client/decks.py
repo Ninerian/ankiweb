@@ -1,5 +1,6 @@
 """Deck list rows for the app client's home page."""
 
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Literal
@@ -109,7 +110,9 @@ def _comparison_name(name: str) -> str:
 
 def create_deck(col: Collection, name: str, emoji: str) -> DeckRow:
     """Create a root deck; names consisting only of emoji are invalid."""
-    name = name.strip()
+    name = unicodedata.normalize("NFC", name)
+    name = "".join(c for c in name if not (c.isascii() and not c.isprintable()))
+    name = re.sub(r"^[\s:]+|[\s:]+$", "", name)
     if not name:
         raise DeckNameError("empty")
     if len(name) > 40:
@@ -123,7 +126,6 @@ def create_deck(col: Collection, name: str, emoji: str) -> DeckRow:
         if "::" not in deck.name
     ):
         raise DeckNameError("taken")
-    name = unicodedata.normalize("NFC", name)
     result = col.decks.add_normal_deck_with_name(join_emoji(name, emoji))
     return DeckRow(
         deck_id=result.id,

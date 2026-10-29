@@ -183,6 +183,11 @@ def test_create_deck_accepts_40_characters(temp_collection: Collection) -> None:
         ("Café · 🧬", "Cafe\u0301", "🌱"),
         ("Straße · 🧬", "STRASSE", "🌱"),
         ("Default", "default", "📚"),
+        ("Bio", ":Bio", "📚"),
+        ("Bio", "Bio:", "📚"),
+        ("Bio", " : Bio :: ", "📚"),
+        ("Bio · 🧬", ":Bio", "🧬"),
+        ("Bio · 🧬", "Bio\x07", "🌱"),
     ],
 )
 def test_create_deck_rejects_existing_root_display_name(
