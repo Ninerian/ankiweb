@@ -1,4 +1,4 @@
-<article id="deck-{{ view.row.deck_id }}" class="card deck-card bg-base-200" data-show="{{ view.show }}">
+<article id="deck-{{ view.row.deck_id }}" class="card deck-card bg-base-200" data-show="{{ view.show }}"{% if view.row.deck_id == created_id %} data-class:deck-drop="true"{% endif %}>
   <div class="card-body gap-0 p-4">
     <div class="flex min-w-0 items-center gap-3">
       <span class="grid size-12 flex-none place-items-center rounded-deck border-2 border-base-content bg-secondary text-2xl leading-none" aria-hidden="true">{{ view.row.emoji }}</span>
