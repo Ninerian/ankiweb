@@ -16,11 +16,11 @@ pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import ConsoleMessage, sync_playwright
 
 DECKS = (
-    "🇩🇪 German B1 Vocab",
-    "🇪🇸 Spanish A2",
-    "🧬 Biology Cells",
-    "🏛️ History 1900s",
-    "⚗️ Chemistry Basics",
+    "German B1 Vocab · 🇩🇪",
+    "Spanish A2 · 🇪🇸",
+    "Biology Cells · 🧬",
+    "History 1900s · 🏛️",
+    "Chemistry Basics · ⚗️",
 )
 
 
@@ -106,7 +106,7 @@ def test_deck_list_search_and_links(
         assert page.locator("article:visible").count() == 5
         assert requests == []
 
-        deck_id = ids["🇩🇪 German B1 Vocab"]
+        deck_id = ids["German B1 Vocab · 🇩🇪"]
         learn = page.locator(f"#deck-{deck_id} a").first
         assert learn.get_attribute("href") == f"/app/review?deck={deck_id}"
         assert page.evaluate("document.documentElement.scrollWidth") == 375
