@@ -21,7 +21,7 @@ source, not executed. *Not verified* = no evidence.
 |---|---|---|
 | `decks-mockup.html` | Static HTML | Deck list with search, empty state, per-deck Learn / Edit / Add links and a New deck sheet (name and emoji picker) |
 | `mockup.html` | Static HTML | Reviewer (card stage, ease tiles, streak, actions sheet, completion feedback) |
-| `editor-mockup.html` | Static HTML | Quick-add wizard (Front, Back, Preview), card stack, edit-last-card |
+| `editor-mockup.html` | Static HTML | Quick-add wizard (Front, Back, Preview), card pile with count starburst, browse-and-edit list |
 | `card-render.js` | Script | Shared card model and renderer used by the reviewer and the editor preview |
 | `study-api-spike.py` | Archived Python | Study JSON API spike. **Not imported anywhere.** Per RESEARCH-independent-client.md the router was removed from the server code after its test |
 | `DESIGN.md` | Doc | Design rationale and porting blueprint |
@@ -103,17 +103,18 @@ The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good and 2 E
 
 | Element | Behaviour |
 |---|---|
-| Header | Back button, deck-name chip and Done on the first row; added-card count on the second row |
+| Header | Back button, deck-name chip and Done on the first row; step bar on the second row. No count pill in the header |
 | Deck chip `#deck-chip` | Shows emoji and name; guarded link to `decks-mockup.html?deck=<id>` |
 | Active card | Note-type pill, without a repeated deck badge |
+| Count badge `#stack-badge` | Starburst on the pile, hidden at 0 cards. Tapping it opens or closes the list (`aria-expanded`) |
+| Browse list `#browse-list` | One `.browse-card` button per added card, oldest first, vertically scrollable. Opens after the input card slides away; folds back onto the pile on pick or close |
+| Edit mode | Picking a row loads the card into the same wizard at Step 1. Banner `#edit-banner` with `×`; saving replaces the card in place (same id, same position, same count) |
+| Leave edit / list | `×` or `Escape` in edit mode keeps the card as saved. `Escape` or **Back to new card** closes the list |
 | Navigation | No editor mode switch; use the deck list to choose Learn or Edit / Add |
-| Feedback | The added-card count updates without a duplicate success toast; warnings and other action feedback remain |
-| Navigation guard | The chip, Back, and finish/leave actions guard uncommitted text |
+| Feedback | The count updates without a duplicate success toast; a saved edit shows `Card n updated ✓`; warnings remain |
+| Navigation guard | The chip, Back, finish/leave and opening the list guard uncommitted text |
 
-**Guard rule** (`confirmDiscard`): if any of the front, back, hint or example text is non-empty,
-the page shows `confirm("You have unsaved text in your current card. <action>")` and cancels the
-navigation on "Cancel". Navigation and edit/finish actions are blocked while a card is committing.
-The guard also applies when editing a stacked card and finishing.
+**Guard rule** (`confirmDiscard`): the page shows `confirm("You have unsaved text in your current card. <action>")` and cancels on "Cancel" when the editor holds text that is not already saved. For a new card that is any non-empty front, back, hint or example. For a card loaded for editing it is only a **difference from the saved card**, so an unchanged loaded card never prompts. Navigation and edit/finish actions are blocked while a card is committing.
 
 ### 2.5 Link matrix
 

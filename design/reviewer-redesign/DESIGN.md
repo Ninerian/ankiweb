@@ -141,16 +141,19 @@ The core psychological hook of the creator is the **physical growing card pile**
   - Upon tapping **Add to Stack**, the active card physically slides down and rotates (`transform: translate(x, y) rotate(deg)`), visibly joining the stack beneath the editing stage.
   - A fresh blank card simultaneously drops into place from above (`@keyframes popInFreshCard`).
 - **Dealt Physical Stack Layers**:
-  - Completed cards accumulate beneath the editor at natural cascading offsets (`+32px`, `+64px`, `+96px`) and slight organic rotations (`-3.2°`, `+2.8°`, `-2.0°`), resembling an authentic pile of physical cards dealt onto a table.
-  - The top card displays a glowing cue badge: `TOP CARD`.
-- **Second-row HUD Stack Counter (`🗂️ N CARDS ADDED`)**:
-  - Counter updates in real-time with an energetic pop-and-wobble animation (`@keyframes stackPillPop`) mirroring the reviewer streak counter; no separate add-success count toast repeats it.
+  - Completed cards accumulate beneath the editor at natural cascading offsets (`+32px`, `+64px`, `+96px`) and slight organic rotations (`-3.2°`, `+2.8°`, `-2.0°`), resembling an authentic pile of physical cards dealt onto a table. At most five layers are drawn; the pile is decoration and carries no per-card control.
+- **Count starburst on the pile**:
+  - The count sits in a spinning starburst badge at the lower right edge of the pile (as on `/app/add`), with the unit ("CARD" / "CARDS") set on an arc. It bumps when the count changes (`@keyframes stackPillPop`); no separate add-success toast repeats it. It is the only control on the pile (see D).
 
-### D. Edit-Last-Card Affordance (Quick Mistake Correction)
-When rapidly typing cards on mobile, students inevitably make typos or notice mistakes right after submitting:
-- **One-Tap Reversal**: Tapping either the topmost card in the physical stack, the bottom **Top of stack** peek banner, or the top HUD stack pill loads that card back into the editor (`@keyframes popCardUp`). The card **stays saved**; saving again **updates** the same note instead of adding a second one.
-- **State Reconstitution**: The Front and Back text are restored into the editor inputs, the wizard opens directly to Step 1, and the card count is **unchanged** (the card was never removed).
-- **Safety Guard**: If the student has already started typing new unsaved text in the current card, a confirmation guards against accidental text loss before loading the saved card.
+### D. Browse and Edit Added Cards (list)
+Students notice typos after submitting, and need to correct any card of the session, not only the last one. There is no "edit last" shortcut: no peek banner, no HUD pill, no cue on the top card.
+- **Open**: tapping the starburst badge on the pile opens the list. The new-card card slides up and out of the way (`@keyframes cardLeaveUp`), then the cards fan out from the pile into a **scrollable list**, oldest first, one row per card (number, front, back, `Saved` chip, `Hint` / `Example` markers, `Edit →`). The step bar and the bottom bar's step controls stay out of the way while the list is open.
+- **Scroll and choose**: the list scrolls vertically with a soft fade at both edges. Tapping a row folds the list back onto the pile (rows are staggered) and the card comes back carrying the picked card.
+- **Edit in the same card**: the picked card loads into **the same input card and the same 3-step wizard** used for a new card, opening at Step 1. An orange `EDITING CARD n` banner with a `×` and an orange card outline mark the mode.
+- **Save replaces in place**: the last step saves the card under its **existing id and position**. The count is unchanged and no duplicate is created. On `/app/add` this maps to updating the existing note, not adding one.
+- **Return**: after saving, the edited card slides back onto the pile and a blank new-card card drops in (`@keyframes popInFreshCard`). `×` or `Escape` while editing, and `Escape` or **Back to new card** in the list, leave without changing anything; the card stays as saved.
+- **Safety guard**: opening the list asks before discarding unsaved text in the new-card card. A card loaded for editing and left unchanged counts as **not** unsaved, so leaving it does not prompt.
+- **Accessibility**: the badge has `aria-expanded` and `aria-controls`, a spoken label ("N cards added. Tap to browse and edit."), and gets focus back when the list closes. Each row is a button labelled `Edit card n: <front>`. All motion respects `prefers-reduced-motion`.
 
 ### E. Porting & Architecture Blueprint
 This flow is designed as a **new dedicated mobile route**, completely separate from Anki's existing complex `/add` route:

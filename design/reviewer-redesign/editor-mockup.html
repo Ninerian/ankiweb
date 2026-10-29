@@ -230,49 +230,41 @@
       box-shadow: 0px 0px 0px var(--border-color);
     }
 
-    /* Stack Counter Pill with Pop Effect */
-    .stack-pill {
-      display: flex;
-      align-self: center;
-      align-items: center;
-      gap: 6px;
-      background-color: var(--color-streak-bg);
-      border: var(--border-width) solid var(--color-streak);
-      box-shadow: 2px 2px 0px var(--color-streak);
-      padding: 6px 10px;
-      border-radius: var(--radius-pill);
-      color: var(--color-streak);
-      user-select: none;
-      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* Count starburst on the added-cards pile (same badge as /app/add). It is the
+       one entry point to browse and edit the cards: tapping the pile opens the list. */
+    .stack-badge {
+      position: absolute;
+      bottom: 4px;
+      right: -6px;
+      z-index: 20;
+      width: 64px;
+      height: 64px;
+      padding: 0;
+      border: 0;
+      background: none;
       cursor: pointer;
+      filter: drop-shadow(2px 2px 0 var(--border-color));
+      transition: transform 0.12s ease;
     }
-
-    .stack-pill-icon {
-      font-size: 1.15rem;
-      line-height: 1;
-      display: inline-block;
+    .stack-badge[hidden] { display: none; }
+    .stack-badge:active { transform: scale(0.94); }
+    .stack-badge svg { width: 100%; height: 100%; overflow: visible; font-family: var(--font-display); font-weight: 900; }
+    .stack-badge-star {
+      fill: var(--color-primary);
+      stroke: var(--border-color);
+      stroke-width: 2.5;
+      stroke-linejoin: round;
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: badgeSpin 14s linear infinite;
     }
-
-    .stack-pill-label {
-      font-family: var(--font-display);
-      font-weight: 900;
-      font-size: 0.8rem;
-      letter-spacing: -0.02em;
-      text-transform: uppercase;
-      display: flex;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-
-    .stack-pill-number {
-      font-size: 1.15rem;
-      font-feature-settings: "tnum";
-    }
+    .stack-badge-count { fill: var(--bg-surface); font-size: 40px; transform-box: fill-box; transform-origin: center; }
+    .stack-badge-unit { fill: var(--bg-surface); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+    @keyframes badgeSpin { to { transform: rotate(360deg); } }
 
     @keyframes stackPillPop {
       0% { transform: scale(1); }
-      40% { transform: scale(1.3) rotate(-3deg); box-shadow: 0 0 16px var(--color-streak-glow); }
+      40% { transform: scale(1.3) rotate(-3deg); }
       75% { transform: scale(0.95) rotate(2deg); }
       100% { transform: scale(1) rotate(0deg); }
     }
@@ -280,6 +272,7 @@
     .animate-stack-pop {
       animation: stackPillPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; }
 
     /* Step Indicator Bar */
     .step-indicator-row {
@@ -455,31 +448,6 @@
       letter-spacing: 0.04em;
     }
 
-    /* Tap-to-edit cue banner on the topmost stacked card */
-    .stack-top-cue {
-      position: absolute;
-      bottom: 12px;
-      right: 14px;
-      background-color: var(--color-streak-bg);
-      border: 2px solid var(--color-streak);
-      box-shadow: 2px 2px 0px var(--color-streak);
-      color: var(--color-streak);
-      border-radius: var(--radius-pill);
-      padding: 3px 10px;
-      font-family: var(--font-display);
-      font-size: 0.7rem;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      display: flex;
-      align-items: center;
-      animation: cueBob 1.6s ease-in-out infinite;
-    }
-
-    @keyframes cueBob {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-3px); }
-    }
     /* Active Editing Flashcard */
     .active-card {
       position: relative;
@@ -531,22 +499,6 @@
       animation: popInFreshCard 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
 
-    /* Popped card restoration animation */
-    @keyframes popCardUp {
-      0% {
-        transform: translateY(30px) scale(0.95);
-        opacity: 0.6;
-      }
-      100% {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-      }
-    }
-
-    .anim-pop-up {
-      animation: popCardUp 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-
     .card-top-bar {
       display: flex;
       justify-content: flex-end;
@@ -564,6 +516,7 @@
       border: 1.5px solid var(--border-color);
       padding: 2px 8px;
       border-radius: 6px;
+      white-space: nowrap;
     }
 
     /* Card Content / Step Viewports */
@@ -895,51 +848,6 @@
       color: #121316;
     }
 
-    /* Stack Peek Bar (when cards > 0) */
-    .stack-peek-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      width: 100%;
-      font-family: var(--font-ui);
-      background-color: var(--bg-surface);
-      border: 2px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      padding: 6px 12px;
-      font-size: 0.78rem;
-      font-weight: 800;
-      color: var(--text-main);
-      box-shadow: var(--shadow-sm);
-      cursor: pointer;
-      user-select: none;
-      transition: transform 0.08s ease, box-shadow 0.08s ease;
-    }
-
-    .stack-peek-bar:active {
-      transform: translate(2px, 2px);
-      box-shadow: 0px 0px 0px var(--border-color);
-    }
-
-    .stack-peek-info {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-    }
-
-    .stack-peek-tag {
-      background: var(--color-streak-bg);
-      color: var(--color-streak);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 900;
-      font-size: 0.7rem;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
 
     /* ==========================================================================
        COMPLETION / SUMMARY MODAL SHEET
@@ -1072,7 +980,6 @@
     }
 
     .input-prompt-label { flex-wrap: wrap; gap: 4px; }
-    .stack-peek-info > span:first-child, .stack-peek-bar > span:last-child { flex-shrink: 0; }
     .helper-chip { color: var(--text-main); font-family: var(--font-ui); }
     .preview-edit-link { background: none; border: 0; padding: 8px; }
     .preview-front-val, .preview-back-val { white-space: pre-wrap; }
@@ -1081,6 +988,217 @@
     button:focus-visible, a:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
     .summary-card { max-height: 100%; overflow-y: auto; }
     .summary-actions-row .btn-step-primary { flex: none; }
+
+    /* ==========================================================================
+       BROWSE MODE: the pile fans out into a scrollable list while the new-card
+       card slides out of the way. A picked card edits in that same card.
+       ========================================================================== */
+    .stack-pile-layer .stacked-card { cursor: pointer; }
+
+    /* The input card leaves upwards and returns the same way */
+    @keyframes cardLeaveUp {
+      0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(-115%) rotate(-4deg); opacity: 0; }
+    }
+    @keyframes cardReturnDown {
+      0%   { transform: translateY(-115%) rotate(-4deg); opacity: 0; }
+      70%  { transform: translateY(6px) rotate(0.6deg); opacity: 1; }
+      100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    }
+    .active-card.anim-leave-up { animation: cardLeaveUp 0.42s cubic-bezier(0.55, 0, 0.9, 0.4) forwards; }
+    .active-card.anim-return-down { animation: cardReturnDown 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+    .active-card.is-away { visibility: hidden; }
+
+    /* Editing an existing card: same layout as a new card, flagged with a banner */
+    .edit-banner {
+      margin-right: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--color-streak-bg);
+      color: var(--color-streak);
+      border: 2px solid var(--color-streak);
+      border-radius: var(--radius-pill);
+      padding: 3px 11px 3px 9px;
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      box-shadow: 2px 2px 0 var(--color-streak);
+      max-width: 62%;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .edit-banner[hidden] { display: none; }
+    .edit-banner-cancel {
+      flex: none;
+      margin-left: 2px;
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: var(--color-streak);
+      color: var(--color-streak-bg);
+      font-size: 0.95rem;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .edit-banner-dot {
+      flex: none;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-streak);
+      animation: editDot 1.2s ease-in-out infinite;
+    }
+    @keyframes editDot { 50% { transform: scale(0.55); opacity: 0.55; } }
+    .active-card.is-editing { border-color: var(--color-streak); box-shadow: 5px 5px 0 var(--color-streak); }
+
+    /* The list fills the stage below the HUD */
+    .browse-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      padding: 6px 16px 0;
+      background: var(--bg-base);
+    }
+    .browse-layer[hidden] { display: none; }
+    .browse-head {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 4px 2px 10px;
+    }
+    .browse-title {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: var(--text-main);
+    }
+    .browse-close {
+      font-family: var(--font-ui);
+      font-size: 0.74rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-main);
+      background: var(--bg-surface);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-pill);
+      box-shadow: var(--shadow-sm);
+      padding: 7px 13px;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .browse-close:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--border-color); }
+    .browse-list {
+      flex: 1;
+      min-height: 0;
+      list-style: none;
+      margin: 0;
+      padding: 4px 4px 28px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 22px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 22px), transparent 100%);
+    }
+
+    /* One row is one card. It lands from the pile (--from-y) with a stagger (--i) */
+    @keyframes rowFan {
+      0%   { transform: translateY(var(--from-y, 120px)) rotate(var(--from-rot, 3deg)) scale(0.94); opacity: 0; }
+      100% { transform: translateY(0) rotate(var(--rest-rot, 0deg)) scale(1); opacity: 1; }
+    }
+    @keyframes rowFold {
+      0%   { transform: translateY(0) rotate(var(--rest-rot, 0deg)) scale(1); opacity: 1; }
+      100% { transform: translateY(var(--from-y, 120px)) rotate(var(--from-rot, 3deg)) scale(0.94); opacity: 0; }
+    }
+    .browse-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      column-gap: 12px;
+      width: 100%;
+      text-align: left;
+      font-family: var(--font-ui);
+      color: var(--text-main);
+      background: var(--bg-surface);
+      border: 3px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: 13px 16px 13px 12px;
+      cursor: pointer;
+      transform: rotate(var(--rest-rot, 0deg));
+      animation: rowFan 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+      animation-delay: calc(var(--i, 0) * 38ms);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .browse-layer.is-folding .browse-card {
+      animation: rowFold 0.34s cubic-bezier(0.55, 0, 0.9, 0.4) both;
+      animation-delay: calc(var(--j, 0) * 24ms);
+    }
+    .browse-card:hover { border-color: var(--color-primary); }
+    .browse-card:active { transform: translate(3px, 3px) rotate(0deg); box-shadow: 0 0 0 var(--border-color); }
+    .browse-card.is-picked { border-color: var(--color-streak); box-shadow: 4px 4px 0 var(--color-streak); }
+    .browse-num {
+      grid-row: 1 / span 3;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 38px;
+      border-right: 2px dashed var(--border-color);
+      padding-right: 12px;
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--color-primary);
+    }
+    .browse-front, .browse-back {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .browse-front { font-family: var(--font-display); font-size: 1.05rem; font-weight: 900; }
+    .browse-back { font-size: 0.9rem; font-weight: 700; color: var(--color-primary); }
+    .browse-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 3px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+    .browse-edit-cue { margin-left: auto; color: var(--color-streak); font-weight: 900; }
+    .browse-chip {
+      background: var(--color-success-bg);
+      color: var(--color-success);
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-pill);
+      padding: 1px 7px;
+      font-weight: 900;
+    }
+    /* Bottom bar while browsing: the step controls give way to the list */
+    .creator-bottom-bar.is-browsing .bottom-btn-row { display: none; }
+    .creator-bottom-bar.is-browsing { padding-block: 4px; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
@@ -1108,15 +1226,6 @@
         </button>
       </div>
 
-      <!-- Stack Counter Pill with Tap Action to pop last card -->
-      <button type="button" class="stack-pill" id="stack-pill" title="Tap to pop and edit last added card" onclick="popLastCardToEditor()">
-        <span class="stack-pill-icon">🗂️</span>
-        <span class="stack-pill-label">
-          <span id="stack-count" class="stack-pill-number">0</span>
-          <span id="stack-unit">CARDS ADDED</span>
-        </span>
-      </button>
-
       <!-- Step Indicator Row (Step 1 Front -> Step 2 Back -> Step 3 Preview) -->
       <div class="step-indicator-row">
         <button type="button" class="step-pill-item active" id="step-pill-1" onclick="jumpToStep(1)">
@@ -1133,15 +1242,31 @@
 
     <!-- MAIN CARD CREATOR STAGE (With physical stacked cards pile) -->
     <main class="creator-stage">
-      <div class="cards-deck-container">
+      <div class="cards-deck-container" id="deck-container">
         <!-- Visual Stacked Cards Pile (behind active card) -->
         <div class="stack-pile-layer" id="stack-pile-layer">
           <!-- Stacked cards dynamically injected here -->
         </div>
 
+        <!-- Count starburst on the pile; tapping the pile opens the list -->
+        <button type="button" class="stack-badge" id="stack-badge" hidden aria-expanded="false" aria-controls="browse-layer" onclick="toggleBrowse()">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <defs><path id="stack-arc" d="M 15 50 A 35 35 0 0 0 85 50"/></defs>
+            <polygon class="stack-badge-star" points="50.0,2.0 60.4,11.4 74.0,8.4 78.3,21.7 91.6,26.0 88.6,39.6 98.0,50.0 88.6,60.4 91.6,74.0 78.3,78.3 74.0,91.6 60.4,88.6 50.0,98.0 39.6,88.6 26.0,91.6 21.7,78.3 8.4,74.0 11.4,60.4 2.0,50.0 11.4,39.6 8.4,26.0 21.7,21.7 26.0,8.4 39.6,11.4"/>
+            <text class="stack-badge-count" id="stack-count" x="50" y="58" text-anchor="middle">0</text>
+            <text class="stack-badge-unit"><textPath href="#stack-arc" startOffset="50%" text-anchor="middle" id="stack-unit">CARDS</textPath></text>
+          </svg>
+          <span class="sr-only" id="stack-badge-label">Added cards</span>
+        </button>
+
         <!-- ACTIVE EDITING FLASHCARD -->
         <article class="active-card" id="active-card">
           <div class="card-top-bar">
+            <div class="edit-banner" id="edit-banner" hidden>
+              <span class="edit-banner-dot" aria-hidden="true"></span>
+              <span id="edit-banner-text" role="status">Editing card</span>
+              <button type="button" class="edit-banner-cancel" onclick="cancelEditing()" aria-label="Stop editing, keep the card as saved">&times;</button>
+            </div>
             <div class="note-type-pill">Basic (Front / Back)</div>
           </div>
 
@@ -1251,19 +1376,19 @@
           <span>Stack is empty — add your first card above!</span>
         </div>
       </div>
+
+      <!-- ADDED CARDS LIST: the pile fans out into this scrollable list -->
+      <section class="browse-layer" id="browse-layer" aria-label="Added cards" hidden>
+        <div class="browse-head">
+          <span class="browse-title">Pick a card to edit</span>
+          <button type="button" class="browse-close" onclick="closeBrowse()">Back to new card</button>
+        </div>
+        <ol class="browse-list" id="browse-list"></ol>
+      </section>
     </main>
 
     <!-- BOTTOM CONTROL BAR -->
     <footer class="creator-bottom-bar">
-      <!-- Topmost card quick pop bar if stack has cards -->
-      <button type="button" id="stack-peek-bar" class="stack-peek-bar" style="display: none;" onclick="popLastCardToEditor()">
-        <span class="stack-peek-info">
-          <span>Top of stack:</span>
-          <span class="stack-peek-tag" id="peek-card-summary"></span>
-        </span>
-        <span style="font-size: 0.72rem; color: var(--color-streak); font-weight: 900;">EDIT</span>
-      </button>
-
       <div class="bottom-btn-row">
         <!-- Back button (visible in steps 2 and 3) -->
         <button
@@ -1333,6 +1458,8 @@
       hintText: '',
       exampleText: '',
       cardStack: [],
+      editingId: null,
+      browsing: false,
       isCommitting: false
     };
 
@@ -1365,10 +1492,15 @@
       stackPileLayer: document.getElementById('stack-pile-layer'),
       stackCount: document.getElementById('stack-count'),
       stackUnit: document.getElementById('stack-unit'),
-      stackPill: document.getElementById('stack-pill'),
+      stackBadge: document.getElementById('stack-badge'),
+      stackBadgeLabel: document.getElementById('stack-badge-label'),
       stackEmptyMsg: document.getElementById('stack-empty-msg'),
-      stackPeekBar: document.getElementById('stack-peek-bar'),
-      peekCardSummary: document.getElementById('peek-card-summary'),
+      creatorStage: document.querySelector('.creator-stage'),
+      creatorBottomBar: document.querySelector('.creator-bottom-bar'),
+      browseLayer: document.getElementById('browse-layer'),
+      browseList: document.getElementById('browse-list'),
+      editBanner: document.getElementById('edit-banner'),
+      editBannerText: document.getElementById('edit-banner-text'),
       toast: document.getElementById('toast'),
       summaryModal: document.getElementById('summary-modal'),
       modalCardCount: document.getElementById('modal-card-count')
@@ -1531,6 +1663,10 @@
       const front = state.frontText.trim();
       const back = state.backText.trim();
       if (!front || !back) return;
+      if (state.editingId) {
+        saveEditedCard(front, back);
+        return;
+      }
       state.isCommitting = true;
       el.btnStepPrimary.disabled = true;
 
@@ -1553,7 +1689,7 @@
       el.activeCard.style.setProperty('--target-x', `${newCard.x}px`);
       el.activeCard.style.setProperty('--target-y', `${newCard.y}px`);
       el.activeCard.style.setProperty('--target-rot', `${newCard.rot}deg`);
-      el.activeCard.classList.remove('anim-pop-up', 'anim-fresh-card');
+      el.activeCard.classList.remove('anim-fresh-card');
       el.activeCard.classList.add('anim-slide-to-stack');
 
       // After slide animation completes:
@@ -1581,6 +1717,48 @@
       }, 420);
     }
 
+    // Saving an edited card replaces it in place: same id, same position, same count.
+    async function saveEditedCard(front, back) {
+      state.isCommitting = true;
+      el.btnStepPrimary.disabled = true;
+      const index = state.cardStack.findIndex((c) => c.id === state.editingId);
+      if (index === -1) {
+        state.isCommitting = false;
+        el.btnStepPrimary.disabled = false;
+        return;
+      }
+      const old = state.cardStack[index];
+      const preset = STACK_PRESETS[index % STACK_PRESETS.length];
+      state.cardStack[index] = {
+        ...old,
+        front,
+        back,
+        hint: state.hintText.trim(),
+        example: state.exampleText.trim()
+      };
+
+      // The edited card goes back onto the pile, then the new-card card returns blank
+      el.activeCard.style.setProperty('--target-x', `${preset.x}px`);
+      el.activeCard.style.setProperty('--target-y', `${preset.y}px`);
+      el.activeCard.style.setProperty('--target-rot', `${preset.rot}deg`);
+      el.activeCard.classList.remove('anim-fresh-card', 'anim-return-down');
+      el.activeCard.classList.add('anim-slide-to-stack');
+      await wait(420);
+
+      renderStackPile();
+      resetEditor();
+      setEditing(null);
+      el.activeCard.classList.remove('anim-slide-to-stack');
+      el.activeCard.classList.add('anim-fresh-card');
+      state.currentStep = 1;
+      updateWizardUI();
+      showToast(`Card ${index + 1} updated ✓`);
+      state.isCommitting = false;
+      el.btnStepPrimary.disabled = false;
+      await wait(360);
+      el.activeCard.classList.remove('anim-fresh-card');
+    }
+
     function renderStackPile() {
       el.stackPileLayer.innerHTML = '';
       const total = state.cardStack.length;
@@ -1588,64 +1766,42 @@
 
       if (total === 0) {
         el.stackEmptyMsg.style.display = 'flex';
-        el.stackPeekBar.style.display = 'none';
+        el.stackBadge.hidden = true;
         return;
       }
 
       el.stackEmptyMsg.style.display = 'none';
-      el.stackPeekBar.style.display = 'flex';
 
-      const topCard = state.cardStack[total - 1];
-      el.peekCardSummary.textContent = topCard.front;
-      el.stackPeekBar.setAttribute('aria-label', `Top of stack: ${topCard.front} EDIT`);
-
-      // Render cards from bottom to top (max 5 visible in DOM for optimal performance)
+      // Render cards from bottom to top (max 5 visible in DOM for optimal performance).
+      // The pile itself is decoration: the badge on it opens the list.
       const renderCount = Math.min(total, 5);
       const startIndex = total - renderCount;
 
       for (let i = startIndex; i < total; i++) {
         const card = state.cardStack[i];
-        const isTop = i === total - 1;
         const depth = total - 1 - i; // 0 for top/most recent, 1 for older...
 
-        const cardElem = document.createElement('button');
-        cardElem.type = 'button';
-        cardElem.setAttribute('aria-label', `Edit card ${i + 1}: ${card.front}`);
+        const cardElem = document.createElement('div');
         cardElem.className = 'stacked-card';
         cardElem.id = `stacked-card-${card.id}`;
+        cardElem.setAttribute('aria-hidden', 'true');
 
         // The most recent card sits directly beneath active card at its preset offset
         // Older cards are pushed further down and scaled down slightly
         const preset = STACK_PRESETS[(total - 1 - depth) % STACK_PRESETS.length];
         const offsetY = (depth + 1) * 32;
-        const offsetX = preset.x;
-        const rot = preset.rot;
         const scale = 1 - (depth * 0.02);
 
-        cardElem.style.transform = `translate(${offsetX}px, ${offsetY}px) rotate(${rot}deg) scale(${scale})`;
+        cardElem.style.transform = `translate(${preset.x}px, ${offsetY}px) rotate(${preset.rot}deg) scale(${scale})`;
         cardElem.style.zIndex = 5 - depth;
         cardElem.style.opacity = Math.max(0.7, 1 - (depth * 0.1));
 
-        // Click handler to pop
-        cardElem.onclick = (e) => {
-          e.stopPropagation();
-          popSpecificCardToEditor(i);
-        };
-
         const rendered = CardRender.renderCard(card);
         cardElem.innerHTML = `
-          <div class="stacked-card-header" style="position: absolute; top: 12px; left: 16px; right: 16px;">
-            <span>Card #${i + 1}</span>
-            <span class="stacked-card-badge">Stacked</span>
-          </div>
-          <div class="stacked-card-content" style="padding-bottom: 24px;">
+          <div class="stacked-card-content">
             <div class="stacked-card-front">${rendered.front}</div>
-            ${rendered.hint ? `<div class="stacked-card-hint">${rendered.hint}</div>` : ''}
             <div class="stacked-card-back">${rendered.back}</div>
-            ${rendered.example ? `<div class="stacked-card-example">${rendered.example}</div>` : ''}
           </div>
-          <div class="stacked-card-footer">Basic Note &bull; Tap to edit</div>
-          ${isTop ? `<div class="stack-top-cue">Top Card</div>` : ''}
         `;
 
         el.stackPileLayer.appendChild(cardElem);
@@ -1655,68 +1811,185 @@
     function updateStackHUD() {
       const count = state.cardStack.length;
       el.stackCount.textContent = count;
-      el.stackUnit.textContent = count === 1 ? 'CARD ADDED' : 'CARDS ADDED';
+      el.stackUnit.textContent = count === 1 ? 'CARD' : 'CARDS';
+      el.stackBadgeLabel.textContent = `${count} ${count === 1 ? 'card' : 'cards'} added. Tap to browse and edit.`;
+      el.stackBadge.hidden = count === 0;
 
-      // Trigger bounce pop on stack pill
-      el.stackPill.classList.remove('animate-stack-pop');
-      void el.stackPill.offsetWidth; // reflow
-      el.stackPill.classList.add('animate-stack-pop');
+      // Bump the badge when the count changes
+      el.stackBadge.classList.remove('animate-stack-pop');
+      void el.stackBadge.offsetWidth; // reflow
+      el.stackBadge.classList.add('animate-stack-pop');
     }
 
     /* ==========================================================================
-       EDIT-LAST-CARD / POP AFFORDANCE
+       BROWSE AND EDIT: tap the pile, it fans out into a list, the new-card card
+       slides out of the way, a picked card is edited in that same card, and on
+       save everything folds back onto the pile. Editing replaces the card in
+       place (same id, same position, same count): nothing is removed first.
        ========================================================================== */
-    function popLastCardToEditor() {
-      if (state.cardStack.length === 0) {
-        showToast('Stack is empty! Add cards first.');
-        return;
-      }
-      popSpecificCardToEditor(state.cardStack.length - 1);
+    const REST_ROT = [-1.2, 0.9, -0.7, 1.1, -0.5];
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    function pileOrigin() {
+      // Where the list rows grow out of: just below the input card, where the pile sits.
+      const stage = el.creatorStage.getBoundingClientRect();
+      const card = el.activeCard.getBoundingClientRect();
+      return Math.max(60, card.bottom - stage.top);
     }
 
-    function popSpecificCardToEditor(index) {
-      if (state.isCommitting) return;
-      if (index < 0 || index >= state.cardStack.length) return;
+    function renderBrowseList() {
+      const origin = pileOrigin();
+      el.browseList.innerHTML = '';
+      state.cardStack.forEach((card, i) => {
+        const rendered = CardRender.renderCard(card);
+        const item = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'browse-card' + (card.id === state.editingId ? ' is-picked' : '');
+        btn.style.setProperty('--i', String(i));
+        btn.style.setProperty('--j', String(state.cardStack.length - 1 - i));
+        btn.style.setProperty('--rest-rot', `${REST_ROT[i % REST_ROT.length]}deg`);
+        btn.style.setProperty('--from-y', `${Math.round(origin - 90)}px`);
+        btn.style.setProperty('--from-rot', `${STACK_PRESETS[i % STACK_PRESETS.length].rot}deg`);
+        btn.setAttribute('aria-label', `Edit card ${i + 1}: ${card.front}`);
+        btn.innerHTML = `
+          <span class="browse-num" aria-hidden="true">${i + 1}</span>
+          <span class="browse-front">${rendered.front}</span>
+          <span class="browse-back">${rendered.back}</span>
+          <span class="browse-meta">
+            <span class="browse-chip">Saved</span>
+            ${rendered.hint ? '<span>Hint</span>' : ''}${rendered.example ? '<span>Example</span>' : ''}
+            <span class="browse-edit-cue">Edit &rarr;</span>
+          </span>`;
+        btn.onclick = () => pickCard(card.id);
+        item.appendChild(btn);
+        el.browseList.appendChild(item);
+      });
+    }
 
-      if (!confirmDiscard('Discard and edit the card from the stack?')) return;
+    async function openBrowse() {
+      if (state.isCommitting || state.browsing || state.cardStack.length === 0) return;
+      if (!confirmDiscard('Discard it and browse your added cards?')) return;
+      state.browsing = true;
+      el.stackBadge.setAttribute('aria-expanded', 'true');
 
-      // Pop the card from stack
-      const popped = state.cardStack.splice(index, 1)[0];
+      // 1. The input card slides up and out of the way
+      el.activeCard.classList.remove('anim-fresh-card', 'anim-return-down');
+      el.activeCard.classList.add('anim-leave-up');
+      await wait(300);
 
-      // Re-populate editor state
-      state.frontText = popped.front;
-      state.backText = popped.back;
-      state.hintText = popped.hint || '';
-      state.exampleText = popped.example || '';
-      el.inputFront.value = popped.front;
-      el.inputBack.value = popped.back;
+      // 2. The pile fans out into the list
+      el.stackPileLayer.hidden = true;
+      el.browseLayer.classList.remove('is-folding');
+      renderBrowseList();
+      el.browseLayer.hidden = false;
+      el.creatorBottomBar.classList.add('is-browsing');
+      el.browseList.scrollTop = 0;
+      el.browseList.querySelector('.browse-card')?.focus({ preventScroll: true });
+    }
+
+    async function closeBrowse({ focusBadge = true } = {}) {
+      if (!state.browsing) return;
+      state.browsing = false;
+      el.stackBadge.setAttribute('aria-expanded', 'false');
+
+      // 1. The list folds back onto the pile
+      el.browseLayer.classList.add('is-folding');
+      await wait(120 + state.cardStack.length * 24 + 280);
+      el.browseLayer.hidden = true;
+      el.browseLayer.classList.remove('is-folding');
+      el.creatorBottomBar.classList.remove('is-browsing');
+      el.stackPileLayer.hidden = false;
+
+      // 2. The new-card card comes back into view
+      el.activeCard.classList.remove('anim-leave-up');
+      el.activeCard.classList.add('anim-return-down');
+      await wait(500);
+      el.activeCard.classList.remove('anim-return-down');
+      if (focusBadge) el.stackBadge.focus({ preventScroll: true });
+    }
+
+    function toggleBrowse() {
+      if (state.browsing) closeBrowse();
+      else openBrowse();
+    }
+
+    function loadIntoEditor(card) {
+      state.frontText = card.front;
+      state.backText = card.back;
+      state.hintText = card.hint || '';
+      state.exampleText = card.example || '';
+      el.inputFront.value = card.front;
+      el.inputBack.value = card.back;
       el.inputHint.value = state.hintText;
       el.inputExample.value = state.exampleText;
       el.hintDetails.open = CardRender.hasText(state.hintText);
       el.exampleDetails.open = CardRender.hasText(state.exampleText);
-      el.frontCharCount.textContent = popped.front.length;
-      el.backCharCount.textContent = popped.back.length;
+      el.frontCharCount.textContent = card.front.length;
+      el.backCharCount.textContent = card.back.length;
+    }
 
-      // Update UI
-      renderStackPile();
-      updateStackHUD();
+    function setEditing(card) {
+      state.editingId = card ? card.id : null;
+      const index = card ? state.cardStack.findIndex((c) => c.id === card.id) : -1;
+      el.editBanner.hidden = !card;
+      el.activeCard.classList.toggle('is-editing', !!card);
+      if (card) el.editBannerText.textContent = `Editing card ${index + 1}`;
+    }
 
-      // Animate active card popping back up
-      el.activeCard.classList.remove('anim-pop-up', 'anim-fresh-card');
-      void el.activeCard.offsetWidth;
-      el.activeCard.classList.add('anim-pop-up');
+    async function pickCard(id) {
+      const card = state.cardStack.find((c) => c.id === id);
+      if (!card || !state.browsing) return;
 
+      // The list folds away, then the input card returns carrying the picked card
+      el.browseLayer.classList.add('is-folding');
+      await wait(120 + state.cardStack.length * 24 + 280);
+      state.browsing = false;
+      el.stackBadge.setAttribute('aria-expanded', 'false');
+      el.browseLayer.hidden = true;
+      el.browseLayer.classList.remove('is-folding');
+      el.creatorBottomBar.classList.remove('is-browsing');
+      el.stackPileLayer.hidden = false;
+
+      loadIntoEditor(card);
+      setEditing(card);
       state.currentStep = 1;
-      updateWizardUI();
+      updateWizardUI(false);
+      el.activeCard.classList.remove('anim-leave-up');
+      el.activeCard.classList.add('anim-return-down');
+      await wait(500);
+      el.activeCard.classList.remove('anim-return-down');
+      el.inputFront.focus({ preventScroll: true });
+    }
 
-      showToast(`Popped "${popped.front.substring(0, 16)}..." for editing! ✏️`);
+    // Leaving edit mode without saving: the card stays exactly as it was saved
+    function cancelEditing() {
+      if (!state.editingId) return;
+      resetEditor();
+      setEditing(null);
+      state.currentStep = 1;
+      updateWizardUI(false);
     }
 
     /* ==========================================================================
        SESSION HANDLING
        ========================================================================== */
+    // Unsaved text means: the editor differs from what is saved. A card loaded for
+    // editing and left unchanged is not "unsaved text".
+    function hasUnsavedText() {
+      const t = [state.frontText, state.backText, state.hintText, state.exampleText];
+      if (state.editingId) {
+        const saved = state.cardStack.find((c) => c.id === state.editingId);
+        if (saved) {
+          return t[0] !== saved.front || t[1] !== saved.back ||
+            t[2] !== (saved.hint || '') || t[3] !== (saved.example || '');
+        }
+      }
+      return t.some(Boolean);
+    }
+
     function confirmDiscard(action) {
-      return !(state.frontText || state.backText || state.hintText || state.exampleText) ||
+      return !hasUnsavedText() ||
         confirm(`You have unsaved text in your current card. ${action}`);
     }
 
@@ -1794,6 +2067,10 @@
           }
         }
         return;
+      }
+      if (e.key === 'Escape') {
+        if (state.browsing) { e.preventDefault(); closeBrowse(); return; }
+        if (state.editingId && !state.isCommitting) { e.preventDefault(); cancelEditing(); return; }
       }
       // Enter without shift key advances
       if (e.key === 'Enter' && !e.shiftKey && (document.activeElement === el.inputFront || document.activeElement === el.inputBack)) {
