@@ -31,7 +31,7 @@
       <div id="emoji-group-{{ group.key }}" class="mb-4 grid grid-cols-6 gap-2" role="radiogroup" aria-label="{{ s('app_decks_pick_emoji') }}" data-show="$emojiGroup === {{ js_literal(group.key) }}"{% if not loop.first %} style="display:none"{% endif %}>
         {% for emoji in group.emojis %}
         <label class="btn btn-square aspect-square h-auto min-h-0 w-full max-w-13.5 justify-self-center rounded-[10px] border-2 border-neo-edge bg-base-100 p-0 text-2xl leading-none shadow-[2px_2px_0_var(--color-neo-shadow)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none has-checked:translate-x-0.5 has-checked:translate-y-0.5 has-checked:bg-accent has-checked:shadow-none">
-          <input class="sr-only" type="radio" name="deck-emoji" value="{{ emoji }}" aria-label="{{ emoji }}" data-bind:new-emoji{% if emoji == '📚' %} checked{% endif %}>
+          <input class="sr-only" type="radio" name="deck-emoji-{{ group.key }}" value="{{ emoji }}" aria-label="{{ emoji }}" data-bind:new-emoji{% if emoji == '📚' %} checked{% endif %}>
           <span aria-hidden="true">{{ emoji }}</span>
         </label>
         {% endfor %}

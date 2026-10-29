@@ -18,8 +18,11 @@ window.avDeckFocus = (open) => {
 
 window.avDeckModalKey = (event) => {
   if (event.key !== "Tab") return;
-  const controls = [...event.currentTarget.querySelectorAll("button:not([disabled]), input:not([disabled])")]
-    .filter((element) => element.getClientRects().length > 0);
+  const dialog = event.currentTarget;
+  const tabbable = (element) => element.getClientRects().length > 0 && (element.type !== "radio"
+    || element.checked || !dialog.querySelector(`input[name="${element.name}"]:checked`));
+  const controls = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled])")]
+    .filter(tabbable);
   if (!controls.length) return;
   const first = controls[0];
   const last = controls[controls.length - 1];
@@ -33,7 +36,7 @@ window.avDeckModalKey = (event) => {
 };
 
 document.addEventListener("change", (event) => {
-  if (!(event.target instanceof HTMLInputElement) || event.target.name !== "deck-emoji") return;
+  if (!(event.target instanceof HTMLInputElement) || !event.target.name.startsWith("deck-emoji")) return;
   const preview = document.getElementById("preview-emoji");
   if (!preview) return;
   preview.classList.remove("emoji-pop");

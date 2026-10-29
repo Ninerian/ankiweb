@@ -86,12 +86,7 @@ def test_create_decks_in_browser(
         expect(dna).to_be_checked()
         name.fill("Biology")
         if scheme == "light":
-            page.screenshot(
-                path=str(
-                    Path(__file__).resolve().parents[2]
-                    / "design/reviewer-redesign/screenshot-decks-new-deck.png"
-                )
-            )
+            page.screenshot(path=str(tmp_path / "screenshot-decks-new-deck.png"))
         name.press("Enter")
         expect(sheet).to_have_attribute("aria-hidden", "true")
         expect(opener).to_be_focused()
@@ -144,14 +139,10 @@ def test_create_decks_in_browser(
     assert problems == []
 
     def stored(col: Collection):
-        found = [
-            deck
-            for deck in col.decks.all_names_and_ids()
-            if deck.name.startswith("Biology")
-        ]
         return [
             (col.decks.name(DeckId(deck.id)), col.find_cards(f'deck:"{deck.name}"'))
-            for deck in found
+            for deck in col.decks.all_names_and_ids()
+            if deck.id != 1
         ]
 
     saved = asyncio.run(service.run(stored))
