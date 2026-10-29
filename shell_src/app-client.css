@@ -662,3 +662,32 @@
   .animate-pop-card-up { @apply animate-add-pop-card motion-reduce:animate-none; }
 }
 /* end plan 4 */
+
+@keyframes emoji-pop {
+  from { transform: scale(0.6) rotate(-10deg); }
+  to { transform: scale(1) rotate(0); }
+}
+
+@keyframes deck-drop {
+  from { opacity: 0; transform: translateY(-18px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes deck-toast {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+@layer components {
+  .deck-dock {
+    background: linear-gradient(to top, var(--color-base-100) 55%, transparent);
+  }
+  .emoji-pop { animation: emoji-pop 0.34s var(--ease-spring); }
+  .deck-drop { animation: deck-drop 0.5s var(--ease-spring); }
+  .deck-toast { animation: deck-toast 3s forwards; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emoji-pop, .deck-drop { animation: none; }
+  .deck-toast { animation-timing-function: steps(1, end); }
+}
