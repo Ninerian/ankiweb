@@ -2,6 +2,8 @@
 
 > Teil von [00-overview](2026-10-27-reviewer-redesign-00-overview.md). Voraussetzung: [Plan 1](2026-10-27-reviewer-redesign-01-independent-client.md). Unabhängig von Plan 2 und 3 (Review nutzt später die erzeugten Karten).
 
+> **Teilweise überholt durch [Plan 8](2026-10-30-reviewer-redesign-08-added-cards-list.md):** "Edit-last" (oberste Karte, Peek-Banner, HUD-Pille, `TOP CARD`) wird **nicht** mehr gebaut. Stattdessen öffnet ein Stapel-Tipp oder -Wisch eine Liste aller Karten der Sitzung. Die Route `POST /app/add/edit/{nid}` und der `commit` mit `nid` bleiben unverändert in Kraft.
+
 **Ziel:** Wizard nach `editor-mockup.html`: Front → Back (+ optional Hint, Example) → Preview → "Add" (Mockup: "Add to Stack"), Hinzugefügte Karten, Edit-last-card, Finish. Karten werden als Noten des dedizierten Typs `AnkiWeb Vocab` gespeichert.
 
 ## Befund: das Mockup speichert nichts (belegt)
