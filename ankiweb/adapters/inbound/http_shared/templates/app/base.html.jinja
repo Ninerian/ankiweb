@@ -4,9 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ title }}</title>
+    <link rel="manifest" href="{{ app_manifest_path }}">
+    <meta name="theme-color" content="{{ app_theme_color_light }}" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="{{ app_theme_color_dark }}" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Anki">
+    <link rel="apple-touch-icon" href="/shell/static/icons/icon-192.png">
     <link rel="stylesheet" href="/shell/static/app-client.css">
-    <script type="module" src="/shell/static/datastar.js"></script>
     {% for script in scripts %}<script type="module" src="{{ script }}"></script>{% endfor %}
+    <script type="module" src="/shell/static/datastar.js"></script>
+    <script type="module">
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register({{ app_service_worker_path | tojson }}, {scope: {{ app_scope | tojson }}}).catch((e) => console.warn("service worker registration failed", e));
+    </script>
   </head>
   <body data-signals="{error: ''}">
     {{ body | safe }}

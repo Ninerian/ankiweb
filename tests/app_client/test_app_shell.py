@@ -62,8 +62,6 @@ def test_layout_is_independent() -> None:
         "theme.css",
         "components.css",
         "data-theme",
-        "manifest",
-        "theme-color",
     ):
         assert forbidden not in page
     assert "/shell/static/app-client.css" in page
