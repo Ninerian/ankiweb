@@ -32,13 +32,29 @@ window.avAddKey = (event) => {
   next.click();
 };
 
-window.avConfirmDiscard = (front, back, hint, example, saving, message) =>
-  saving || ![front, back, hint, example].some(Boolean) || window.confirm(message);
+window.avConfirmDiscard = (front, back, hint, example, saving, message, nid = 0, original = {}) => {
+  if (saving) return false;
+  const fields = { front, back, hint, example };
+  const dirty = nid
+    ? Object.entries(fields).some(([key, value]) => value !== original[key])
+    : Object.values(fields).some(Boolean);
+  return !dirty || window.confirm(message);
+};
 
-window.avGuardNav = (event, front, back, hint, example, saving, message) => {
-  if (!window.avConfirmDiscard(front, back, hint, example, saving, message)) {
+window.avGuardNav = (event, front, back, hint, example, saving, message, nid, original) => {
+  if (!window.avConfirmDiscard(front, back, hint, example, saving, message, nid, original)) {
     event.preventDefault();
   }
+};
+
+let browseTrigger;
+window.avOpenBrowse = (trigger) => {
+  browseTrigger = trigger;
+  window.avFocus("deck-cards-title");
+};
+
+window.avCloseBrowse = () => {
+  requestAnimationFrame(() => browseTrigger?.focus());
 };
 
 let toastTimer;

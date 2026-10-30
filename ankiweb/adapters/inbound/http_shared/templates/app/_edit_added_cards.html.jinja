@@ -1,3 +1,15 @@
+<div id="pile-region" class="contents">
+  <button id="pile" type="button" class="flex w-full flex-col cursor-auto select-auto p-0 text-start focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary"
+          aria-controls="deck-cards" aria-expanded="false"
+          aria-label="{{ count }} {{ s('app_edit_stack_label_one') if count == 1 else s('app_edit_stack_label_other') }}"
+          data-label-one="{{ s('app_edit_stack_label_one') }}" data-label-other="{{ s('app_edit_stack_label_other') }}"
+          data-discard="{{ s('app_edit_discard') }}"
+          data-attr:aria-expanded="$_browsing ? 'true' : 'false'"
+          data-attr:aria-label="$count + ' ' + ($count === 1 ? el.dataset.labelOne : el.dataset.labelOther)"
+          data-attr:aria-disabled="$count === 0 ? 'true' : 'false'"
+          data-attr:tabindex="$count === 0 ? '-1' : null"
+          data-show="!$_browsing"
+          data-on:click="$count > 0 &amp;&amp; window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard, $nid, $editOriginal) ? ($_browsing = true, window.avOpenBrowse(el)) : null">
 <div id="added-cards" class="mt-1"{% if animation_stamp|default(false) %} data-ts="{{ animation_stamp }}"{% endif %}>
   {% if cards %}
   <div class="relative mx-3 h-72">
@@ -36,5 +48,14 @@
     <p class="flex items-center justify-center gap-2"><span aria-hidden="true">✨</span><span>{{ s('app_add_no_cards') }}</span></p>
     <p>{{ s('app_add_first_card') }}</p>
   </div>
+  {% endif %}
+</div>
+  </button>
+  <p class="text-center text-xs font-black uppercase tracking-wide text-muted-fg" data-show="!$_browsing &amp;&amp; $count > 0" style="display:none">{{ s('app_edit_pile_cue') }}</p>
+  {% if deck_cards %}
+  <button id="empty-pile-open" type="button" class="btn neo-press mt-2 rounded-deck border-2 border-neo-edge bg-base-200 font-black shadow-neo active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary"
+          aria-controls="deck-cards" aria-expanded="false" data-attr:aria-expanded="$_browsing ? 'true' : 'false'"
+          data-discard="{{ s('app_edit_discard') }}" data-show="!$_browsing &amp;&amp; $count === 0" style="display:none"
+          data-on:click="window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard, $nid, $editOriginal) ? ($_browsing = true, window.avOpenBrowse(el)) : null">{{ s('app_edit_empty_open', count=deck_cards|length) }}</button>
   {% endif %}
 </div>

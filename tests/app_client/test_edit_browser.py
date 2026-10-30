@@ -3,17 +3,23 @@ import re
 import socket
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import Future
 from pathlib import Path
 from typing import Literal
 
 import pytest
 import uvicorn
+from anki.cards import CardId
 from anki.collection import Collection
+from anki.consts import MODEL_STD, CardQueue, CardType
+from anki.decks import DeckId
+from anki.notes import NoteId
+from anki.scheduler.v3 import Scheduler
 from fastapi import FastAPI
 
 from ankiweb.app import create_app
+from ankiweb.core.app_client.vocab import add_vocab_note
 from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
@@ -167,6 +173,28 @@ def _respond_to_confirm(page: Page, *, accept: bool) -> list[str]:
     return messages
 
 
+def _run[T](live_app: LiveApp, operation: Callable[[Collection], T]) -> T:
+    return asyncio.run_coroutine_threadsafe(
+        live_app.app.state.service.run(operation), live_app.loop
+    ).result(timeout=10)
+
+
+def _progress(live_app: LiveApp, nid: NoteId) -> tuple[int, ...]:
+    def snapshot(col: Collection) -> tuple[int, ...]:
+        card = col.get_note(nid).cards()[0]
+        return (
+            card.type,
+            card.queue,
+            card.due,
+            card.ivl,
+            card.factor,
+            card.reps,
+            card.lapses,
+        )
+
+    return _run(live_app, snapshot)
+
+
 def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) -> None:
     page.goto(f"{live_app}/app/edit?deck=1")
     front = "a < b & c"
@@ -226,60 +254,661 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
     assert live_app.persisted_notes() == saved
 
 
-def test_added_stack_is_noninteractive_and_preserves_draft(
+def test_added_stack_opens_list_and_preserves_draft(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/edit?deck=1")
-    _front(page).fill("a < b & c")
-    _front(page).press("Enter")
-    _back(page).fill("first answer")
-    page.get_by_text("Hint · Optional", exact=True).click()
-    page.get_by_label("Hint", exact=True).fill("hint <one> & two")
-    page.get_by_text("Example sentence · Optional", exact=True).click()
-    page.get_by_label("Example sentence", exact=True).fill("A *word*\nnext line")
-    _back(page).press("Enter")
-    expect(page.locator("#preview")).to_contain_text("a < b & c")
-    page.get_by_role("button", name="Add", exact=True).click()
-    expect(_front(page)).to_have_value("")
-    expect(page.locator("#added-cards")).to_contain_text("a < b & c")
+    _add(page, "a < b & c", "first answer")
     original = live_app.notes()
-    assert len(original) == 1
-    assert original[0][1] == [
-        "a &lt; b &amp; c",
-        "first answer",
-        "hint &lt;one&gt; &amp; two",
-        "A *word*<br>next line",
-    ]
+    nid = original[0][0]
+    pile = page.locator("#pile")
+    cards = page.locator("#deck-cards")
+    expect(pile).to_have_attribute("aria-controls", "deck-cards")
+    expect(pile).to_have_attribute("aria-expanded", "false")
 
-    region = page.locator("#added-cards")
-    expect(region.locator("button, a, [role='button'], [tabindex]")).to_have_count(0)
-    expect(
-        page.locator("#add-wizard footer").get_by_role(
-            "button", name=re.compile("edit", re.IGNORECASE), include_hidden=True
-        )
-    ).to_have_count(0)
     _front(page).fill("unsaved draft")
     _front(page).press("Enter")
-    expect(_back(page)).to_be_visible()
     _back(page).fill("draft answer")
+    cancelled = _respond_to_confirm(page, accept=False)
+    pile.click()
+    assert len(cancelled) == 1
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_have_value("unsaved draft")
+    expect(_back(page)).to_have_value("draft answer")
 
-    dialogs: list[str] = []
+    accepted = _respond_to_confirm(page, accept=True)
+    pile.click()
+    assert len(accepted) == 1
+    expect(cards).to_be_visible()
+    expect(pile).to_have_attribute("aria-expanded", "true")
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("a < b & c")
+    expect(_front(page)).to_have_value("unsaved draft")
+    expect(_back(page)).to_have_value("draft answer")
 
-    def dismiss_dialog(dialog: Dialog) -> None:
-        dialogs.append(dialog.message)
-        dialog.dismiss()
-
-    page.on("dialog", dismiss_dialog)
-    region.locator("article").click()
-    page.remove_listener("dialog", dismiss_dialog)
-    assert not dialogs
+    page.keyboard.press("Escape")
+    expect(cards).not_to_be_visible()
+    expect(pile).to_have_attribute("aria-expanded", "false")
+    expect(pile).to_be_focused()
     expect(_back(page)).to_be_visible()
     expect(_front(page)).to_have_value("unsaved draft")
     expect(_back(page)).to_have_value("draft answer")
-    expect(region.locator(".add-stack-badge")).to_have_text("1 card")
+
+    accepted = _respond_to_confirm(page, accept=True)
+    pile.click()
+    assert len(accepted) == 1
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("a < b & c")
+    expect(_front(page)).to_be_focused()
+    expect(_back(page)).to_have_value("first answer")
+    page.locator("#edit-cancel").click()
+    expect(_front(page)).to_have_value("")
     assert live_app.notes() == original
     assert live_app.persisted_notes() == original
+
+
+def test_pile_keyboard_badge_and_back_restore_focus(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    expect(page.locator("#empty-pile-open")).to_have_count(0)
+    _add(page)
+    pile = page.locator("#pile")
+    cards = page.locator("#deck-cards")
+    title = page.locator("#deck-cards-title")
+
+    pile.focus()
+    page.keyboard.press("Enter")
+    expect(cards).to_be_visible()
+    expect(title).to_be_focused()
+    expect(pile).to_have_attribute("aria-expanded", "true")
+    page.keyboard.press("Escape")
+    expect(cards).not_to_be_visible()
+    expect(pile).to_be_focused()
+
+    page.keyboard.press("Space")
+    expect(cards).to_be_visible()
+    expect(title).to_be_focused()
+    page.locator("#deck-cards-back").click()
+    expect(cards).not_to_be_visible()
+    expect(pile).to_be_focused()
+    expect(pile).to_have_attribute("aria-expanded", "false")
+
+    badge = page.locator("#added-cards .add-stack-badge").bounding_box()
+    pile_box = pile.bounding_box()
+    assert badge is not None and pile_box is not None
+    pile.click(
+        position={
+            "x": badge["x"] - pile_box["x"] + badge["width"] / 2,
+            "y": badge["y"] - pile_box["y"] + badge["height"] / 2,
+        }
+    )
+    expect(cards).to_be_visible()
+    expect(title).to_be_focused()
+    page.keyboard.press("Escape")
+    expect(pile).to_be_focused()
+
+
+def test_pile_and_empty_opener_support_touch(page: Page, live_app: LiveApp) -> None:
+    old_nid = _run(
+        live_app,
+        lambda col: add_vocab_note(col, DeckId(1), "Old card", "Old answer"),
+    )
+    browser = page.context.browser
+    assert browser is not None
+    context = browser.new_context(
+        has_touch=True, viewport={"width": 509, "height": 904}
+    )
+    try:
+        touch_page = context.new_page()
+        touch_page.emulate_media(reduced_motion="reduce")
+        touch_page.goto(f"{live_app}/app/edit?deck=1")
+        cards = touch_page.locator("#deck-cards")
+        title = touch_page.locator("#deck-cards-title")
+        back = touch_page.locator("#deck-cards-back")
+        empty_opener = touch_page.locator("#empty-pile-open")
+        badge = touch_page.locator("#added-cards .add-stack-badge")
+
+        expect(badge).to_have_count(0)
+        expect(empty_opener).to_be_visible()
+        empty_opener.tap()
+        expect(cards).to_be_visible()
+        expect(title).to_be_focused()
+        expect(cards.locator("button[data-note-id]")).to_have_count(1)
+        expect(cards.locator(f"button[data-note-id='{old_nid}']")).to_contain_text(
+            "Old card"
+        )
+        back.tap()
+        expect(cards).not_to_be_visible()
+        expect(empty_opener).to_be_focused()
+
+        _to_preview(touch_page, "Session card", "Session answer")
+        touch_page.get_by_role("button", name="Add", exact=True).tap()
+        expect(_front(touch_page)).to_have_value("")
+        expect(badge).to_have_text("1 card")
+        pile = touch_page.locator("#pile")
+
+        pile.tap()
+        expect(cards).to_be_visible()
+        expect(title).to_be_focused()
+        expect(cards.locator("button[data-note-id]")).to_have_count(2)
+        expect(cards).to_contain_text("Session card")
+        back.tap()
+        expect(cards).not_to_be_visible()
+        expect(pile).to_be_focused()
+        expect(pile).to_have_attribute("aria-expanded", "false")
+
+        badge_box = badge.bounding_box()
+        pile_box = pile.bounding_box()
+        assert badge_box is not None and pile_box is not None
+        pile.tap(
+            position={
+                "x": badge_box["x"] - pile_box["x"] + badge_box["width"] / 2,
+                "y": badge_box["y"] - pile_box["y"] + badge_box["height"] / 2,
+            }
+        )
+        expect(cards).to_be_visible()
+        expect(title).to_be_focused()
+        back.tap()
+        expect(cards).not_to_be_visible()
+        expect(pile).to_be_focused()
+    finally:
+        context.close()
+
+
+def _add_unsupported_basic_note(col: Collection, vocab_note_id: NoteId) -> None:
+    vocab_id = col.get_note(vocab_note_id).mid
+    other_model = next(
+        model
+        for model in col.models.all()
+        if model["id"] != vocab_id
+        and model["type"] == MODEL_STD
+        and len(model["flds"]) >= 2
+        and model["tmpls"]
+    )
+    note = col.new_note(other_model)
+    for index in range(len(note.fields)):
+        note.fields[index] = "Unsupported basic" if index == 0 else "Basic answer"
+    col.add_note(note, DeckId(1))
+    assert note.cards()
+
+
+def _seed_deck_list_notes(col: Collection) -> list[NoteId]:
+    ids = [
+        add_vocab_note(
+            col,
+            DeckId(1),
+            f"History {index}",
+            f"Answer {index}",
+            "hint <one>" if index == 2 else "",
+            "A *word*\nnext line" if index == 2 else "",
+        )
+        for index in range(5)
+    ]
+    other_deck = col.decks.id("Other")
+    assert other_deck is not None
+    add_vocab_note(col, other_deck, "Other deck card", "Other answer")
+    _add_unsupported_basic_note(col, ids[0])
+    return ids
+
+
+@pytest.mark.parametrize(
+    ("live_app", "empty_label", "pile_label"),
+    [
+        (
+            "",
+            re.compile(r"edit.*cards.*5", re.IGNORECASE),
+            "1 card added. Tap to edit.",
+        ),
+        (
+            "de_DE",
+            re.compile(r"karten.*bearbeiten.*5", re.IGNORECASE),
+            "1 Karte hinzugefügt. Tippen zum Bearbeiten.",
+        ),
+    ],
+    indirect=["live_app"],
+)
+def test_deck_list_includes_previous_sessions_and_edits_in_place(
+    page: Page, live_app: LiveApp, empty_label: re.Pattern[str], pile_label: str
+) -> None:
+    ids = _run(live_app, _seed_deck_list_notes)
+    before_ids = _run(live_app, lambda col: sorted(col.find_notes("")))
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    empty_opener = page.locator("#empty-pile-open")
+    expect(empty_opener).to_have_accessible_name(empty_label)
+    expect(page.locator("#added-cards .add-stack-badge")).to_have_count(0)
+    empty_opener.click()
+    cards = page.locator("#deck-cards")
+    expect(cards).to_be_visible()
+    expect(page.locator("#deck-cards-title")).to_be_focused()
+    expect(cards.locator("button[data-note-id]")).to_have_count(5)
+    for index, nid in enumerate(ids):
+        expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text(
+            f"History {index}"
+        )
+    expect(cards).not_to_contain_text("Other deck card")
+    expect(cards).not_to_contain_text("Unsupported basic")
+    page.locator("#deck-cards-back").click()
+    expect(cards).not_to_be_visible()
+    expect(empty_opener).to_be_focused()
+
+    page.locator("#input-front").fill("Session card")
+    page.locator("#input-front").press("Enter")
+    page.locator("#input-back").fill("Session answer")
+    page.locator("#input-back").press("Enter")
+    page.locator("#btn-add").click()
+    expect(page.locator("#input-front")).to_have_value("")
+    pile = page.locator("#pile")
+    expect(pile).to_have_accessible_name(pile_label)
+    badge = page.locator("#added-cards .add-stack-badge")
+    expect(badge).to_contain_text("1")
+    pile.click()
+    expect(cards.locator("button[data-note-id]")).to_have_count(6)
+    cards.locator(f"button[data-note-id='{ids[2]}']").click()
+    expect(cards).not_to_be_visible()
+    front = page.locator("#input-front")
+    expect(front).to_have_value("History 2")
+    expect(front).to_be_focused()
+    expect(page.locator("#edit-warning")).not_to_be_visible()
+    front.fill("Edited historical card")
+    front.press("Enter")
+    expect(page.locator("#input-back")).to_have_value("Answer 2")
+    expect(page.locator("#input-hint")).to_have_value("hint <one>")
+    expect(page.locator("#input-example")).to_have_value("A *word*\nnext line")
+    page.locator("#input-back").press("Enter")
+    page.locator("#btn-add").click()
+    expect(front).to_have_value("")
+    expect(badge).to_contain_text("1")
+    expect(page.locator("#added-cards")).to_contain_text("Session card")
+    assert _run(live_app, lambda col: col.get_note(ids[2])["Front"]) == (
+        "Edited historical card"
+    )
+    after_ids = _run(live_app, lambda col: sorted(col.find_notes("")))
+    assert len(after_ids) == len(before_ids) + 1
+    assert set(before_ids).issubset(after_ids)
+    pile.click()
+    expect(cards.locator(f"button[data-note-id='{ids[2]}']")).to_contain_text(
+        "Edited historical card"
+    )
+
+
+def test_empty_session_list_reopens_after_edit_and_selects_another_card(
+    page: Page, live_app: LiveApp
+) -> None:
+    ids = _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), front, back)
+            for front, back in [
+                ("First existing", "first answer"),
+                ("Second existing", "second answer"),
+            ]
+        ],
+    )
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    opener = page.locator("#empty-pile-open")
+    cards = page.locator("#deck-cards")
+    front = page.locator("#input-front")
+
+    opener.click()
+    cards.locator(f"button[data-note-id='{ids[0]}']").click()
+    expect(cards).not_to_be_visible()
+    expect(front).to_have_value("First existing")
+    expect(front).to_be_focused()
+    front.fill("Edited existing")
+    front.press("Enter")
+    page.locator("#input-back").press("Enter")
+    page.locator("#btn-add").click()
+    expect(front).to_have_value("")
+    assert (
+        _run(live_app, lambda col: col.get_note(ids[0])["Front"]) == "Edited existing"
+    )
+    expect(page.locator("#added-cards .add-stack-badge")).to_have_count(0)
+
+    opener.click()
+    expect(cards).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{ids[0]}']")).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{ids[0]}']")).to_contain_text(
+        "Edited existing"
+    )
+    second = cards.locator(f"button[data-note-id='{ids[1]}']")
+    expect(second).to_be_visible()
+    second.click()
+    expect(cards).not_to_be_visible()
+    expect(front).to_have_value("Second existing")
+    expect(front).to_be_focused()
+    expect(page.locator("#input-back")).to_have_value("second answer")
+
+
+@pytest.mark.parametrize(
+    ("live_app", "error"),
+    [
+        ("", "This card is unavailable for editing. Please try again."),
+        ("de_DE", "Diese Karte kann nicht bearbeitet werden. Bitte erneut versuchen."),
+    ],
+    indirect=["live_app"],
+)
+def test_failed_card_load_keeps_list_open_and_can_retry(
+    page: Page, live_app: LiveApp, error: str
+) -> None:
+    nid = _run(
+        live_app, lambda col: add_vocab_note(col, DeckId(1), "Retry card", "answer")
+    )
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    page.locator("#empty-pile-open").click()
+    cards = page.locator("#deck-cards")
+    row = cards.locator(f"button[data-note-id='{nid}']")
+    url = f"{live_app}/app/edit/card/{nid}?deck=1"
+    page.route(url, lambda route: route.fulfill(status=404, body="Unavailable"))
+    row.click()
+    alert = page.locator("#app-error")
+    expect(alert).to_be_visible()
+    expect(alert).to_contain_text(error)
+    expect(cards).to_be_visible()
+    expect(row).to_be_enabled()
+    expect(page.locator("#input-front")).not_to_be_visible()
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Retry card"
+
+    page.unroute(url)
+    row.click()
+    expect(cards).not_to_be_visible()
+    expect(alert).not_to_be_visible()
+    expect(page.locator("#input-front")).to_have_value("Retry card")
+    expect(page.locator("#input-front")).to_be_focused()
+
+
+def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) -> None:
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    _add(page, "First", "first answer")
+    _add(page, "Second", "second answer")
+    original = live_app.notes()
+    first, second = (note[0] for note in original)
+    pile = page.locator("#pile")
+    cards = page.locator("#deck-cards")
+    pile.click()
+    cards.locator(f"button[data-note-id='{first}']").click()
+    expect(_front(page)).to_have_value("First")
+    expect(_front(page)).to_be_focused()
+    _front(page).fill("Temporary change")
+    _front(page).fill("First")
+
+    unexpected: list[str] = []
+
+    def dismiss_unexpected(dialog: Dialog) -> None:
+        unexpected.append(dialog.message)
+        dialog.dismiss()
+
+    page.on("dialog", dismiss_unexpected)
+    pile.click()
+    expect(cards).to_be_visible()
+    cards.locator(f"button[data-note-id='{second}']").click()
+    expect(_front(page)).to_have_value("Second")
+    page.remove_listener("dialog", dismiss_unexpected)
+    assert unexpected == []
+
+    _front(page).fill("Changed second")
+    rejected = _respond_to_confirm(page, accept=False)
+    pile.click()
+    assert len(rejected) == 1
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_have_value("Changed second")
+    accepted = _respond_to_confirm(page, accept=True)
+    pile.click()
+    assert len(accepted) == 1
+    expect(cards).to_be_visible()
+    page.locator("#deck-cards-back").click()
+    expect(_front(page)).to_have_value("Changed second")
+    rejected = _respond_to_confirm(page, accept=False)
+    page.keyboard.press("Escape")
+    assert len(rejected) == 1
+    expect(_front(page)).to_have_value("Changed second")
+    assert live_app.notes() == original
+    accepted = _respond_to_confirm(page, accept=True)
+    page.keyboard.press("Escape")
+    assert len(accepted) == 1
+    expect(_front(page)).to_have_value("")
+    assert live_app.notes() == original
+
+    pile.click()
+    cards.locator(f"button[data-note-id='{first}']").click()
+    expect(_front(page)).to_have_value("First")
+    _front(page).fill("Changed first")
+    rejected = _respond_to_confirm(page, accept=False)
+    page.locator("#edit-cancel").click()
+    assert len(rejected) == 1
+    expect(_front(page)).to_have_value("Changed first")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.locator("#edit-cancel").click()
+    assert len(accepted) == 1
+    expect(_front(page)).to_have_value("")
+    assert live_app.notes() == original
+
+
+@pytest.mark.parametrize(
+    ("live_app", "marker", "legend", "warning", "notice"),
+    [
+        (
+            "",
+            "Learned",
+            "Changing a learned card resets its learning progress.",
+            "Changes to this learned card will reset its learning progress.",
+            "Learning progress was reset.",
+        ),
+        (
+            "de_DE",
+            "Gelernt",
+            "Änderungen an gelernten Karten setzen den Lernfortschritt zurück.",
+            "Änderungen an dieser gelernten Karte setzen den Lernfortschritt zurück.",
+            "Der Lernfortschritt wurde zurückgesetzt.",
+        ),
+    ],
+    indirect=["live_app"],
+)
+@pytest.mark.parametrize("card_type", [1, 2])
+def test_learned_edit_warns_and_only_changed_save_resets_progress(
+    page: Page,
+    live_app: LiveApp,
+    marker: str,
+    legend: str,
+    warning: str,
+    notice: str,
+    card_type: int,
+) -> None:
+    def seed(col: Collection) -> NoteId:
+        nid = add_vocab_note(col, DeckId(1), "Reviewed", "answer")
+        card = col.get_note(nid).cards()[0]
+        card.type = CardType(card_type)
+        card.queue = CardQueue(card_type)
+        card.due = int(time.time()) + 600 if card_type == 1 else col.sched.today + 7
+        card.ivl = 21
+        card.factor = 2500
+        card.reps = 8
+        card.lapses = 2
+        col.update_card(card)
+        return nid
+
+    nid = _run(live_app, seed)
+    before = _progress(live_app, nid)
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    opener = page.locator("#empty-pile-open")
+    cards = page.locator("#deck-cards")
+    opener.click()
+    expect(cards.locator("#deck-cards-legend")).to_have_text(legend)
+    row = cards.locator(f"button[data-note-id='{nid}']")
+    expect(row).to_contain_text(marker)
+    row.click()
+    front = page.locator("#input-front")
+    expect(front).to_have_value("Reviewed")
+    expect(front).to_be_focused()
+    expect(page.locator("#edit-warning")).to_have_text(warning)
+    expect(page.locator("#edit-warning")).to_be_visible()
+
+    front.press("Enter")
+    expect(page.locator("#input-back")).to_have_value("answer")
+    page.locator("#input-back").press("Enter")
+    page.locator("#btn-add").click()
+    expect(front).to_have_value("")
+    expect(page.locator("#progress-reset-notice")).not_to_be_visible()
+    assert _progress(live_app, nid) == before
+
+    opener.click()
+    row.click()
+    expect(front).to_have_value("Reviewed")
+    front.fill("Cancelled reviewed")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.locator("#edit-cancel").click()
+    assert len(accepted) == 1
+    expect(front).to_have_value("")
+    assert _progress(live_app, nid) == before
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Reviewed"
+
+    opener.click()
+    expect(row).to_contain_text(marker)
+    row.click()
+    expect(front).to_have_value("Reviewed")
+    expect(page.locator("#edit-warning")).to_have_text(warning)
+    front.fill("Edited reviewed")
+    front.press("Enter")
+    page.locator("#input-back").press("Enter")
+    page.locator("#btn-add").click()
+    expect(front).to_have_value("")
+    expect(page.locator("#progress-reset-notice")).to_have_text(notice)
+    expect(page.locator("#progress-reset-notice")).to_be_visible()
+    after = _progress(live_app, nid)
+    assert after[0] == 0
+    assert after[5:] == (0, 0)
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Edited reviewed"
+    assert _run(live_app, lambda col: len(col.find_notes(""))) == 1
+    expect(page.locator("#added-cards .add-stack-badge")).to_have_count(0)
+    opener.click()
+    expect(row).to_contain_text("Edited reviewed")
+    expect(row).not_to_contain_text(marker)
+
+
+def _seed_reviewed_note(col: Collection) -> NoteId:
+    nid = add_vocab_note(col, DeckId(1), "Reviewed", "answer")
+    card = col.get_note(nid).cards()[0]
+    card.type = CardType(2)
+    card.queue = CardQueue(2)
+    card.due = col.sched.today + 7
+    card.ivl = 21
+    card.factor = 2500
+    card.reps = 8
+    card.lapses = 2
+    col.update_card(card)
+    return nid
+
+
+@pytest.mark.parametrize(
+    ("live_app", "failure", "warning", "notice"),
+    [
+        (
+            "",
+            (
+                "The note text was saved, but learning progress was not reset. "
+                "Please try saving again."
+            ),
+            "Changes to this learned card will reset its learning progress.",
+            "Learning progress was reset.",
+        ),
+        (
+            "de_DE",
+            (
+                "Der Kartentext wurde gespeichert, aber der Lernfortschritt wurde "
+                "nicht zurückgesetzt. Bitte erneut speichern."
+            ),
+            "Änderungen an dieser gelernten Karte setzen den Lernfortschritt zurück.",
+            "Der Lernfortschritt wurde zurückgesetzt.",
+        ),
+    ],
+    indirect=["live_app"],
+)
+def test_learned_edit_partial_save_can_retry_progress_reset(
+    page: Page,
+    live_app: LiveApp,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+    warning: str,
+    notice: str,
+) -> None:
+    nid = _run(live_app, _seed_reviewed_note)
+    cid = _run(live_app, lambda col: col.get_note(nid).cards()[0].id)
+    before = _progress(live_app, nid)
+    scheduler_class = _run(live_app, lambda col: type(col.sched))
+    original_reset = scheduler_class.schedule_cards_as_new
+    calls: list[tuple[list[CardId], bool]] = []
+
+    def fail_once(
+        scheduler: Scheduler, card_ids: list[CardId], *, reset_counts: bool
+    ) -> None:
+        calls.append((card_ids, reset_counts))
+        if len(calls) == 1:
+            raise RuntimeError("deterministic scheduler failure")
+        original_reset(scheduler, card_ids, reset_counts=reset_counts)
+
+    monkeypatch.setattr(scheduler_class, "schedule_cards_as_new", fail_once)
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    page.locator("#empty-pile-open").click()
+    page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
+    front = page.locator("#input-front")
+    expect(front).to_have_value("Reviewed")
+    expect(page.locator("#edit-warning")).to_have_text(warning)
+    front.fill("Edited reviewed")
+    front.press("Enter")
+    page.locator("#input-back").press("Enter")
+    page.locator("#btn-add").click()
+
+    expect(page.locator("#app-error")).to_be_visible()
+    expect(page.locator("#app-error")).to_have_text(failure)
+    expect(page.locator("#edit-cancel")).to_be_visible()
+    expect(page.locator("#edit-warning")).to_be_visible()
+    expect(page.locator("#edit-warning")).to_have_text(warning)
+    expect(front).to_have_value("Edited reviewed")
+    expect(page.locator("#preview")).to_contain_text("Edited reviewed")
+    expect(page.locator("#progress-reset-notice")).not_to_be_visible()
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Edited reviewed"
+    assert _progress(live_app, nid) == before
+    assert calls == [([cid], True)]
+
+    page.context.clear_cookies()
+    assert page.context.cookies() == []
+    page.goto(f"{live_app}/app/edit?deck=1")
+    page.locator("#empty-pile-open").click()
+    page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
+    expect(front).to_have_value("Edited reviewed")
+    expect(page.locator("#edit-warning")).to_be_visible()
+    expect(page.locator("#edit-warning")).to_have_text(warning)
+    front.press("Enter")
+    expect(page.locator("#input-back")).to_have_value("answer")
+    page.locator("#input-back").press("Enter")
+
+    with page.expect_request(
+        lambda request: (
+            request.method == "POST" and request.url.endswith("/app/edit/commit?deck=1")
+        )
+    ) as retry:
+        page.locator("#btn-add").click()
+    retry_payload = retry.value.post_data_json
+    assert isinstance(retry_payload, dict)
+    assert retry_payload["nid"] == nid
+    assert retry_payload["learned"] is True
+    assert retry_payload["front"] == "Edited reviewed"
+    expect(page.locator("#progress-reset-notice")).to_have_text(notice)
+    expect(page.locator("#progress-reset-notice")).to_be_visible()
+    expect(front).to_have_value("")
+    assert calls == [([cid], True), ([cid], True)]
+    after = _progress(live_app, nid)
+    assert after[0] == 0
+    assert after[5:] == (0, 0)
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Edited reviewed"
+    assert _run(live_app, lambda col: len(col.find_notes(""))) == 1
 
 
 @pytest.mark.parametrize(
