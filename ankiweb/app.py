@@ -137,11 +137,12 @@ async def _datastar_login_password(request: Request, payload) -> str:
     return pwd_str
 
 
-def _set_login_cookie(resp, password: str):
+def _set_login_cookie(resp, password: str, request: Request):
     resp.set_cookie(
         COOKIE,
         auth_token(password),
         httponly=True,
+        secure=request.url.scheme == "https",
         samesite="lax",
         max_age=30 * 86400,
     )
@@ -151,7 +152,7 @@ def _set_login_cookie(resp, password: str):
 async def _datastar_login(request: Request, payload, settings: Settings):
     pwd_str = await _datastar_login_password(request, payload)
     if settings.password and password_ok(pwd_str, settings.password):
-        return _set_login_cookie(redirect_response("/"), settings.password)
+        return _set_login_cookie(redirect_response("/"), settings.password, request)
     return error_response(_wrong_password_text())
 
 
@@ -161,7 +162,7 @@ async def _form_login(request: Request, settings: Settings):
     pwd_str = pwd if isinstance(pwd, str) else ""
     if settings.password and password_ok(pwd_str, settings.password):
         return _set_login_cookie(
-            RedirectResponse("/", status_code=303), settings.password
+            RedirectResponse("/", status_code=303), settings.password, request
         )
     return HTMLResponse(_login_html(error=True), status_code=401)
 
