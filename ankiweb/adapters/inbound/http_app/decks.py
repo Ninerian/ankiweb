@@ -4,6 +4,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from anki.decks import DEFAULT_DECK_ID
 from datastar_py.fastapi import DatastarResponse, ReadSignals
 from datastar_py.fastapi import ServerSentEventGenerator as SSE
 from fastapi import APIRouter, Response
@@ -56,6 +57,7 @@ def _render_decks(
         app_lang=lang,
         views=_views(rows),
         no_match=_no_match(rows),
+        default_deck_id=DEFAULT_DECK_ID,
         emoji_groups=EMOJI_GROUPS,
         js_literal=_js_literal,
         fragment=fragment,

@@ -511,10 +511,16 @@ def test_empty_collection_offers_first_deck(tmp_path: Path) -> None:
     client, _ = _client(tmp_path, [])
     with client:
         html = client.get("/app/").text
-    page = _parse(html)
-    assert "/app/edit" in page.hrefs()
-    assert not any(t == "article" for t, _ in page.tags)
-    assert "deck-search" not in html
+        page = _parse(html)
+        edit_url = f"/app/edit?deck={DEFAULT_DECK_ID}"
+        assert edit_url in page.hrefs()
+        assert not any(t == "article" for t, _ in page.tags)
+        assert "deck-search" not in html
+
+        editor = client.get(edit_url, follow_redirects=False)
+        assert editor.status_code == 200
+        assert 'id="add-wizard"' in editor.text
+        assert f'data-deck-id="{DEFAULT_DECK_ID}"' in editor.text
 
 
 def test_app_root_redirects_to_deck_list(tmp_path: Path) -> None:
