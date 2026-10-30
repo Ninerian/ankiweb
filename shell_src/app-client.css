@@ -421,13 +421,31 @@
     @apply min-w-0;
   }
 
-  .review-rating-counts {
-    @apply mt-3 flex flex-wrap gap-2;
+  .review-dist {
+    @apply mt-5 border-2 border-neo-edge rounded-review-sheet-control p-2.5 text-start;
   }
-
-  .review-rating-count {
-    @apply whitespace-normal py-2 font-bold;
+  .review-dist-heading {
+    @apply mb-1.5 font-mono text-review-dist-heading font-black uppercase tracking-[0.04em];
   }
+  .review-dist-bar {
+    @apply flex h-3.5 overflow-hidden rounded-full border-2 border-neo-edge;
+  }
+  .review-dist-bar span {
+    @apply min-w-0 bg-(--swatch);
+  }
+  .review-dist-counts {
+    @apply mt-1.5 flex flex-wrap justify-between gap-x-2 gap-y-0.75 text-review-dist-count font-extrabold;
+  }
+  .review-dist-counts span {
+    @apply min-w-0 wrap-anywhere;
+  }
+  .review-dist-counts span::before {
+    @apply me-1 inline-block size-2 rounded-xs border border-neo-edge bg-(--swatch) content-[''];
+  }
+  .review-dist-error { --swatch: var(--color-error-border); }
+  .review-dist-warning { --swatch: var(--color-warning-border); }
+  .review-dist-success { --swatch: var(--color-success-border); }
+  .review-dist-info { --swatch: var(--color-info-border); }
 
   .review-celebration {
     @apply relative grid place-items-center h-24 my-2 mx-auto w-40;
@@ -523,6 +541,8 @@
   --text-review-streak-count: 1.2rem;
   --text-review-deck-tag: 0.72rem;
   --text-review-reveal-label: 1.35rem;
+  --text-review-dist-heading: 0.66rem;
+  --text-review-dist-count: 0.7rem;
   --font-review-sheet: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
   --text-review-sheet-tile: 0.9rem;
   --text-review-sheet-close: 1.1rem;

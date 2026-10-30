@@ -1,6 +1,6 @@
 <main id="stage" class="review-stage">
   {% if view %}
-  <article id="current-card" class="flashcard card flex flex-col border-3 shadow-neo active:shadow-none">
+  <article id="current-card" class="flashcard card deck-card flex flex-col border-3">
     <div class="flex flex-wrap items-start justify-between gap-2">
       <span id="card-deck" class="badge review-deck-label h-auto rounded-full border-review-deck-tag-width border-neo-edge bg-secondary px-review-deck-tag-x py-1 text-review-deck-tag text-secondary-content" dir="auto"><span>{{ view.deck_emoji }}</span> <span>{{ view.deck }}</span></span>
       <div class="flex flex-wrap gap-2">
@@ -22,9 +22,9 @@
     </div>
   </article>
   {% elif not completed %}
-  <section class="card neo-press my-auto bg-base-200 p-8 text-center shadow-neo active:shadow-none">
+  <section class="card deck-card my-auto bg-base-200 p-8 text-center">
     <h1 class="text-2xl font-black">{{ s('app_review_no_cards_due') }}</h1>
-    <a class="btn btn-accent neo-press mt-6 shadow-neo active:shadow-none" href="/app/">{{ s('app_review_complete_back_to_decks') }}</a>
+    <a class="btn btn-accent neo-press mt-6 rounded-deck shadow-neo active:shadow-none" href="/app/">{{ s('app_review_complete_back_to_decks') }}</a>
   </section>
   {% endif %}
   {% include 'app/_review_complete.html.jinja' %}
