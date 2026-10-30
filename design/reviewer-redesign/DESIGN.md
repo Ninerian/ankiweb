@@ -132,24 +132,22 @@ The editor presents a focused single-purpose card interface divided into three d
    - Primary CTA: **Add to Stack 📥** (vibrant emerald green `#40c057`).
    - Once tapped, the card is **saved immediately as a note** in the target deck (not held in the browser) and the editor resets to Step 1 with clean fields, enabling friction-free continuous entry without leaving the view. Reloading the page loses nothing.
 
-### C. Session Pile & Animation
+### C. Deck Pile & Animation
 
-> Naming (see `CONTEXT.md`): the visual pile is the **added cards** of this session; the Anki object is a **deck**. The separate deck-card list includes cards from earlier sessions.
+> Naming (see `CONTEXT.md`): the visual pile represents supported notes in the selected **deck**, including earlier sessions. The separate session additions counter remains the source for Done and the summary.
 
-The mobile editor retains its current pile design, including `.added-0..3`, the starburst badge, empty state and add animation. At most the four most recently added cards of this session and deck are visible; the badge counts all session additions in that deck. Only creating a note grows and animates the pile. Saving an edit leaves its cards and count unchanged.
+The mobile editor follows the floor-standing pile in `editor-mockup.html`: up to five opaque, 104px-high layers step upward by 26px, with rotation, perspective and shadow; the newest note is in front. The bottom-right badge counts all supported deck notes, not just the visible layers. Only a new note grows and animates the pile; editing updates the same note without changing its size or order.
 
-The pile is wrapped by one button, including the badge, with a small **Tap to edit** label. Activating it opens the deck-card list; there is no swipe gesture. If the session pile is empty but the deck has cards, the empty state provides a button to open the list with the deck-card count. A deck without cards keeps the existing empty state without that button.
-
-The floor-standing five-layer pile, 26px staggering, chevron cue and swipe gesture belong to the historical `editor-mockup.html` design (see [REFERENCE.md §2.4](REFERENCE.md)); they are not the mobile implementation.
+Tap the pile or badge, or swipe upward, to open the deck-card list. The editor slides away and the cards fan out with staggered motion; closing or selecting a row folds the list back and restores the editor. Staggering is capped for large decks, and reduced-motion preferences are respected. An empty deck shows the empty state instead of an actionable pile.
 
 ### D. Browse and Edit Deck Cards
 
-- **Scope**: `#deck-cards` lists all `AnkiWeb Vocab` notes with at least one card in the selected deck, including notes from earlier sessions. Other note types, deleted notes and notes without a card in that deck are excluded. The list is separate from the session pile and is not limited to four rows.
-- **Open and choose**: activating the pile or its badge opens the list in place of the input card and moves focus into the list. Each row is a button carrying its note ID. Selecting it loads that note in the same three-step wizard at Step 1, closes the list, shows an editing banner and focuses the first field.
+- **Scope**: `#deck-cards` lists all `AnkiWeb Vocab` notes with at least one card in the selected deck, including notes from earlier sessions, oldest first. Other note types, deleted notes and notes without a card in that deck are excluded. The pile shows at most the five newest notes, but the list has no such limit.
+- **Open and choose**: activating the pile or badge, or swiping upward, opens the list and moves focus into it. Each row is a labelled button carrying its note ID. Selecting it folds the list and loads that note in the same three-step wizard at Step 1, shows an editing banner and focuses the first field. If loading fails, the list stays open.
 - **Save and cancel**: saving updates the same note ID without a duplicate. Cancel or Escape while editing discards the edit. Escape or **Back to new card** closes the list without changing a note.
-- **Draft safety**: opening the list asks before discarding unsaved text in a new card. An unchanged loaded note is not an unsaved draft and never triggers that prompt.
+- **Draft safety**: opening the list asks before discarding unsaved text. An unchanged loaded note is not an unsaved draft and never triggers that prompt.
 - **Learned cards**: a note is learned when at least one of its cards in the selected deck has Anki `type != 0`. Its row shows a theme warning color and the text **Learned** / **Gelernt**; a legend explains that changes reset progress. Editing a learned note shows a warning banner.
-- **Progress reset**: only an actual field change to a learned note reschedules that note's cards in the selected deck as new with `reset_counts=True`, clearing `reps` and `lapses`, and shows a notice. Unchanged saves, cancellation and edits to unlearned notes do not reset progress; cards in other decks are not rescheduled. Existing review history is not deleted; rescheduling is logged.
+- **Progress reset**: an actual field change to a learned note reschedules that note's cards in the selected deck as new with `reset_counts=True`, clearing `reps` and `lapses`, and shows a notice. Without a pending reset, unchanged saves and edits to unlearned notes do not reset progress; cards in other decks are not rescheduled. Cancellation itself neither triggers a reset nor clears a pending marker. Existing review history is not deleted; rescheduling is logged. A durably pending failed reset can be retried on an unchanged save; see [Plan 9](../../docs/superpowers/plans/2026-10-30-reviewer-redesign-09-edit-deck-cards.md) for its failure caveats.
 - **Accessibility**: the pile button has `aria-expanded`, `aria-controls="deck-cards"`, a visible focus ring and a localized spoken count and action. Enter and Space open the list; focus returns to its opener on close. Rows are labelled buttons, and motion respects `prefers-reduced-motion`. Labels, warnings and feedback are available in German and English.
 
 ### E. Mobile Editor Routes & Scope
@@ -158,7 +156,7 @@ The deck list's **Edit** / **Bearbeiten** action and its empty state lead to `/a
 
 | Route | Purpose |
 |---|---|
-| `GET /app/edit?deck=<id>` | Open the wizard, session pile and deck-card list |
+| `GET /app/edit?deck=<id>` | Open the wizard, deck pile and deck-card list |
 | `POST /app/edit/preview` | Preview `front`, `back`, `hint` and `example` without saving |
 | `POST /app/edit/card/{nid}?deck=<id>` | Load an editable note in the selected deck at Step 1 |
 | `POST /app/edit/commit?deck=<id>` | Create for `nid: 0`; otherwise update the selected deck's existing note |

@@ -101,7 +101,7 @@ The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good and 2 E
 
 ### 2.4 `editor-mockup.html` (editor)
 
-This section describes the standalone historical mockup, not the mobile `/app/edit` behavior. Its floor-standing pile, swipe gesture and session-only list were not carried into the mobile editor; see §2.5.
+This section describes the standalone historical mockup, not the mobile `/app/edit` data model. The mobile editor adopts its floor-standing pile and open/close motion, but lists supported notes from the whole selected deck rather than only session additions; see §2.5.
 
 | Element | Behaviour |
 |---|---|
@@ -126,14 +126,14 @@ The mobile editor combines creation with editing `AnkiWeb Vocab` notes that have
 
 | Element | Behaviour |
 |---|---|
-| Session pile `#added-cards` | Retains the existing design, animation and `.added-0..3` layers. Shows at most the last four additions in this session and deck; its badge counts all session additions in the deck. Editing does not grow or animate the pile or change its count |
-| Opener `#pile` | A button wraps the unchanged pile and badge; activation opens `#deck-cards`. A localized **Tap to edit** label identifies the action. No swipe gesture |
-| Empty session pile | If the deck contains cards, an empty-state button opens the list and includes the deck-card count. If the deck contains no cards, the existing empty state has no such button |
-| Deck-card list `#deck-cards` | Separate, scrollable deck-wide list, not limited by the pile or the current session. Opening moves focus into the list. Each row is a button with its note ID; selecting it loads the same note in the wizard at Step 1 and focuses the first field |
-| List and draft controls | Opening the list asks before discarding unsaved text in a new card; an unchanged loaded note does not prompt. Escape or **Back to new card** closes the list; cancel or Escape in edit mode leaves the note unchanged |
-| Accessibility | The pile button has `aria-expanded`, `aria-controls="deck-cards"`, a visible focus ring and localized spoken count and action; Enter and Space activate it. Focus returns to the opener on close. Rows are labelled buttons, and motion respects `prefers-reduced-motion` |
+| Deck pile `#added-cards` | Floor-standing, opaque layers follow the mockup: up to five newest supported notes, 104px high and stepping upward by 26px, with rotation, perspective and shadow. The newest note is in front; the bottom-right badge counts all supported deck notes. Editing preserves pile size and order; only creating a note grows and animates it |
+| Opener `#pile` | Tap the pile or badge, or swipe upward, to open `#deck-cards`. A cue below the pile identifies the action. An empty deck shows the empty state rather than an actionable pile |
+| Session counter | Counts only additions in the current session and deck, separately from the deck-wide badge; Done and the summary use the session count |
+| Deck-card list `#deck-cards` | All supported deck notes, oldest first, in a scrollable list. The editor slides away and the cards fan out with capped staggering. Opening moves focus into the list. Each row is a labelled button with its note ID; selecting it folds the list and loads the same note in the wizard at Step 1, focusing the first field. A failed load keeps the list open |
+| List and draft controls | Opening the list asks before discarding unsaved text; an unchanged loaded note does not prompt. Escape or **Back to new card** folds the list and restores the editor; cancel or Escape in edit mode leaves the note unchanged |
+| Accessibility | The pile button has `aria-expanded`, `aria-controls="deck-cards"`, a visible focus ring and localized spoken deck count and action; Enter and Space activate it. Focus returns to the opener on close. Rows are labelled buttons, and motion respects `prefers-reduced-motion` |
 | Learned status | A note is learned when any of its cards in the selected deck has `type != 0`. Its row has both a theme warning color and **Learned** / **Gelernt** text; a legend explains the reset, and editing shows a warning banner |
-| Save and progress | An edit updates the same note ID without a duplicate. Only changed fields on a learned note trigger rescheduling of that note's cards in the selected deck as new with `reset_counts=True`, clearing `reps` and `lapses`; a notice follows. Unchanged saves, cancellation and edits to unlearned notes do not reset progress. Cards in other decks are not rescheduled. Revlog history remains and the rescheduling is logged |
+| Save and progress | An edit updates the same note ID without a duplicate. Changed fields on a learned note trigger rescheduling of that note's cards in the selected deck as new with `reset_counts=True`, clearing `reps` and `lapses`; a notice follows. Without a pending reset, unchanged saves and edits to unlearned notes do not reset progress. Cancellation itself neither triggers a reset nor clears a pending marker. Cards in other decks are not rescheduled. Revlog history remains and the rescheduling is logged. A durably pending failed reset can be retried on an unchanged save; see [Plan 9](../../docs/superpowers/plans/2026-10-30-reviewer-redesign-09-edit-deck-cards.md) for failure caveats |
 
 | Method and route | Purpose |
 |---|---|

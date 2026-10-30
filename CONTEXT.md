@@ -29,18 +29,18 @@ Die Vorlage einer Notiz mit Feldern und Kartenvorlagen. Der mobile Client nutzt 
 _Avoid_: Note-Type, Modell, Template
 
 **Hinzugefuegte Karten**:
-Die in der laufenden Sitzung neu gespeicherten Notizen, sichtbar im Wizard unter `/app/edit`. Sie sind sofort im Deck gespeichert. Der Sitzungsstapel zeigt hoechstens vier zuletzt hinzugefuegte Karten; sein Badge zaehlt alle Neuanlagen dieser Sitzung im aktuellen Deck. Die Stapeloptik bleibt unveraendert. Ein Button um den Stapel inklusive Badge oeffnet die separate Deck-Kartenliste; Bearbeiten veraendert weder Stapel noch Zaehler. Anki-Wortlaut: `adding_added` ("Hinzugefuegt").
+Die in der laufenden Sitzung neu gespeicherten Notizen im Wizard unter `/app/edit`; sie sind sofort im Deck gespeichert. Der Sitzungszaehler erfasst nur Neuanlagen und bleibt fuer „Fertig“ und die Zusammenfassung vom deckweiten Stapel-Badge getrennt. Bearbeiten erhoeht keinen der beiden Zaehler. Anki-Wortlaut: `adding_added` ("Hinzugefuegt").
 _Avoid_: Stack, Stapel, Batch, Neue Karten
 
 **Deck-Kartenliste**:
-Die vollstaendige Liste der `AnkiWeb Vocab`-Notizen mit mindestens einer Karte im gewaehlten Deck, auch aus frueheren Sitzungen. Sie ist nicht auf den Sitzungsstapel beschraenkt; andere Notiztypen, geloeschte und deckfremde Notizen fehlen. Eine Zeile laedt dieselbe Notiz im Wizard ab Schritt 1; Speichern aktualisiert ihre bestehende ID. Bei leerem Sitzungsstapel und vorhandenen Deck-Karten oeffnet ein Button im Leerzustand dieselbe Liste.
+Die vollstaendige Liste der `AnkiWeb Vocab`-Notizen mit mindestens einer Karte im gewaehlten Deck, auch aus frueheren Sitzungen. Andere Notiztypen, geloeschte und deckfremde Notizen fehlen. Der visuelle Stapel zeigt bis zu fuenf der neuesten dieser Notizen; sein Badge zaehlt alle. Tippen oder Hochwischen oeffnet die Liste in der Reihenfolge von alt nach neu. Eine Zeile laedt dieselbe Notiz im Wizard ab Schritt 1; Speichern aktualisiert ihre bestehende ID, ohne Stapelgroesse oder Reihenfolge zu aendern.
 _Avoid_: Sitzungsstapel, Deck-Liste
 
 **Gelernt**:
 Eine Notiz gilt im gewaehlten Deck als gelernt, wenn mindestens eine ihrer Karten dort den Anki-Kartentyp `type != 0` hat. Die Deck-Kartenliste kennzeichnet sie mit Warnfarbe und Text; beim Bearbeiten warnt ein Banner vor dem Zuruecksetzen des Lernfortschritts.
 
 **Lernfortschritt zuruecksetzen**:
-Nur beim Speichern tatsaechlich geaenderter Felder einer gelernten Notiz werden ihre Karten im gewaehlten Deck mit `reset_counts=True` als neu eingeplant (`reps` und `lapses` werden geloescht). Danach erscheint ein Hinweis. Unveraendertes Speichern, Abbruch und Aenderungen an ungelernten Notizen setzen nichts zurueck; Karten in anderen Decks bleiben unveraendert. Das Revlog bleibt erhalten und die Neueinplanung wird protokolliert.
+Beim Speichern tatsaechlich geaenderter Felder einer gelernten Notiz werden ihre Karten im gewaehlten Deck mit `reset_counts=True` als neu eingeplant (`reps` und `lapses` werden geloescht). Danach erscheint ein Hinweis. Ohne vorgemerkte Ruecksetzung setzen unveraendertes Speichern und Aenderungen an ungelernten Notizen nichts zurueck; Karten in anderen Decks bleiben unveraendert. Abbruch loest selbst keine Ruecksetzung aus und entfernt keine vorgemerkte Ruecksetzung. Das Revlog bleibt erhalten und die Neueinplanung wird protokolliert. Eine dauerhaft vorgemerkte, fehlgeschlagene Ruecksetzung kann beim erneuten Speichern auch unveraendert wiederholt werden; Grenzen und Fehlerrisiken stehen in Plan 9.
 
 **Neue Karten**:
 Karten, die aktuell als neu eingeplant sind (Anki-Zaehler `statistics_counts_new_cards`, "New"/"Neu"); dazu koennen auch zurueckgesetzte Karten gehoeren. Hat nichts mit der Hinzufuegen-Sitzung zu tun.
@@ -60,5 +60,5 @@ _Avoid_: Serie, Combo, Sitzungs-Streak
 
 ## Flagged ambiguities
 
-- "Stapel" meinte in den Plaenen dreierlei (Deck, Deck-Liste, Hinzufuegen-Stapel). Aufgeloest: **Deck** fuer das Anki-Objekt, **Deck-Liste** fuer die Startseite, **Hinzugefuegte Karten** fuer den Sitzungsstapel und **Deck-Kartenliste** fuer die deckweite Auswahl im Wizard.
+- "Stapel" meinte in den Plaenen dreierlei (Deck, Deck-Liste, Hinzufuegen-Stapel). Aufgeloest: **Deck** fuer das Anki-Objekt, **Deck-Liste** fuer die Startseite, **Hinzugefuegte Karten** fuer die Neuanlagen der Sitzung und **Deck-Kartenliste** fuer die deckweite Auswahl im Wizard.
 - "Neue Karten" ist der Anki-Begriff fuer als neu eingeplante Karten (`scheduling_new_cards`), nicht fuer die sitzungsbezogene Anzeige **Hinzugefuegte Karten**.
