@@ -28,8 +28,13 @@ PRESEEDED_UNUSED_REVIEW = {
     "app_review_note_deleted",
 }
 PRESEEDED_UNUSED_ADD: set[str] = set()
-# Used by the retained edit endpoint's 404 response, not by a template.
-BACKEND_ONLY_STRINGS = {"app_add_edit_unavailable"}
+# Used by edit endpoint responses, not by templates.
+BACKEND_ONLY_STRINGS = {
+    "app_add_edit_unavailable",
+    "app_edit_progress_reset_failed",
+    "app_edit_progress_reset_unrecorded",
+    "app_edit_progress_reset_uncleared",
+}
 PRESEEDED_UNUSED = (
     PRESEEDED_UNUSED_DECKS | PRESEEDED_UNUSED_REVIEW | PRESEEDED_UNUSED_ADD
 )

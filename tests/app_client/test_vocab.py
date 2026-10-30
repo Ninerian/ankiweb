@@ -231,8 +231,11 @@ def test_update_changes_note_without_duplicate_error(
     temp_collection: Collection, deck_id: DeckId
 ) -> None:
     nid = add_vocab_note(temp_collection, deck_id, "Hund", "dog")
-    update_vocab_note(temp_collection, nid, "Hund", "dog")
-    update_vocab_note(temp_collection, nid, "Hund", "hound", "noun", "Der *Hund*")
+    assert update_vocab_note(temp_collection, nid, "Hund", "dog") is False
+    assert (
+        update_vocab_note(temp_collection, nid, "Hund", "hound", "noun", "Der *Hund*")
+        is True
+    )
     assert read_vocab_note(temp_collection, nid) == {
         "front": "Hund",
         "back": "hound",
@@ -240,6 +243,22 @@ def test_update_changes_note_without_duplicate_error(
         "example": "Der *Hund*",
     }
     assert len(temp_collection.find_notes("")) == 1
+
+
+def test_update_normalizes_line_endings_without_writing_unchanged_note(
+    temp_collection: Collection, deck_id: DeckId, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    nid = add_vocab_note(temp_collection, deck_id, "Hund\nTier", "dog", "a\nb")
+
+    def unexpected_update(*args: object, **kwargs: object) -> None:
+        raise AssertionError("unchanged note must not be written")
+
+    monkeypatch.setattr(temp_collection, "update_note", unexpected_update)
+    assert (
+        update_vocab_note(temp_collection, nid, "Hund\r\nTier", "dog", "a\r\nb")
+        is False
+    )
+    assert read_vocab_note(temp_collection, nid)["front"] == "Hund\nTier"
 
 
 def test_update_can_change_first_field(

@@ -120,6 +120,36 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_discard_finish": (
             "You have unsaved text in your current card. Discard it and finish?"
         ),
+        "app_edit_pile_cue": "Tap to edit",
+        "app_edit_stack_label_one": "card added. Tap to edit.",
+        "app_edit_stack_label_other": "cards added. Tap to edit.",
+        "app_edit_empty_open": "Edit cards in this deck ({count})",
+        "app_edit_browse_title": "Choose a card to edit",
+        "app_edit_browse_back": "Back to new card",
+        "app_edit_row_label": "Edit card: {front}",
+        "app_edit_row_action": "Edit",
+        "app_edit_learned": "Learned",
+        "app_edit_learned_legend": "Changing a learned card resets its learning progress.",
+        "app_edit_editing": "Editing card",
+        "app_edit_cancel": "Cancel editing",
+        "app_edit_warning": "Changes to this learned card will reset its learning progress.",
+        "app_edit_progress_reset": "Learning progress was reset.",
+        "app_edit_progress_reset_failed": (
+            "The note text was saved, but learning progress was not reset. "
+            "Please try saving again."
+        ),
+        "app_edit_progress_reset_unrecorded": (
+            "Could not save this edit because the learning progress reset could not "
+            "be recorded. Please try later or contact support."
+        ),
+        "app_edit_progress_reset_uncleared": (
+            "The note text was saved and learning progress was reset, but the "
+            "pending reset could not be cleared. Please contact support."
+        ),
+        "app_edit_discard": "Discard your unsaved changes?",
+        "app_edit_ready_to_save": "Ready to save?",
+        "app_edit_preview_edit": "Edit text before saving",
+        "app_edit_save": "Save changes",
         "app_add_chip_der": "der",
         "app_add_chip_die": "die",
         "app_add_chip_das": "das",
@@ -250,6 +280,38 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_discard_finish": (
             "Die aktuelle Karte enthält ungespeicherten Text. Verwerfen und abschließen?"
         ),
+        "app_edit_pile_cue": "Tippen zum Bearbeiten",
+        "app_edit_stack_label_one": "Karte hinzugefügt. Tippen zum Bearbeiten.",
+        "app_edit_stack_label_other": "Karten hinzugefügt. Tippen zum Bearbeiten.",
+        "app_edit_empty_open": "Karten im Stapel bearbeiten ({count})",
+        "app_edit_browse_title": "Karte zum Bearbeiten wählen",
+        "app_edit_browse_back": "Zurück zur neuen Karte",
+        "app_edit_row_label": "Karte bearbeiten: {front}",
+        "app_edit_row_action": "Bearbeiten",
+        "app_edit_learned": "Gelernt",
+        "app_edit_learned_legend": "Änderungen an gelernten Karten setzen den Lernfortschritt zurück.",
+        "app_edit_editing": "Karte wird bearbeitet",
+        "app_edit_cancel": "Bearbeitung abbrechen",
+        "app_edit_warning": "Änderungen an dieser gelernten Karte setzen den Lernfortschritt zurück.",
+        "app_edit_progress_reset": "Der Lernfortschritt wurde zurückgesetzt.",
+        "app_edit_progress_reset_failed": (
+            "Der Kartentext wurde gespeichert, aber der Lernfortschritt wurde "
+            "nicht zurückgesetzt. Bitte erneut speichern."
+        ),
+        "app_edit_progress_reset_unrecorded": (
+            "Die Änderung konnte nicht gespeichert werden, weil das Zurücksetzen "
+            "des Lernfortschritts nicht vorgemerkt werden konnte. Bitte später "
+            "erneut versuchen oder den Support kontaktieren."
+        ),
+        "app_edit_progress_reset_uncleared": (
+            "Der Kartentext wurde gespeichert und der Lernfortschritt zurückgesetzt, "
+            "aber die ausstehende Zurücksetzung konnte nicht gelöscht werden. "
+            "Bitte den Support kontaktieren."
+        ),
+        "app_edit_discard": "Ungespeicherte Änderungen verwerfen?",
+        "app_edit_ready_to_save": "Bereit zum Speichern?",
+        "app_edit_preview_edit": "Text vor dem Speichern bearbeiten",
+        "app_edit_save": "Änderungen speichern",
         "app_add_start_studying": "Lernen beginnen",
         "app_add_chip_der": "der",
         "app_add_chip_die": "die",

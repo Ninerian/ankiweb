@@ -1,13 +1,19 @@
 import json
+import logging
 import re
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Protocol, cast
 
+import anki.collection
 import anki.lang
 import pytest
+from anki.cards import CardId
 from anki.collection import Collection
 from anki.decks import DeckId
 from anki.notes import NoteId
+from anki.scheduler.v3 import Scheduler
+from anki.scheduler_pb2 import CardAnswer
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -112,18 +118,26 @@ def test_edit_routes_follow_password_gate(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("method", "url"),
+    ("method", "url", "status"),
     [
-        ("GET", "/app/add?deck=1"),
-        ("POST", "/app/add/preview"),
-        ("POST", "/app/add/commit?deck=1"),
-        ("POST", "/app/add/edit/1?deck=1"),
+        ("GET", "/app/add?deck=1", 404),
+        ("POST", "/app/add/preview", 405),
+        ("POST", "/app/add/commit?deck=1", 405),
+        ("POST", "/app/add/edit/1?deck=1", 405),
     ],
 )
 def test_old_app_editor_routes_are_absent(
-    client: TestClient, method: str, url: str
+    client: TestClient, method: str, url: str, status: int
 ) -> None:
-    assert client.request(method, url, follow_redirects=False).status_code == 404
+    previous_sid = client.cookies.get("app_sid")
+    response = client.request(method, url, follow_redirects=False)
+    # The GET media catchall returns 405 for POST, not an editor route.
+    assert response.status_code == status
+    assert "location" not in response.headers
+    assert 'id="added-cards"' not in response.text
+    assert "datastar-patch" not in response.text
+    assert "app_sid" not in response.cookies
+    assert client.cookies.get("app_sid") == previous_sid
 
 
 def test_preview_escapes_all_fields_and_highlights_example(client: TestClient) -> None:
@@ -250,6 +264,12 @@ def _badge(text: str) -> str:
     return f"{count.group(1)} {unit.group(1)}"
 
 
+def _pile(text: str) -> str:
+    """Keep pile assertions separate from the following deck-wide list."""
+    assert 'id="deck-cards"' in text
+    return text.split('id="deck-cards"', 1)[0]
+
+
 class _TextResponse(Protocol):
     @property
     def text(self) -> str: ...
@@ -306,6 +326,8 @@ def test_commit_persists_escaped_note_and_patches_session_cards(
         "example": "",
         "step": 1,
         "nid": 0,
+        "learned": False,
+        "progressReset": False,
         "count": 1,
         "error": "",
     }
@@ -437,28 +459,29 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     client.cookies.clear()
     empty_page = client.get("/app/edit?deck=1")
     assert "count: 0" in empty_page.text
-    assert ">A</p>" not in empty_page.text
+    assert ">A</p>" not in _pile(empty_page.text)
+    assert f'data-note-id="{first_nid}"' in empty_page.text
     assert "No cards added yet" in empty_page.text
     assert "add-stack-badge" not in empty_page.text
-    denied = client.post(
+    edited = client.post(
         "/app/edit/commit?deck=1",
         json={"nid": first_nid, "front": "Changed", "back": "changed"},
     )
-    assert denied.status_code == 404
-    assert _signals(denied) == {"error": "Could not add the card. Please try again."}
+    assert edited.status_code == 200
+    assert _signals(edited)["count"] == 0
     third = client.post("/app/edit/commit?deck=1", json={"front": "C", "back": "c"})
     assert _signals(third)["count"] == 1
     assert _badge(third.text) == "1 card"
     assert ">C</p>" in third.text
-    assert ">A</p>" not in third.text
+    assert ">Changed</p>" not in _pile(third.text)
 
     client.cookies.clear()
     client.cookies.set("app_sid", session_a)
     page = client.get("/app/edit?deck=1")
     assert "count: 1" in page.text
     assert _badge(page.text) == "1 card"
-    assert ">A</p>" in page.text
-    assert ">C</p>" not in page.text
+    assert ">Changed</p>" in _pile(page.text)
+    assert ">C</p>" not in _pile(page.text)
     assert len(_notes(client)) == 3
 
 
@@ -510,18 +533,20 @@ def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> Non
             json={"front": f"Front {index}", "back": f"Back {index}"},
         )
         assert _signals(response)["count"] == index + 1
-    assert "Front 0" not in response.text
+    pile = _pile(response.text)
+    assert "Front 0" not in pile
     for index in range(1, 5):
-        assert f"Front {index}" in response.text
-    assert response.text.index("Front 4") < response.text.index("Front 3")
-    assert response.text.index("add-stack-badge") < response.text.index("Front 4")
+        assert f"Front {index}" in pile
+    assert pile.index("Front 4") < pile.index("Front 3")
+    assert pile.index("add-stack-badge") < pile.index("Front 4")
+    assert "Front 0" in response.text
     assert _badge(response.text) == "5 cards"
     assert response.text.count("add-stack-badge") == 1
     page = client.get("/app/edit?deck=1")
     assert "count: 5" in page.text
     assert _badge(page.text) == "5 cards"
-    assert "Front 0" not in page.text
-    assert "Front 4" in page.text
+    assert "Front 0" not in _pile(page.text)
+    assert "Front 4" in _pile(page.text)
 
     match = re.search(r'data-note-id="(\d+)"', response.text)
     assert match is not None
@@ -533,8 +558,8 @@ def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> Non
     page = client.get("/app/edit?deck=1")
     assert "count: 4" in page.text
     assert _badge(page.text) == "4 cards"
-    assert "Front 0" in page.text
-    assert "Front 4" not in page.text
+    assert "Front 0" in _pile(page.text)
+    assert "Front 4" not in _pile(page.text)
 
 
 def test_added_cards_span_query_batches(client: TestClient) -> None:
@@ -546,9 +571,9 @@ def test_added_cards_span_query_batches(client: TestClient) -> None:
     assert _signals(response)["count"] == 33
     page = client.get("/app/edit?deck=1")
     assert "count: 33" in page.text
-    assert "Batch 28" not in page.text
+    assert "Batch 28" not in _pile(page.text)
     for index in range(29, 33):
-        assert f"Batch {index}" in page.text
+        assert f"Batch {index}" in _pile(page.text)
 
 
 def test_deleted_notes_are_removed_without_losing_other_decks(
@@ -634,10 +659,11 @@ def test_changed_note_types_are_excluded_from_session_stack(
     assert page.status_code == 200
     assert "count: 5" in page.text
     for index in (2, 3, 4, 6):
-        assert f">Front {index}</p>" in page.text
+        assert f">Front {index}</p>" in _pile(page.text)
     for index in (0, 1, 5):
-        assert f">Front {index}</p>" not in page.text
-    assert page.text.index(">Front 6</p>") < page.text.index(">Front 4</p>")
+        assert f">Front {index}</p>" not in _pile(page.text)
+    pile = _pile(page.text)
+    assert pile.index(">Front 6</p>") < pile.index(">Front 4</p>")
     other_page = client.get(f"/app/edit?deck={other_deck}")
     assert "count: 1" in other_page.text
     assert ">Other deck</p>" in other_page.text
@@ -648,9 +674,9 @@ def test_changed_note_types_are_excluded_from_session_stack(
     assert saved.status_code == 200
     assert _signals(saved)["count"] == 6
     for index in (3, 4, 6, 7):
-        assert f">Front {index}</p>" in saved.text
+        assert f">Front {index}</p>" in _pile(saved.text)
     for index in (0, 1, 2, 5):
-        assert f">Front {index}</p>" not in saved.text
+        assert f">Front {index}</p>" not in _pile(saved.text)
     assert "count: 6" in client.get("/app/edit?deck=1").text
 
     client.cookies.clear()
@@ -658,7 +684,7 @@ def test_changed_note_types_are_excluded_from_session_stack(
     separate_page = client.get("/app/edit?deck=1")
     assert "count: 1" in separate_page.text
     assert ">Other session</p>" in separate_page.text
-    assert ">Front 7</p>" not in separate_page.text
+    assert ">Front 7</p>" not in _pile(separate_page.text)
 
 
 def test_added_stack_does_not_hide_incompatible_vocab_model(
@@ -720,6 +746,8 @@ def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
     }
     first = client.post("/app/edit/commit?deck=1", json=values)
     assert _signals(first)["count"] == 1
+    assert "animate-slide-to-added" in _pile(first.text)
+    assert "data-ts=" in _pile(first.text)
     nid = _notes(client)[0]
     client.post("/app/edit/commit?deck=1", json={"front": "Second", "back": "Two"})
     before_ids = set(_notes(client))
@@ -728,13 +756,25 @@ def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
     edit = client.post(f"/app/edit/card/{nid}?deck=1")
     assert edit.status_code == 200
     assert edit.headers["content-type"].startswith("text/event-stream")
-    assert _signals(edit) == {**values, "nid": nid, "step": 1, "error": ""}
+    loaded = _signals(edit)
+    assert isinstance(loaded.pop("editLoaded"), int)
+    assert loaded == {
+        **values,
+        "nid": nid,
+        "step": 1,
+        "error": "",
+        "learned": False,
+        "progressReset": False,
+        "editOriginal": values,
+    }
     assert "set-cookie" not in edit.headers
 
     unchanged = client.post("/app/edit/commit?deck=1", json={**values, "nid": nid})
     assert unchanged.status_code == 200
     assert _signals(unchanged)["count"] == 2
     assert set(_notes(client)) == before_ids
+    assert "animate-slide-to-added" not in _pile(unchanged.text)
+    assert "data-ts=" not in _pile(unchanged.text)
 
     updated = {**values, "front": "Updated <front> &\n*yes*"}
     response = client.post("/app/edit/commit?deck=1", json={**updated, "nid": nid})
@@ -746,19 +786,28 @@ def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
         "example": "",
         "step": 1,
         "nid": 0,
+        "learned": False,
+        "progressReset": False,
         "count": 2,
         "error": "",
     }
     assert response.text.index("Second") < response.text.index("Updated")
+    assert "animate-slide-to-added" not in _pile(response.text)
+    assert "data-ts=" not in _pile(response.text)
     assert "&lt;front&gt; &amp;" in response.text
     assert set(_notes(client)) == before_ids
     assert client.cookies.get("app_sid") == sid
     assert "set-cookie" not in response.headers
-    assert _signals(client.post(f"/app/edit/card/{nid}?deck=1")) == {
+    reloaded = _signals(client.post(f"/app/edit/card/{nid}?deck=1"))
+    assert isinstance(reloaded.pop("editLoaded"), int)
+    assert reloaded == {
         **updated,
         "nid": nid,
         "step": 1,
         "error": "",
+        "learned": False,
+        "progressReset": False,
+        "editOriginal": updated,
     }
     assert client.portal is not None
     fields = client.portal.call(
@@ -788,7 +837,9 @@ def test_edit_duplicate_and_invalid_values_keep_form_and_existing_note(
     assert _signals(invalid) == {"error": "Front and back are required"}
     assert "datastar-patch-elements" not in invalid.text
     assert len(_notes(client)) == 2
-    assert _signals(client.post(f"/app/edit/card/{nid}?deck=1")) == {
+    loaded = _signals(client.post(f"/app/edit/card/{nid}?deck=1"))
+    assert isinstance(loaded.pop("editLoaded"), int)
+    assert loaded == {
         "front": "First",
         "back": "One",
         "hint": "",
@@ -796,6 +847,9 @@ def test_edit_duplicate_and_invalid_values_keep_form_and_existing_note(
         "nid": nid,
         "step": 1,
         "error": "",
+        "learned": False,
+        "progressReset": False,
+        "editOriginal": {"front": "First", "back": "One", "hint": "", "example": ""},
     }
 
 
@@ -822,7 +876,456 @@ def test_update_failure_preserves_form_and_note(
     assert set(_notes(client)) == {nid}
 
 
-def test_edit_and_update_reject_cross_session_and_preserve_new_cookie(
+_RESET_CONFIG = "ankiweb_pending_progress_resets"
+_RESET_FIELDS = ("type", "queue", "due", "ivl", "factor", "reps", "lapses")
+_RESET_ORIGINAL = {
+    "front": "Original",
+    "back": "Answer",
+    "hint": "Old hint",
+    "example": "Old example",
+}
+_RESET_UPDATED = {
+    "front": "Changed <front>",
+    "back": "Changed & answer",
+    "hint": "New hint",
+    "example": "New *example*",
+}
+
+
+@pytest.fixture(
+    params=[
+        (
+            "en",
+            (
+                "The note text was saved, but learning progress was not reset. "
+                "Please try saving again."
+            ),
+            (
+                "Could not save this edit because the learning progress reset could "
+                "not be recorded. Please try later or contact support."
+            ),
+            (
+                "The note text was saved and learning progress was reset, but the "
+                "pending reset could not be cleared. Please contact support."
+            ),
+        ),
+        (
+            "de_DE",
+            (
+                "Der Kartentext wurde gespeichert, aber der Lernfortschritt "
+                "wurde nicht zurückgesetzt. Bitte erneut speichern."
+            ),
+            (
+                "Die Änderung konnte nicht gespeichert werden, weil das Zurücksetzen "
+                "des Lernfortschritts nicht vorgemerkt werden konnte. Bitte später "
+                "erneut versuchen oder den Support kontaktieren."
+            ),
+            (
+                "Der Kartentext wurde gespeichert und der Lernfortschritt zurückgesetzt, "
+                "aber die ausstehende Zurücksetzung konnte nicht gelöscht werden. "
+                "Bitte den Support kontaktieren."
+            ),
+        ),
+    ],
+    ids=["en", "de"],
+)
+def _reset_settings(
+    tmp_path: Path, request: pytest.FixtureRequest
+) -> Iterator[tuple[Settings, str, str, str]]:
+    lang, reset_error, record_error, clear_error = request.param
+    try:
+        yield (
+            Settings(collection_path=tmp_path / "reset-failure.anki2", lang=lang),
+            reset_error,
+            record_error,
+            clear_error,
+        )
+    finally:
+        anki.lang.set_lang("en")
+
+
+def _reset_pending(client: TestClient) -> object:
+    assert client.portal is not None
+    service = cast(FastAPI, client.app).state.service
+    return (
+        client.portal.call(service.run, lambda col: col.get_config(_RESET_CONFIG)) or []
+    )
+
+
+def _assert_reset_marker(value: object, nid: NoteId) -> None:
+    assert isinstance(value, list) and len(value) == 1
+    marker = value[0]
+    assert isinstance(marker, list) and len(marker) == 3
+    assert marker[:2] == [1, nid]
+    digest = marker[2]
+    assert isinstance(digest, str)
+    assert re.fullmatch(r"[0-9a-f]{32}", digest)
+
+
+def _reset_snapshot(
+    client: TestClient, nid: NoteId, cid: CardId
+) -> tuple[list[str], tuple[int, ...]]:
+    def snapshot(col: anki.collection.Collection) -> tuple[list[str], tuple[int, ...]]:
+        note = col.get_note(nid)
+        card = col.get_card(cid)
+        return (
+            [note[key] for key in ("Front", "Back", "Hint", "Example")],
+            tuple(getattr(card, key) for key in _RESET_FIELDS),
+        )
+
+    assert client.portal is not None
+    return client.portal.call(cast(FastAPI, client.app).state.service.run, snapshot)
+
+
+def _seed_learned_edit(client: TestClient) -> tuple[NoteId, CardId]:
+    created = client.post("/app/edit/commit?deck=1", json=_RESET_ORIGINAL)
+    assert _signals(created)["count"] == 1
+    nid = _notes(client)[0]
+
+    def learn(col: Collection) -> CardId:
+        cid = col.get_note(nid).cards()[0].id
+        scheduler = col.sched
+        assert isinstance(scheduler, Scheduler)
+        for rating in (CardAnswer.EASY, CardAnswer.AGAIN, CardAnswer.EASY):
+            card = col.get_card(cid)
+            card.start_timer()
+            states = col._backend.get_scheduling_states(cid)
+            scheduler.answer_card(
+                scheduler.build_answer(card=card, states=states, rating=rating)
+            )
+        card = col.get_card(cid)
+        assert card.type == 2 and card.reps > 0 and card.lapses > 0
+        assert card.ivl > 0 and card.factor > 0 and card.due > 0
+        return cid
+
+    assert client.portal is not None
+    cid = client.portal.call(cast(FastAPI, client.app).state.service.run, learn)
+    return nid, cid
+
+
+def _fail_scheduler_once(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    nid: NoteId,
+    *,
+    partial: bool = False,
+) -> tuple[list[tuple[list[CardId], bool]], RuntimeError]:
+    assert client.portal is not None
+    service = cast(FastAPI, client.app).state.service
+    scheduler_class = client.portal.call(service.run, lambda col: type(col.sched))
+    original_reset = scheduler_class.schedule_cards_as_new
+    calls: list[tuple[list[CardId], bool]] = []
+    failure = RuntimeError("deterministic scheduler failure")
+
+    def fail_once(
+        self: Scheduler, card_ids: list[CardId], *, reset_counts: bool
+    ) -> None:
+        _assert_reset_marker(self.col.get_config(_RESET_CONFIG), nid)
+        calls.append((card_ids, reset_counts))
+        if len(calls) == 1:
+            if partial:
+                original_reset(self, card_ids, reset_counts=reset_counts)
+            raise failure
+        original_reset(self, card_ids, reset_counts=reset_counts)
+
+    monkeypatch.setattr(scheduler_class, "schedule_cards_as_new", fail_once)
+    return calls, failure
+
+
+def _reject_reset_config(
+    monkeypatch: pytest.MonkeyPatch, *, clear: bool
+) -> RuntimeError:
+    original_set_config = Collection.set_config
+    failure = RuntimeError("deterministic config failure")
+
+    def reject(
+        self: Collection, key: str, value: object, *, undoable: bool = False
+    ) -> object:
+        if key == _RESET_CONFIG and (value == []) == clear:
+            raise failure
+        return original_set_config(self, key, value, undoable=undoable)
+
+    monkeypatch.setattr(Collection, "set_config", reject)
+    return failure
+
+
+def _assert_reset_log(
+    caplog: pytest.LogCaptureFixture, message: str, cause: Exception
+) -> None:
+    records = [
+        record
+        for record in caplog.records
+        if record.name == "ankiweb.adapters.inbound.http_app.edit"
+        and record.getMessage() == message
+    ]
+    assert len(records) == 1
+    exc_info = records[0].exc_info
+    assert isinstance(exc_info, tuple)
+    error = exc_info[1]
+    assert error is not None
+    assert error.__cause__ is cause
+
+
+def test_learned_edit_reset_failure_survives_reopen_and_retries(
+    _reset_settings: tuple[Settings, str, str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    settings, message, _, _ = _reset_settings
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/app/edit?deck=1").status_code == 200
+        sid = client.cookies.get("app_sid")
+        assert sid
+        nid, cid = _seed_learned_edit(client)
+        before = _reset_snapshot(client, nid, cid)
+        edit = client.post(f"/app/edit/card/{nid}?deck=1")
+        loaded = _signals(edit)
+        assert isinstance(loaded.pop("editLoaded"), int)
+        assert loaded == {
+            **_RESET_ORIGINAL,
+            "nid": nid,
+            "step": 1,
+            "error": "",
+            "learned": True,
+            "progressReset": False,
+            "editOriginal": _RESET_ORIGINAL,
+        }
+        calls, failure = _fail_scheduler_once(client, monkeypatch, nid)
+        unchanged = client.post(
+            "/app/edit/commit?deck=1", json={**_RESET_ORIGINAL, "nid": nid}
+        )
+        assert _signals(unchanged)["progressReset"] is False
+        assert calls == []
+        assert _reset_snapshot(client, nid, cid) == before
+        assert _signals(client.post(f"/app/edit/card/{nid}?deck=1"))["learned"] is True
+        submitted = {**_RESET_UPDATED, "nid": nid, "step": 3, "learned": True}
+        with caplog.at_level(
+            logging.ERROR, logger="ankiweb.adapters.inbound.http_app.edit"
+        ):
+            response = client.post("/app/edit/commit?deck=1", json=submitted)
+        assert calls == [([cid], True)]
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        assert _signals(response) == {"error": message}
+        assert "datastar-patch-elements" not in response.text
+        assert "deterministic scheduler failure" not in response.text
+        _assert_reset_log(
+            caplog, "Failed to reset learning progress after saving note", failure
+        )
+        fields, schedule = _reset_snapshot(client, nid, cid)
+        assert fields == [escape_field(value) for value in _RESET_UPDATED.values()]
+        assert schedule == before[1]
+        assert _notes(client) == [nid]
+        marker = _reset_pending(client)
+        _assert_reset_marker(marker, nid)
+        assert client.cookies.get("app_sid") == sid
+        assert "set-cookie" not in response.headers
+        page_after = client.get("/app/edit?deck=1")
+        assert "count: 1" in page_after.text
+        assert "Changed &lt;front&gt;" in _pile(page_after.text)
+        assert client.cookies.get("app_sid") == sid
+        client.cookies.clear()
+
+    with TestClient(create_app(settings)) as client:
+        assert _reset_pending(client) == marker
+        assert _reset_snapshot(client, nid, cid) == (fields, schedule)
+        reopened = client.post(f"/app/edit/card/{nid}?deck=1")
+        fresh_sid = client.cookies.get("app_sid")
+        assert fresh_sid and fresh_sid != sid
+        reopened_signals = _signals(reopened)
+        assert reopened_signals["learned"] is True
+        assert {key: reopened_signals[key] for key in _RESET_UPDATED} == _RESET_UPDATED
+        assert _reset_pending(client) == marker
+        retry = client.post("/app/edit/commit?deck=1", json=submitted)
+        assert retry.status_code == 200
+        assert _signals(retry)["progressReset"] is True
+        assert calls == [([cid], True)] * 2
+        assert _reset_pending(client) == []
+        fields, reset = _reset_snapshot(client, nid, cid)
+        assert fields == [escape_field(value) for value in _RESET_UPDATED.values()]
+        assert reset[:2] == (0, 0)
+        assert reset[5:] == (0, 0)
+        assert client.cookies.get("app_sid") == fresh_sid
+        assert "set-cookie" not in retry.headers
+        unchanged = client.post("/app/edit/commit?deck=1", json=submitted)
+        assert _signals(unchanged)["progressReset"] is False
+        assert calls == [([cid], True)] * 2
+        assert _reset_snapshot(client, nid, cid) == (fields, reset)
+
+
+def test_learned_edit_retry_in_same_session(
+    _reset_settings: tuple[Settings, str, str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings, message, _, _ = _reset_settings
+    with TestClient(create_app(settings)) as client:
+        nid, cid = _seed_learned_edit(client)
+        sid = client.cookies.get("app_sid")
+        assert sid
+        assert _signals(client.post(f"/app/edit/card/{nid}?deck=1"))["learned"] is True
+        calls, _ = _fail_scheduler_once(client, monkeypatch, nid)
+        submitted = {**_RESET_UPDATED, "nid": nid, "step": 3}
+        failed = client.post("/app/edit/commit?deck=1", json=submitted)
+        assert _signals(failed) == {"error": message}
+        _assert_reset_marker(_reset_pending(client), nid)
+        retry = client.post("/app/edit/commit?deck=1", json=submitted)
+        assert retry.status_code == 200
+        assert _signals(retry)["progressReset"] is True
+        assert calls == [([cid], True)] * 2
+        assert _reset_pending(client) == []
+        fields, reset = _reset_snapshot(client, nid, cid)
+        assert fields == [escape_field(value) for value in _RESET_UPDATED.values()]
+        assert reset[:2] == (0, 0)
+        assert reset[5:] == (0, 0)
+        assert client.cookies.get("app_sid") == sid
+        assert "set-cookie" not in retry.headers
+
+
+def test_reset_marker_write_failure_keeps_note_and_schedule(
+    _reset_settings: tuple[Settings, str, str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    settings, _, message, _ = _reset_settings
+    with TestClient(create_app(settings)) as client:
+        nid, cid = _seed_learned_edit(client)
+        before = _reset_snapshot(client, nid, cid)
+        assert _signals(client.post(f"/app/edit/card/{nid}?deck=1"))["learned"] is True
+        calls, _ = _fail_scheduler_once(client, monkeypatch, nid)
+        failure = _reject_reset_config(monkeypatch, clear=False)
+        with caplog.at_level(
+            logging.ERROR, logger="ankiweb.adapters.inbound.http_app.edit"
+        ):
+            response = client.post(
+                "/app/edit/commit?deck=1", json={**_RESET_UPDATED, "nid": nid}
+            )
+        assert response.status_code == 200
+        assert _signals(response) == {"error": message}
+        assert "datastar-patch-elements" not in response.text
+        assert "deterministic config failure" not in response.text
+        assert calls == []
+        assert _reset_pending(client) == []
+        assert _reset_snapshot(client, nid, cid) == before
+        _assert_reset_log(
+            caplog,
+            "Failed to record pending learning progress reset before saving note",
+            failure,
+        )
+
+
+def test_reset_marker_capacity_refusal_keeps_note_and_schedule(
+    _reset_settings: tuple[Settings, str, str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings, _, message, _ = _reset_settings
+    with TestClient(create_app(settings)) as client:
+        nid, cid = _seed_learned_edit(client)
+        before = _reset_snapshot(client, nid, cid)
+        pending = [[2, index, "0" * 32] for index in range(50)]
+        assert client.portal is not None
+        service = cast(FastAPI, client.app).state.service
+        client.portal.call(
+            service.run, lambda col: col.set_config(_RESET_CONFIG, pending)
+        )
+        calls, _ = _fail_scheduler_once(client, monkeypatch, nid)
+        response = client.post(
+            "/app/edit/commit?deck=1", json={**_RESET_UPDATED, "nid": nid}
+        )
+        assert _signals(response) == {"error": message}
+        assert calls == []
+        assert _reset_pending(client) == pending
+        assert _reset_snapshot(client, nid, cid) == before
+
+
+def test_partial_scheduler_reset_retries_even_when_card_is_new(
+    _reset_settings: tuple[Settings, str, str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings, message, _, _ = _reset_settings
+    with TestClient(create_app(settings)) as client:
+        nid, cid = _seed_learned_edit(client)
+        calls, _ = _fail_scheduler_once(client, monkeypatch, nid, partial=True)
+        submitted = {**_RESET_UPDATED, "nid": nid}
+        response = client.post("/app/edit/commit?deck=1", json=submitted)
+        assert _signals(response) == {"error": message}
+        assert calls == [([cid], True)]
+        _assert_reset_marker(_reset_pending(client), nid)
+        fields, reset = _reset_snapshot(client, nid, cid)
+        assert fields == [escape_field(value) for value in _RESET_UPDATED.values()]
+        assert reset[:2] == (0, 0)
+        assert reset[5:] == (0, 0)
+        loaded = _signals(client.post(f"/app/edit/card/{nid}?deck=1"))
+        assert loaded["learned"] is False
+        retry = client.post("/app/edit/commit?deck=1", json=submitted)
+        assert _signals(retry)["progressReset"] is True
+        assert calls == [([cid], True)] * 2
+        assert _reset_pending(client) == []
+
+
+def test_reset_marker_before_note_write_does_not_reset_unchanged_note(
+    _reset_settings: tuple[Settings, str, str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings, _, _, _ = _reset_settings
+    with TestClient(create_app(settings)) as client:
+        nid, cid = _seed_learned_edit(client)
+        before = _reset_snapshot(client, nid, cid)
+
+        def crash_update(*args: object, **kwargs: object) -> None:
+            raise RuntimeError("interrupted before note write")
+
+        with monkeypatch.context() as crash_patch:
+            crash_patch.setattr(Collection, "update_note", crash_update)
+            with pytest.raises(RuntimeError, match="interrupted before note write"):
+                client.post(
+                    "/app/edit/commit?deck=1",
+                    json={**_RESET_UPDATED, "nid": nid},
+                )
+        marker = _reset_pending(client)
+        _assert_reset_marker(marker, nid)
+        assert _reset_snapshot(client, nid, cid) == before
+        unchanged = client.post(
+            "/app/edit/commit?deck=1", json={**_RESET_ORIGINAL, "nid": nid}
+        )
+        assert _signals(unchanged)["progressReset"] is False
+        assert _reset_pending(client) == marker
+        assert _reset_snapshot(client, nid, cid) == before
+        recovered = client.post(
+            "/app/edit/commit?deck=1", json={**_RESET_UPDATED, "nid": nid}
+        )
+        assert _signals(recovered)["progressReset"] is True
+        assert _reset_pending(client) == []
+        fields, reset = _reset_snapshot(client, nid, cid)
+        assert fields == [escape_field(value) for value in _RESET_UPDATED.values()]
+        assert reset[:2] == (0, 0)
+        assert reset[5:] == (0, 0)
+
+
+def test_reset_marker_clear_failure_reports_completed_reset(
+    _reset_settings: tuple[Settings, str, str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    settings, _, _, message = _reset_settings
+    with TestClient(create_app(settings)) as client:
+        nid, cid = _seed_learned_edit(client)
+        failure = _reject_reset_config(monkeypatch, clear=True)
+        with caplog.at_level(
+            logging.ERROR, logger="ankiweb.adapters.inbound.http_app.edit"
+        ):
+            response = client.post(
+                "/app/edit/commit?deck=1", json={**_RESET_UPDATED, "nid": nid}
+            )
+        assert response.status_code == 200
+        assert _signals(response) == {"error": message}
+        assert "datastar-patch-elements" not in response.text
+        fields, reset = _reset_snapshot(client, nid, cid)
+        assert fields == [escape_field(value) for value in _RESET_UPDATED.values()]
+        assert reset[:2] == (0, 0)
+        assert reset[5:] == (0, 0)
+        _assert_reset_marker(_reset_pending(client), nid)
+        _assert_reset_log(
+            caplog, "Failed to clear pending learning progress reset", failure
+        )
+
+
+def test_edit_and_update_allow_cross_session_and_preserve_new_cookie(
     client: TestClient,
 ) -> None:
     client.post("/app/edit/commit?deck=1", json={"front": "First", "back": "One"})
@@ -831,23 +1334,23 @@ def test_edit_and_update_reject_cross_session_and_preserve_new_cookie(
     assert original_sid
     client.cookies.clear()
     edit = client.post(f"/app/edit/card/{nid}?deck=1")
-    assert edit.status_code == 404
-    assert edit.text == "This card is unavailable for editing. Please try again."
-    assert edit.headers["content-type"].startswith("text/plain")
+    assert edit.status_code == 200
+    assert _signals(edit)["front"] == "First"
+    assert edit.headers["content-type"].startswith("text/event-stream")
     assert "app_sid" in edit.cookies
     assert "HttpOnly" in edit.headers["set-cookie"]
     new_sid = client.cookies.get("app_sid")
     assert new_sid and new_sid != original_sid
     update = client.post(
-        "/app/edit/commit?deck=1", json={"nid": nid, "front": "", "back": "Changed"}
+        "/app/edit/commit?deck=1",
+        json={"nid": nid, "front": "Changed", "back": "Changed"},
     )
-    assert update.status_code == 404
-    assert _signals(update) == {"error": "Could not add the card. Please try again."}
-    assert "datastar-patch-elements" not in update.text
+    assert update.status_code == 200
+    assert _signals(update)["count"] == 0
     assert client.cookies.get("app_sid") == new_sid
     client.cookies.clear()
     client.cookies.set("app_sid", original_sid)
-    assert _signals(client.post(f"/app/edit/card/{nid}?deck=1"))["front"] == "First"
+    assert _signals(client.post(f"/app/edit/card/{nid}?deck=1"))["front"] == "Changed"
     assert len(_notes(client)) == 1
 
 
@@ -870,7 +1373,7 @@ def test_edit_missing_note_returns_localized_error_and_session_cookie(
         anki.lang.set_lang("en")
 
 
-def test_unauthorized_update_sets_new_session_cookie(client: TestClient) -> None:
+def test_cross_session_update_sets_new_session_cookie(client: TestClient) -> None:
     client.post("/app/edit/commit?deck=1", json={"front": "First", "back": "One"})
     nid = _notes(client)[0]
     client.cookies.clear()
@@ -878,7 +1381,8 @@ def test_unauthorized_update_sets_new_session_cookie(client: TestClient) -> None
         "/app/edit/commit?deck=1",
         json={"nid": nid, "front": "Changed", "back": "Changed"},
     )
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert _signals(response)["count"] == 0
     assert "app_sid" in response.cookies
     assert "HttpOnly" in response.headers["set-cookie"]
     assert "SameSite=lax" in response.headers["set-cookie"]
