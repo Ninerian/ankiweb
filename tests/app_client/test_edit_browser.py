@@ -1098,6 +1098,14 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
     assert _progress(live_app, nid) == before
     assert calls == [([cid], True)]
 
+    accepted = _respond_to_confirm(page, accept=True)
+    page.locator("#edit-cancel").click()
+    assert len(accepted) == 1
+    expect(front).to_have_value("")
+    assert calls == [([cid], True)]
+    assert _progress(live_app, nid) == before
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Edited reviewed"
+
     page.context.clear_cookies()
     assert page.context.cookies() == []
     page.goto(f"{live_app}/app/edit?deck=1")
