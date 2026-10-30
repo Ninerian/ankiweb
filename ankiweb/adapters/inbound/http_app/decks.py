@@ -82,7 +82,7 @@ def add_decks_routes(
             tr.actions_decks(),
             body,
             active="decks",
-            scripts=("/shell/static/app/decks.js",),
+            scripts=("/shell/static/app/decks.js", "/shell/static/app/install.js"),
             lang=lang,
         )
 
