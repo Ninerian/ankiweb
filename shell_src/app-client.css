@@ -756,7 +756,13 @@
   .pile-size-3 { min-height: 212px; }
   .pile-size-4 { min-height: 238px; }
   .pile-size-5 { min-height: 264px; }
-  .pile-cards { position: absolute; inset: 0; display: block; }
+  .pile-cards {
+    position: absolute;
+    inset: 0;
+    display: block;
+    transition: transform 300ms ease-out;
+  }
+  #add-wizard[data-browse-phase="opening"] .pile-cards { transform: translateY(-48px); }
   .stacked-card {
     @apply rounded-box border-3 border-solid border-neo-edge bg-base-200 shadow-neo;
     position: absolute;
@@ -845,7 +851,6 @@
     to { transform: translateY(0) rotate(0); opacity: 1; }
   }
   .deck-browse { display: flex; flex: 1 1 0; min-height: 0; min-width: 0; flex-direction: column; }
-  .deck-browse-head { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 2px 10px; }
   .deck-browse-list {
     display: flex;
     flex: 1;
@@ -873,6 +878,8 @@
 
   @media (prefers-reduced-motion: reduce) {
     :root { --animate-bump: none; --animate-badge-spin: none; }
+    .pile-cards { transition: none; }
+    #add-wizard[data-browse-phase="opening"] .pile-cards { transform: none; }
     .editor-leaving, .editor-returning, .browse-card, .is-folding .browse-card { animation: none; }
   }
 
@@ -880,6 +887,24 @@
 
 @layer utilities {
   /* daisyUI's collapse and alert rules also live in the utility layer. */
+  /* Match the controls' existing press timing while the browse chrome fades. */
+  #add-wizard .browse-fade {
+    transition-property: opacity, transform, translate, box-shadow;
+    transition-duration: 300ms, var(--transition-duration-neo), var(--transition-duration-neo), var(--transition-duration-neo);
+    transition-timing-function: ease;
+  }
+  #add-wizard:is([data-browse-phase="opening"], [data-browse-phase="open"], [data-browse-phase="closing"]) .browse-fade {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #add-wizard[data-browse-phase="returning"] .browse-fade {
+    transition-duration: 500ms, var(--transition-duration-neo), var(--transition-duration-neo), var(--transition-duration-neo);
+  }
+  /* The step row and footer re-enter the layout from display:none. */
+  @starting-style {
+    #add-wizard[data-browse-phase="returning"] .browse-fade { opacity: 0; }
+  }
+
   #add-wizard .add-optional {
     @apply mt-2.5 rounded-review-sheet-control border-deck-pill border-solid border-neo-edge bg-base-200;
   }
@@ -902,6 +927,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    #add-wizard .browse-fade { transition: none; }
     body:has(#add-wizard) #app-error .alert { animation: none; }
   }
 }

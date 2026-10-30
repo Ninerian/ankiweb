@@ -24,6 +24,8 @@ window.avAddKey = (event) => {
   const target = event.target;
   const wizard = document.getElementById("add-wizard");
   if (!(target instanceof HTMLTextAreaElement) || !wizard?.contains(target)) return;
+  const phase = wizard.dataset.browsePhase;
+  if (phase === "opening" || phase === "open" || phase === "closing") return;
   if (event.shiftKey) return;
 
   const next = document.getElementById("btn-next");
@@ -49,33 +51,30 @@ window.avGuardNav = (event, front, back, hint, example, saving, message, nid, or
 
 let browseTimer;
 let browseTrigger;
+let browseOpener;
 let browseOrigin;
+let browseEditing = false;
 const browseMotionTime = (duration) =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : duration;
 const browseEvent = (name, detail = {}) =>
   document.getElementById("add-wizard")?.dispatchEvent(new CustomEvent(name, { detail }));
 
 const captureBrowseOrigin = () => {
-  const stage = document.getElementById("add-stage");
   const card = document.querySelector("#added-cards .stacked-card");
-  if (!stage || !card) {
+  if (!card) {
     browseOrigin = null;
     return;
   }
-  const stageRect = stage.getBoundingClientRect();
   const cardRect = card.getBoundingClientRect();
   browseOrigin = {
-    x: (cardRect.left + cardRect.width / 2 - stageRect.left) / stageRect.width,
-    bottom: stageRect.bottom - (cardRect.top + cardRect.height / 2),
+    x: cardRect.left + cardRect.width / 2,
+    y: cardRect.top + cardRect.height / 2,
   };
 };
 
 const positionBrowseRows = () => {
-  const stage = document.getElementById("add-stage");
-  if (!stage || !browseOrigin) return;
-  const stageRect = stage.getBoundingClientRect();
-  const x = stageRect.left + browseOrigin.x * stageRect.width;
-  const y = stageRect.bottom - browseOrigin.bottom;
+  if (!browseOrigin) return;
+  const { x, y } = browseOrigin;
   // Measure unanimated list items first; row transforms do not affect their bounds.
   const positions = [...document.querySelectorAll("#deck-cards .browse-card")].map((row) => {
     const rect = row.parentElement.getBoundingClientRect();
@@ -87,13 +86,23 @@ const positionBrowseRows = () => {
   }
 };
 
+window.avBrowseFromBack = (trigger) => {
+  browseOpener = trigger.id;
+  try {
+    document.getElementById("pile")?.click();
+  } finally {
+    browseOpener = undefined;
+  }
+};
+
 window.avOpenBrowse = (trigger) => {
   clearTimeout(browseTimer);
   document.getElementById("add-editor")?.classList.remove("animate-fresh-card");
   for (const element of document.querySelectorAll("#added-cards .animate-slide-to-added, #added-cards .animate-bump")) {
     element.classList.remove("animate-slide-to-added", "animate-bump");
   }
-  browseTrigger = trigger.id;
+  browseTrigger = browseOpener || trigger.id;
+  browseEditing = false;
   browseTimer = setTimeout(() => {
     captureBrowseOrigin();
     browseEvent("av-browse-ready");
@@ -102,10 +111,15 @@ window.avOpenBrowse = (trigger) => {
 };
 
 window.avCloseBrowse = (editing = false, phase = "open") => {
-  if (phase === "closing" || phase === "closed" || phase === "returning") return;
+  if (editing) browseEditing = true;
+  if (phase === "closing") return;
+  if (phase === "closed" || phase === "returning") {
+    if (editing) window.avBrowseFocus(true);
+    return;
+  }
   clearTimeout(browseTimer);
   const returnEditor = () => {
-    browseEvent("av-browse-returning", { editing });
+    browseEvent("av-browse-returning", { editing: browseEditing });
     const duration = browseMotionTime(500);
     if (duration) browseTimer = setTimeout(() => browseEvent("av-browse-settled"), duration);
     else browseEvent("av-browse-settled");
@@ -121,9 +135,20 @@ window.avCloseBrowse = (editing = false, phase = "open") => {
   }
 };
 
+window.avBrowseReadyFocus = () => {
+  requestAnimationFrame(() => {
+    if (document.getElementById("add-wizard")?.dataset.browsePhase === "open") {
+      document.getElementById("deck-cards")?.focus({ preventScroll: true });
+    }
+  });
+};
+
 window.avBrowseFocus = (editing) => {
   requestAnimationFrame(() => {
-    document.getElementById(editing ? "input-front" : browseTrigger)?.focus({ preventScroll: true });
+    const phase = document.getElementById("add-wizard")?.dataset.browsePhase;
+    if (phase === "returning" || phase === "closed") {
+      document.getElementById(editing ? "input-front" : browseTrigger)?.focus({ preventScroll: true });
+    }
   });
 };
 

@@ -1,12 +1,8 @@
-<section id="deck-cards" class="deck-browse" aria-labelledby="deck-cards-title"
+<section id="deck-cards" class="deck-browse" aria-labelledby="deck-cards-title" tabindex="-1"
          data-show="$_browsePhase === 'open' || $_browsePhase === 'closing'"
          data-class:is-folding="$_browsePhase === 'closing'"
          data-attr:inert="$_browsePhase === 'closing'" style="display:none">
-  <div class="deck-browse-head">
-    <h2 id="deck-cards-title" class="text-xl font-black" tabindex="-1">{{ s('app_edit_browse_title') }}</h2>
-    <button id="deck-cards-back" type="button" class="btn btn-sm rounded-deck border-2 border-neo-edge bg-base-200 font-black shadow-neo focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary"
-            data-attr:disabled="$saving" data-on:click="window.avCloseBrowse(false, $_browsePhase)">{{ s('app_edit_browse_back') }}</button>
-  </div>
+  <h2 id="deck-cards-title" class="sr-only">{{ s('app_edit_browse_title') }}</h2>
   <p id="deck-cards-legend" class="mb-3 rounded-deck bg-warning p-3 text-sm font-bold text-warning-content">{{ s('app_edit_learned_legend') }}</p>
   <ul class="deck-browse-list">
     {% for card in deck_cards|reverse %}
