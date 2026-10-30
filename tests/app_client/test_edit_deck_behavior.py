@@ -254,8 +254,10 @@ def test_deck_list_spans_sessions_and_edits_without_growing_pile(
     client.cookies.clear()
     page = client.get("/app/edit?deck=1")
     assert page.status_code == 200
-    assert set(_region(page, "deck-cards").ids) == {prior_id, *existing}
-    assert not _region(page, "added-cards").ids
+    assert _region(page, "deck-cards").ids == sorted([prior_id, *existing])
+    pile = _region(page, "added-cards")
+    assert all(f"Existing {index}" in " ".join(pile.text) for index in range(5))
+    assert "Prior session" not in " ".join(pile.text)
     for nid in (foreign, basic):
         assert _load(client, nid).status_code == 404
         assert (
@@ -271,6 +273,7 @@ def test_deck_list_spans_sessions_and_edits_without_growing_pile(
         )
         assert response.status_code == 200
         assert _signals(response)["count"] == index + 1
+        assert _signals(response)["deckCount"] == 7 + index
         added_ids = set(_run(client, lambda col: col.find_notes(""))) - {
             prior_id,
             *existing,
@@ -278,13 +281,11 @@ def test_deck_list_spans_sessions_and_edits_without_growing_pile(
             basic,
         }
     pile = _region(response, "added-cards")
-    assert "Current 0" not in " ".join(pile.text)
-    assert all(f"Current {index}" in " ".join(pile.text) for index in range(1, 5))
-    assert set(_region(response, "deck-cards").ids) == {
-        prior_id,
-        *existing,
-        *added_ids,
-    }
+    assert all(f"Current {index}" in " ".join(pile.text) for index in range(5))
+    assert "Prior session" not in " ".join(pile.text)
+    assert _region(response, "deck-cards").ids == sorted(
+        [prior_id, *existing, *added_ids]
+    )
 
     before_ids = set(_run(client, lambda col: col.find_notes("")))
     original = {
@@ -306,16 +307,15 @@ def test_deck_list_spans_sessions_and_edits_without_growing_pile(
     assert response.status_code == 200
     saved_signals = _signals(response)
     assert saved_signals["count"] == 5
+    assert saved_signals["deckCount"] == 11
     assert saved_signals["nid"] == 0
     assert saved_signals["progressReset"] is False
     assert saved_signals["learned"] is False
     assert all(saved_signals[key] == "" for key in original)
     assert not _region(response, "added-cards").has_stamp
-    assert set(_region(response, "deck-cards").ids) == {
-        prior_id,
-        *existing,
-        *added_ids,
-    }
+    assert _region(response, "deck-cards").ids == sorted(
+        [prior_id, *existing, *added_ids]
+    )
     assert set(_run(client, lambda col: col.find_notes(""))) == before_ids
     assert _signals(_load(client, prior_id))["front"] == updated["front"]
 

@@ -5,6 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import Future
+from itertools import pairwise
 from pathlib import Path
 from typing import Literal
 
@@ -221,7 +222,7 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
     expect(page.get_by_label("Hint", exact=True)).to_have_value("")
     expect(page.get_by_label("Example sentence", exact=True)).to_have_value("")
     expect(page.get_by_role("button", name="Add", exact=True)).not_to_be_visible()
-    expect(page.locator("#added-cards .add-stack-badge")).to_have_text("1 card")
+    expect(page.locator("#added-cards .add-stack-count")).to_have_text("1")
     expect(page.locator("#added-cards")).to_contain_text(front)
     saved = live_app.notes()
     assert len(saved) == 1
@@ -235,19 +236,21 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
 
     page.reload()
     expect(page.locator("#added-cards")).to_contain_text(front)
-    expect(page.locator("#added-cards .add-stack-badge")).to_have_text("1 card")
+    expect(page.locator("#added-cards .add-stack-count")).to_have_text("1")
     expect(_front(page)).to_have_value("")
     assert live_app.notes() == saved
 
-    # A new session has its own list, but must not remove the persisted note.
+    # A new session sees the persisted deck, but has no session additions.
     browser = page.context.browser
     assert browser is not None
     isolated = browser.new_context()
     try:
         other = isolated.new_page()
         other.goto(f"{live_app}/app/edit?deck=1")
-        expect(other.locator("#added-cards")).not_to_contain_text(front)
-        expect(other.locator("#added-cards .add-stack-badge")).to_have_count(0)
+        expect(other.locator("#added-cards")).to_contain_text(front)
+        expect(other.locator("#added-cards .add-stack-count")).to_have_text("1")
+        other.get_by_role("button", name="Done", exact=True).click()
+        expect(other.get_by_text("Add a card first.")).to_be_visible()
         assert live_app.notes() == saved
     finally:
         isolated.close()
@@ -312,7 +315,10 @@ def test_pile_keyboard_badge_and_back_restore_focus(
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/edit?deck=1")
-    expect(page.locator("#empty-pile-open")).to_have_count(0)
+    expect(page.locator("#pile")).to_be_disabled()
+    expect(page.locator("#added-cards .stacked-card")).to_have_count(0)
+    expect(page.locator("#added-cards .add-stack-badge")).to_have_count(0)
+    expect(page.locator("#deck-cards")).not_to_be_visible()
     _add(page)
     pile = page.locator("#pile")
     cards = page.locator("#deck-cards")
@@ -350,7 +356,9 @@ def test_pile_keyboard_badge_and_back_restore_focus(
     expect(pile).to_be_focused()
 
 
-def test_pile_and_empty_opener_support_touch(page: Page, live_app: LiveApp) -> None:
+def test_pile_supports_touch_with_existing_and_new_cards(
+    page: Page, live_app: LiveApp
+) -> None:
     old_nid = _run(
         live_app,
         lambda col: add_vocab_note(col, DeckId(1), "Old card", "Old answer"),
@@ -367,12 +375,12 @@ def test_pile_and_empty_opener_support_touch(page: Page, live_app: LiveApp) -> N
         cards = touch_page.locator("#deck-cards")
         title = touch_page.locator("#deck-cards-title")
         back = touch_page.locator("#deck-cards-back")
-        empty_opener = touch_page.locator("#empty-pile-open")
+        pile = touch_page.locator("#pile")
         badge = touch_page.locator("#added-cards .add-stack-badge")
 
-        expect(badge).to_have_count(0)
-        expect(empty_opener).to_be_visible()
-        empty_opener.tap()
+        expect(badge.locator(".add-stack-count")).to_have_text("1")
+        expect(pile).to_be_visible()
+        pile.tap()
         expect(cards).to_be_visible()
         expect(title).to_be_focused()
         expect(cards.locator("button[data-note-id]")).to_have_count(1)
@@ -381,13 +389,12 @@ def test_pile_and_empty_opener_support_touch(page: Page, live_app: LiveApp) -> N
         )
         back.tap()
         expect(cards).not_to_be_visible()
-        expect(empty_opener).to_be_focused()
+        expect(pile).to_be_focused()
 
         _to_preview(touch_page, "Session card", "Session answer")
         touch_page.get_by_role("button", name="Add", exact=True).tap()
         expect(_front(touch_page)).to_have_value("")
-        expect(badge).to_have_text("1 card")
-        pile = touch_page.locator("#pile")
+        expect(badge.locator(".add-stack-count")).to_have_text("2")
 
         pile.tap()
         expect(cards).to_be_visible()
@@ -415,6 +422,193 @@ def test_pile_and_empty_opener_support_touch(page: Page, live_app: LiveApp) -> N
         expect(pile).to_be_focused()
     finally:
         context.close()
+
+
+def test_pile_pointer_swipe_requires_upward_threshold(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Swipe card", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    cards = page.locator("#deck-cards")
+    pile = page.locator("#pile")
+    cue = page.locator(".pile-cue").bounding_box()
+    assert cue is not None
+    x = cue["x"] + cue["width"] / 2
+    y = cue["y"] + cue["height"] / 2
+
+    def drag(dx: int, dy: int) -> None:
+        page.mouse.move(x, y)
+        page.mouse.down()
+        page.mouse.move(x + dx, y + dy, steps=4)
+        page.mouse.up()
+
+    drag(0, -28)
+    expect(cards).not_to_be_visible()
+    expect(pile).to_have_attribute("aria-expanded", "false")
+    drag(45, -30)
+    expect(cards).not_to_be_visible()
+    expect(pile).to_have_attribute("aria-expanded", "false")
+    drag(0, -29)
+    expect(cards).to_be_visible()
+    expect(cards.get_by_role("button", name=re.compile("Swipe card"))).to_be_visible()
+    page.locator("#deck-cards-back").click()
+    expect(cards).not_to_be_visible()
+    expect(pile).to_be_focused()
+
+
+def test_browse_fans_and_folds_with_bounded_stagger(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), f"Fan {i}", f"Answer {i}") for i in range(15)
+        ],
+    )
+    page.emulate_media(reduced_motion="no-preference")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    wizard = page.locator("#add-wizard")
+    pile = page.locator("#pile")
+    cards = page.locator("#deck-cards")
+    expect(wizard).to_have_attribute("data-browse-phase", "closed")
+    page.evaluate(
+        """() => {
+          window.browsePhases = [];
+          window.browseAnimations = [];
+          const wizard = document.querySelector('#add-wizard');
+          new MutationObserver(() => window.browsePhases.push(wizard.dataset.browsePhase))
+            .observe(wizard, {attributes: true, attributeFilter: ['data-browse-phase']});
+          document.addEventListener('animationstart', event => {
+            if (event.target.id === 'add-editor' || event.target.matches('.browse-card')) {
+              window.browseAnimations.push({
+                target: event.target.id || 'row', name: event.animationName
+              });
+            }
+          });
+        }"""
+    )
+    pile.click()
+    expect(wizard).to_have_attribute("data-browse-phase", "open")
+    expect(cards).to_be_visible()
+    rows = cards.locator("button[data-note-id]")
+    expect(rows).to_have_count(15)
+    assert page.evaluate(
+        """() => {
+          const ids = [...document.querySelectorAll('[id]')].map(el => el.id);
+          return new Set(ids).size === ids.length;
+        }"""
+    )
+    page.wait_for_function(
+        "() => window.browseAnimations.some(event => event.target === 'row')"
+    )
+    delays = rows.evaluate_all(
+        """rows => rows.map(row => {
+          const delay = getComputedStyle(row).animationDelay.split(',')[0];
+          return delay.endsWith('ms') ? parseFloat(delay) : parseFloat(delay) * 1000;
+        })"""
+    )
+    assert max(delays) <= 250
+    assert page.evaluate(
+        "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
+    )
+    page.locator("#deck-cards-back").click()
+    expect(wizard).to_have_attribute("data-browse-phase", "closed")
+    expect(cards).not_to_be_visible()
+    expect(page.locator("#add-editor")).to_be_visible()
+    expect(pile).to_be_focused()
+    phases = page.evaluate("window.browsePhases")
+    phases = [
+        phase for i, phase in enumerate(phases) if i == 0 or phase != phases[i - 1]
+    ]
+    assert phases == ["opening", "open", "closing", "returning", "closed"]
+    animations = page.evaluate("window.browseAnimations")
+    editor_animations = [
+        event["name"] for event in animations if event["target"] == "add-editor"
+    ]
+    row_animations = {event["name"] for event in animations if event["target"] == "row"}
+    assert len(set(editor_animations)) >= 2
+    assert len(row_animations) >= 2
+    pile.click()
+    expect(wizard).to_have_attribute("data-browse-phase", "open")
+    rows.nth(0).click()
+    expect(wizard).to_have_attribute("data-browse-phase", "closed")
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_have_value("Fan 0")
+    expect(_front(page)).to_be_focused()
+    phases = page.evaluate("window.browsePhases")
+    phases = [
+        phase for i, phase in enumerate(phases) if i == 0 or phase != phases[i - 1]
+    ]
+    assert phases[-5:] == ["opening", "open", "closing", "returning", "closed"]
+
+
+def test_add_animates_stack_but_edit_does_not_append_or_animate(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.emulate_media(reduced_motion="no-preference")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    page.evaluate(
+        """() => {
+          window.stackAnimations = [];
+          document.addEventListener('animationstart', event => {
+            if (event.target.matches('.stacked-card')) {
+              window.stackAnimations.push(event.animationName);
+            }
+          });
+        }"""
+    )
+    _add(page, "Original card", "answer")
+    page.wait_for_function("() => window.stackAnimations.length > 0")
+    nid = live_app.notes()[0][0]
+    original_events = page.evaluate("window.stackAnimations.slice()")
+    page.locator("#pile").click()
+    page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("Original card")
+    _front(page).fill("Edited card")
+    _front(page).press("Enter")
+    _back(page).press("Enter")
+    page.locator("#btn-add").click()
+    stack = page.locator("#added-cards .stacked-card")
+    expect(stack).to_have_count(1)
+    expect(stack).to_contain_text("Edited card")
+    expect(page.locator("#added-cards .add-stack-count")).to_have_text("1")
+    page.evaluate(
+        """() => new Promise(resolve =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)))"""
+    )
+    assert page.evaluate("window.stackAnimations") == original_events
+    assert [note[0] for note in live_app.notes()] == [nid]
+
+
+def test_reduced_motion_browse_pick_and_close_are_usable(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(
+        live_app, lambda col: add_vocab_note(col, DeckId(1), "Still card", "answer")
+    )
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    pile = page.locator("#pile")
+    cards = page.locator("#deck-cards")
+    pile.click()
+    row = cards.locator(f"button[data-note-id='{nid}']")
+    expect(row).to_be_visible()
+    duration = row.evaluate(
+        """el => {
+          const value = getComputedStyle(el).animationDuration.split(',')[0];
+          return value.endsWith('ms') ? parseFloat(value) : parseFloat(value) * 1000;
+        }"""
+    )
+    assert duration <= 1
+    page.keyboard.press("Escape")
+    expect(cards).not_to_be_visible()
+    expect(pile).to_be_focused()
+    pile.click()
+    row.click()
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_have_value("Still card")
+    expect(_front(page)).to_be_focused()
 
 
 def _add_unsupported_basic_note(col: Collection, vocab_note_id: NoteId) -> None:
@@ -454,36 +648,45 @@ def _seed_deck_list_notes(col: Collection) -> list[NoteId]:
 
 
 @pytest.mark.parametrize(
-    ("live_app", "empty_label", "pile_label"),
+    ("live_app", "unit", "label"),
     [
-        (
-            "",
-            re.compile(r"edit.*cards.*5", re.IGNORECASE),
-            "1 card added. Tap to edit.",
-        ),
+        ("", "cards", "cards in this deck. Tap or swipe up to edit."),
         (
             "de_DE",
-            re.compile(r"karten.*bearbeiten.*5", re.IGNORECASE),
-            "1 Karte hinzugefügt. Tippen zum Bearbeiten.",
+            "Karten",
+            "Karten in diesem Stapel. Zum Bearbeiten tippen oder nach oben wischen.",
         ),
     ],
     indirect=["live_app"],
 )
 def test_deck_list_includes_previous_sessions_and_edits_in_place(
-    page: Page, live_app: LiveApp, empty_label: re.Pattern[str], pile_label: str
+    page: Page, live_app: LiveApp, unit: str, label: str
 ) -> None:
     ids = _run(live_app, _seed_deck_list_notes)
     before_ids = _run(live_app, lambda col: sorted(col.find_notes("")))
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/edit?deck=1")
-    empty_opener = page.locator("#empty-pile-open")
-    expect(empty_opener).to_have_accessible_name(empty_label)
-    expect(page.locator("#added-cards .add-stack-badge")).to_have_count(0)
-    empty_opener.click()
+    pile = page.locator("#pile")
+    badge = page.locator("#added-cards .add-stack-badge")
+    stack = page.locator("#added-cards .stacked-card")
+    expect(badge.locator(".add-stack-count")).to_have_text("5")
+    expect(badge.locator(".add-stack-unit")).to_have_text(unit)
+    expect(pile).to_have_accessible_name(f"5 {label}")
+    expect(stack).to_have_count(5)
+    assert stack.evaluate_all(
+        "cards => cards.map(card => Number(card.dataset.noteId))"
+    ) == list(reversed(ids))
+    pile.click()
     cards = page.locator("#deck-cards")
     expect(cards).to_be_visible()
     expect(page.locator("#deck-cards-title")).to_be_focused()
     expect(cards.locator("button[data-note-id]")).to_have_count(5)
+    assert (
+        cards.locator("button[data-note-id]").evaluate_all(
+            "rows => rows.map(row => Number(row.dataset.noteId))"
+        )
+        == ids
+    )
     for index, nid in enumerate(ids):
         expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text(
             f"History {index}"
@@ -492,7 +695,7 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     expect(cards).not_to_contain_text("Unsupported basic")
     page.locator("#deck-cards-back").click()
     expect(cards).not_to_be_visible()
-    expect(empty_opener).to_be_focused()
+    expect(pile).to_be_focused()
 
     page.locator("#input-front").fill("Session card")
     page.locator("#input-front").press("Enter")
@@ -500,10 +703,12 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
     expect(page.locator("#input-front")).to_have_value("")
-    pile = page.locator("#pile")
-    expect(pile).to_have_accessible_name(pile_label)
-    badge = page.locator("#added-cards .add-stack-badge")
-    expect(badge).to_contain_text("1")
+    expect(badge.locator(".add-stack-count")).to_have_text("6")
+    expect(pile).to_have_accessible_name(f"6 {label}")
+    stack_ids = stack.evaluate_all(
+        "cards => cards.map(card => Number(card.dataset.noteId))"
+    )
+    assert stack_ids[1:] == list(reversed(ids[1:]))
     pile.click()
     expect(cards.locator("button[data-note-id]")).to_have_count(6)
     cards.locator(f"button[data-note-id='{ids[2]}']").click()
@@ -520,7 +725,14 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
     expect(front).to_have_value("")
-    expect(badge).to_contain_text("1")
+    expect(badge.locator(".add-stack-count")).to_have_text("6")
+    assert (
+        stack.evaluate_all("cards => cards.map(card => Number(card.dataset.noteId))")
+        == stack_ids
+    )
+    expect(page.locator(f"#added-cards [data-note-id='{ids[2]}']")).to_contain_text(
+        "Edited historical card"
+    )
     expect(page.locator("#added-cards")).to_contain_text("Session card")
     assert _run(live_app, lambda col: col.get_note(ids[2])["Front"]) == (
         "Edited historical card"
@@ -531,6 +743,12 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     pile.click()
     expect(cards.locator(f"button[data-note-id='{ids[2]}']")).to_contain_text(
         "Edited historical card"
+    )
+    assert (
+        cards.locator("button[data-note-id]").evaluate_all(
+            "rows => rows.map(row => Number(row.dataset.noteId))"
+        )[:5]
+        == ids
     )
 
 
@@ -549,7 +767,7 @@ def test_empty_session_list_reopens_after_edit_and_selects_another_card(
     )
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/edit?deck=1")
-    opener = page.locator("#empty-pile-open")
+    opener = page.locator("#pile")
     cards = page.locator("#deck-cards")
     front = page.locator("#input-front")
 
@@ -566,7 +784,10 @@ def test_empty_session_list_reopens_after_edit_and_selects_another_card(
     assert (
         _run(live_app, lambda col: col.get_note(ids[0])["Front"]) == "Edited existing"
     )
-    expect(page.locator("#added-cards .add-stack-badge")).to_have_count(0)
+    expect(page.locator("#added-cards .add-stack-count")).to_have_text("2")
+    page.get_by_role("button", name="Done", exact=True).click()
+    expect(page.get_by_text("Add a card first.")).to_be_visible()
+    expect(page.get_by_role("dialog")).not_to_be_visible()
 
     opener.click()
     expect(cards).to_be_visible()
@@ -599,7 +820,7 @@ def test_failed_card_load_keeps_list_open_and_can_retry(
     )
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/edit?deck=1")
-    page.locator("#empty-pile-open").click()
+    page.locator("#pile").click()
     cards = page.locator("#deck-cards")
     row = cards.locator(f"button[data-note-id='{nid}']")
     url = f"{live_app}/app/edit/card/{nid}?deck=1"
@@ -736,7 +957,7 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     before = _progress(live_app, nid)
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/edit?deck=1")
-    opener = page.locator("#empty-pile-open")
+    opener = page.locator("#pile")
     cards = page.locator("#deck-cards")
     opener.click()
     expect(cards.locator("#deck-cards-legend")).to_have_text(legend)
@@ -785,7 +1006,7 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     assert after[5:] == (0, 0)
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Edited reviewed"
     assert _run(live_app, lambda col: len(col.find_notes(""))) == 1
-    expect(page.locator("#added-cards .add-stack-badge")).to_have_count(0)
+    expect(page.locator("#added-cards .add-stack-count")).to_have_text("1")
     opener.click()
     expect(row).to_contain_text("Edited reviewed")
     expect(row).not_to_contain_text(marker)
@@ -855,7 +1076,7 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
     monkeypatch.setattr(scheduler_class, "schedule_cards_as_new", fail_once)
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/edit?deck=1")
-    page.locator("#empty-pile-open").click()
+    page.locator("#pile").click()
     page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
     front = page.locator("#input-front")
     expect(front).to_have_value("Reviewed")
@@ -880,7 +1101,7 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
     page.context.clear_cookies()
     assert page.context.cookies() == []
     page.goto(f"{live_app}/app/edit?deck=1")
-    page.locator("#empty-pile-open").click()
+    page.locator("#pile").click()
     page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
     expect(front).to_have_value("Edited reviewed")
     expect(page.locator("#edit-warning")).to_be_visible()
@@ -912,30 +1133,35 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
 
 
 @pytest.mark.parametrize(
-    ("live_app", "one", "two", "five", "accessible_label"),
+    ("live_app", "unit", "done", "summary_label"),
     [
-        ("", "1 card", "2 cards", "5 cards", "Cards added"),
-        ("de_DE", "1 Karte", "2 Karten", "5 Karten", "Hinzugefügte Karten"),
+        ("", "cards", "Done", "Cards added"),
+        ("de_DE", "Karten", "Fertig", "Hinzugefügte Karten"),
     ],
     indirect=["live_app"],
 )
-def test_added_stack_badge_counts_session_cards(
-    page: Page,
-    live_app: LiveApp,
-    one: str,
-    two: str,
-    five: str,
-    accessible_label: str,
+def test_deck_badge_and_session_summary_count_different_cards(
+    page: Page, live_app: LiveApp, unit: str, done: str, summary_label: str
 ) -> None:
+    _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), f"Previous {i}", f"Answer {i}")
+            for i in range(2)
+        ],
+    )
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/edit?deck=1")
     region = page.locator("#added-cards")
     badge = region.locator(".add-stack-badge")
-    expect(page.locator("#hud-count")).to_have_count(0)
-    expect(badge).to_have_count(0)
-    expect(region.locator(".card")).to_have_count(0)
+    count = badge.locator(".add-stack-count")
+    pile = page.locator("#pile")
+    expect(count).to_have_text("2")
+    expect(badge.locator(".add-stack-unit")).to_have_text(unit)
+    expect(badge).to_have_attribute("aria-hidden", "true")
+    expect(pile).to_have_accessible_name(re.compile(r"^2 "))
 
-    for index in range(1, 6):
+    for index in range(1, 4):
         front = f"Question {index}"
         page.locator("#input-front").fill(front)
         page.locator("#input-front").press("Enter")
@@ -943,27 +1169,24 @@ def test_added_stack_badge_counts_session_cards(
         page.locator("#input-back").fill(f"Answer {index}")
         page.locator("#input-back").press("Enter")
         expect(page.locator("#preview")).to_contain_text(front)
-        expect(page.locator("#btn-add")).to_be_visible()
         page.locator("#btn-add").click()
         expect(region).to_contain_text(front)
-        expect(badge).to_be_visible()
-        expect(badge).to_have_attribute("aria-hidden", "true")
-        assert f"{index} {accessible_label}" in region.aria_snapshot()
+        expect(count).to_have_text(str(index + 2))
+        expect(pile).to_have_accessible_name(re.compile(rf"^{index + 2} "))
         expect(page.locator("#input-front")).to_have_value("")
-        if index == 1:
-            expect(badge).to_have_text(one)
-        elif index == 2:
-            expect(badge).to_have_text(two)
-        elif index == 5:
-            expect(badge).to_have_text(five)
 
-    expect(region.locator(".card")).to_have_count(4)
+    expect(region.locator(".stacked-card")).to_have_count(5)
     saved = live_app.notes()
     assert len(saved) == 5
+    page.get_by_role("button", name=done, exact=True).click()
+    summary = page.get_by_role("dialog")
+    expect(summary).to_be_visible()
+    expect(summary).to_contain_text(summary_label)
+    expect(summary.locator("p span")).to_have_text("3")
     page.reload()
-    expect(badge).to_have_text(five)
-    assert f"5 {accessible_label}" in region.aria_snapshot()
-    expect(region.locator(".card")).to_have_count(4)
+    expect(count).to_have_text("5")
+    expect(pile).to_have_accessible_name(re.compile(r"^5 "))
+    expect(region.locator(".stacked-card")).to_have_count(5)
     assert live_app.notes() == saved
 
 
@@ -972,7 +1195,7 @@ def test_double_click_add_saves_only_one_note(page: Page, live_app: LiveApp) -> 
     _to_preview(page, "Double click", "one note")
     page.get_by_role("button", name="Add", exact=True).dblclick()
     expect(_front(page)).to_be_visible()
-    expect(page.locator("#added-cards .add-stack-badge")).to_have_text("1 card")
+    expect(page.locator("#added-cards .add-stack-count")).to_have_text("1")
     saved = live_app.notes()
     assert len(saved) == 1
     assert saved[0][1][:2] == ["Double click", "one note"]
@@ -980,39 +1203,64 @@ def test_double_click_add_saves_only_one_note(page: Page, live_app: LiveApp) -> 
     assert live_app.notes() == saved
 
 
-def test_added_cards_overlap_without_horizontal_overflow(
+def test_five_card_floor_stack_is_opaque_stepped_and_does_not_overflow(
     page: Page, live_app: LiveApp
 ) -> None:
+    ids = _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), f"Floor {i}", f"Answer {i}")
+            for i in range(6)
+        ],
+    )
     page.emulate_media(reduced_motion="reduce")
     page.goto(f"{live_app}/app/edit?deck=1")
-    _add(page, "Hund", "dog")
-    _add(page, "Katze", "cat")
-
     region = page.locator("#added-cards")
-    cards = region.locator(".card")
-    expect(cards).to_have_count(2)
-    expect(cards.nth(0)).to_contain_text("Katze")
-    expect(cards.nth(1)).to_contain_text("Hund")
-    expect(cards.nth(0)).to_be_visible()
-    expect(cards.nth(1)).to_be_visible()
+    cards = region.locator(".stacked-card")
+    expect(cards).to_have_count(5)
+    assert cards.evaluate_all(
+        "els => els.map(el => Number(el.dataset.noteId))"
+    ) == list(reversed(ids[-5:]))
+    geometry = cards.evaluate_all(
+        """els => els.map(el => {
+          const box = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          const transform = new DOMMatrixReadOnly(style.transform);
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 1;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = style.backgroundColor;
+          ctx.fillRect(0, 0, 1, 1);
+          return {
+            top: box.top, bottom: box.bottom, height: el.offsetHeight,
+            opacity: Number(style.opacity),
+            alpha: ctx.getImageData(0, 0, 1, 1).data[3],
+            z: Number(style.zIndex),
+            lift: transform.m42, rotation: transform.m12,
+            floor: parseFloat(style.bottom), shadow: style.boxShadow,
+          };
+        })"""
+    )
+    assert all(card["height"] == 104 for card in geometry)
+    assert all(card["opacity"] == 1 and card["alpha"] == 255 for card in geometry)
+    assert all(geometry[i]["z"] > geometry[i + 1]["z"] for i in range(4))
+    assert [card["lift"] for card in geometry] == [0, -26, -52, -78, -104]
+    assert all(card["floor"] == 38 and card["rotation"] != 0 for card in geometry)
+    assert all(card["shadow"] != "none" for card in geometry)
+    assert (
+        page.locator("#add-stage").evaluate("el => getComputedStyle(el).perspective")
+        == "1000px"
+    )
+    for front, behind in pairwise(geometry):
+        assert 5 < front["top"] - behind["top"] < 45
+        assert behind["bottom"] > front["top"]
 
-    area = region.bounding_box()
-    first = cards.nth(0).bounding_box()
-    second = cards.nth(1).bounding_box()
-    assert area is not None
-    assert first is not None
-    assert second is not None
-    for card in (first, second):
-        assert area["x"] <= card["x"]
-        assert card["x"] + card["width"] <= area["x"] + area["width"]
-        assert area["y"] <= card["y"]
-        assert card["y"] + card["height"] <= area["y"] + area["height"]
-    assert max(first["x"], second["x"]) < min(
-        first["x"] + first["width"], second["x"] + second["width"]
-    )
-    assert max(first["y"], second["y"]) < min(
-        first["y"] + first["height"], second["y"] + second["height"]
-    )
+    pile_box = page.locator("#pile").bounding_box()
+    badge_box = region.locator(".add-stack-badge").bounding_box()
+    cue_box = region.locator(".pile-cue").bounding_box()
+    assert pile_box is not None and badge_box is not None and cue_box is not None
+    assert badge_box["x"] > pile_box["x"] + pile_box["width"] / 2
+    assert cue_box["y"] > pile_box["y"] + pile_box["height"] / 2
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )

@@ -18,7 +18,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from ankiweb.app import create_app
-from ankiweb.core.app_client.vocab import NOTETYPE_NAME, escape_field, highlight_example
+from ankiweb.core.app_client.vocab import (
+    NOTETYPE_NAME,
+    add_vocab_note,
+    escape_field,
+    highlight_example,
+)
 from ankiweb.core.auth import COOKIE, auth_token
 from ankiweb.core.config import Settings
 
@@ -270,6 +275,25 @@ def _pile(text: str) -> str:
     return text.split('id="deck-cards"', 1)[0]
 
 
+def _stack_ids(text: str) -> list[int]:
+    return [
+        int(nid)
+        for nid in re.findall(
+            r'class="stacked-card\b[^"]*"[^>]*data-note-id="(\d+)"', _pile(text)
+        )
+    ]
+
+
+def _list_ids(text: str) -> list[int]:
+    return [
+        int(nid)
+        for nid in re.findall(
+            r'class="browse-card\b[^"]*"[^>]*data-note-id="(\d+)"',
+            text.split('id="deck-cards"', 1)[1],
+        )
+    ]
+
+
 class _TextResponse(Protocol):
     @property
     def text(self) -> str: ...
@@ -329,6 +353,7 @@ def test_commit_persists_escaped_note_and_patches_session_cards(
         "learned": False,
         "progressReset": False,
         "count": 1,
+        "deckCount": 1,
         "error": "",
     }
 
@@ -424,7 +449,7 @@ def test_commit_rejects_invalid_deck(client: TestClient, query: str) -> None:
     assert _notes(client) == []
 
 
-def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
+def test_session_count_is_scoped_but_pile_is_deck_wide(client: TestClient) -> None:
     assert client.portal is not None
     service = cast(FastAPI, client.app).state.service
     other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
@@ -440,13 +465,13 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     )
     assert _signals(second)["count"] == 1
     assert _badge(second.text) == "1 card"
-    assert ">B</p>" in second.text
-    assert ">A</p>" not in second.text
-    assert ">A</p>" in client.get("/app/edit?deck=1").text
+    assert ">B</span>" in second.text
+    assert ">A</span>" not in second.text
+    assert ">A</span>" in client.get("/app/edit?deck=1").text
     other_page = client.get(f"/app/edit?deck={other_deck}")
-    assert ">B</p>" in other_page.text
+    assert ">B</span>" in other_page.text
     assert _badge(other_page.text) == "1 card"
-    assert ">A</p>" not in other_page.text
+    assert ">A</span>" not in other_page.text
     denied = client.post(
         f"/app/edit/commit?deck={other_deck}",
         json={"nid": first_nid, "front": "Changed", "back": "changed"},
@@ -454,35 +479,84 @@ def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     assert denied.status_code == 404
     assert _signals(denied) == {"error": "Could not add the card. Please try again."}
     assert len(_notes(client)) == 2
-    assert ">A</p>" in client.get("/app/edit?deck=1").text
+    assert ">A</span>" in client.get("/app/edit?deck=1").text
 
     client.cookies.clear()
     empty_page = client.get("/app/edit?deck=1")
     assert "count: 0" in empty_page.text
-    assert ">A</p>" not in _pile(empty_page.text)
+    assert "deckCount: 1" in empty_page.text
+    assert ">A</span>" in _pile(empty_page.text)
     assert f'data-note-id="{first_nid}"' in empty_page.text
-    assert "No cards added yet" in empty_page.text
-    assert "add-stack-badge" not in empty_page.text
+    assert _badge(empty_page.text) == "1 card"
     edited = client.post(
         "/app/edit/commit?deck=1",
         json={"nid": first_nid, "front": "Changed", "back": "changed"},
     )
     assert edited.status_code == 200
     assert _signals(edited)["count"] == 0
+    assert _signals(edited)["deckCount"] == 1
+    assert ">Changed</span>" in _pile(edited.text)
     third = client.post("/app/edit/commit?deck=1", json={"front": "C", "back": "c"})
     assert _signals(third)["count"] == 1
-    assert _badge(third.text) == "1 card"
-    assert ">C</p>" in third.text
-    assert ">Changed</p>" not in _pile(third.text)
+    assert _signals(third)["deckCount"] == 2
+    assert _badge(third.text) == "2 cards"
+    assert ">C</span>" in _pile(third.text)
+    assert ">Changed</span>" in _pile(third.text)
 
     client.cookies.clear()
     client.cookies.set("app_sid", session_a)
     page = client.get("/app/edit?deck=1")
     assert "count: 1" in page.text
-    assert _badge(page.text) == "1 card"
-    assert ">Changed</p>" in _pile(page.text)
-    assert ">C</p>" not in _pile(page.text)
+    assert "deckCount: 2" in page.text
+    assert _badge(page.text) == "2 cards"
+    assert ">Changed</span>" in _pile(page.text)
+    assert ">C</span>" in _pile(page.text)
     assert len(_notes(client)) == 3
+
+
+def test_preexisting_deck_cards_render_before_any_session_additions(
+    client: TestClient,
+) -> None:
+    assert client.portal is not None
+    service = cast(FastAPI, client.app).state.service
+
+    def seed(col: Collection) -> tuple[list[NoteId], NoteId]:
+        other_deck = col.decks.id("Other")
+        assert other_deck is not None
+        note_ids = [
+            add_vocab_note(col, DeckId(1), f"Existing {index}", "Answer")
+            for index in range(6)
+        ]
+        other_id = add_vocab_note(col, other_deck, "Other deck", "Answer")
+        return note_ids, other_id
+
+    note_ids, other_id = client.portal.call(service.run, seed)
+    page = client.get("/app/edit?deck=1")
+    assert "count: 0" in page.text
+    assert "deckCount: 6" in page.text
+    assert _badge(page.text) == "6 cards"
+    assert _stack_ids(page.text) == list(reversed(note_ids[-5:]))
+    assert _list_ids(page.text) == note_ids
+    assert other_id not in _list_ids(page.text)
+
+    updated = client.post(
+        "/app/edit/commit?deck=1",
+        json={"nid": note_ids[0], "front": "Updated existing", "back": "Answer"},
+    )
+    assert _signals(updated)["count"] == 0
+    assert _signals(updated)["deckCount"] == 6
+    assert _stack_ids(updated.text) == list(reversed(note_ids[-5:]))
+    assert _list_ids(updated.text) == note_ids
+    assert "Updated existing" in updated.text
+
+    added = client.post(
+        "/app/edit/commit?deck=1", json={"front": "New", "back": "Answer"}
+    )
+    added_id = _stack_ids(added.text)[0]
+    assert _signals(added)["count"] == 1
+    assert _signals(added)["deckCount"] == 7
+    assert _stack_ids(added.text) == [added_id, *reversed(note_ids[-4:])]
+    assert _list_ids(added.text) == [*note_ids, added_id]
 
 
 @pytest.mark.parametrize("nid", [1, -1, "1", True, None])
@@ -526,29 +600,30 @@ def test_commit_does_not_hide_programming_errors(
         )
 
 
-def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> None:
-    for index in range(5):
+def test_deck_stack_shows_latest_five_and_counts_all(client: TestClient) -> None:
+    for index in range(6):
         response = client.post(
             "/app/edit/commit?deck=1",
             json={"front": f"Front {index}", "back": f"Back {index}"},
         )
         assert _signals(response)["count"] == index + 1
     pile = _pile(response.text)
+    assert _signals(response)["deckCount"] == 6
     assert "Front 0" not in pile
-    for index in range(1, 5):
+    for index in range(1, 6):
         assert f"Front {index}" in pile
-    assert pile.index("Front 4") < pile.index("Front 3")
-    assert pile.index("add-stack-badge") < pile.index("Front 4")
+    assert pile.index("Front 5") < pile.index("Front 4")
     assert "Front 0" in response.text
-    assert _badge(response.text) == "5 cards"
+    assert _badge(response.text) == "6 cards"
     assert response.text.count("add-stack-badge") == 1
     page = client.get("/app/edit?deck=1")
-    assert "count: 5" in page.text
-    assert _badge(page.text) == "5 cards"
+    assert "count: 6" in page.text
+    assert "deckCount: 6" in page.text
+    assert _badge(page.text) == "6 cards"
     assert "Front 0" not in _pile(page.text)
-    assert "Front 4" in _pile(page.text)
+    assert "Front 5" in _pile(page.text)
 
-    match = re.search(r'data-note-id="(\d+)"', response.text)
+    match = re.search(r'data-note-id="(\d+)"', _pile(response.text))
     assert match is not None
     assert client.portal is not None
     nid = NoteId(int(match.group(1)))
@@ -556,10 +631,11 @@ def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> Non
         cast(FastAPI, client.app).state.service.run, lambda col: col.remove_notes([nid])
     )
     page = client.get("/app/edit?deck=1")
-    assert "count: 4" in page.text
-    assert _badge(page.text) == "4 cards"
+    assert "count: 5" in page.text
+    assert "deckCount: 5" in page.text
+    assert _badge(page.text) == "5 cards"
     assert "Front 0" in _pile(page.text)
-    assert "Front 4" not in _pile(page.text)
+    assert "Front 5" not in _pile(page.text)
 
 
 def test_added_cards_span_query_batches(client: TestClient) -> None:
@@ -571,8 +647,8 @@ def test_added_cards_span_query_batches(client: TestClient) -> None:
     assert _signals(response)["count"] == 33
     page = client.get("/app/edit?deck=1")
     assert "count: 33" in page.text
-    assert "Batch 28" not in _pile(page.text)
-    for index in range(29, 33):
+    assert "Batch 27" not in _pile(page.text)
+    for index in range(28, 33):
         assert f"Batch {index}" in _pile(page.text)
 
 
@@ -588,7 +664,7 @@ def test_deleted_notes_are_removed_without_losing_other_decks(
         response = client.post(
             f"/app/edit/commit?deck={deck}", json={"front": front, "back": "Answer"}
         )
-        match = re.search(r'data-note-id="(\d+)"', response.text)
+        match = re.search(r'data-note-id="(\d+)"', _pile(response.text))
         assert match is not None
         return NoteId(int(match.group(1)))
 
@@ -599,25 +675,27 @@ def test_deleted_notes_are_removed_without_losing_other_decks(
 
     page = client.get("/app/edit?deck=1")
     assert "count: 1" in page.text
-    assert ">First</p>" in page.text
-    assert ">Last</p>" not in page.text
+    assert "deckCount: 1" in page.text
+    assert ">First</span>" in page.text
+    assert ">Last</span>" not in page.text
     other_page = client.get(f"/app/edit?deck={other_deck}")
     assert "count: 1" in other_page.text
-    assert ">Other</p>" in other_page.text
+    assert ">Other</span>" in other_page.text
 
     response = client.post(
         "/app/edit/commit?deck=1", json={"front": "New", "back": "Answer"}
     )
     assert _signals(response)["count"] == 2
-    assert ">New</p>" in response.text
-    assert ">First</p>" in response.text
-    assert ">Last</p>" not in response.text
+    assert _signals(response)["deckCount"] == 2
+    assert ">New</span>" in response.text
+    assert ">First</span>" in response.text
+    assert ">Last</span>" not in response.text
     client.portal.call(service.run, lambda col: col.remove_notes([first]))
     assert "count: 1" in client.get("/app/edit?deck=1").text
-    assert ">Other</p>" in client.get(f"/app/edit?deck={other_deck}").text
+    assert ">Other</span>" in client.get(f"/app/edit?deck={other_deck}").text
 
 
-def test_changed_note_types_are_excluded_from_session_stack(
+def test_changed_note_types_are_excluded_from_deck_stack(
     client: TestClient,
 ) -> None:
     assert client.portal is not None
@@ -631,7 +709,7 @@ def test_changed_note_types_are_excluded_from_session_stack(
             json={"front": f"Front {index}", "back": f"Back {index}"},
         )
         assert _signals(response)["count"] == index + 1
-        match = re.search(r'data-note-id="(\d+)"', response.text)
+        match = re.search(r'data-note-id="(\d+)"', _pile(response.text))
         assert match is not None
         note_ids.append(NoteId(int(match.group(1))))
     original_sid = client.cookies.get("app_sid")
@@ -647,6 +725,7 @@ def test_changed_note_types_are_excluded_from_session_stack(
         "/app/edit/commit?deck=1", json={"front": "Other session", "back": "Answer"}
     )
     assert _signals(separate)["count"] == 1
+    separate_nid = _stack_ids(separate.text)[0]
     separate_sid = client.cookies.get("app_sid")
     assert separate_sid and separate_sid != original_sid
 
@@ -658,33 +737,48 @@ def test_changed_note_types_are_excluded_from_session_stack(
     page = client.get("/app/edit?deck=1")
     assert page.status_code == 200
     assert "count: 5" in page.text
+    assert "deckCount: 6" in page.text
+    assert _list_ids(page.text) == [
+        *(note_ids[index] for index in (1, 2, 3, 4, 6)),
+        separate_nid,
+    ]
     for index in (2, 3, 4, 6):
-        assert f">Front {index}</p>" in _pile(page.text)
+        assert f">Front {index}</span>" in _pile(page.text)
     for index in (0, 1, 5):
-        assert f">Front {index}</p>" not in _pile(page.text)
+        assert f">Front {index}</span>" not in _pile(page.text)
     pile = _pile(page.text)
-    assert pile.index(">Front 6</p>") < pile.index(">Front 4</p>")
+    assert ">Other session</span>" in pile
+    assert pile.index(">Other session</span>") < pile.index(">Front 6</span>")
+    assert pile.index(">Front 6</span>") < pile.index(">Front 4</span>")
     other_page = client.get(f"/app/edit?deck={other_deck}")
     assert "count: 1" in other_page.text
-    assert ">Other deck</p>" in other_page.text
+    assert ">Other deck</span>" in other_page.text
 
     saved = client.post(
         "/app/edit/commit?deck=1", json={"front": "Front 7", "back": "Back 7"}
     )
     assert saved.status_code == 200
     assert _signals(saved)["count"] == 6
+    assert _signals(saved)["deckCount"] == 7
+    assert _list_ids(saved.text) == [
+        *(note_ids[index] for index in (1, 2, 3, 4, 6)),
+        separate_nid,
+        _stack_ids(saved.text)[0],
+    ]
     for index in (3, 4, 6, 7):
-        assert f">Front {index}</p>" in _pile(saved.text)
+        assert f">Front {index}</span>" in _pile(saved.text)
     for index in (0, 1, 2, 5):
-        assert f">Front {index}</p>" not in _pile(saved.text)
+        assert f">Front {index}</span>" not in _pile(saved.text)
+    assert ">Other session</span>" in _pile(saved.text)
     assert "count: 6" in client.get("/app/edit?deck=1").text
 
     client.cookies.clear()
     client.cookies.set("app_sid", separate_sid)
     separate_page = client.get("/app/edit?deck=1")
     assert "count: 1" in separate_page.text
-    assert ">Other session</p>" in separate_page.text
-    assert ">Front 7</p>" not in _pile(separate_page.text)
+    assert ">Other session</span>" in separate_page.text
+    assert "deckCount: 7" in separate_page.text
+    assert ">Front 7</span>" in _pile(separate_page.text)
 
 
 def test_added_stack_does_not_hide_incompatible_vocab_model(
@@ -723,16 +817,24 @@ def test_added_note_follows_card_moved_between_decks(client: TestClient) -> None
         col.set_deck(card_ids, deck)
 
     client.portal.call(service.run, lambda col: move(col, other_deck))
-    assert "count: 0" in client.get("/app/edit?deck=1").text
+    source_page = client.get("/app/edit?deck=1")
+    assert "count: 0" in source_page.text
+    assert "deckCount: 0" in source_page.text
+    assert ">Moved</span>" not in _pile(source_page.text)
     other_page = client.get(f"/app/edit?deck={other_deck}")
     assert "count: 1" in other_page.text
-    assert ">Moved</p>" in other_page.text
+    assert "deckCount: 1" in other_page.text
+    assert ">Moved</span>" in _pile(other_page.text)
 
     client.portal.call(service.run, lambda col: move(col, DeckId(1)))
-    assert "count: 0" in client.get(f"/app/edit?deck={other_deck}").text
+    other_page = client.get(f"/app/edit?deck={other_deck}")
+    assert "count: 0" in other_page.text
+    assert "deckCount: 0" in other_page.text
+    assert ">Moved</span>" not in _pile(other_page.text)
     page = client.get("/app/edit?deck=1")
     assert "count: 1" in page.text
-    assert ">Moved</p>" in page.text
+    assert "deckCount: 1" in page.text
+    assert ">Moved</span>" in _pile(page.text)
 
 
 def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
@@ -746,7 +848,6 @@ def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
     }
     first = client.post("/app/edit/commit?deck=1", json=values)
     assert _signals(first)["count"] == 1
-    assert "animate-slide-to-added" in _pile(first.text)
     assert "data-ts=" in _pile(first.text)
     nid = _notes(client)[0]
     client.post("/app/edit/commit?deck=1", json={"front": "Second", "back": "Two"})
@@ -789,6 +890,7 @@ def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
         "learned": False,
         "progressReset": False,
         "count": 2,
+        "deckCount": 2,
         "error": "",
     }
     assert response.text.index("Second") < response.text.index("Updated")
@@ -1077,6 +1179,10 @@ def test_learned_edit_reset_failure_survives_reopen_and_retries(
         sid = client.cookies.get("app_sid")
         assert sid
         nid, cid = _seed_learned_edit(client)
+        learned_page = client.get("/app/edit?deck=1")
+        assert _stack_ids(learned_page.text) == [nid]
+        assert _list_ids(learned_page.text) == [nid]
+        assert 'aria-describedby="deck-cards-legend"' in learned_page.text
         before = _reset_snapshot(client, nid, cid)
         edit = client.post(f"/app/edit/card/{nid}?deck=1")
         loaded = _signals(edit)
@@ -1095,6 +1201,7 @@ def test_learned_edit_reset_failure_survives_reopen_and_retries(
             "/app/edit/commit?deck=1", json={**_RESET_ORIGINAL, "nid": nid}
         )
         assert _signals(unchanged)["progressReset"] is False
+        assert 'aria-describedby="deck-cards-legend"' in unchanged.text
         assert calls == []
         assert _reset_snapshot(client, nid, cid) == before
         assert _signals(client.post(f"/app/edit/card/{nid}?deck=1"))["learned"] is True
@@ -1139,6 +1246,11 @@ def test_learned_edit_reset_failure_survives_reopen_and_retries(
         retry = client.post("/app/edit/commit?deck=1", json=submitted)
         assert retry.status_code == 200
         assert _signals(retry)["progressReset"] is True
+        assert _signals(retry)["count"] == 0
+        assert _signals(retry)["deckCount"] == 1
+        assert _stack_ids(retry.text) == [nid]
+        assert _list_ids(retry.text) == [nid]
+        assert 'aria-describedby="deck-cards-legend"' not in retry.text
         assert calls == [([cid], True)] * 2
         assert _reset_pending(client) == []
         fields, reset = _reset_snapshot(client, nid, cid)
@@ -1476,12 +1588,12 @@ def test_edit_and_update_reject_changed_note_type(client: TestClient) -> None:
         "/app/edit/commit?deck=1", json={"front": "New", "back": "Answer"}
     )
     assert _signals(saved)["count"] == 1
-    assert ">New</p>" in saved.text
-    assert ">Typed</p>" not in saved.text
+    assert ">New</span>" in saved.text
+    assert ">Typed</span>" not in saved.text
     page = client.get("/app/edit?deck=1")
     assert "count: 1" in page.text
-    assert ">New</p>" in page.text
-    assert ">Typed</p>" not in page.text
+    assert ">New</span>" in page.text
+    assert ">Typed</span>" not in page.text
 
 
 @pytest.mark.parametrize("query", ["", "?deck=nope", "?deck=999999999"])
