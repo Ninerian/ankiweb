@@ -604,6 +604,7 @@ class _EditRoutes:
                         "count": count,
                         "deckCount": len(deck_cards),
                         "error": "",
+                        **({"_editSaved": True} if nid else {}),
                     }
                 ),
             ]

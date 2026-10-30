@@ -49,6 +49,12 @@ window.avGuardNav = (event, front, back, hint, example, saving, message, nid, or
   }
 };
 
+window.avBackKey = (event, control) => {
+  if (control.hasAttribute("href") || (event.key !== "Enter" && event.key !== " ")) return;
+  event.preventDefault();
+  if (!event.repeat && !event.isComposing) control.click();
+};
+
 let browseTimer;
 let browseTrigger;
 let browseOpener;
@@ -108,6 +114,10 @@ window.avOpenBrowse = (trigger) => {
     browseEvent("av-browse-ready");
     positionBrowseRows();
   }, browseMotionTime(300));
+};
+
+window.avOpenBrowseAfterSave = () => {
+  window.avOpenBrowse(document.getElementById("pile"));
 };
 
 window.avCloseBrowse = (editing = false, phase = "open") => {

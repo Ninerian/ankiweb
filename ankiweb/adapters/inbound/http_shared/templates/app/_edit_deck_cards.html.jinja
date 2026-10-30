@@ -1,8 +1,10 @@
 <section id="deck-cards" class="deck-browse" aria-labelledby="deck-cards-title" tabindex="-1"
+         data-attr:aria-describedby="$progressReset ? 'deck-progress-reset-notice' : null"
          data-show="$_browsePhase === 'open' || $_browsePhase === 'closing'"
          data-class:is-folding="$_browsePhase === 'closing'"
          data-attr:inert="$_browsePhase === 'closing'" style="display:none">
   <h2 id="deck-cards-title" class="sr-only">{{ s('app_edit_browse_title') }}</h2>
+  <div id="deck-progress-reset-notice" class="alert alert-success mb-3 text-sm font-bold" role="status" data-show="$progressReset" style="display:none">{{ s('app_edit_progress_reset') }}</div>
   <p id="deck-cards-legend" class="mb-3 rounded-deck bg-warning p-3 text-sm font-bold text-warning-content">{{ s('app_edit_learned_legend') }}</p>
   <ul class="deck-browse-list">
     {% for card in deck_cards|reverse %}
