@@ -43,11 +43,16 @@
 {% else %}
 <main id="add-wizard" class="review-app"
       data-deck-id="{{ deck_id }}"
-      data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: {{ count }}, error: '', saving: false, summaryOpen: false, learned: false, progressReset: false, editOriginal: {front: '', back: '', hint: '', example: ''}, editLoaded: 0, _browsing: false}"
+      data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: {{ count }}, deckCount: {{ deck_cards|length }}, error: '', saving: false, summaryOpen: false, learned: false, progressReset: false, editOriginal: {front: '', back: '', hint: '', example: ''}, editLoaded: 0, _browsing: false, _browsePhase: 'closed'}"
       data-discard="{{ s('app_edit_discard') }}"
-      data-effect="$editLoaded ? ($editLoaded = 0, $_browsing = false, window.avFocus('input-front')) : null"
+      data-attr:data-browse-phase="$_browsePhase"
+      data-effect="$editLoaded ? ($editLoaded = 0, window.avCloseBrowse(true, $_browsePhase)) : null"
+      data-on:av-browse-ready="$_browsePhase = 'open'; window.avFocus('deck-cards-title')"
+      data-on:av-browse-closing="$_browsePhase = 'closing'"
+      data-on:av-browse-returning="$_browsing = false; $_browsePhase = 'returning'; window.avBrowseFocus(evt.detail.editing)"
+      data-on:av-browse-settled="$_browsePhase = 'closed'"
       data-on:datastar-fetch__document="evt.detail.type === 'finished' &amp;&amp; !$error &amp;&amp; evt.detail.el.id === 'btn-add' ? window.avAnimateCommit() : null"
-      data-on:keydown__window="window.avAddKey(evt); evt.key === 'Escape' &amp;&amp; !$summaryOpen &amp;&amp; !$saving ? ($_browsing ? ($_browsing = false, window.avCloseBrowse()) : ($nid &amp;&amp; window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard, $nid, $editOriginal) ? ($front = '', $back = '', $hint = '', $example = '', $nid = 0, $learned = false, $progressReset = false, $step = 1, $error = '', window.avFocus('input-front')) : null)) : null">
+      data-on:keydown__window="window.avAddKey(evt); evt.key === 'Escape' &amp;&amp; !$summaryOpen &amp;&amp; !$saving ? ($_browsing ? window.avCloseBrowse(false, $_browsePhase) : ($nid &amp;&amp; window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard, $nid, $editOriginal) ? ($front = '', $back = '', $hint = '', $example = '', $nid = 0, $learned = false, $progressReset = false, $step = 1, $error = '', window.avFocus('input-front')) : null)) : null">
   <header class="review-hud">
     <div class="navbar review-hud-nav min-h-0 p-0">
       <a href="/app/" class="btn btn-square neo-press size-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 p-0 shadow-neo active:shadow-none" aria-label="{{ s('app_add_exit') }}"
@@ -57,7 +62,7 @@
       </a>
       <a id="deck-chip" href="/app/" class="flex h-review-hud-control min-w-0 flex-1 items-center gap-2 px-2 text-left" data-discard="{{ s('app_add_discard_leave') }}"
          data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard, $nid, $editOriginal)"><span>{{ deck_emoji }}</span> <span class="truncate text-xl font-black" dir="auto">{{ deck_name }}</span></a>
-      <button type="button" class="btn btn-accent neo-press h-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge px-3.5 text-sm font-black uppercase shadow-neo active:shadow-none" data-attr:disabled="$saving"
+      <button type="button" class="btn btn-accent neo-press h-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge px-3.5 text-sm font-black uppercase shadow-neo active:shadow-none" data-attr:disabled="$saving || $_browsing"
               data-discard="{{ s('app_add_discard_finish') }}" data-card-first="{{ s('app_add_card_first') }}"
               data-on:click="$count === 0 ? window.avAddToast(el.dataset.cardFirst) : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard, $nid, $editOriginal) ? ($front = '', $back = '', $hint = '', $example = '', $nid = 0, $learned = false, $progressReset = false, $step = 1, $error = '', $summaryOpen = true, window.avOpenSummary(el)) : null)">{{ s('app_add_done') }}</button>
     </div>
@@ -73,7 +78,11 @@
   </header>
 
   <div id="add-stage" class="review-stage">
-    <div id="add-editor" class="add-card motion-reduce:animate-none" data-show="!$_browsing">
+    <div id="add-editor" class="add-card motion-reduce:animate-none"
+         data-show="$_browsePhase !== 'open' &amp;&amp; $_browsePhase !== 'closing'"
+         data-class:editor-leaving="$_browsePhase === 'opening'"
+         data-class:editor-returning="$_browsePhase === 'returning'"
+         data-attr:inert="$_browsing">
       <div class="mb-3 flex items-center justify-between gap-2" data-show="$nid !== 0" style="display:none">
         <strong>{{ s('app_edit_editing') }}</strong>
         <button id="edit-cancel" type="button" class="btn btn-sm rounded-deck border-2 border-neo-edge bg-base-200 font-black shadow-neo focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary"

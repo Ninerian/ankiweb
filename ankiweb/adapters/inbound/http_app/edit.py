@@ -4,7 +4,6 @@ import json
 import logging
 from collections.abc import Callable
 from hashlib import blake2s
-from itertools import islice
 from json import JSONDecodeError
 from time import monotonic_ns
 
@@ -290,12 +289,12 @@ class _EditRoutes:
         self.get_service = get_service
         self.lang = resolve_lang(settings)
 
-    def added_cards(
+    def added_count(
         self, col: anki.collection.Collection, session: StudySession, deck_id: int
-    ) -> tuple[list[dict[str, str | int]], int]:
+    ) -> int:
         ids = session.added_note_ids
         if not ids:
-            return [], 0
+            return 0
         db = col.db
         if db is None:
             raise RuntimeError("Collection database is not available")
@@ -318,12 +317,7 @@ class _EditRoutes:
 
         if len(present) != len(ids):
             ids[:] = [nid for nid in ids if nid in present]
-        recent_ids = list(islice((nid for nid in reversed(ids) if nid in in_deck), 4))
-        cards = [
-            {"nid": nid, **read_vocab_note(col, NoteId(nid))}
-            for nid in reversed(recent_ids)
-        ]
-        return cards, len(in_deck)
+        return len(in_deck)
 
     def deck_cards(
         self, col: anki.collection.Collection, deck_id: int
@@ -355,9 +349,9 @@ class _EditRoutes:
             return RedirectResponse("/app/", status_code=303)
         deck_emoji, deck_name = deck_display
         session, new_session_id = get_session(request)
-        cards, count, deck_cards = await self.get_service().run(
+        count, deck_cards = await self.get_service().run(
             lambda col: (
-                *self.added_cards(col, session, deck_id),
+                self.added_count(col, session, deck_id),
                 self.deck_cards(col, deck_id),
             )
         )
@@ -368,9 +362,9 @@ class _EditRoutes:
             note_type=NOTETYPE_NAME,
             deck_emoji=deck_emoji,
             deck_name=deck_name,
-            cards=cards,
             count=count,
             deck_cards=deck_cards,
+            pile_animate=False,
             preview={},
         )
         response = HTMLResponse(
@@ -494,18 +488,16 @@ class _EditRoutes:
         deck_id: int,
         nid: int,
         values: dict[str, str] | None,
-    ) -> (
-        tuple[list[dict[str, str | int]], int, list[dict[str, str | int]], bool] | None
-    ):
+    ) -> tuple[int, list[dict[str, str | int]], bool] | None:
         if col.decks.get(DeckId(deck_id), default=False) is None:
             return None
         if nid:
             progress_reset = _edit_note(col, deck_id, nid, values)
-            cards, count = self.added_cards(col, session, deck_id)
-            return cards, count, self.deck_cards(col, deck_id), progress_reset
+            count = self.added_count(col, session, deck_id)
+            return count, self.deck_cards(col, deck_id), progress_reset
         if values is None:
             raise _InvalidFields
-        cards, count = self.added_cards(col, session, deck_id)
+        count = self.added_count(col, session, deck_id)
         note_id = add_vocab_note(
             col,
             DeckId(deck_id),
@@ -515,10 +507,7 @@ class _EditRoutes:
             values["example"],
         )
         session.added_note_ids.append(note_id)
-        cards.append({"nid": note_id, **values})
-        if len(cards) > 4:
-            del cards[0]
-        return cards, count + 1, self.deck_cards(col, deck_id), False
+        return count + 1, self.deck_cards(col, deck_id), False
 
     async def save(
         self, request: Request, deck_id: int, nid: int, values: dict[str, str] | None
@@ -579,7 +568,7 @@ class _EditRoutes:
             )
         if result is None:
             return RedirectResponse("/app/", status_code=303)
-        cards, count, deck_cards, progress_reset = result
+        count, deck_cards, progress_reset = result
         animation_stamp = monotonic_ns() if nid == 0 else None
 
         fragment = render(
@@ -587,9 +576,9 @@ class _EditRoutes:
             app_lang=self.lang,
             deck_id=deck_id,
             deck_cards=deck_cards,
-            cards=cards,
             count=count,
             animation_stamp=animation_stamp,
+            pile_animate=nid == 0,
         )
         deck_fragment = render(
             "app/_edit_deck_cards.html.jinja",
@@ -613,6 +602,7 @@ class _EditRoutes:
                         "learned": False,
                         "progressReset": progress_reset,
                         "count": count,
+                        "deckCount": len(deck_cards),
                         "error": "",
                     }
                 ),
