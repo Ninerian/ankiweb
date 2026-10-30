@@ -5,7 +5,7 @@ surface added to the ankiweb server. It lists facts and where to find them. For 
 behind the visual design see [DESIGN.md](DESIGN.md); for the research behind the PWA choice see
 [RESEARCH-pwa.md](RESEARCH-pwa.md) and [RESEARCH-fastpwa.md](RESEARCH-fastpwa.md).
 
-**Audience:** developers porting the prototype into ankiweb or operating the PWA.
+**Audience:** developers maintaining the prototype or `/app/` client, and PWA operators.
 
 **Legend:** *Verified* = observed by the author in a run. *QA-verified* = reported by a browser
 subagent; its transcript is the only evidence, the author did not re-run it. *Read* = taken from
@@ -28,18 +28,21 @@ source, not executed. *Not verified* = no evidence.
 | `REFERENCE.md` | Doc | This file |
 | `RESEARCH-enrichment.md`, `RESEARCH-independent-client.md`, `RESEARCH-pwa.md`, `RESEARCH-fastpwa.md` | Docs | Research notes |
 | `screenshot-*.webp`, `screenshot-editor-*.png` | Images | 9 historical screenshots from before the deck list and the former mode switch were added; they also predate the current editor header. **Not regenerated** |
+| `screenshot-app-decks.png`, `screenshot-app-review.png`, `screenshot-app-add.png` | Images | Current app views captured on localhost at 390 × 844 |
 
 All three mockups are standalone: no build step, no external assets, no network access.
 
 ### Server files for the PWA
 
-| File | Change |
+| File | Purpose |
 |---|---|
-| `ankiweb/adapters/inbound/http_shared/pwa.py` | New. Manifest and service worker routes |
-| `ankiweb/app.py` | Mounts the PWA router; exempts both PWA paths from the password gate |
-| `ankiweb/adapters/inbound/http_shared/templates/shell.html.jinja` | Manifest link, meta tags, touch icon, worker registration |
-| `ankiweb/shell/static/icons/` | `icon.svg`, `icon-192.png`, `icon-512.png` |
-| `.gitignore` | Adds `!ankiweb/shell/static/icons/` (the parent `ankiweb/shell/static/*` is ignored) |
+| `ankiweb/adapters/inbound/http_shared/pwa.py` | Existing `/` manifest and worker |
+| `ankiweb/adapters/inbound/http_app/pwa.py` | Separate `/app/` manifest, worker and offline page |
+| `ankiweb/app.py` | Mounts both routers and exempts public PWA paths from the password gate |
+| `ankiweb/adapters/inbound/http_shared/templates/shell.html.jinja` | Existing client's PWA tags and registration |
+| `ankiweb/adapters/inbound/http_shared/templates/app/base.html.jinja` | `/app/` PWA tags and registration |
+| `ankiweb/shell/static/icons/` | Shared placeholder icons |
+| `docs/pwa-deployment.md` | HTTPS, proxy and device installation guidance |
 
 ---
 
@@ -144,144 +147,108 @@ The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good and 2 E
 
 ---
 
-## 4. PWA routes
+## 4. App routes and persistence
 
-Both routes are served by `build_pwa_router()` in `pwa.py` and need **no login**.
+The prototype links in §2 describe static mockups. The implemented mobile client is
+separate from the existing client and uses the following routes. *Read.*
 
-| Route | Content type | Notes |
+| Route | Purpose |
+|---|---|
+| `GET /app/` | Deck list; Learn links to `/app/review?deck=<id>`, Edit / Add to `/app/add?deck=<id>` |
+| `GET /app/review?deck=<id>` | Review for a deck; Back and completion return to `/app/` |
+| `POST /app/review/answer`, `/app/review/action/*`, `/app/review/due` | Answer and card actions |
+| `GET /app/review/info/<card_id>` | Card information |
+| `GET /app/add?deck=<id>` | Quick-add; Back and deck chip return to `/app/` |
+| `POST /app/add/preview`, `/app/add/commit`, `/app/add/edit/<nid>` | Preview, persist, and load a session-added note for editing |
+| `GET /app/manifest.webmanifest`, `/app/service-worker.js`, `/app/offline` | Public app install assets and static offline fallback |
+
+Quick-add commits each new card to the collection immediately as an `AnkiWeb Vocab`
+note. The server supports loading and updating session-added notes, but the current
+pile has no browse/edit control. Done does not perform a batch save. It requires at
+least one session-added card, guards unsaved text, and opens a summary with links to
+the deck list and to the same deck's review. Session-added IDs and the review tally
+are kept in server memory, not persisted as a separate browser draft; the collection
+notes survive a session or server restart. The pile shows at most the four most recent
+session additions for the current deck. *Read.*
+
+The reviewer uses the scheduler's queue without filtering by note type, so other
+types are shown with an “Other note type” badge rather than silently occupying the
+daily limit. When an answer leaves no immediately available card and at least one
+card has been rated, the completion summary is shown. Learning counts can remain
+positive; in that case “Study again” is offered. Entering a review with no available
+card shows the no-cards state instead. Review answers are persisted by Anki's
+scheduler; the summary's tally is session state. *Read.*
+
+## 5. Manifest fields and auth
+
+The existing manifest and the new manifest are distinct installs. Both manifests,
+both workers, `/app/offline`, and `/shell/static/` assets are public even when a
+password is configured; `/app/` and its study routes remain protected. *Read.*
+
+| Field | Existing `/manifest.webmanifest` | New `/app/manifest.webmanifest` |
 |---|---|---|
-| `GET /manifest.webmanifest` | `application/manifest+json` | Fixed JSON, see 5 |
-| `GET /service-worker.js` | `application/javascript` | Headers `Cache-Control: no-cache`, `Service-Worker-Allowed: /` |
+| `name` / `short_name` | `AnkiWeb` / `Anki` | `AnkiWeb` / `Anki` |
+| `id`, `start_url`, `scope` | `/` | `/app/` |
+| `display` | `standalone` | `standalone` |
+| `theme_color` | `#ffd43b` | `#f4f3ed` |
+| `background_color` | `#f4f3ed` | `#f4f3ed` |
+| Icons | `/shell/static/icons/icon-192.png`, `icon-512.png`; `any maskable` | Same shared placeholder icons |
 
-### Why they are public
+The legacy manifest was previously checked with Chromium CDP on localhost. That
+historical result is not evidence of installability for the new manifest.
 
-`_auth_guard` in `app.py` redirects every other path to `/login` when `ANKIWEB_PASSWORD` is set.
-`PWA_PUBLIC_PATHS = (MANIFEST_PATH, SERVICE_WORKER_PATH)` is exempt, as is `/shell/static/`
-(already exempt before). Browsers fetch the manifest without credentials. *Verified* with the
-password set: both return 200 without a cookie, while `/` returns 303 to `/login`.
+## 6. Service workers
 
-### Why the worker is a route
+`/service-worker.js` has maximum scope `/` and is the legacy worker.
+`/app/service-worker.js` has `Service-Worker-Allowed: /app/` and
+`Cache-Control: no-cache`, and is registered for `/app/`. A worker served under `/shell/static/`
+could not control `/app/`. *Read.*
 
-A worker's maximum scope is its own path. A file under `/shell/static/` could not control `/`.
-Serving it from `/service-worker.js` gives scope `/`.
-
----
-
-## 5. Manifest fields
-
-| Field | Value |
-|---|---|
-| `name` | `AnkiWeb` |
-| `short_name` | `Anki` |
-| `id` | `/` |
-| `start_url` | `/` |
-| `scope` | `/` |
-| `display` | `standalone` |
-| `theme_color` | `#ffd43b` |
-| `background_color` | `#f4f3ed` |
-| `icons[0]` | `/shell/static/icons/icon-192.png`, `192x192`, `image/png`, purpose `any maskable` |
-| `icons[1]` | `/shell/static/icons/icon-512.png`, `512x512`, `image/png`, purpose `any maskable` |
-
-Chromium reported **no installability errors and no manifest errors** for this manifest
-(`Page.getInstallabilityErrors` and `Page.getAppManifest`, headless Chromium, `127.0.0.1`).
-*Verified.*
-
-Chrome's published install criteria (web.dev, last updated 2024-09-19): HTTPS, `name` or
-`short_name`, a 192 px and a 512 px icon, `start_url`, `display` of `standalone`, `fullscreen`,
-`minimal-ui` or `window-controls-overlay`, and `prefer_related_applications` absent or false.
-A service worker is not in that list.
-
----
-
-## 6. Service worker
-
-Source: `SERVICE_WORKER_JS` in `pwa.py`.
-
-| Property | Value |
-|---|---|
-| Cache name | `ankiweb-shell-v1` |
-| Handled requests | `GET`, same origin, path starts with `/shell/static/` |
-| Strategy | Cache first; on a miss, fetch and store the response if `res.ok` |
-| Not handled | Every other request. The browser's normal network path applies |
-| `install` | `skipWaiting()` |
-| `activate` | Deletes every cache whose name differs from `CACHE`, then `clients.claim()` |
-| Eviction | Change the `CACHE` constant. There is no other invalidation |
-
-### Cache contents
-
-*Verified* in headless Chromium with a logged-in session and the worker controlling the page.
-After requesting each of the following, the cache held only `/shell/static/…` entries:
-
-| Requested | Cached |
-|---|---|
-| `/` (authenticated page) | no |
-| `/add` | no |
-| `/healthz` | no |
-| `/_anki/css/deckbrowser.css`, `/_anki/js/deckbrowser.js` | no |
-| `POST /_anki/<method>` | no (non-GET) |
-| `/shell/static/*.css`, `*.js`, `icons/icon-192.png` | yes |
-
-### Behaviour without network
-
-*Verified*, same session, browser offline:
-
-| Request | Result |
-|---|---|
-| `/shell/static/app.css` | 200, from cache |
-| `/` | network error |
-| `/manifest.webmanifest` | network error |
-
-The app **does not open offline**. Only static assets are cached. An offline reviewer is a
-separate design (RESEARCH-pwa.md, scenario 3).
-
-After the session cookie is removed, `/` redirects to `/login` again, so no authenticated page
-is served from the cache. *Verified.*
-
----
-
-## 7. Page tags and icons
-
-### Tags in `shell.html.jinja` `<head>`
-
-| Tag | Value |
-|---|---|
-| `link rel="manifest"` | `/manifest.webmanifest` |
-| `meta name="theme-color"` | `#ffd43b` |
-| `meta name="mobile-web-app-capable"` | `yes` |
-| `meta name="apple-mobile-web-app-capable"` | `yes` |
-| `link rel="apple-touch-icon"` | `/shell/static/icons/icon-192.png` |
-| Inline script | Registers `/service-worker.js` with scope `/`; errors are swallowed |
-
-*Verified* present on the logged-in page; the worker reaches `activated` with scope
-`http://127.0.0.1:8765/` and controls the page.
-
-The tags are in the shared shell template, so they apply to every page it renders.
-
-### Icons
-
-| File | Size | Notes |
+| Property | Legacy worker | `/app/` worker |
 |---|---|---|
-| `icon.svg` | viewBox 512 | Source. Cream background, yellow card with a dark offset shadow, letter "A" |
-| `icon-192.png` | 192 x 192 | Rendered from the SVG with `rsvg-convert` |
-| `icon-512.png` | 512 x 512 | Same |
+| Cache | `ankiweb-shell-v1` | `ankiweb-app-` plus hash of deployed app CSS and JS |
+| Cache-first | Same-origin `GET /shell/static/*` | Same-origin `GET /shell/static/app-client.css` and `/shell/static/app/*` |
+| Navigation | Normal network path | `/app/` navigations use network; a network failure returns the precached public `/app/offline` page |
+| Install | `skipWaiting()` | Precache offline page and its CSS, then `skipWaiting()` |
+| Activation cleanup | Deletes old `ankiweb-shell-` caches only | Deletes old `ankiweb-app-` caches only |
 
-The background fills the whole square and the glyph sits inside the centre area, so the icons
-are declared `any maskable`. Whether launcher masks crop the glyph acceptably was **not
-verified** on a device. The icon is a **placeholder** and has no approved design.
+Neither worker deliberately caches authenticated HTML; neither provides offline
+study or editing. Each worker's activation cleanup is restricted to its own cache
+namespace, preserving the other worker's caches and unrelated caches. Restricting
+legacy cleanup is a targeted deviation from the original unchanged-worker plan;
+its other behavior remains unchanged. *Read.*
 
----
+The earlier localhost cache, activation, offline, and auth checks in this reference
+concerned the legacy worker only: the existing client served static assets offline,
+but `/` failed offline and redirected to login after the session cookie was removed.
+Those historical observations do not verify the new worker.
+
+## 7. Page tags, installation and icons
+
+The existing shell keeps its manifest, yellow theme color, touch icon and root worker
+registration. The app layout links the app manifest, supplies light (`#f4f3ed`) and
+dark (`#121316`) theme-color media variants, Apple web-app tags and a touch icon,
+and registers the `/app/` worker; registration failures are logged. The app themes
+follow the OS, independently of the old client's night toggle. *Read.*
+
+The deck list can show an install button when Chromium supplies
+`beforeinstallprompt`; iOS Safari has a dismissible Share → Add to Home Screen
+hint outside standalone mode. See [deployment guidance](../../docs/pwa-deployment.md).
+These flows have not been verified on Android or iOS devices.
+
+The shared 192 px and 512 px PNG icons derive from `icon.svg`. They are placeholders
+declared `any maskable`; launcher cropping has **not** been verified on a device.
 
 ## 8. Verification status
 
 | Area | Status |
 |---|---|
-| Prototype pages: layout, links, `?deck=` fallback, theme, contrast | Historical *QA-verified* report (see 2.5), predating the reviewer sheet, completion and current editor header changes; not re-run by the author of this document |
-| PWA routes, auth exemption, tags, worker activation, cache contents, offline behaviour | *Verified* in headless Chromium on `127.0.0.1` |
-| Chromium installability errors | None reported |
-| Existing test suite | 736 passed after the PWA change |
-| Install on an Android or iOS device | *Not verified* |
-| HTTPS deployment | *Not verified* (tested on localhost only) |
-| Maskable icon cropping on a launcher | *Not verified* |
-| Permanent tests for the manifest, worker or auth exemption | None written |
-| Screenshots in this folder | Pre-date the deck list, former mode switch and current editor header |
-| Unsaved-text guard under a real typed-in state | Reported by the editor agent, **not reproduced** by the QA agent or by me |
+| Prototype layout, links, fallback, theme, contrast | Historical *QA-verified* report (§2.5), predating later prototype changes |
+| Legacy PWA routes, auth, worker and localhost offline behavior | Previously *Verified* in headless Chromium; applies to `/`, not the new app |
+| New `/app/` automated tests and Chromium installability | `uv run pytest tests/app_client -q -rs`: 550 passed, 2 deprecation warnings, no skips reported; includes Bun worker harness and Playwright/CDP tests. A separate run of `tests/app_client/test_app_pwa.py` and `tests/app_client/test_app_pwa_browser.py` passed 9 tests with no skips. These are not full-suite results |
+| Localhost browser | Fresh temporary collection: `/app/` worker registered and controlled the page; two theme-color metas present. Simulated install prompt showed the button and `appinstalled` hid it. Deck → review → deck → add form reached (add via DOM click); console clean. Stopping the server showed the offline fallback; after restart, retry opened the deck list |
+| Android / iOS installation | *Not verified* on devices |
+| HTTPS deployment | *Not verified* in practice |
+| Maskable icon cropping | *Not verified* on a launcher |
+| Screenshots | `screenshot-app-decks.png`, `screenshot-app-review.png`, `screenshot-app-add.png` captured on localhost at 390 × 844; older prototype images remain historical |
+| Unsaved-text guard under a real typed-in prototype state | Reported by the editor agent, not reproduced by the QA agent or the author |

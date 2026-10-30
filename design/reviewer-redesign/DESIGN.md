@@ -1,6 +1,6 @@
 # AnkiWeb Reviewer Mobile-First Playful Redesign
 **Target Audience**: High-school students & active learners  
-**Format**: Standalone prototype & architectural implementation blueprint  
+**Format**: Standalone prototype and implemented mobile client design
 **Directory**: `design/reviewer-redesign/`  
 **Technical reference**: [REFERENCE.md](REFERENCE.md) (files, routes, link matrix, PWA manifest and service worker, verification status)  
 
@@ -64,44 +64,22 @@ The prototype delivers instant dopamine and flow state without requiring backend
 
 ---
 
-## 4. Implementation Porting Blueprint for AnkiWeb
+## 4. Implementation in AnkiWeb
 
-When transitioning this design into the live production templates in `ankiweb/`, the changes map directly to four Jinja templates:
+The mobile design is implemented as a separate HTTP client under `/app/`, not by
+replacing the existing reviewer's Jinja templates. `/app/` lists decks;
+`/app/review?deck=<id>` studies a deck; `/app/add?deck=<id>` opens quick-add.
+The existing client and `/add` remain available. The app uses Jinja, Datastar and
+its own app assets; it does not depend on the legacy `/ws` reviewer bridge.
 
-### 1. `reviewer_page_body.html.jinja`
-- **Location**: `ankiweb/adapters/inbound/http_shared/templates/reviewer_page_body.html.jinja`
-- **Changes**:
-  - Replace the existing standard Bootstrap top header (`<header class="d-flex justify-content-between...">`) with the new `.top-hud` containing the streak container, More Actions button, and progress meter.
-  - Inject the client-only JS session state manager:
-    ```javascript
-    let _sessionStreak = 0;
-    let _sessionTotal = 0;
-    // Hook into pycmd('ease{N}') calls:
-    // If ease == '1': _sessionStreak = 0; trigger streakReset
-    // If ease in ['2','3','4']: _sessionStreak++; trigger streakPop
-    ```
-  - Bind keyboard shortcuts (`Space` for show answer, `1-4` for ease selection).
-  - Wrap `#qa` inside the styled `.reviewer-stage` and `.flashcard` containers.
-
-### 2. `reviewer_show_answer_bar.html.jinja`
-- **Location**: `ankiweb/adapters/inbound/http_shared/templates/reviewer_show_answer_bar.html.jinja`
-- **Changes**:
-  - Restyle `<button id="ansbut">` with `.btn-show-answer` Neo-Pop styling (bold yellow background `#ffd13b`, hard black border, tactile drop-shadow), without a `SPACE` badge.
-  - Retain the existing `onclick="ankiwebShowAnswer()"` bridge hook.
-
-### 3. `reviewer_ease_buttons_bar.html.jinja`
-- **Location**: `ankiweb/adapters/inbound/http_shared/templates/reviewer_ease_buttons_bar.html.jinja`
-- **Changes**:
-  - Replace the flex row of default Bootstrap outline buttons with the `.ease-grid` 4-column layout.
-  - Apply the color classes `.btn-ease-again`, `.btn-ease-hard`, `.btn-ease-good`, `.btn-ease-easy` according to `c.i` index.
-  - Do not display shortcut key badges on the tiles.
-  - Keep `onclick="pycmd('ease{{ c.i }}')"` intact, while wrapping it with local streak animation triggers.
-
-### 4. `reviewer_actions_bar.html.jinja`
-- **Location**: `ankiweb/adapters/inbound/http_shared/templates/reviewer_actions_bar.html.jinja`
-- **Changes**:
-  - Replace the desktop Bootstrap dropdown (`<div class="dropdown">...<ul class="dropdown-menu">`) with the mobile `.bottom-sheet` component and backdrop overlay.
-  - Map each action in `buttons` (`Mark`, `Bury`, `Suspend`, `Delete`, etc.) into `.btn-action-tile` grid buttons with clear SVG icons.
+The app reviewer uses the Anki scheduler directly and saves each answer as it is
+rated. The queue is **not filtered by note type**: foreign note types remain
+reachable and are labelled, rather than consuming daily queue slots invisibly.
+Completion is shown after a rating when no card is immediately available and at
+least one card was rated. Learning counts may still be positive, in which case
+**Study again** is offered; an initially empty queue shows the no-cards state.
+The completion tally is server-side session state, not permanent review history.
+See [REFERENCE.md](REFERENCE.md) for routes and verification status.
 
 ---
 
@@ -112,9 +90,10 @@ Adding flashcards is traditionally the highest friction point in spaced repetiti
 
 The **Card Creation Flow** (`editor-mockup.html`) provides a streamlined, tactile mobile wizard engineered for rapid-fire creation of **Basic (Front / Back)** cards. Two fields are required (Front, Back); two are optional (**Hint**, **Example sentence**) so the card shown in the reviewer can carry the same extra info it displays. It mimics building a physical stack of flashcards on a desk, giving students tangible visual momentum as they study and summarize their notes.
 
-**Card model** (shared by editor and reviewer via `card-render.js`): `{ front, hint?, back, example? }`. `hint` and `example` are optional; when empty the reviewer hides them. In `example`, the key word is wrapped in `*asterisks*` and rendered as `<mark>`. Text is HTML-escaped before the highlight is applied, so user input never injects markup. Editor preview, stack cards and the reviewer all render through `CardRender.renderCard`, so they cannot drift apart.
-
-**Persistence note**: stored values are plain text (e.g. `example` keeps `*word*` and any typed `<` characters literally). Escaping happens only at render time inside `CardRender`; never interpret a stored field as HTML when saving, exporting or rendering elsewhere.
+**Prototype card model** (`card-render.js`): `{ front, hint?, back, example? }`.
+The prototype stores plain text and escapes at render time. In the implemented
+client, Anki fields are HTML: quick-add escapes input when saving, and the client
+highlights `*word*` in the rendered example. See the note-type contract below.
 
 ### B. 3-Step Guided Wizard Mechanics
 The editor presents a focused single-purpose card interface divided into three distinct steps:
@@ -130,7 +109,7 @@ The editor presents a focused single-purpose card interface divided into three d
 3. **Step 3: Quick Preview & Commit**:
    - Renders the finished card exactly as the reviewer shows it: Prompt, Answer, plus Hint and Example (with highlighted key word) when present.
    - Primary CTA: **Add to Stack 📥** (vibrant emerald green `#40c057`).
-   - Once tapped, the card is **saved immediately as a note** in the target deck (not held in the browser) and the editor resets to Step 1 with clean fields, enabling friction-free continuous entry without leaving the view. Reloading the page loses nothing.
+   - Once tapped, the card is **saved immediately as a note** in the target deck (not held in the browser) and the editor resets to Step 1. Saved notes survive reload; uncommitted text is a draft and is not saved by Done.
 
 ### C. Card-Stack Physical Metaphor & Animation
 
@@ -147,28 +126,27 @@ The core psychological hook of the creator is the **physical growing card pile**
 - **Count starburst on the pile**:
   - The count sits in a spinning starburst badge at the lower right edge of the pile (as on `/app/add`), with the unit ("CARD" / "CARDS") set on an arc. It bumps when the count changes (`@keyframes stackPillPop`); no separate add-success toast repeats it.
 
-### D. Browse and Edit Added Cards (list)
-Students notice typos after submitting, and need to correct any card of the session, not only the last one. There is no "edit last" shortcut: no peek banner, no HUD pill, no cue on the top card.
-- **Open**: tapping the pile, the cue or the starburst, or **swiping the pile up** (28px or more; a shorter drag does nothing), opens the list. The three step badges fade out and collapse (about 350 ms), the new-card card slides up and out of the way (`@keyframes cardLeaveUp`), then the cards fan out from the pile into a **scrollable list**, oldest first, one row per card (number, front, back, `Saved` chip, `Hint` / `Example` markers, `Edit →`). The bottom bar's step controls stay out of the way while the list is open. The step badges fade back in when the list closes or a card is loaded for editing.
-- **Scroll and choose**: the list scrolls vertically with a soft fade at both edges. Tapping a row folds the list back onto the pile (rows are staggered) and the card comes back carrying the picked card.
-- **Edit in the same card**: the picked card loads into **the same input card and the same 3-step wizard** used for a new card, opening at Step 1. An orange `EDITING CARD n` banner with a `×` and an orange card outline mark the mode.
-- **Save replaces in place**: the last step saves the card under its **existing id and position**. The count is unchanged and no duplicate is created. On `/app/add` this maps to updating the existing note, not adding one.
-- **Return**: after saving, the edited card slides back onto the pile and a blank new-card card drops in (`@keyframes popInFreshCard`). `×` or `Escape` while editing, and `Escape` or **Back to new card** in the list, leave without changing anything; the card stays as saved.
-- **Safety guard**: opening the list asks before discarding unsaved text in the new-card card. A card loaded for editing and left unchanged counts as **not** unsaved, so leaving it does not prompt.
-- **Accessibility**: the badge has `aria-expanded` and `aria-controls`, a spoken label ("N cards added. Tap to browse and edit."), and gets focus back when the list closes. Each row is a button labelled `Edit card n: <front>`. All motion respects `prefers-reduced-motion`.
+### D. Added cards and editing
 
-### E. Porting & Architecture Blueprint
-This flow is designed as a **new dedicated mobile route**, completely separate from Anki's existing complex `/add` route:
-- **New Route**: `/add/basic` or `/add/quick` (e.g. `quick_add_body.html.jinja`).
-- **Scope Separation**:
-  - The existing full-featured `/add` editor remains intact for desktop power-users, cloze deletion cards, media uploads, math formulas, and multi-field custom note types.
-  - The new quick-add view provides high-school students and mobile users with a distraction-free, zero-config card builder strictly for notes of the dedicated note type **`AnkiWeb Vocab`** (§5.F). Other note types are not shown in the design.
-- **Design Token Continuity**:
-  - Uses identical `:root` and `[data-theme="dark"]` CSS variables, border widths (`2.5px`), drop shadows (`var(--shadow-card)`), and system font stack as `mockup.html`.
-  - Seamless visual transition from building cards in `editor-mockup.html` to reviewing them in `mockup.html`.
+The prototype explores a browse-and-edit list of all cards added in the session.
+The implemented `/app/add` currently renders the four most recent session-added
+cards in the pile, with a count of all session-added cards still in that deck.
+The server has routes to load and update a session-added note, but the current
+pile has no browse/edit control. Session IDs are kept in server memory, so the
+pile is session-scoped; the notes themselves are persisted in the collection.
+
+### E. Implemented route and scope
+
+The dedicated mobile route is `/app/add?deck=<id>`; preview and persistence use
+`/app/add/preview`, `/app/add/commit` and `/app/add/edit/<nid>`. Quick-add
+creates `AnkiWeb Vocab` notes (§5.F); the existing full-featured `/add` remains
+separate. Done requires at least one session-added card, confirms before
+discarding unsaved text, and opens a summary. It is not a batch-save action.
+From the summary, **Start studying** opens `/app/review?deck=<id>` and the
+deck-list action returns to `/app/`.
 
 ### F. Dedicated Note Type Contract (`AnkiWeb Vocab`)
-The design shows only cards of dedicated note types. They carry **no CSS and no JavaScript**: all presentation lives in the design's own stylesheet, and the card HTML is inert markup from Anki's server-side render. Created via AnkiConnect `createModel` (`modelName`, `inOrderFields`, `cardTemplates`, `css`, `isCloze`).
+Quick-add creates the dedicated `AnkiWeb Vocab` note type. Its templates carry **no CSS and no JavaScript**: presentation lives in the app stylesheet, and card HTML is rendered by Anki. The implementation creates and validates the model directly in the collection.
 
 **Fields (in this order; the first field is the sort field).** In an Anki note type **all four fields always exist**; none is optional as a type property. A field can only hold an empty value. What the quick-add view requires is a rule of the view, not of the note type:
 
@@ -209,7 +187,7 @@ The reviewer adds a localized front label outside the Anki template for `AnkiWeb
 **Verified against a throwaway server (not the user's profile; separate `ANKIWEB_COLLECTION`, removed afterwards):**
 - `createModel` accepts the type as specified: four fields in order, `css` stays `""`, both templates are stored unchanged (`modelFieldNames`, `modelStyling`, `modelTemplates`).
 - Rendering (`cardsInfo`): with empty Hint/Example **no element is emitted** (only whitespace remains); with values the `av-hint` / `av-example` elements appear. `*word*` arrives unchanged, so the `<mark>` conversion stays in the client.
-- **Escaping is required, and this test does not show the view passes it:** `a < b` and `x & y` were stored as typed and came back raw in `av-front-text` / `av-back-text`. This only demonstrates that the server does not escape; the quick-add view that must escape on save does not exist yet, so there is no passing check for it.
+- **Escaping was required:** `a < b` and `x & y` were stored as typed and came back raw in `av-front-text` / `av-back-text`. This historical test demonstrated that the server does not escape; it did not test the subsequently implemented quick-add view.
 - **An empty `<style></style>` is still prepended** to both `question` and `answer` even though `css` is empty. The templates and the type carry no styling, but the render output is not free of the tag. It is empty and harmless; the client can ignore or strip it. A rule that the card HTML contains no `<style>` element would be wrong for the raw server output.
 - `addNote` rejects an all-empty note ("cannot create note because it is empty") and a duplicate ("... it is a duplicate").
 - Deleting the type works only after its notes are gone (`/extra_actions/deleteModel`: "3 note(s) still use it" before, `true` after).
@@ -220,14 +198,17 @@ The reviewer adds a localized front label outside the Anki template for `AnkiWeb
 
 ---
 
-## 6. Deck List & Mode Switching (`decks-mockup.html`)
+## 6. Deck List & Navigation
 
-- **Deck list**: chunky card rows (emoji, name, due/new counts, mini candy-stripe progress bar) with live search and an empty state.
-- **Per-deck actions**: **Learn** → `mockup.html?deck=<id>`, **Edit / Add** → `editor-mockup.html?deck=<id>`.
-- **New deck**: a floating yellow **New deck** button (`.btn-new-deck`, fixed above a fade of the canvas colour) and the empty state's **+ New deck** button open a bottom sheet, the same pattern as the reviewer's actions sheet (handle, backdrop, `inert` while closed, Escape and backdrop tap close, focus returns to the opener). The sheet holds a live preview tile (emoji and name), a name field (max 40 characters, counter turns red at the limit, whitespace-only and case-insensitive duplicate names block **Create deck** with an inline error) and a curated emoji picker (four categories, 18 emoji each, `radiogroup`, no system emoji keyboard needed). The new deck is added at the top with 0 due / 0 new / 0 %, a drop-in animation and a toast; its id is a slug of the name, made unique with a `-2`, `-3` suffix. From the empty state the search text pre-fills the name. Reduced motion disables the animations. The sheet reopens reset (empty name, 📚).
-- **Navigation**: the reviewer HUD returns to the deck list, whose **Edit / Add** action opens the editor. The reviewer, deck list and editor have no mode switch. Deck ids: `german-b1`, `spanish-a2`, `biology`, `history`, `chemistry`; invalid/missing falls back to `german-b1`.
-- **Editor**: the header's first row contains Back, a deck-name chip and Done; the added-card counter is on the second row. The card retains its note-type pill without a repeated deck badge. The chip links back to the deck list and guards uncommitted text, as do leaving and finishing. Done opens the summary; **Start studying** returns to the reviewer for the same deck.
-- **Theme**: no toggle in any page; dark palette applied via `prefers-color-scheme`.
+The static `decks-mockup.html` demonstrates the deck-list visuals, search, empty
+state and New deck sheet. Its fixed ids and `mockup.html` / `editor-mockup.html`
+links are prototype data, not production routes.
+
+In the implemented client, **Learn** links to `/app/review?deck=<id>` and
+**Edit / Add** links to `/app/add?deck=<id>`. Review Back, Add Back and the
+Add deck chip return to `/app/`; Done opens the summary described in §5.E.
+There is no mode switch. The app has no theme toggle: it follows
+`prefers-color-scheme`, independently of the old client's night toggle.
 
 ---
 
@@ -243,5 +224,9 @@ After the twentieth rating, `#session-complete` replaces the card and review con
 | Tough | Otherwise |
 
 The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good, 2 Easy. **Study again** resets the mockup to `0/20` with an empty tally; **Back to decks** opens the deck list. Use `?complete=perfect` (or `great`, `good`, `tough` as the value) to preview each design. These demo histories are not production session data.
+
+In `/app/` this fixed 20-card demo is replaced by the scheduler-driven completion
+behavior in §4. The summary appears only after a rating exhausts the currently
+available queue; learning cards may remain scheduled. The tally is per session.
 
 The completion title receives focus, decorative graphics are hidden from assistive technology, and rating counts remain available as text. The screen follows the system theme and honors `prefers-reduced-motion` for its animations and transitions.

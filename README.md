@@ -12,10 +12,12 @@ A **browser port of Anki desktop + AnkiConnect**, built on the official `anki` P
 package (pylib) + FastAPI. It serves Anki's real study UI in a browser and re-implements
 the full AnkiConnect HTTP API — for a single user, on your own machine.
 
-**Frontend architecture: Jinja + Datastar components, styled with Tailwind CSS 4 + daisyUI 5**
-(theming comes only from daisyUI's built-in `light`/`dark` themes; see `shell_src/app.css`). Anki desktop's frontend was migrated
-from the vendored compiled SvelteKit SPA pages to a lightweight, reactive Jinja + Datastar
-architecture. Reusable components live under `ankiweb/adapters/inbound/http_shared/templates/components/`
+**Frontend architecture: Jinja + Datastar components, styled with Tailwind CSS 4 + daisyUI 5**.
+The existing client uses daisyUI's built-in `light`/`dark` themes (`shell_src/app.css`);
+the mobile `/app/` client uses its own `aw-light`/`aw-dark` themes, following the OS.
+Anki desktop's frontend was migrated from the vendored compiled SvelteKit SPA pages
+to a lightweight, reactive Jinja + Datastar architecture. Reusable components live
+under `ankiweb/adapters/inbound/http_shared/templates/components/`
 (with an interactive gallery at `/dev/components` when `ANKIWEB_DEV=1`), while page templates
 reside under `ankiweb/adapters/inbound/http_shared/templates/pages/`. Minimal JS bundles
 in `shell_src/bundles/` are built via `npm run build`. Vendored SvelteKit bundles are no longer
@@ -104,6 +106,16 @@ This starts **two servers in one process**:
 
 Open <http://127.0.0.1:8000> in a browser. The AnkiConnect port defaults to **8765** on
 purpose — existing AnkiConnect clients/scripts work unchanged.
+
+## Mobile PWA (`/app/`)
+
+Open `/app/` for the mobile deck list, reviewer, and quick-add flow. It is a
+separate install from the existing client at `/`, with its own manifest and worker.
+Quick-add saves each card as a note immediately; the new client uses HTTP and does
+not require the legacy reviewer's `/ws` bridge. It cannot study or edit offline.
+
+For HTTPS setup and Android/iOS installation, see [PWA deployment](docs/pwa-deployment.md).
+Device installation, HTTPS in practice, and maskable icon cropping remain unverified.
 
 ## Docker
 
@@ -271,9 +283,10 @@ reverts to its last acknowledged counts sends nothing. Deleted/renamed decks dro
 
 ### Night mode
 
-Toggle with the 🌙 button in the top toolbar (persisted in `localStorage`); it switches the
-daisyUI theme (`data-theme="light"` / `"dark"`) and themes the server-rendered pages and threads `#night` into links to the SvelteKit pages so those
-render dark too.
+In the existing client, toggle with the 🌙 button in the top toolbar (persisted in
+`localStorage`); it switches the daisyUI theme (`data-theme="light"` / `"dark"`) and
+threads `#night` into links to the SvelteKit pages. The toggle does not affect `/app/`,
+which follows the operating system's light/dark preference.
 
 ### Navigation & Transport Boundaries
 
