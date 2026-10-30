@@ -66,7 +66,7 @@
       <button type="button" class="add-step" data-class:add-step-active="$step === 2" data-class:add-step-done="$step > 2"
               data-required="{{ s('app_add_front_required') }}" data-on:click="$front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.required)"><span class="add-step-num" aria-hidden="true">2</span><span>{{ tr.notetypes_back_field() }}</span></button>
       <button type="button" class="add-step" data-class:add-step-active="$step === 3"
-              data-required="{{ s('app_add_both_required') }}" data-on:click="$front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/add/preview')) : ($error = el.dataset.required)"><span class="add-step-num" aria-hidden="true">3</span><span>{{ tr.actions_preview() }}</span></button>
+              data-required="{{ s('app_add_both_required') }}" data-on:click="$front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/edit/preview')) : ($error = el.dataset.required)"><span class="add-step-num" aria-hidden="true">3</span><span>{{ tr.actions_preview() }}</span></button>
     </div>
   </header>
 
@@ -122,7 +122,7 @@
         {{ preview_card() }}
       </section>
     </div>
-    {% include "app/_add_added_cards.html.jinja" %}
+    {% include "app/_edit_added_cards.html.jinja" %}
   </div>
 
   <footer class="review-bar">
@@ -135,15 +135,15 @@
               data-front-required="{{ s('app_add_front_required') }}" data-back-required="{{ s('app_add_back_required') }}"
               data-next-back="{{ s('app_add_next_back') }}" data-next-preview="{{ s('app_add_next_preview') }}"
               data-text="$step === 1 ? el.dataset.nextBack : el.dataset.nextPreview"
-              data-on:click="$step === 1 ? ($front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.frontRequired)) : ($front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/add/preview')) : ($error = $front.trim() ? el.dataset.backRequired : el.dataset.frontRequired))">{{ s('app_add_next_back') }}</button>
+              data-on:click="$step === 1 ? ($front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.frontRequired)) : ($front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/edit/preview')) : ($error = $front.trim() ? el.dataset.backRequired : el.dataset.frontRequired))">{{ s('app_add_next_back') }}</button>
       <button id="btn-add" type="button" class="btn btn-success neo-press h-16 min-h-0 min-w-0 flex-1 whitespace-normal rounded-2xl border-3 border-neo-edge text-review-reveal-label leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none" data-show="$step === 3" style="display:none"
               data-save-failed="{{ s('app_add_save_failed') }}"
               data-error-duplicate="{{ s('app_add_duplicate') }}"
               data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
-              data-on:click="$saving ? null : @post('/app/add/commit?deck={{ deck_id }}')"
+              data-on:click="$saving ? null : @post('/app/edit/commit?deck={{ deck_id }}')"
               data-indicator:saving data-attr:disabled="$saving">{{ tr.actions_add() }}</button>
     </div>
   </footer>
-  {% include "app/_add_summary.html.jinja" %}
+  {% include "app/_edit_summary.html.jinja" %}
 </main>
 {% endif %}

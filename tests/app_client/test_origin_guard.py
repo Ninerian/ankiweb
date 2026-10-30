@@ -27,7 +27,7 @@ def _deck_and_notes(client: TestClient):
     service = cast(FastAPI, client.app).state.service
     deck_id = client.portal.call(service.run, lambda col: col.decks.id("Origin deck"))
     assert deck_id is not None
-    assert client.get(f"/app/add?deck={deck_id}").status_code == 200
+    assert client.get(f"/app/edit?deck={deck_id}").status_code == 200
 
     def notes() -> int:
         assert client.portal is not None
@@ -38,7 +38,7 @@ def _deck_and_notes(client: TestClient):
 
 def _commit(client: TestClient, deck_id: int, headers: dict[str, str]):
     return client.post(
-        f"/app/add/commit?deck={deck_id}", content=json.dumps(_BODY), headers=headers
+        f"/app/edit/commit?deck={deck_id}", content=json.dumps(_BODY), headers=headers
     )
 
 

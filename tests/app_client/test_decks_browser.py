@@ -109,6 +109,10 @@ def test_deck_list_search_and_links(
         deck_id = ids["German B1 Vocab · 🇩🇪"]
         learn = page.locator(f"#deck-{deck_id} a").first
         assert learn.get_attribute("href") == f"/app/review?deck={deck_id}"
+        edit = page.locator(f"#deck-{deck_id}").get_by_role(
+            "link", name="Edit", exact=True
+        )
+        assert edit.get_attribute("href") == f"/app/edit?deck={deck_id}"
         assert page.evaluate("document.documentElement.scrollWidth") == 375
         browser.close()
     assert problems == []

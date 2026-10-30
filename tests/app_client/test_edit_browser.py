@@ -168,7 +168,7 @@ def _respond_to_confirm(page: Page, *, accept: bool) -> list[str]:
 
 
 def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) -> None:
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     front = "a < b & c"
     _front(page).fill(front)
     _front(page).press("Enter")
@@ -217,7 +217,7 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
     isolated = browser.new_context()
     try:
         other = isolated.new_page()
-        other.goto(f"{live_app}/app/add?deck=1")
+        other.goto(f"{live_app}/app/edit?deck=1")
         expect(other.locator("#added-cards")).not_to_contain_text(front)
         expect(other.locator("#added-cards .add-stack-badge")).to_have_count(0)
         assert live_app.notes() == saved
@@ -230,7 +230,7 @@ def test_added_stack_is_noninteractive_and_preserves_draft(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     _front(page).fill("a < b & c")
     _front(page).press("Enter")
     _back(page).fill("first answer")
@@ -299,7 +299,7 @@ def test_added_stack_badge_counts_session_cards(
     accessible_label: str,
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     region = page.locator("#added-cards")
     badge = region.locator(".add-stack-badge")
     expect(page.locator("#hud-count")).to_have_count(0)
@@ -339,7 +339,7 @@ def test_added_stack_badge_counts_session_cards(
 
 
 def test_double_click_add_saves_only_one_note(page: Page, live_app: LiveApp) -> None:
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     _to_preview(page, "Double click", "one note")
     page.get_by_role("button", name="Add", exact=True).dblclick()
     expect(_front(page)).to_be_visible()
@@ -355,7 +355,7 @@ def test_added_cards_overlap_without_horizontal_overflow(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     _add(page, "Hund", "dog")
     _add(page, "Katze", "cat")
 
@@ -392,7 +392,7 @@ def test_added_cards_overlap_without_horizontal_overflow(
 def test_required_fields_block_wizard_advancement(
     page: Page, live_app: LiveApp
 ) -> None:
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     page.get_by_role("button", name=re.compile(r"Next: Back")).click()
     expect(page.locator("#app-error")).to_contain_text("Front cannot be empty")
     expect(_front(page)).to_be_visible()
@@ -408,7 +408,7 @@ def test_validation_toast_and_optional_fields_keep_add_styles(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     page.get_by_role("button", name=re.compile(r"Next: Back")).click()
     alert = page.get_by_role("alert")
     expect(alert).to_contain_text("Front cannot be empty")
@@ -456,7 +456,7 @@ def test_validation_toast_and_optional_fields_keep_add_styles(
 def test_duplicate_preserves_preview_and_saved_note(
     page: Page, live_app: LiveApp
 ) -> None:
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     _add(page)
     saved = live_app.notes()
     _to_preview(page, "Hund", "different answer")
@@ -469,7 +469,7 @@ def test_duplicate_preserves_preview_and_saved_note(
 
 
 def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> None:
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     done = page.get_by_role("button", name="Done", exact=True)
     done.click()
     expect(page.get_by_text("Add a card first.")).to_be_visible()
@@ -500,7 +500,7 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     expect(close).to_be_focused()
     page.keyboard.press("Enter")
     expect(dialog).not_to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/add?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
     expect(_front(page)).to_be_visible()
     expect(done).to_be_focused()
     assert live_app.notes() == saved
@@ -526,7 +526,7 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     expect(page).to_have_url(f"{live_app}/app/review?deck=1")
     assert live_app.notes() == saved
 
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     done.click()
     expect(dialog).to_be_visible()
     decks.click()
@@ -538,7 +538,7 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
 def test_exit_and_deck_links_guard_unsaved_text(
     page: Page, live_app: LiveApp, link_name: str
 ) -> None:
-    url = f"{live_app}/app/add?deck=1"
+    url = f"{live_app}/app/edit?deck=1"
     page.goto(url)
     link = page.locator("#add-wizard header").get_by_role(
         "link", name=link_name, exact=True
@@ -560,7 +560,7 @@ def test_exit_and_deck_links_guard_unsaved_text(
 def test_clean_exit_and_deck_links_navigate_without_confirmation(
     page: Page, live_app: LiveApp, link_name: str
 ) -> None:
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     link = page.locator("#add-wizard header").get_by_role(
         "link", name=link_name, exact=True
     )
@@ -581,7 +581,7 @@ def test_mobile_layout_and_browser_errors(
 
     page.on("console", record_console)
     page.emulate_media(color_scheme=scheme)
-    page.goto(f"{live_app}/app/add?deck=1")
+    page.goto(f"{live_app}/app/edit?deck=1")
     _add(page)
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"

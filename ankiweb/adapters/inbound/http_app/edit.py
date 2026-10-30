@@ -1,4 +1,4 @@
-"""Card creation page, preview, and per-session additions."""
+"""Card editor page, preview, and per-session additions."""
 
 import logging
 from collections.abc import Callable
@@ -130,7 +130,7 @@ def _record_added_notes(
                 in_deck.add(nid)
 
 
-class _AddRoutes:
+class _EditRoutes:
     def __init__(
         self, get_service: Callable[[], CollectionPort], settings: Settings
     ) -> None:
@@ -172,7 +172,7 @@ class _AddRoutes:
         ]
         return cards, len(in_deck)
 
-    async def add_page(self, request: Request) -> Response:
+    async def edit_page(self, request: Request) -> Response:
         deck_id = _parse_deck(request)
         if deck_id is None:
             return RedirectResponse("/app/", status_code=303)
@@ -187,7 +187,7 @@ class _AddRoutes:
             lambda col: self.added_cards(col, session, deck_id)
         )
         body = render(
-            "app/add.html.jinja",
+            "app/edit.html.jinja",
             app_lang=self.lang,
             deck_id=deck_id,
             note_type=NOTETYPE_NAME,
@@ -201,8 +201,8 @@ class _AddRoutes:
             render_app_page(
                 tr.actions_add(),
                 body,
-                active="add",
-                scripts=("/shell/static/app/add.js",),
+                active="edit",
+                scripts=("/shell/static/app/edit.js",),
                 lang=self.lang,
             )
         )
@@ -218,7 +218,7 @@ class _AddRoutes:
         }
         example_html = highlight_example(escape_field(values["example"]))
         fragment = render(
-            "app/add.html.jinja",
+            "app/edit.html.jinja",
             app_lang=self.lang,
             preview_only=True,
             preview=values,
@@ -226,7 +226,7 @@ class _AddRoutes:
         )
         return elements_response(fragment)
 
-    async def edit(self, request: Request, nid: int) -> Response:
+    async def load_card(self, request: Request, nid: int) -> Response:
         deck_id = _parse_deck(request)
         if deck_id is None:
             return RedirectResponse("/app/", status_code=303)
@@ -375,7 +375,7 @@ class _AddRoutes:
         animation_stamp = monotonic_ns()
 
         fragment = render(
-            "app/_add_added_cards.html.jinja",
+            "app/_edit_added_cards.html.jinja",
             app_lang=self.lang,
             cards=cards,
             count=count,
@@ -402,13 +402,13 @@ class _AddRoutes:
         return _with_session_cookie(response, new_session_id)
 
 
-def build_add_router(
+def build_edit_router(
     get_service: Callable[[], CollectionPort], settings: Settings
 ) -> APIRouter:
-    routes = _AddRoutes(get_service, settings)
+    routes = _EditRoutes(get_service, settings)
     router = APIRouter()
-    router.add_api_route("/add", routes.add_page, methods=["GET"])
-    router.add_api_route("/add/preview", routes.preview, methods=["POST"])
-    router.add_api_route("/add/commit", routes.commit, methods=["POST"])
-    router.add_api_route("/add/edit/{nid}", routes.edit, methods=["POST"])
+    router.add_api_route("/edit", routes.edit_page, methods=["GET"])
+    router.add_api_route("/edit/preview", routes.preview, methods=["POST"])
+    router.add_api_route("/edit/commit", routes.commit, methods=["POST"])
+    router.add_api_route("/edit/card/{nid}", routes.load_card, methods=["POST"])
     return router
