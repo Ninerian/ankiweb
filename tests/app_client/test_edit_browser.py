@@ -29,6 +29,7 @@ from playwright.sync_api import (
     Dialog,
     Locator,
     Page,
+    Route,
     expect,
     sync_playwright,
 )
@@ -322,12 +323,19 @@ def test_pile_keyboard_badge_and_back_restore_focus(
     _add(page)
     pile = page.locator("#pile")
     cards = page.locator("#deck-cards")
-    title = page.locator("#deck-cards-title")
 
     pile.focus()
     page.keyboard.press("Enter")
     expect(cards).to_be_visible()
-    expect(title).to_be_focused()
+    expect(cards).to_be_focused()
+    expect(cards).to_have_accessible_name("Choose a card to edit")
+    title_box = page.locator("#deck-cards-title").bounding_box()
+    assert title_box is not None
+    assert title_box["width"] <= 1 and title_box["height"] <= 1
+    expect(cards.get_by_role("button", name="Back to new card")).to_have_count(0)
+    expect(cards.get_by_role("button")).to_have_count(1)
+    expect(page.locator("#edit-back")).to_have_accessible_name("Back to card editor")
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
     expect(pile).to_have_attribute("aria-expanded", "true")
     page.keyboard.press("Escape")
     expect(cards).not_to_be_visible()
@@ -335,10 +343,12 @@ def test_pile_keyboard_badge_and_back_restore_focus(
 
     page.keyboard.press("Space")
     expect(cards).to_be_visible()
-    expect(title).to_be_focused()
-    page.locator("#deck-cards-back").click()
+    expect(cards).to_be_focused()
+    page.locator("#edit-back").click()
     expect(cards).not_to_be_visible()
     expect(pile).to_be_focused()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page.locator("#edit-back")).to_have_accessible_name("Exit Creator")
     expect(pile).to_have_attribute("aria-expanded", "false")
 
     badge = page.locator("#added-cards .add-stack-badge").bounding_box()
@@ -351,7 +361,7 @@ def test_pile_keyboard_badge_and_back_restore_focus(
         }
     )
     expect(cards).to_be_visible()
-    expect(title).to_be_focused()
+    expect(cards).to_be_focused()
     page.keyboard.press("Escape")
     expect(pile).to_be_focused()
 
@@ -373,8 +383,7 @@ def test_pile_supports_touch_with_existing_and_new_cards(
         touch_page.emulate_media(reduced_motion="reduce")
         touch_page.goto(f"{live_app}/app/edit?deck=1")
         cards = touch_page.locator("#deck-cards")
-        title = touch_page.locator("#deck-cards-title")
-        back = touch_page.locator("#deck-cards-back")
+        back = touch_page.locator("#edit-back")
         pile = touch_page.locator("#pile")
         badge = touch_page.locator("#added-cards .add-stack-badge")
 
@@ -382,7 +391,7 @@ def test_pile_supports_touch_with_existing_and_new_cards(
         expect(pile).to_be_visible()
         pile.tap()
         expect(cards).to_be_visible()
-        expect(title).to_be_focused()
+        expect(cards).to_be_focused()
         expect(cards.locator("button[data-note-id]")).to_have_count(1)
         expect(cards.locator(f"button[data-note-id='{old_nid}']")).to_contain_text(
             "Old card"
@@ -398,7 +407,7 @@ def test_pile_supports_touch_with_existing_and_new_cards(
 
         pile.tap()
         expect(cards).to_be_visible()
-        expect(title).to_be_focused()
+        expect(cards).to_be_focused()
         expect(cards.locator("button[data-note-id]")).to_have_count(2)
         expect(cards).to_contain_text("Session card")
         back.tap()
@@ -416,7 +425,7 @@ def test_pile_supports_touch_with_existing_and_new_cards(
             }
         )
         expect(cards).to_be_visible()
-        expect(title).to_be_focused()
+        expect(cards).to_be_focused()
         back.tap()
         expect(cards).not_to_be_visible()
         expect(pile).to_be_focused()
@@ -452,7 +461,7 @@ def test_pile_pointer_swipe_requires_upward_threshold(
     drag(0, -29)
     expect(cards).to_be_visible()
     expect(cards.get_by_role("button", name=re.compile("Swipe card"))).to_be_visible()
-    page.locator("#deck-cards-back").click()
+    page.locator("#edit-back").click()
     expect(cards).not_to_be_visible()
     expect(pile).to_be_focused()
 
@@ -512,7 +521,7 @@ def test_browse_fans_and_folds_with_bounded_stagger(
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )
-    page.locator("#deck-cards-back").click()
+    page.locator("#edit-back").click()
     expect(wizard).to_have_attribute("data-browse-phase", "closed")
     expect(cards).not_to_be_visible()
     expect(page.locator("#add-editor")).to_be_visible()
@@ -531,6 +540,12 @@ def test_browse_fans_and_folds_with_bounded_stagger(
     assert len(row_animations) >= 2
     pile.click()
     expect(wizard).to_have_attribute("data-browse-phase", "open")
+    page.wait_for_function(
+        "() => [...document.querySelectorAll('#deck-cards .browse-card')]"
+        ".every(row => getComputedStyle(row).opacity === '1')"
+    )
+    tops = rows.evaluate_all("rows => rows.map(row => row.getBoundingClientRect().top)")
+    assert all(first < second for first, second in pairwise(tops))
     rows.nth(0).click()
     expect(wizard).to_have_attribute("data-browse-phase", "closed")
     expect(cards).not_to_be_visible()
@@ -541,6 +556,106 @@ def test_browse_fans_and_folds_with_bounded_stagger(
         phase for i, phase in enumerate(phases) if i == 0 or phase != phases[i - 1]
     ]
     assert phases[-5:] == ["opening", "open", "closing", "returning", "closed"]
+
+
+def _assert_browse_chrome_fades(page: Page) -> None:
+    frames = page.evaluate("window.motionFrames")
+    opening = [frame for frame in frames if frame["phase"] == "opening"]
+    returning = [frame for frame in frames if frame["phase"] == "returning"]
+    assert len(opening) >= 3 and len(returning) >= 3
+    assert all(value > 0 for frame in opening for value in frame["height"])
+    assert all(all(frame["inert"]) for frame in opening)
+    assert all(not frame["doneDisabled"] for frame in opening)
+    done_background = page.evaluate("window.doneBackground")
+    assert all(frame["doneBackground"] == done_background for frame in opening)
+    for index in range(3):
+        assert any(0.05 < frame["opacity"][index] < 0.95 for frame in opening)
+        assert any(0.05 < frame["opacity"][index] < 0.95 for frame in returning)
+        assert opening[0]["opacity"][index] > opening[-1]["opacity"][index]
+        assert returning[0]["opacity"][index] < returning[-1]["opacity"][index]
+
+
+def test_browse_visibly_lifts_stack_and_fades_chrome(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Motion", "answer"))
+    page.emulate_media(reduced_motion="no-preference")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    wizard = page.locator("#add-wizard")
+    pile = page.locator("#pile")
+    cards = page.locator("#deck-cards")
+    steps = page.locator("#add-wizard .add-step")
+    footer = page.locator("#add-wizard footer")
+    done = page.locator("#add-wizard header button").filter(
+        has_text=re.compile(r"^Done$")
+    )
+    expect(steps).to_have_count(3)
+    page.evaluate(
+        """() => {
+          const wizard = document.querySelector('#add-wizard');
+          const pileCard = document.querySelector('#added-cards .stacked-card');
+          const steps = document.querySelector('.add-step').parentElement;
+          const footer = wizard.querySelector('footer');
+          const done = wizard.querySelector('header .review-hud-nav button');
+          const row = document.querySelector('#deck-cards button[data-note-id]');
+          const center = el => {
+            const rect = el.getBoundingClientRect();
+            return {x: rect.left + rect.width / 2, y: rect.top + rect.height / 2};
+          };
+          window.doneBackground = getComputedStyle(done).backgroundColor;
+          window.motionStart = center(pileCard);
+          window.motionFrames = [];
+          const sample = () => {
+            const phase = wizard.dataset.browsePhase;
+            if (phase !== 'closed') {
+              const style = el => getComputedStyle(el);
+              window.motionFrames.push({
+                phase, pile: center(pileCard), row: center(row),
+                rowOpacity: Number(style(row).opacity),
+                doneBackground: style(done).backgroundColor,
+                doneDisabled: done.disabled,
+                opacity: [steps, done, footer].map(el => Number(style(el).opacity)),
+                height: [steps, footer].map(el => el.getBoundingClientRect().height),
+                inert: [steps, done, footer].map(el =>
+                  el.matches(':disabled') || !!el.closest('[inert]')),
+              });
+            }
+            requestAnimationFrame(sample);
+          };
+          requestAnimationFrame(sample);
+        }"""
+    )
+    pile.click()
+    expect(wizard).to_have_attribute("data-browse-phase", "open")
+    expect(cards).to_be_focused()
+    expect(steps.first).to_be_hidden()
+    expect(footer).to_be_hidden()
+    expect(done).to_have_css("opacity", "0")
+    expect(done).to_be_disabled()
+    page.wait_for_function(
+        """() => window.motionFrames.filter(frame =>
+          frame.phase === 'open' && frame.rowOpacity > 0.9).length >= 2"""
+    )
+    page.locator("#edit-back").click()
+    expect(wizard).to_have_attribute("data-browse-phase", "closed")
+    expect(pile).to_be_focused()
+    expect(steps.first).to_be_visible()
+    expect(footer).to_be_visible()
+    expect(done).to_have_css("opacity", "1")
+
+    frames = page.evaluate("window.motionFrames")
+    start = page.evaluate("window.motionStart")
+    opening = [frame for frame in frames if frame["phase"] == "opening"]
+    opened = [frame for frame in frames if frame["phase"] == "open"]
+    assert len(opening) >= 3 and len(opened) >= 2
+    pile_y = [frame["pile"]["y"] for frame in opening]
+    assert min(pile_y) < start["y"] - 20
+    assert len({round(y) for y in pile_y}) >= 3
+    _assert_browse_chrome_fades(page)
+    # The first list frame starts at the last visible pile position, despite reflow.
+    assert abs(opened[0]["row"]["x"] - opening[-1]["pile"]["x"]) < 80
+    assert abs(opened[0]["row"]["y"] - opening[-1]["pile"]["y"]) < 80
+    assert min(frame["row"]["y"] for frame in opened) < opened[0]["row"]["y"] - 10
 
 
 def test_add_animates_stack_but_edit_does_not_append_or_animate(
@@ -581,6 +696,59 @@ def test_add_animates_stack_but_edit_does_not_append_or_animate(
     assert [note[0] for note in live_app.notes()] == [nid]
 
 
+def test_back_interrupts_opening_and_is_blocked_while_closing(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Interrupt", "answer"))
+    page.emulate_media(reduced_motion="no-preference")
+    url = f"{live_app}/app/edit?deck=1"
+    page.goto(url)
+    wizard = page.locator("#add-wizard")
+    pile = page.locator("#pile")
+    back = page.locator("#edit-back")
+    cards = page.locator("#deck-cards")
+    pile.click()
+    expect(wizard).to_have_attribute("data-browse-phase", "opening")
+    back.click()
+    expect(wizard).to_have_attribute("data-browse-phase", "closed")
+    expect(cards).not_to_be_visible()
+    expect(page).to_have_url(url)
+    expect(pile).to_be_focused()
+
+    pile.click()
+    expect(wizard).to_have_attribute("data-browse-phase", "open")
+    page.evaluate(
+        """() => {
+          window.backActivations = [];
+          document.addEventListener('click', event => {
+            if (event.target.closest('#edit-back') && event.detail === 0) {
+              window.backActivations.push(
+                document.querySelector('#add-wizard').dataset.browsePhase
+              );
+            }
+          }, true);
+        }"""
+    )
+    back.click()
+    expect(wizard).to_have_attribute("data-browse-phase", "closing")
+    expect(back).to_have_attribute("aria-disabled", "true")
+    back.focus()
+    expect(back).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(page).to_have_url(url)
+    expect(wizard).to_have_attribute("data-browse-phase", "returning")
+    expect(pile).to_be_focused()
+    expect(back).to_have_attribute("aria-disabled", "true")
+    back.focus()
+    expect(back).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(page).to_have_url(url)
+    assert page.evaluate("window.backActivations") == ["closing", "returning"]
+    expect(wizard).to_have_attribute("data-browse-phase", "closed")
+    expect(cards).not_to_be_visible()
+    expect(back).to_be_focused()
+
+
 def test_reduced_motion_browse_pick_and_close_are_usable(
     page: Page, live_app: LiveApp
 ) -> None:
@@ -591,9 +759,34 @@ def test_reduced_motion_browse_pick_and_close_are_usable(
     page.goto(f"{live_app}/app/edit?deck=1")
     pile = page.locator("#pile")
     cards = page.locator("#deck-cards")
+    page.evaluate(
+        """() => {
+          const wizard = document.querySelector('#add-wizard');
+          const card = document.querySelector('#added-cards .stacked-card');
+          const chrome = [
+            document.querySelector('.add-step').parentElement,
+            wizard.querySelector('header .review-hud-nav button'),
+            wizard.querySelector('footer')
+          ];
+          window.reducedStart = card.getBoundingClientRect().y;
+          window.reducedOpening = null;
+          new MutationObserver(() => {
+            if (wizard.dataset.browsePhase === 'opening') {
+              window.reducedOpening = {
+                y: card.getBoundingClientRect().y,
+                opacity: chrome.map(el => Number(getComputedStyle(el).opacity))
+              };
+            }
+          }).observe(wizard, {attributes: true, attributeFilter: ['data-browse-phase']});
+        }"""
+    )
     pile.click()
     row = cards.locator(f"button[data-note-id='{nid}']")
     expect(row).to_be_visible()
+    reduced = page.evaluate("window.reducedOpening")
+    assert reduced is not None
+    assert abs(reduced["y"] - page.evaluate("window.reducedStart")) < 1
+    assert reduced["opacity"] == [0, 0, 0]
     duration = row.evaluate(
         """el => {
           const value = getComputedStyle(el).animationDuration.split(',')[0];
@@ -679,7 +872,10 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     pile.click()
     cards = page.locator("#deck-cards")
     expect(cards).to_be_visible()
-    expect(page.locator("#deck-cards-title")).to_be_focused()
+    expect(cards).to_be_focused()
+    expect(page.locator("#edit-back")).to_have_accessible_name(
+        "Back to card editor" if unit == "cards" else "Zurück zum Karteneditor"
+    )
     expect(cards.locator("button[data-note-id]")).to_have_count(5)
     assert (
         cards.locator("button[data-note-id]").evaluate_all(
@@ -693,7 +889,7 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
         )
     expect(cards).not_to_contain_text("Other deck card")
     expect(cards).not_to_contain_text("Unsupported basic")
-    page.locator("#deck-cards-back").click()
+    page.locator("#edit-back").click()
     expect(cards).not_to_be_visible()
     expect(pile).to_be_focused()
 
@@ -716,6 +912,9 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     front = page.locator("#input-front")
     expect(front).to_have_value("History 2")
     expect(front).to_be_focused()
+    expect(page.locator("#edit-back")).to_have_accessible_name(
+        "Back to cards" if unit == "cards" else "Zurück zu den Karten"
+    )
     expect(page.locator("#edit-warning")).not_to_be_visible()
     front.fill("Edited historical card")
     front.press("Enter")
@@ -851,10 +1050,12 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     first, second = (note[0] for note in original)
     pile = page.locator("#pile")
     cards = page.locator("#deck-cards")
+    back = page.locator("#edit-back")
     pile.click()
     cards.locator(f"button[data-note-id='{first}']").click()
     expect(_front(page)).to_have_value("First")
     expect(_front(page)).to_be_focused()
+    expect(back).to_have_accessible_name("Back to cards")
 
     unexpected: list[str] = []
 
@@ -871,8 +1072,9 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     expect(_front(page)).to_have_value("First")
     _front(page).fill("Temporary change")
     _front(page).fill("First")
-    pile.click()
+    back.click()
     expect(cards).to_be_visible()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
     cards.locator(f"button[data-note-id='{second}']").click()
     expect(_front(page)).to_have_value("Second")
     page.remove_listener("dialog", dismiss_unexpected)
@@ -880,15 +1082,19 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
 
     _front(page).fill("Changed second")
     rejected = _respond_to_confirm(page, accept=False)
-    pile.click()
+    back.click()
     assert len(rejected) == 1
     expect(cards).not_to_be_visible()
     expect(_front(page)).to_have_value("Changed second")
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
     accepted = _respond_to_confirm(page, accept=True)
-    pile.click()
+    back.click()
     assert len(accepted) == 1
     expect(cards).to_be_visible()
-    page.locator("#deck-cards-back").click()
+    expect(back).to_have_accessible_name("Back to card editor")
+    page.locator("#edit-back").click()
+    expect(back).to_be_focused()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
     expect(_front(page)).to_have_value("Changed second")
     rejected = _respond_to_confirm(page, accept=False)
     page.keyboard.press("Escape")
@@ -914,6 +1120,53 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     assert len(accepted) == 1
     expect(_front(page)).to_have_value("")
     assert live_app.notes() == original
+
+
+def test_back_does_not_leave_existing_card_while_saving(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    url = f"{live_app}/app/edit?deck=1"
+    page.goto(url)
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("Saved")
+    _front(page).fill("Updated")
+    _front(page).press("Enter")
+    _back(page).press("Enter")
+
+    pending: list[Route] = []
+
+    def hold_commit(route: Route) -> None:
+        pending.append(route)
+
+    unexpected: list[str] = []
+
+    def dismiss_unexpected(dialog: Dialog) -> None:
+        unexpected.append(dialog.message)
+        dialog.dismiss()
+
+    page.on("dialog", dismiss_unexpected)
+    page.route("**/app/edit/commit?deck=1", hold_commit)
+    with page.expect_request("**/app/edit/commit?deck=1"):
+        page.locator("#btn-add").click()
+    back = page.locator("#edit-back")
+    expect(back).to_have_attribute("aria-disabled", "true")
+    back.focus()
+    expect(back).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(page).to_have_url(url)
+    expect(cards).not_to_be_visible()
+    expect(page.locator("#preview")).to_contain_text("Updated")
+    expect(page.locator("#btn-add")).to_be_disabled()
+    assert unexpected == []
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Saved"
+    assert len(pending) == 1
+    pending[0].continue_()
+    expect(_front(page)).to_have_value("")
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Updated"
 
 
 @pytest.mark.parametrize(
