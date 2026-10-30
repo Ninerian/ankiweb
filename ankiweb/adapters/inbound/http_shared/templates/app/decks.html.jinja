@@ -27,7 +27,7 @@
   </section>
 {% else %}
   <section id="no-decks" class="deck-card rounded-box bg-base-200 px-5 py-7 text-center">
-    <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" href="/app/add">{{ s("app_decks_add_first") }}</a>
+    <button type="button" class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" aria-haspopup="dialog" data-on:click="$newError = ''; window.avDeckOpener(el); $newOpen = true">{{ s("app_decks_add_first") }}</button>
   </section>
 {% endif %}
 </div>

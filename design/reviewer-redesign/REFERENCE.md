@@ -154,7 +154,7 @@ separate from the existing client and uses the following routes. *Read.*
 
 | Route | Purpose |
 |---|---|
-| `GET /app/` | Deck list; Learn links to `/app/review?deck=<id>`, Edit / Add to `/app/add?deck=<id>` |
+| `GET /app/` | Deck list; Learn links to `/app/review?deck=<id>`, Edit / Add to `/app/add?deck=<id>`. The empty-list action opens the deck-creation dialog |
 | `GET /app/review?deck=<id>` | Review for a deck; Back and completion return to `/app/` |
 | `POST /app/review/answer`, `/app/review/action/*`, `/app/review/due` | Answer and card actions |
 | `GET /app/review/info/<card_id>` | Card information |

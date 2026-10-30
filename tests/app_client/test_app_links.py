@@ -219,14 +219,6 @@ def test_rendered_app_link_matrix(
     _crawl(client, "/app/offline", offline_links)
 
 
-def test_empty_deck_list_links_resolve(client: TestClient) -> None:
-    page = client.get("/app/")
-    assert page.status_code == 200
-    links = _anchors(page.text)
-    _link(links, text="Add your first deck")
-    _crawl(client, "/app/", links)
-
-
 def test_review_completion_back_link(
     client: TestClient, link_decks: list[tuple[int, int]]
 ) -> None:
