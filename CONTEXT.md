@@ -1,6 +1,6 @@
 # AnkiWeb Mobile Client
 
-Eigenstaendiger, mobiler Lern-Client unter `/app/*` neben dem bestehenden Web-Client. Deckt Stapelliste, Review und Karten hinzufuegen ab; Verwaltung (Browser, Graphs, Deck-Optionen, Import) bleibt im bestehenden Client.
+Eigenstaendiger, mobiler Lern-Client unter `/app/*` neben dem bestehenden Web-Client. Deckt Deck-Liste, Review sowie das Hinzufuegen und Bearbeiten von Vokabeln ab; Verwaltung (Browser, Graphs, Deck-Optionen, Import) bleibt im bestehenden Client.
 
 ## Language
 
@@ -29,11 +29,21 @@ Die Vorlage einer Notiz mit Feldern und Kartenvorlagen. Der mobile Client nutzt 
 _Avoid_: Note-Type, Modell, Template
 
 **Hinzugefuegte Karten**:
-Die in der laufenden Hinzufuegen-Sitzung gespeicherten Notizen, sichtbar im Wizard. Sie sind sofort im Deck gespeichert. Die Anzeige zeigt hoechstens vier zuletzt hinzugefuegte Karten; ihr Badge zaehlt alle Karten dieser Sitzung im aktuellen Deck. Die Karten sind nicht anklickbar. Anki-Wortlaut: `adding_added` ("Hinzugefuegt").
+Die in der laufenden Sitzung neu gespeicherten Notizen, sichtbar im Wizard unter `/app/edit`. Sie sind sofort im Deck gespeichert. Der Sitzungsstapel zeigt hoechstens vier zuletzt hinzugefuegte Karten; sein Badge zaehlt alle Neuanlagen dieser Sitzung im aktuellen Deck. Die Stapeloptik bleibt unveraendert. Ein Button um den Stapel inklusive Badge oeffnet die separate Deck-Kartenliste; Bearbeiten veraendert weder Stapel noch Zaehler. Anki-Wortlaut: `adding_added` ("Hinzugefuegt").
 _Avoid_: Stack, Stapel, Batch, Neue Karten
 
+**Deck-Kartenliste**:
+Die vollstaendige Liste der `AnkiWeb Vocab`-Notizen mit mindestens einer Karte im gewaehlten Deck, auch aus frueheren Sitzungen. Sie ist nicht auf den Sitzungsstapel beschraenkt; andere Notiztypen, geloeschte und deckfremde Notizen fehlen. Eine Zeile laedt dieselbe Notiz im Wizard ab Schritt 1; Speichern aktualisiert ihre bestehende ID. Bei leerem Sitzungsstapel und vorhandenen Deck-Karten oeffnet ein Button im Leerzustand dieselbe Liste.
+_Avoid_: Sitzungsstapel, Deck-Liste
+
+**Gelernt**:
+Eine Notiz gilt im gewaehlten Deck als gelernt, wenn mindestens eine ihrer Karten dort den Anki-Kartentyp `type != 0` hat. Die Deck-Kartenliste kennzeichnet sie mit Warnfarbe und Text; beim Bearbeiten warnt ein Banner vor dem Zuruecksetzen des Lernfortschritts.
+
+**Lernfortschritt zuruecksetzen**:
+Nur beim Speichern tatsaechlich geaenderter Felder einer gelernten Notiz werden ihre Karten im gewaehlten Deck mit `reset_counts=True` als neu eingeplant (`reps` und `lapses` werden geloescht). Danach erscheint ein Hinweis. Unveraendertes Speichern, Abbruch und Aenderungen an ungelernten Notizen setzen nichts zurueck; Karten in anderen Decks bleiben unveraendert. Das Revlog bleibt erhalten und die Neueinplanung wird protokolliert.
+
 **Neue Karten**:
-Karten, die noch nie gelernt wurden (Anki-Zaehler `statistics_counts_new_cards`, "New"/"Neu"). Hat nichts mit der Hinzufuegen-Sitzung zu tun.
+Karten, die aktuell als neu eingeplant sind (Anki-Zaehler `statistics_counts_new_cards`, "New"/"Neu"); dazu koennen auch zurueckgesetzte Karten gehoeren. Hat nichts mit der Hinzufuegen-Sitzung zu tun.
 _Avoid_: Frische Karten
 
 **Review**:
@@ -50,5 +60,5 @@ _Avoid_: Serie, Combo, Sitzungs-Streak
 
 ## Flagged ambiguities
 
-- "Stapel" meinte in den Plaenen dreierlei (Deck, Deck-Liste, Hinzufuegen-Stapel). Aufgeloest: **Deck** fuer das Anki-Objekt, **Deck-Liste** fuer die Startseite, **Hinzugefuegte Karten** fuer die Wizard-Liste.
-- "Neue Karten" war zuerst fuer die Wizard-Liste vorgesehen, ist aber Anki-Begriff fuer nie gelernte Karten (`scheduling_new_cards`). Aufgeloest: gehoert exklusiv dem Zaehler; die Wizard-Liste heisst **Hinzugefuegte Karten**.
+- "Stapel" meinte in den Plaenen dreierlei (Deck, Deck-Liste, Hinzufuegen-Stapel). Aufgeloest: **Deck** fuer das Anki-Objekt, **Deck-Liste** fuer die Startseite, **Hinzugefuegte Karten** fuer den Sitzungsstapel und **Deck-Kartenliste** fuer die deckweite Auswahl im Wizard.
+- "Neue Karten" ist der Anki-Begriff fuer als neu eingeplante Karten (`scheduling_new_cards`), nicht fuer die sitzungsbezogene Anzeige **Hinzugefuegte Karten**.

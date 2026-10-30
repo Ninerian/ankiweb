@@ -101,6 +101,8 @@ The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good and 2 E
 
 ### 2.4 `editor-mockup.html` (editor)
 
+This section describes the standalone historical mockup, not the mobile `/app/edit` behavior. Its floor-standing pile, swipe gesture and session-only list were not carried into the mobile editor; see §2.5.
+
 | Element | Behaviour |
 |---|---|
 | Header | Back button, deck-name chip and Done on the first row; step bar on the second row. No count pill in the header |
@@ -118,7 +120,33 @@ The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good and 2 E
 
 **Guard rule** (`confirmDiscard`): the page shows `confirm("You have unsaved text in your current card. <action>")` and cancels on "Cancel" when the editor holds text that is not already saved. For a new card that is any non-empty front, back, hint or example. For a card loaded for editing it is only a **difference from the saved card**, so an unchanged loaded card never prompts. Navigation and edit/finish actions are blocked while a card is committing.
 
-### 2.5 Link matrix
+### 2.5 Mobile deck editor (`/app/edit`)
+
+The mobile editor combines creation with editing `AnkiWeb Vocab` notes that have at least one card in the selected deck, including notes from earlier sessions. Deleted notes, other note types and notes without a card in that deck are excluded. The deck list's **Edit** / **Bearbeiten** action and its empty state lead to `GET /app/edit?deck=<id>`; the separate desktop `/add` remains unchanged.
+
+| Element | Behaviour |
+|---|---|
+| Session pile `#added-cards` | Retains the existing design, animation and `.added-0..3` layers. Shows at most the last four additions in this session and deck; its badge counts all session additions in the deck. Editing does not grow or animate the pile or change its count |
+| Opener `#pile` | A button wraps the unchanged pile and badge; activation opens `#deck-cards`. A localized **Tap to edit** label identifies the action. No swipe gesture |
+| Empty session pile | If the deck contains cards, an empty-state button opens the list and includes the deck-card count. If the deck contains no cards, the existing empty state has no such button |
+| Deck-card list `#deck-cards` | Separate, scrollable deck-wide list, not limited by the pile or the current session. Opening moves focus into the list. Each row is a button with its note ID; selecting it loads the same note in the wizard at Step 1 and focuses the first field |
+| List and draft controls | Opening the list asks before discarding unsaved text in a new card; an unchanged loaded note does not prompt. Escape or **Back to new card** closes the list; cancel or Escape in edit mode leaves the note unchanged |
+| Accessibility | The pile button has `aria-expanded`, `aria-controls="deck-cards"`, a visible focus ring and localized spoken count and action; Enter and Space activate it. Focus returns to the opener on close. Rows are labelled buttons, and motion respects `prefers-reduced-motion` |
+| Learned status | A note is learned when any of its cards in the selected deck has `type != 0`. Its row has both a theme warning color and **Learned** / **Gelernt** text; a legend explains the reset, and editing shows a warning banner |
+| Save and progress | An edit updates the same note ID without a duplicate. Only changed fields on a learned note trigger rescheduling of that note's cards in the selected deck as new with `reset_counts=True`, clearing `reps` and `lapses`; a notice follows. Unchanged saves, cancellation and edits to unlearned notes do not reset progress. Cards in other decks are not rescheduled. Revlog history remains and the rescheduling is logged |
+
+| Method and route | Purpose |
+|---|---|
+| `GET /app/edit?deck=<id>` | Open the wizard |
+| `POST /app/edit/preview` | Preview fields without saving |
+| `POST /app/edit/card/{nid}?deck=<id>` | Load a supported note belonging to the selected deck at Step 1 |
+| `POST /app/edit/commit?deck=<id>` | Create with `nid: 0`, otherwise update the selected deck's existing note |
+
+Missing, deck-foreign and unsupported notes cannot be loaded or updated. App navigation, templates and client calls use these routes and `shell_src/app/edit.js`; there are no old app-route aliases. User-facing list, warning and notice strings are available in German and English.
+
+### 2.6 Mockup link matrix
+
+The following links describe only the standalone mockups, not the mobile editor routes.
 
 | From | To | Link | Carries `?deck=` |
 |---|---|---|---|
@@ -275,7 +303,7 @@ verified** on a device. The icon is a **placeholder** and has no approved design
 
 | Area | Status |
 |---|---|
-| Prototype pages: layout, links, `?deck=` fallback, theme, contrast | Historical *QA-verified* report (see 2.5), predating the reviewer sheet, completion and current editor header changes; not re-run by the author of this document |
+| Prototype pages: layout, links, `?deck=` fallback, theme, contrast | Historical *QA-verified* report (see 2.6), predating the reviewer sheet, completion and current editor header changes; not re-run by the author of this document |
 | PWA routes, auth exemption, tags, worker activation, cache contents, offline behaviour | *Verified* in headless Chromium on `127.0.0.1` |
 | Chromium installability errors | None reported |
 | Existing test suite | 736 passed after the PWA change |

@@ -46,7 +46,7 @@ The prototype delivers instant dopamine and flow state without requiring backend
 1. **Top HUD**:
    - Left: Back to Decks button (chunky rounded square icon) → `decks-mockup.html`.
    - Center: Animated Streak pill badge.
-   - Right: More Actions button (`⋮`) opens the card actions sheet, without a mode switch. Use Back to Decks, then the deck's **Edit / Add** action to reach the editor. The day/night icon is intentionally not shown; dark mode follows `prefers-color-scheme` automatically.
+   - Right: More Actions button (`⋮`) opens the card actions sheet, without a mode switch. Use Back to Decks, then the deck's **Edit** action to reach the mobile editor. The day/night icon is intentionally not shown; dark mode follows `prefers-color-scheme` automatically.
    - Bottom: Session progress meter bar.
 2. **Card Stage**:
    - Contained inside an elevated white card with rounded corners (`border-radius: 24px`) and hard shadows.
@@ -132,40 +132,38 @@ The editor presents a focused single-purpose card interface divided into three d
    - Primary CTA: **Add to Stack 📥** (vibrant emerald green `#40c057`).
    - Once tapped, the card is **saved immediately as a note** in the target deck (not held in the browser) and the editor resets to Step 1 with clean fields, enabling friction-free continuous entry without leaving the view. Reloading the page loses nothing.
 
-### C. Card-Stack Physical Metaphor & Animation
+### C. Session Pile & Animation
 
-> Naming (see `CONTEXT.md`): the visual pile is the **added cards** of this session. "Stack" stays only as the animation metaphor and in the mockup's identifiers; the Anki object is a **deck**.
+> Naming (see `CONTEXT.md`): the visual pile is the **added cards** of this session; the Anki object is a **deck**. The separate deck-card list includes cards from earlier sessions.
 
-The core psychological hook of the creator is the **physical growing card pile**:
-- **Slide-to-Stack Keyframe Animation (`@keyframes slideToStack`)**:
-  - Upon tapping **Add to Stack**, the active card physically slides down and rotates (`transform: translate(x, y) rotate(deg)`), visibly joining the stack beneath the editing stage.
-  - A fresh blank card simultaneously drops into place from above (`@keyframes popInFreshCard`).
-- **Dealt Physical Stack Layers**:
-  - Completed cards stand on the floor at the **bottom of the stage**, below the input card: the newest sits in front, older ones step back and rise behind it (`26px` per layer, slight rotations `-3.2°`, `+2.8°`, `-2.0°`, opaque and slightly darker with depth), so each top edge stays visible. At most five layers are drawn.
-- **Cue standing on the floor**:
-  - A small label under the pile reads **Tap or swipe up to edit**, with a chevron that nudges upward. It has a hard foot and a soft contact shadow so it reads as standing on the same surface as the cards. It is hidden at 0 cards and while the list is open.
-- **Count starburst on the pile**:
-  - The count sits in a spinning starburst badge at the lower right edge of the pile (as on `/app/add`), with the unit ("CARD" / "CARDS") set on an arc. It bumps when the count changes (`@keyframes stackPillPop`); no separate add-success toast repeats it.
+The mobile editor retains its current pile design, including `.added-0..3`, the starburst badge, empty state and add animation. At most the four most recently added cards of this session and deck are visible; the badge counts all session additions in that deck. Only creating a note grows and animates the pile. Saving an edit leaves its cards and count unchanged.
 
-### D. Browse and Edit Added Cards (list)
-Students notice typos after submitting, and need to correct any card of the session, not only the last one. There is no "edit last" shortcut: no peek banner, no HUD pill, no cue on the top card.
-- **Open**: tapping the pile, the cue or the starburst, or **swiping the pile up** (28px or more; a shorter drag does nothing), opens the list. The three step badges fade out and collapse (about 350 ms), the new-card card slides up and out of the way (`@keyframes cardLeaveUp`), then the cards fan out from the pile into a **scrollable list**, oldest first, one row per card (number, front, back, `Saved` chip, `Hint` / `Example` markers, `Edit →`). The bottom bar's step controls stay out of the way while the list is open. The step badges fade back in when the list closes or a card is loaded for editing.
-- **Scroll and choose**: the list scrolls vertically with a soft fade at both edges. Tapping a row folds the list back onto the pile (rows are staggered) and the card comes back carrying the picked card.
-- **Edit in the same card**: the picked card loads into **the same input card and the same 3-step wizard** used for a new card, opening at Step 1. An orange `EDITING CARD n` banner with a `×` and an orange card outline mark the mode.
-- **Save replaces in place**: the last step saves the card under its **existing id and position**. The count is unchanged and no duplicate is created. On `/app/add` this maps to updating the existing note, not adding one.
-- **Return**: after saving, the edited card slides back onto the pile and a blank new-card card drops in (`@keyframes popInFreshCard`). `×` or `Escape` while editing, and `Escape` or **Back to new card** in the list, leave without changing anything; the card stays as saved.
-- **Safety guard**: opening the list asks before discarding unsaved text in the new-card card. A card loaded for editing and left unchanged counts as **not** unsaved, so leaving it does not prompt.
-- **Accessibility**: the badge has `aria-expanded` and `aria-controls`, a spoken label ("N cards added. Tap to browse and edit."), and gets focus back when the list closes. Each row is a button labelled `Edit card n: <front>`. All motion respects `prefers-reduced-motion`.
+The pile is wrapped by one button, including the badge, with a small **Tap to edit** label. Activating it opens the deck-card list; there is no swipe gesture. If the session pile is empty but the deck has cards, the empty state provides a button to open the list with the deck-card count. A deck without cards keeps the existing empty state without that button.
 
-### E. Porting & Architecture Blueprint
-This flow is designed as a **new dedicated mobile route**, completely separate from Anki's existing complex `/add` route:
-- **New Route**: `/add/basic` or `/add/quick` (e.g. `quick_add_body.html.jinja`).
-- **Scope Separation**:
-  - The existing full-featured `/add` editor remains intact for desktop power-users, cloze deletion cards, media uploads, math formulas, and multi-field custom note types.
-  - The new quick-add view provides high-school students and mobile users with a distraction-free, zero-config card builder strictly for notes of the dedicated note type **`AnkiWeb Vocab`** (§5.F). Other note types are not shown in the design.
-- **Design Token Continuity**:
-  - Uses identical `:root` and `[data-theme="dark"]` CSS variables, border widths (`2.5px`), drop shadows (`var(--shadow-card)`), and system font stack as `mockup.html`.
-  - Seamless visual transition from building cards in `editor-mockup.html` to reviewing them in `mockup.html`.
+The floor-standing five-layer pile, 26px staggering, chevron cue and swipe gesture belong to the historical `editor-mockup.html` design (see [REFERENCE.md §2.4](REFERENCE.md)); they are not the mobile implementation.
+
+### D. Browse and Edit Deck Cards
+
+- **Scope**: `#deck-cards` lists all `AnkiWeb Vocab` notes with at least one card in the selected deck, including notes from earlier sessions. Other note types, deleted notes and notes without a card in that deck are excluded. The list is separate from the session pile and is not limited to four rows.
+- **Open and choose**: activating the pile or its badge opens the list in place of the input card and moves focus into the list. Each row is a button carrying its note ID. Selecting it loads that note in the same three-step wizard at Step 1, closes the list, shows an editing banner and focuses the first field.
+- **Save and cancel**: saving updates the same note ID without a duplicate. Cancel or Escape while editing discards the edit. Escape or **Back to new card** closes the list without changing a note.
+- **Draft safety**: opening the list asks before discarding unsaved text in a new card. An unchanged loaded note is not an unsaved draft and never triggers that prompt.
+- **Learned cards**: a note is learned when at least one of its cards in the selected deck has Anki `type != 0`. Its row shows a theme warning color and the text **Learned** / **Gelernt**; a legend explains that changes reset progress. Editing a learned note shows a warning banner.
+- **Progress reset**: only an actual field change to a learned note reschedules that note's cards in the selected deck as new with `reset_counts=True`, clearing `reps` and `lapses`, and shows a notice. Unchanged saves, cancellation and edits to unlearned notes do not reset progress; cards in other decks are not rescheduled. Existing review history is not deleted; rescheduling is logged.
+- **Accessibility**: the pile button has `aria-expanded`, `aria-controls="deck-cards"`, a visible focus ring and a localized spoken count and action. Enter and Space open the list; focus returns to its opener on close. Rows are labelled buttons, and motion respects `prefers-reduced-motion`. Labels, warnings and feedback are available in German and English.
+
+### E. Mobile Editor Routes & Scope
+
+The deck list's **Edit** / **Bearbeiten** action and its empty state lead to `/app/edit?deck=<id>`. The mobile editor uses:
+
+| Route | Purpose |
+|---|---|
+| `GET /app/edit?deck=<id>` | Open the wizard, session pile and deck-card list |
+| `POST /app/edit/preview` | Preview `front`, `back`, `hint` and `example` without saving |
+| `POST /app/edit/card/{nid}?deck=<id>` | Load an editable note in the selected deck at Step 1 |
+| `POST /app/edit/commit?deck=<id>` | Create for `nid: 0`; otherwise update the selected deck's existing note |
+
+Missing, deck-foreign and unsupported notes cannot be loaded or updated. App navigation, templates and client calls use these routes and `shell_src/app/edit.js`, without legacy app-route aliases. The separate full-featured desktop `/add` editor remains unchanged.
 
 ### F. Dedicated Note Type Contract (`AnkiWeb Vocab`)
 The design shows only cards of dedicated note types. They carry **no CSS and no JavaScript**: all presentation lives in the design's own stylesheet, and the card HTML is inert markup from Anki's server-side render. Created via AnkiConnect `createModel` (`modelName`, `inOrderFields`, `cardTemplates`, `css`, `isCloze`).
@@ -221,6 +219,8 @@ The reviewer adds a localized front label outside the Anki template for `AnkiWeb
 ---
 
 ## 6. Deck List & Mode Switching (`decks-mockup.html`)
+
+The following links and deck IDs describe the standalone mockups. For the mobile editor's **Edit** action and `/app/edit` route, see §5.E.
 
 - **Deck list**: chunky card rows (emoji, name, due/new counts, mini candy-stripe progress bar) with live search and an empty state.
 - **Per-deck actions**: **Learn** → `mockup.html?deck=<id>`, **Edit / Add** → `editor-mockup.html?deck=<id>`.
