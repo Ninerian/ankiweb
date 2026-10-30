@@ -3,8 +3,10 @@
 import json
 from collections.abc import Iterator
 from pathlib import Path
+from typing import cast
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from ankiweb.app import create_app
@@ -22,7 +24,7 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
 
 def _deck_and_notes(client: TestClient):
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     deck_id = client.portal.call(service.run, lambda col: col.decks.id("Origin deck"))
     assert deck_id is not None
     assert client.get(f"/app/add?deck={deck_id}").status_code == 200

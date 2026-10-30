@@ -1,9 +1,11 @@
 import html
 import re
+from typing import cast
 
 import pytest
 from anki.collection import Collection
 from anki.decks import DeckId
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 
@@ -31,7 +33,7 @@ def test_review_and_add_show_the_same_deck_display(
         return int(deck_id), int(note.cards()[0].id)
 
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     deck_id, card_id = client.portal.call(service.run, seed)
 
     review = client.get("/app/review", params={"deck": deck_id})
@@ -83,7 +85,7 @@ def test_review_header_of_subdeck_card_uses_root_emoji(client: TestClient) -> No
         return int(root_id)
 
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     root_id = client.portal.call(service.run, seed)
 
     review = client.get("/app/review", params={"deck": root_id})

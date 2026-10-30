@@ -1,14 +1,15 @@
 import json
 import re
 from pathlib import Path
+from typing import Protocol, cast
 
 import anki.lang
 import pytest
 from anki.collection import Collection
 from anki.decks import DeckId
 from anki.notes import NoteId
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from httpx import Response
 
 from ankiweb.app import create_app
 from ankiweb.core.app_client.vocab import NOTETYPE_NAME, escape_field, highlight_example
@@ -18,7 +19,7 @@ from ankiweb.core.config import Settings
 
 def test_add_page_initializes_model_and_session(client: TestClient) -> None:
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     deck_id = client.portal.call(
         service.run, lambda col: col.decks.id('Deck <img src=x onerror="x">')
     )
@@ -84,7 +85,8 @@ def test_add_page_rejects_missing_or_unknown_deck(
     assert client.portal is not None
     assert (
         client.portal.call(
-            client.app.state.service.run, lambda col: col.models.by_name(NOTETYPE_NAME)
+            cast(FastAPI, client.app).state.service.run,
+            lambda col: col.models.by_name(NOTETYPE_NAME),
         )
         is None
     )
@@ -168,7 +170,9 @@ def test_preview_matches_saved_example_after_client_highlighting(
         note = col.get_note(ids[0])
         return note["Example"], note.cards()[0].answer()
 
-    stored, answer = client.portal.call(client.app.state.service.run, saved_example)
+    stored, answer = client.portal.call(
+        cast(FastAPI, client.app).state.service.run, saved_example
+    )
     assert stored == (
         'Say *&lt;b&gt; &amp; "x"*.<br>Then *&lt;img src=x onerror=alert(1)&gt;*.'
     )
@@ -231,7 +235,12 @@ def _badge(text: str) -> str:
     return f"{count.group(1)} {unit.group(1)}"
 
 
-def _signals(response: Response) -> dict[str, object]:
+class _TextResponse(Protocol):
+    @property
+    def text(self) -> str: ...
+
+
+def _signals(response: _TextResponse) -> dict[str, object]:
     for line in response.text.splitlines():
         if line.startswith("data: signals "):
             return json.loads(line.removeprefix("data: signals "))
@@ -241,7 +250,7 @@ def _signals(response: Response) -> dict[str, object]:
 def _notes(client: TestClient) -> list[NoteId]:
     assert client.portal is not None
     return client.portal.call(
-        client.app.state.service.run, lambda col: col.find_notes("")
+        cast(FastAPI, client.app).state.service.run, lambda col: col.find_notes("")
     )
 
 
@@ -249,7 +258,7 @@ def test_commit_persists_escaped_note_and_patches_session_cards(
     client: TestClient,
 ) -> None:
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     deck_id = client.portal.call(service.run, lambda col: col.decks.id("Commit deck"))
     assert deck_id is not None
     assert client.get(f"/app/add?deck={deck_id}").status_code == 200
@@ -380,7 +389,7 @@ def test_commit_rejects_invalid_deck(client: TestClient, query: str) -> None:
 
 def test_added_cards_are_scoped_to_session_and_deck(client: TestClient) -> None:
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
     assert other_deck is not None
     first = client.post("/app/add/commit?deck=1", json={"front": "A", "back": "a"})
@@ -504,7 +513,7 @@ def test_added_stack_shows_latest_four_and_counts_all(client: TestClient) -> Non
     assert client.portal is not None
     nid = NoteId(int(match.group(1)))
     client.portal.call(
-        client.app.state.service.run, lambda col: col.remove_notes([nid])
+        cast(FastAPI, client.app).state.service.run, lambda col: col.remove_notes([nid])
     )
     page = client.get("/app/add?deck=1")
     assert "count: 4" in page.text
@@ -531,7 +540,7 @@ def test_deleted_notes_are_removed_without_losing_other_decks(
     client: TestClient,
 ) -> None:
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
     assert other_deck is not None
 
@@ -572,7 +581,7 @@ def test_changed_note_types_are_excluded_from_session_stack(
     client: TestClient,
 ) -> None:
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
     assert other_deck is not None
     note_ids = []
@@ -649,7 +658,7 @@ def test_added_stack_does_not_hide_incompatible_vocab_model(
         model["css"] = "body { color: red; }"
         col.models.update_dict(model)
 
-    client.portal.call(client.app.state.service.run, break_model)
+    client.portal.call(cast(FastAPI, client.app).state.service.run, break_model)
     with pytest.raises(ValueError, match="incompatible"):
         client.get("/app/add?deck=1")
     response = client.post(
@@ -662,7 +671,7 @@ def test_added_stack_does_not_hide_incompatible_vocab_model(
 
 def test_added_note_follows_card_moved_between_decks(client: TestClient) -> None:
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
     assert other_deck is not None
     client.post("/app/add/commit?deck=1", json={"front": "Moved", "back": "Answer"})
@@ -738,7 +747,7 @@ def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
     }
     assert client.portal is not None
     fields = client.portal.call(
-        client.app.state.service.run,
+        cast(FastAPI, client.app).state.service.run,
         lambda col: [
             col.get_note(nid)[key] for key in ("Front", "Back", "Hint", "Example")
         ],
@@ -863,7 +872,7 @@ def test_edit_and_update_follow_actual_deck_and_reject_deleted_notes(
     client: TestClient,
 ) -> None:
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     other_deck = client.portal.call(service.run, lambda col: col.decks.id("Other"))
     assert other_deck is not None
     client.post("/app/add/commit?deck=1", json={"front": "Moved", "back": "One"})
@@ -924,7 +933,8 @@ def test_edit_and_update_reject_changed_note_type(client: TestClient) -> None:
     nid = _notes(client)[0]
 
     client.portal.call(
-        client.app.state.service.run, lambda col: _change_note_type(col, [nid])
+        cast(FastAPI, client.app).state.service.run,
+        lambda col: _change_note_type(col, [nid]),
     )
     assert client.post(f"/app/add/edit/{nid}?deck=1").status_code in (404, 409)
     response = client.post(
@@ -935,7 +945,8 @@ def test_edit_and_update_reject_changed_note_type(client: TestClient) -> None:
     assert set(_notes(client)) == {nid}
     assert (
         client.portal.call(
-            client.app.state.service.run, lambda col: col.get_note(nid)["Front"]
+            cast(FastAPI, client.app).state.service.run,
+            lambda col: col.get_note(nid)["Front"],
         )
         == "Typed"
     )

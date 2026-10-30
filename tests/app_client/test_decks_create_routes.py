@@ -1,10 +1,11 @@
 import html
 import json
 from pathlib import Path
+from typing import Protocol, cast
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from httpx import Response
 
 from ankiweb.app import create_app
 from ankiweb.core.app_client.decks import join_emoji
@@ -13,12 +14,17 @@ from ankiweb.core.auth import COOKIE, auth_token
 from ankiweb.core.config import Settings
 
 
+class _TextResponse(Protocol):
+    @property
+    def text(self) -> str: ...
+
+
 @pytest.fixture(autouse=True)
 def datastar_request(client: TestClient) -> None:
     client.headers["Datastar-Request"] = "true"
 
 
-def _signals(response: Response) -> dict[str, object]:
+def _signals(response: _TextResponse) -> dict[str, object]:
     for line in response.text.splitlines():
         if line.startswith("data: signals "):
             return json.loads(line.removeprefix("data: signals "))
@@ -28,7 +34,7 @@ def _signals(response: Response) -> dict[str, object]:
 def _decks(client: TestClient) -> dict[int, str]:
     assert client.portal is not None
     return client.portal.call(
-        client.app.state.service.run,
+        cast(FastAPI, client.app).state.service.run,
         lambda col: {deck.id: deck.name for deck in col.decks.all_names_and_ids()},
     )
 

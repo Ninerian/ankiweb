@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import cast
 
 import pytest
 from anki.cards import CardId
@@ -7,6 +8,7 @@ from anki.collection import Collection
 from anki.decks import DeckId
 from anki.scheduler.v3 import CardAnswer
 from anki.scheduler.v3 import Scheduler as V3Scheduler
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from ankiweb.ankiconnect.app import create_ankiconnect_app
@@ -191,7 +193,9 @@ def test_reviewed_today_action_uses_same_boundary(
             return deck_id, studied_by_deck(col), recent_eases(col, 10)
 
         assert client.portal is not None
-        deck_id, counts, eases = client.portal.call(client.app.state.service.run, seed)
+        deck_id, counts, eases = client.portal.call(
+            cast(FastAPI, client.app).state.service.run, seed
+        )
         response = client.post("/actions/getNumCardsReviewedToday", json={})
 
     assert response.status_code == 200
