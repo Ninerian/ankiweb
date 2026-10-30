@@ -855,8 +855,6 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     cards.locator(f"button[data-note-id='{first}']").click()
     expect(_front(page)).to_have_value("First")
     expect(_front(page)).to_be_focused()
-    _front(page).fill("Temporary change")
-    _front(page).fill("First")
 
     unexpected: list[str] = []
 
@@ -865,6 +863,14 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
         dialog.dismiss()
 
     page.on("dialog", dismiss_unexpected)
+    page.locator("#edit-cancel").click()
+    expect(_front(page)).to_have_value("")
+    assert unexpected == []
+    pile.click()
+    cards.locator(f"button[data-note-id='{first}']").click()
+    expect(_front(page)).to_have_value("First")
+    _front(page).fill("Temporary change")
+    _front(page).fill("First")
     pile.click()
     expect(cards).to_be_visible()
     cards.locator(f"button[data-note-id='{second}']").click()
