@@ -106,7 +106,9 @@ The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good and 2 E
 | Header | Back button, deck-name chip and Done on the first row; step bar on the second row. No count pill in the header |
 | Deck chip `#deck-chip` | Shows emoji and name; guarded link to `decks-mockup.html?deck=<id>` |
 | Active card | Note-type pill, without a repeated deck badge |
+| Pile `#stack-pile-layer` and cue `#pile-cue` | Cards stand at the bottom of the stage; the cue ("Tap or swipe up to edit") stands on the floor under them. Both hidden at 0 cards. A tap on either, or an upward drag of at least 28 px on either, opens the list; a shorter drag does not |
 | Count badge `#stack-badge` | Starburst on the pile, hidden at 0 cards. Tapping it opens or closes the list (`aria-expanded`) |
+| Step badges `.step-indicator-row` | Fade out and collapse while the list is open (`body.is-browsing`), fade back in on close or when a card is picked |
 | Browse list `#browse-list` | One `.browse-card` button per added card, oldest first, vertically scrollable. Opens after the input card slides away; folds back onto the pile on pick or close |
 | Edit mode | Picking a row loads the card into the same wizard at Step 1. Banner `#edit-banner` with `×`; saving replaces the card in place (same id, same position, same count) |
 | Leave edit / list | `×` or `Escape` in edit mode keeps the card as saved. `Escape` or **Back to new card** closes the list |

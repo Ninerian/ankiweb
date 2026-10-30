@@ -281,6 +281,8 @@
       justify-content: space-between;
       gap: 8px;
       padding: 4px 2px 2px 2px;
+      max-height: 60px;
+      transition: opacity 0.35s ease, max-height 0.4s ease 0.05s, padding 0.4s ease 0.05s, transform 0.35s ease;
     }
 
     .step-pill-item {
@@ -347,20 +349,21 @@
     .cards-deck-container {
       position: relative;
       width: 100%;
-      flex-shrink: 0;
-      padding-bottom: var(--pile-space, 0px);
+      flex: 1 0 auto;
       display: flex;
       flex-direction: column;
       margin-bottom: 8px;
+      /* Room under the input card for the pile standing on the floor */
+      padding-bottom: var(--pile-space, 0px);
     }
 
     /* Stacked Cards Pile (Visual Cards Placed Behind & Under Active Card) */
     .stack-pile-layer {
       position: absolute;
-      top: 0;
       left: 0;
       right: 0;
       bottom: 0;
+      height: var(--pile-space, 0px);
       pointer-events: none;
       z-index: 1;
     }
@@ -370,7 +373,8 @@
       position: absolute;
       left: 0;
       right: 0;
-      height: var(--active-card-height, 330px);
+      bottom: 38px;
+      height: 104px;
       background-color: var(--bg-surface);
       border: 3px solid var(--border-color);
       border-radius: var(--radius-lg);
@@ -1199,6 +1203,62 @@
     .creator-bottom-bar.is-browsing .bottom-btn-row { display: none; }
     .creator-bottom-bar.is-browsing { padding-block: 4px; }
 
+    /* While the list is open the three step badges give way to it */
+    body.is-browsing .step-indicator-row {
+      opacity: 0;
+      max-height: 0;
+      padding-block: 0;
+      overflow: hidden;
+      transform: translateY(-6px);
+      pointer-events: none;
+    }
+    body.is-browsing .pile-cue { opacity: 0; pointer-events: none; }
+
+    /* Pile cue: tells the student the pile can be opened, by tap or swipe up */
+    .pile-cue {
+      position: absolute;
+      left: 50%;
+      bottom: -2px;
+      z-index: 15;
+      transform: translateX(-50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px 5px 8px;
+      border: 2px solid var(--border-color);
+      border-radius: 10px 10px 4px 4px;
+      background: var(--bg-surface);
+      color: var(--text-main);
+      /* Hard foot under the label so it reads as standing on the floor */
+      box-shadow: 0 4px 0 var(--border-color);
+      font-family: var(--font-ui);
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      cursor: pointer;
+      touch-action: none;
+      transition: opacity 0.3s ease;
+    }
+    /* Contact shadow on the floor beneath the cue */
+    .pile-cue::after {
+      content: '';
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      bottom: -12px;
+      height: 7px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.32), rgba(0,0,0,0) 70%);
+      pointer-events: none;
+    }
+    .pile-cue[hidden] { display: none; }
+    .pile-cue svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; animation: cueNudge 1.6s ease-in-out infinite; }
+    @keyframes cueNudge { 0%, 100% { transform: translateY(2px); } 50% { transform: translateY(-3px); } }
+    /* The pile is a swipe surface; vertical drags must not scroll the page */
+    .stack-pile-layer.is-swipeable { pointer-events: auto; touch-action: none; cursor: pointer; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
@@ -1247,6 +1307,12 @@
         <div class="stack-pile-layer" id="stack-pile-layer">
           <!-- Stacked cards dynamically injected here -->
         </div>
+
+        <!-- Cue on the pile: tap it, or swipe the pile up, to browse and edit -->
+        <button type="button" class="pile-cue" id="pile-cue" hidden aria-controls="browse-layer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+          <span>Tap or swipe up to edit</span>
+        </button>
 
         <!-- Count starburst on the pile; tapping the pile opens the list -->
         <button type="button" class="stack-badge" id="stack-badge" hidden aria-expanded="false" aria-controls="browse-layer" onclick="toggleBrowse()">
@@ -1490,6 +1556,7 @@
       btnPrimaryLabel: document.getElementById('btn-primary-label'),
       activeCard: document.getElementById('active-card'),
       stackPileLayer: document.getElementById('stack-pile-layer'),
+      pileCue: document.getElementById('pile-cue'),
       stackCount: document.getElementById('stack-count'),
       stackUnit: document.getElementById('stack-unit'),
       stackBadge: document.getElementById('stack-badge'),
@@ -1762,15 +1829,19 @@
     function renderStackPile() {
       el.stackPileLayer.innerHTML = '';
       const total = state.cardStack.length;
-      el.activeCard.parentElement.style.setProperty('--pile-space', total ? `${Math.min(total, 5) * 32 + 28}px` : '0px');
+      el.activeCard.parentElement.style.setProperty('--pile-space', total ? `${Math.min(total, 5) * 26 + 134}px` : '0px');
 
       if (total === 0) {
         el.stackEmptyMsg.style.display = 'flex';
         el.stackBadge.hidden = true;
+        el.pileCue.hidden = true;
+        el.stackPileLayer.classList.remove('is-swipeable');
         return;
       }
 
       el.stackEmptyMsg.style.display = 'none';
+      el.pileCue.hidden = false;
+      el.stackPileLayer.classList.add('is-swipeable');
 
       // Render cards from bottom to top (max 5 visible in DOM for optimal performance).
       // The pile itself is decoration: the badge on it opens the list.
@@ -1786,15 +1857,17 @@
         cardElem.id = `stacked-card-${card.id}`;
         cardElem.setAttribute('aria-hidden', 'true');
 
-        // The most recent card sits directly beneath active card at its preset offset
-        // Older cards are pushed further down and scaled down slightly
+        // Cards stand on the floor of the stage: the newest sits in front at the
+        // bottom, older ones step back and rise behind it so their top edges show
         const preset = STACK_PRESETS[(total - 1 - depth) % STACK_PRESETS.length];
-        const offsetY = (depth + 1) * 32;
-        const scale = 1 - (depth * 0.02);
+        const lift = depth * 26;
+        const scale = 1 - (depth * 0.03);
 
-        cardElem.style.transform = `translate(${preset.x}px, ${offsetY}px) rotate(${preset.rot}deg) scale(${scale})`;
+        cardElem.style.transform = `translate(${preset.x}px, ${-lift}px) rotate(${preset.rot}deg) scale(${scale})`;
+        cardElem.style.transformOrigin = 'center bottom';
         cardElem.style.zIndex = 5 - depth;
-        cardElem.style.opacity = Math.max(0.7, 1 - (depth * 0.1));
+        // Opaque: lettering of older cards must not show through the card in front
+        cardElem.style.filter = `brightness(${Math.max(0.82, 1 - depth * 0.05)})`;
 
         const rendered = CardRender.renderCard(card);
         cardElem.innerHTML = `
@@ -1827,14 +1900,34 @@
        save everything folds back onto the pile. Editing replaces the card in
        place (same id, same position, same count): nothing is removed first.
        ========================================================================== */
+
+    /* Tap on the pile or the cue, or a swipe up of 28px or more, opens the list */
+    (function wirePileGesture() {
+      const SWIPE_PX = 28;
+      let startY = null;
+      [el.stackPileLayer, el.pileCue].forEach((node) => {
+        node.addEventListener('pointerdown', (e) => {
+          startY = e.clientY;
+          // Keep the drag on this node even when the finger leaves the pile
+          node.setPointerCapture?.(e.pointerId);
+        });
+        node.addEventListener('pointercancel', () => { startY = null; });
+        node.addEventListener('pointerup', (e) => {
+          if (startY === null) return;
+          const dy = startY - e.clientY;
+          startY = null;
+          if (dy > SWIPE_PX || Math.abs(dy) < 6) openBrowse();
+        });
+      });
+    })();
     const REST_ROT = [-1.2, 0.9, -0.7, 1.1, -0.5];
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     function pileOrigin() {
-      // Where the list rows grow out of: just below the input card, where the pile sits.
+      // Where the list rows grow out of: the top edge of the pile standing on the floor.
       const stage = el.creatorStage.getBoundingClientRect();
-      const card = el.activeCard.getBoundingClientRect();
-      return Math.max(60, card.bottom - stage.top);
+      const pile = el.stackPileLayer.getBoundingClientRect();
+      return Math.max(60, pile.top - stage.top);
     }
 
     function renderBrowseList() {
@@ -1871,6 +1964,7 @@
       if (state.isCommitting || state.browsing || state.cardStack.length === 0) return;
       if (!confirmDiscard('Discard it and browse your added cards?')) return;
       state.browsing = true;
+      document.body.classList.add('is-browsing');
       el.stackBadge.setAttribute('aria-expanded', 'true');
 
       // 1. The input card slides up and out of the way
@@ -1891,6 +1985,7 @@
     async function closeBrowse({ focusBadge = true } = {}) {
       if (!state.browsing) return;
       state.browsing = false;
+      document.body.classList.remove('is-browsing');
       el.stackBadge.setAttribute('aria-expanded', 'false');
 
       // 1. The list folds back onto the pile
@@ -1945,6 +2040,7 @@
       el.browseLayer.classList.add('is-folding');
       await wait(120 + state.cardStack.length * 24 + 280);
       state.browsing = false;
+      document.body.classList.remove('is-browsing');
       el.stackBadge.setAttribute('aria-expanded', 'false');
       el.browseLayer.hidden = true;
       el.browseLayer.classList.remove('is-folding');
