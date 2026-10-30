@@ -47,6 +47,7 @@ def test_edit_page_initializes_model_and_session(client: TestClient) -> None:
     assert "<img src=x" not in page.text
     assert "/shell/static/app/edit.js" in page.text
     assert 'data-signals="{step: 1, front:' in page.text
+    assert "_editSaved: false" in page.text
     for name in ("front", "back", "hint", "example"):
         assert f'id="input-{name}"' in page.text
         assert f"data-bind:{name}" in page.text
@@ -343,7 +344,9 @@ def test_commit_persists_escaped_note_and_patches_session_cards(
     assert "*word* &amp; &lt;img src=x onerror=alert(1)&gt;" in response.text
     assert "<img src=x" not in response.text
     assert "<script>" not in response.text
-    assert _signals(response) == {
+    signals = _signals(response)
+    assert signals.pop("_editSaved", False) is False
+    assert signals == {
         "front": "",
         "back": "",
         "hint": "",
@@ -873,6 +876,7 @@ def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
     unchanged = client.post("/app/edit/commit?deck=1", json={**values, "nid": nid})
     assert unchanged.status_code == 200
     assert _signals(unchanged)["count"] == 2
+    assert _signals(unchanged)["_editSaved"] is True
     assert set(_notes(client)) == before_ids
     assert "animate-slide-to-added" not in _pile(unchanged.text)
     assert "data-ts=" not in _pile(unchanged.text)
@@ -888,11 +892,15 @@ def test_edit_round_trip_updates_in_place_and_keeps_stack_order(
         "step": 1,
         "nid": 0,
         "learned": False,
+        "_editSaved": True,
         "progressReset": False,
         "count": 2,
         "deckCount": 2,
         "error": "",
     }
+    assert response.text.rfind("event: datastar-patch-elements") < response.text.rfind(
+        "event: datastar-patch-signals"
+    )
     assert response.text.index("Second") < response.text.index("Updated")
     assert "animate-slide-to-added" not in _pile(response.text)
     assert "data-ts=" not in _pile(response.text)
@@ -1201,6 +1209,7 @@ def test_learned_edit_reset_failure_survives_reopen_and_retries(
             "/app/edit/commit?deck=1", json={**_RESET_ORIGINAL, "nid": nid}
         )
         assert _signals(unchanged)["progressReset"] is False
+        assert _signals(unchanged)["_editSaved"] is True
         assert 'aria-describedby="deck-cards-legend"' in unchanged.text
         assert calls == []
         assert _reset_snapshot(client, nid, cid) == before
@@ -1246,6 +1255,7 @@ def test_learned_edit_reset_failure_survives_reopen_and_retries(
         retry = client.post("/app/edit/commit?deck=1", json=submitted)
         assert retry.status_code == 200
         assert _signals(retry)["progressReset"] is True
+        assert _signals(retry)["_editSaved"] is True
         assert _signals(retry)["count"] == 0
         assert _signals(retry)["deckCount"] == 1
         assert _stack_ids(retry.text) == [nid]
@@ -1282,6 +1292,7 @@ def test_learned_edit_retry_in_same_session(
         retry = client.post("/app/edit/commit?deck=1", json=submitted)
         assert retry.status_code == 200
         assert _signals(retry)["progressReset"] is True
+        assert _signals(retry)["_editSaved"] is True
         assert calls == [([cid], True)] * 2
         assert _reset_pending(client) == []
         fields, reset = _reset_snapshot(client, nid, cid)

@@ -223,6 +223,7 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
     expect(page.get_by_label("Hint", exact=True)).to_have_value("")
     expect(page.get_by_label("Example sentence", exact=True)).to_have_value("")
     expect(page.get_by_role("button", name="Add", exact=True)).not_to_be_visible()
+    expect(page.locator("#deck-cards")).not_to_be_visible()
     expect(page.locator("#added-cards .add-stack-count")).to_have_text("1")
     expect(page.locator("#added-cards")).to_contain_text(front)
     saved = live_app.notes()
@@ -684,6 +685,11 @@ def test_add_animates_stack_but_edit_does_not_append_or_animate(
     _front(page).press("Enter")
     _back(page).press("Enter")
     page.locator("#btn-add").click()
+    expect(page.locator("#deck-cards")).to_be_visible()
+    expect(page.locator("#deck-cards")).to_be_focused()
+    expect(page.locator(f"#deck-cards button[data-note-id='{nid}']")).to_contain_text(
+        "Edited card"
+    )
     stack = page.locator("#added-cards .stacked-card")
     expect(stack).to_have_count(1)
     expect(stack).to_contain_text("Edited card")
@@ -709,6 +715,8 @@ def test_back_interrupts_opening_and_is_blocked_while_closing(
     cards = page.locator("#deck-cards")
     pile.click()
     expect(wizard).to_have_attribute("data-browse-phase", "opening")
+    expect(back).to_have_role("button")
+    expect(back).not_to_have_attribute("href", re.compile("."))
     back.click()
     expect(wizard).to_have_attribute("data-browse-phase", "closed")
     expect(cards).not_to_be_visible()
@@ -717,20 +725,10 @@ def test_back_interrupts_opening_and_is_blocked_while_closing(
 
     pile.click()
     expect(wizard).to_have_attribute("data-browse-phase", "open")
-    page.evaluate(
-        """() => {
-          window.backActivations = [];
-          document.addEventListener('click', event => {
-            if (event.target.closest('#edit-back') && event.detail === 0) {
-              window.backActivations.push(
-                document.querySelector('#add-wizard').dataset.browsePhase
-              );
-            }
-          }, true);
-        }"""
-    )
     back.click()
     expect(wizard).to_have_attribute("data-browse-phase", "closing")
+    expect(back).to_have_role("button")
+    expect(back).not_to_have_attribute("href", re.compile("."))
     expect(back).to_have_attribute("aria-disabled", "true")
     back.focus()
     expect(back).to_be_focused()
@@ -739,11 +737,11 @@ def test_back_interrupts_opening_and_is_blocked_while_closing(
     expect(wizard).to_have_attribute("data-browse-phase", "returning")
     expect(pile).to_be_focused()
     expect(back).to_have_attribute("aria-disabled", "true")
+    expect(back).not_to_have_attribute("href", re.compile("."))
     back.focus()
     expect(back).to_be_focused()
-    page.keyboard.press("Enter")
+    page.keyboard.press("Space")
     expect(page).to_have_url(url)
-    assert page.evaluate("window.backActivations") == ["closing", "returning"]
     expect(wizard).to_have_attribute("data-browse-phase", "closed")
     expect(cards).not_to_be_visible()
     expect(back).to_be_focused()
@@ -923,6 +921,11 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     expect(page.locator("#input-example")).to_have_value("A *word*\nnext line")
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    expect(cards.locator(f"button[data-note-id='{ids[2]}']")).to_contain_text(
+        "Edited historical card"
+    )
     expect(front).to_have_value("")
     expect(badge.locator(".add-stack-count")).to_have_text("6")
     assert (
@@ -939,7 +942,6 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     after_ids = _run(live_app, lambda col: sorted(col.find_notes("")))
     assert len(after_ids) == len(before_ids) + 1
     assert set(before_ids).issubset(after_ids)
-    pile.click()
     expect(cards.locator(f"button[data-note-id='{ids[2]}']")).to_contain_text(
         "Edited historical card"
     )
@@ -979,11 +981,16 @@ def test_empty_session_list_reopens_after_edit_and_selects_another_card(
     front.press("Enter")
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
     expect(front).to_have_value("")
     assert (
         _run(live_app, lambda col: col.get_note(ids[0])["Front"]) == "Edited existing"
     )
     expect(page.locator("#added-cards .add-stack-count")).to_have_text("2")
+    page.locator("#edit-back").click()
+    expect(cards).not_to_be_visible()
+    expect(opener).to_be_focused()
     page.get_by_role("button", name="Done", exact=True).click()
     expect(page.get_by_text("Add a card first.")).to_be_visible()
     expect(page.get_by_role("dialog")).not_to_be_visible()
@@ -1122,6 +1129,129 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     assert live_app.notes() == original
 
 
+@pytest.mark.parametrize("key", ["Enter", "Space"])
+def test_back_has_button_semantics_and_guards_for_browse_and_edit(
+    page: Page, live_app: LiveApp, key: str
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    url = f"{live_app}/app/edit?deck=1"
+    page.goto(url)
+    pile = page.locator("#pile")
+    cards = page.locator("#deck-cards")
+    back = page.locator("#edit-back")
+
+    pile.click()
+    expect(cards).to_be_focused()
+    expect(back).to_have_role("button")
+    expect(back).not_to_have_attribute("href", re.compile("."))
+    back.click(button="middle")
+    back.click(button="right")
+    expect(cards).to_be_visible()
+    expect(page).to_have_url(url)
+    assert len(page.context.pages) == 1
+    back.focus()
+    page.keyboard.press(key)
+    expect(cards).not_to_be_visible()
+    expect(pile).to_be_focused()
+
+    pile.click()
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("Saved")
+    _front(page).fill("Unsaved edit")
+    expect(back).to_have_role("button")
+    expect(back).not_to_have_attribute("href", re.compile("."))
+    back.click(button="middle")
+    back.click(button="right")
+    expect(_front(page)).to_have_value("Unsaved edit")
+    expect(cards).not_to_be_visible()
+    expect(page).to_have_url(url)
+    assert len(page.context.pages) == 1
+    rejected = _respond_to_confirm(page, accept=False)
+    back.focus()
+    page.keyboard.press(key)
+    assert len(rejected) == 1
+    expect(_front(page)).to_have_value("Unsaved edit")
+    accepted = _respond_to_confirm(page, accept=True)
+    back.focus()
+    page.keyboard.press(key)
+    assert len(accepted) == 1
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Saved")
+
+
+def test_failed_edit_save_stays_in_editor_and_can_retry(
+    page: Page, live_app: LiveApp, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("Saved")
+    _front(page).fill("Updated")
+    _front(page).press("Enter")
+    _back(page).press("Enter")
+
+    def fail_update(*args, **kwargs):
+        raise ValueError("deterministic update failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            "ankiweb.adapters.inbound.http_app.edit.update_vocab_note", fail_update
+        )
+        page.locator("#btn-add").click()
+        expect(page.locator("#app-error")).to_be_visible()
+    expect(cards).not_to_be_visible()
+    expect(page.locator("#preview")).to_contain_text("Updated")
+    expect(page.locator("#btn-add")).to_be_enabled()
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Saved"
+
+    page.locator("#btn-add").click()
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Updated")
+    assert [note[0] for note in live_app.notes()] == [nid]
+
+
+def test_invalid_edit_stays_in_editor_until_corrected(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    _add(page, "First", "one")
+    _add(page, "Second", "two")
+    first = live_app.notes()[0][0]
+    cards = page.locator("#deck-cards")
+    page.locator("#pile").click()
+    cards.locator(f"button[data-note-id='{first}']").click()
+    expect(_front(page)).to_have_value("First")
+    _front(page).fill("Second")
+    _front(page).press("Enter")
+    _back(page).press("Enter")
+    page.locator("#btn-add").click()
+    expect(page.locator("#app-error")).to_be_visible()
+    expect(cards).not_to_be_visible()
+    expect(page.locator("#preview")).to_contain_text("Second")
+    expect(page.locator("#btn-add")).to_be_enabled()
+    assert live_app.notes()[0][1][0] == "First"
+
+    previous = page.get_by_role("button", name="Previous Step")
+    previous.click()
+    previous.click()
+    _front(page).fill("Corrected")
+    _front(page).press("Enter")
+    _back(page).press("Enter")
+    page.locator("#btn-add").click()
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    expect(cards.locator(f"button[data-note-id='{first}']")).to_contain_text(
+        "Corrected"
+    )
+
+
 def test_back_does_not_leave_existing_card_while_saving(
     page: Page, live_app: LiveApp
 ) -> None:
@@ -1154,9 +1284,13 @@ def test_back_does_not_leave_existing_card_while_saving(
         page.locator("#btn-add").click()
     back = page.locator("#edit-back")
     expect(back).to_have_attribute("aria-disabled", "true")
+    expect(back).to_have_role("button")
+    expect(back).not_to_have_attribute("href", re.compile("."))
     back.focus()
     expect(back).to_be_focused()
     page.keyboard.press("Enter")
+    expect(page).to_have_url(url)
+    page.keyboard.press("Space")
     expect(page).to_have_url(url)
     expect(cards).not_to_be_visible()
     expect(page.locator("#preview")).to_contain_text("Updated")
@@ -1164,8 +1298,17 @@ def test_back_does_not_leave_existing_card_while_saving(
     assert unexpected == []
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Saved"
     assert len(pending) == 1
-    pending[0].continue_()
-    expect(_front(page)).to_have_value("")
+    with page.expect_request("**/app/edit/commit?deck=1"):
+        pending[0].abort()
+    expect(cards).not_to_be_visible()
+    expect(page.locator("#preview")).to_contain_text("Updated")
+    expect(page.locator("#btn-add")).to_be_disabled()
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Saved"
+    assert len(pending) == 2
+    pending[1].continue_()
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Updated")
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Updated"
 
 
@@ -1233,11 +1376,14 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     expect(page.locator("#input-back")).to_have_value("answer")
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
-    expect(front).to_have_value("")
-    expect(page.locator("#progress-reset-notice")).not_to_be_visible()
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    expect(row).to_contain_text("Reviewed")
+    expect(page.locator("#deck-progress-reset-notice")).not_to_be_visible()
+    expect(cards).not_to_have_accessible_description(re.compile(re.escape(notice)))
     assert _progress(live_app, nid) == before
 
-    opener.click()
+    expect(row).to_contain_text(marker)
     row.click()
     expect(front).to_have_value("Reviewed")
     front.fill("Cancelled reviewed")
@@ -1257,18 +1403,31 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     front.press("Enter")
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
-    expect(front).to_have_value("")
-    expect(page.locator("#progress-reset-notice")).to_have_text(notice)
-    expect(page.locator("#progress-reset-notice")).to_be_visible()
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    status = page.locator("#deck-progress-reset-notice")
+    expect(status).to_have_role("status")
+    expect(status).to_have_text(notice)
+    expect(status).to_be_visible()
+    expect(cards).to_have_accessible_description(re.compile(re.escape(notice)))
     after = _progress(live_app, nid)
     assert after[0] == 0
     assert after[5:] == (0, 0)
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Edited reviewed"
     assert _run(live_app, lambda col: len(col.find_notes(""))) == 1
     expect(page.locator("#added-cards .add-stack-count")).to_have_text("1")
-    opener.click()
     expect(row).to_contain_text("Edited reviewed")
     expect(row).not_to_contain_text(marker)
+
+    row.click()
+    expect(front).to_have_value("Edited reviewed")
+    front.press("Enter")
+    page.locator("#input-back").press("Enter")
+    page.locator("#btn-add").click()
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    expect(status).not_to_be_visible()
+    expect(cards).not_to_have_accessible_description(re.compile(re.escape(notice)))
 
 
 def _seed_reviewed_note(col: Collection) -> NoteId:
@@ -1285,6 +1444,7 @@ def _seed_reviewed_note(col: Collection) -> NoteId:
     return nid
 
 
+@pytest.mark.parametrize("retry_mode", ["same_session", "reopen"])
 @pytest.mark.parametrize(
     ("live_app", "failure", "warning", "notice"),
     [
@@ -1316,6 +1476,7 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
     failure: str,
     warning: str,
     notice: str,
+    retry_mode: str,
 ) -> None:
     nid = _run(live_app, _seed_reviewed_note)
     cid = _run(live_app, lambda col: col.get_note(nid).cards()[0].id)
@@ -1352,30 +1513,34 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
     expect(page.locator("#edit-warning")).to_have_text(warning)
     expect(front).to_have_value("Edited reviewed")
     expect(page.locator("#preview")).to_contain_text("Edited reviewed")
+    expect(page.locator("#deck-cards")).not_to_be_visible()
     expect(page.locator("#progress-reset-notice")).not_to_be_visible()
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Edited reviewed"
     assert _progress(live_app, nid) == before
     assert calls == [([cid], True)]
 
-    accepted = _respond_to_confirm(page, accept=True)
-    page.locator("#edit-cancel").click()
-    assert len(accepted) == 1
-    expect(front).to_have_value("")
-    assert calls == [([cid], True)]
-    assert _progress(live_app, nid) == before
-    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Edited reviewed"
+    if retry_mode == "reopen":
+        accepted = _respond_to_confirm(page, accept=True)
+        page.locator("#edit-cancel").click()
+        assert len(accepted) == 1
+        expect(front).to_have_value("")
+        assert calls == [([cid], True)]
+        assert _progress(live_app, nid) == before
+        assert (
+            _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Edited reviewed"
+        )
 
-    page.context.clear_cookies()
-    assert page.context.cookies() == []
-    page.goto(f"{live_app}/app/edit?deck=1")
-    page.locator("#pile").click()
-    page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
-    expect(front).to_have_value("Edited reviewed")
-    expect(page.locator("#edit-warning")).to_be_visible()
-    expect(page.locator("#edit-warning")).to_have_text(warning)
-    front.press("Enter")
-    expect(page.locator("#input-back")).to_have_value("answer")
-    page.locator("#input-back").press("Enter")
+        page.context.clear_cookies()
+        assert page.context.cookies() == []
+        page.goto(f"{live_app}/app/edit?deck=1")
+        page.locator("#pile").click()
+        page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
+        expect(front).to_have_value("Edited reviewed")
+        expect(page.locator("#edit-warning")).to_be_visible()
+        expect(page.locator("#edit-warning")).to_have_text(warning)
+        front.press("Enter")
+        expect(page.locator("#input-back")).to_have_value("answer")
+        page.locator("#input-back").press("Enter")
 
     with page.expect_request(
         lambda request: (
@@ -1388,8 +1553,17 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
     assert retry_payload["nid"] == nid
     assert retry_payload["learned"] is True
     assert retry_payload["front"] == "Edited reviewed"
-    expect(page.locator("#progress-reset-notice")).to_have_text(notice)
-    expect(page.locator("#progress-reset-notice")).to_be_visible()
+    cards = page.locator("#deck-cards")
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text(
+        "Edited reviewed"
+    )
+    status = page.locator("#deck-progress-reset-notice")
+    expect(status).to_have_role("status")
+    expect(status).to_have_text(notice)
+    expect(status).to_be_visible()
+    expect(cards).to_have_accessible_description(re.compile(re.escape(notice)))
     expect(front).to_have_value("")
     assert calls == [([cid], True), ([cid], True)]
     after = _progress(live_app, nid)
@@ -1684,11 +1858,16 @@ def test_exit_and_deck_links_guard_unsaved_text(
 ) -> None:
     url = f"{live_app}/app/edit?deck=1"
     page.goto(url)
-    link = page.locator("#add-wizard header").get_by_role(
-        "link", name=link_name, exact=True
-    )
-    expect(link).to_have_attribute("href", "/app/")
     _front(page).fill("unsaved")
+    link = page.locator("#add-wizard header").get_by_role(
+        "button" if link_name == "Exit Creator" else "link",
+        name=link_name,
+        exact=True,
+    )
+    if link_name == "Exit Creator":
+        expect(link).not_to_have_attribute("href", re.compile("."))
+    else:
+        expect(link).to_have_attribute("href", "/app/")
     cancelled = _respond_to_confirm(page, accept=False)
     link.click()
     assert len(cancelled) == 1
@@ -1708,6 +1887,7 @@ def test_clean_exit_and_deck_links_navigate_without_confirmation(
     link = page.locator("#add-wizard header").get_by_role(
         "link", name=link_name, exact=True
     )
+    expect(link).to_have_attribute("href", "/app/")
     link.click()
     expect(page).to_have_url(f"{live_app}/app/")
 
