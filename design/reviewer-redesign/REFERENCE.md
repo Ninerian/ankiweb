@@ -246,6 +246,7 @@ declared `any maskable`; launcher cropping has **not** been verified on a device
 | Prototype layout, links, fallback, theme, contrast | Historical *QA-verified* report (§2.5), predating later prototype changes |
 | Legacy PWA routes, auth, worker and localhost offline behavior | Previously *Verified* in headless Chromium; applies to `/`, not the new app |
 | New `/app/` automated tests and Chromium installability | `uv run pytest tests/app_client -q -rs`: 550 passed, 2 deprecation warnings, no skips reported; includes Bun worker harness and Playwright/CDP tests. A separate run of `tests/app_client/test_app_pwa.py` and `tests/app_client/test_app_pwa_browser.py` passed 9 tests with no skips. These are not full-suite results |
+| Full test suite | `uv run pytest -q -rs`: 1324 passed, 2 deprecation warnings, no skips reported |
 | Localhost browser | Fresh temporary collection: `/app/` worker registered and controlled the page; two theme-color metas present. Simulated install prompt showed the button and `appinstalled` hid it. Deck → review → deck → add form reached (add via DOM click); console clean. Stopping the server showed the offline fallback; after restart, retry opened the deck list |
 | Android / iOS installation | *Not verified* on devices |
 | HTTPS deployment | *Not verified* in practice |
