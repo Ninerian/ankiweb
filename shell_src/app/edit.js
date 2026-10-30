@@ -47,15 +47,115 @@ window.avGuardNav = (event, front, back, hint, example, saving, message, nid, or
   }
 };
 
+let browseTimer;
 let browseTrigger;
-window.avOpenBrowse = (trigger) => {
-  browseTrigger = trigger;
-  window.avFocus("deck-cards-title");
+let browseOrigin;
+const browseMotionTime = (duration) =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : duration;
+const browseEvent = (name, detail = {}) =>
+  document.getElementById("add-wizard")?.dispatchEvent(new CustomEvent(name, { detail }));
+
+const captureBrowseOrigin = () => {
+  const stage = document.getElementById("add-stage");
+  const card = document.querySelector("#added-cards .stacked-card");
+  if (!stage || !card) {
+    browseOrigin = null;
+    return;
+  }
+  const stageRect = stage.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  browseOrigin = {
+    x: (cardRect.left + cardRect.width / 2 - stageRect.left) / stageRect.width,
+    bottom: stageRect.bottom - (cardRect.top + cardRect.height / 2),
+  };
 };
 
-window.avCloseBrowse = () => {
-  requestAnimationFrame(() => browseTrigger?.focus());
+const positionBrowseRows = () => {
+  const stage = document.getElementById("add-stage");
+  if (!stage || !browseOrigin) return;
+  const stageRect = stage.getBoundingClientRect();
+  const x = stageRect.left + browseOrigin.x * stageRect.width;
+  const y = stageRect.bottom - browseOrigin.bottom;
+  // Measure unanimated list items first; row transforms do not affect their bounds.
+  const positions = [...document.querySelectorAll("#deck-cards .browse-card")].map((row) => {
+    const rect = row.parentElement.getBoundingClientRect();
+    return [row, x - (rect.left + rect.width / 2), y - (rect.top + rect.height / 2)];
+  });
+  for (const [row, offsetX, offsetY] of positions) {
+    row.style.setProperty("--fan-offset-x", `${offsetX}px`);
+    row.style.setProperty("--fan-offset-y", `${offsetY}px`);
+  }
 };
+
+window.avOpenBrowse = (trigger) => {
+  clearTimeout(browseTimer);
+  document.getElementById("add-editor")?.classList.remove("animate-fresh-card");
+  for (const element of document.querySelectorAll("#added-cards .animate-slide-to-added, #added-cards .animate-bump")) {
+    element.classList.remove("animate-slide-to-added", "animate-bump");
+  }
+  browseTrigger = trigger.id;
+  browseTimer = setTimeout(() => {
+    captureBrowseOrigin();
+    browseEvent("av-browse-ready");
+    positionBrowseRows();
+  }, browseMotionTime(300));
+};
+
+window.avCloseBrowse = (editing = false, phase = "open") => {
+  if (phase === "closing" || phase === "closed" || phase === "returning") return;
+  clearTimeout(browseTimer);
+  const returnEditor = () => {
+    browseEvent("av-browse-returning", { editing });
+    const duration = browseMotionTime(500);
+    if (duration) browseTimer = setTimeout(() => browseEvent("av-browse-settled"), duration);
+    else browseEvent("av-browse-settled");
+  };
+  if (phase === "opening") {
+    returnEditor();
+  } else {
+    positionBrowseRows();
+    browseEvent("av-browse-closing");
+    const duration = browseMotionTime(460);
+    if (duration) browseTimer = setTimeout(returnEditor, duration);
+    else returnEditor();
+  }
+};
+
+window.avBrowseFocus = (editing) => {
+  requestAnimationFrame(() => {
+    document.getElementById(editing ? "input-front" : browseTrigger)?.focus({ preventScroll: true });
+  });
+};
+
+// Delegate gestures so server morphs can replace the pile without losing listeners.
+let pilePointer;
+let suppressPileClickUntil = 0;
+document.addEventListener("pointerdown", (event) => {
+  const pile = event.target instanceof Element ? event.target.closest("#pile") : null;
+  if (!pile || pile.disabled || !event.isPrimary || event.button !== 0) return;
+  pilePointer = { id: event.pointerId, x: event.clientX, y: event.clientY, pile };
+  pile.setPointerCapture?.(event.pointerId);
+});
+document.addEventListener("pointercancel", () => { pilePointer = null; });
+document.addEventListener("pointerup", (event) => {
+  if (!pilePointer || pilePointer.id !== event.pointerId) return;
+  const { x, y, pile } = pilePointer;
+  pilePointer = null;
+  const dx = event.clientX - x;
+  const dy = y - event.clientY;
+  if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+    suppressPileClickUntil = performance.now() + 700;
+    if (dy > 28 && dy > Math.abs(dx)) pile.click();
+  }
+});
+document.addEventListener("click", (event) => {
+  if (event.isTrusted && event.detail && performance.now() < suppressPileClickUntil &&
+      event.target instanceof Element && event.target.closest("#pile")) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    suppressPileClickUntil = 0;
+  }
+}, true);
 
 let toastTimer;
 window.avAddToast = (message) => {
@@ -84,6 +184,18 @@ window.avAnimateCommit = () => {
   void editor.offsetWidth;
   for (const [element, name] of animations) element?.classList.add(name);
 };
+
+document.addEventListener("animationend", (event) => {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  if (event.animationName === "slideToAdded" && target.matches("#added-cards .stacked-card")) {
+    target.classList.remove("animate-slide-to-added");
+  } else if (event.animationName === "bump" && target.matches("#added-cards .add-stack-count")) {
+    target.classList.remove("animate-bump");
+  } else if (event.animationName === "popInFreshCard" && target.id === "add-editor") {
+    target.classList.remove("animate-fresh-card");
+  }
+});
 
 let summaryTrigger;
 window.avOpenSummary = (trigger) => {
