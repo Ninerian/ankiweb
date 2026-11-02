@@ -3,8 +3,8 @@ from collections.abc import Callable
 from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 
-from ankiweb.adapters.inbound.http_app.add import build_add_router
 from ankiweb.adapters.inbound.http_app.decks import add_decks_routes
+from ankiweb.adapters.inbound.http_app.edit import build_edit_router
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
 from ankiweb.adapters.inbound.http_app.login import add_login_routes
 from ankiweb.adapters.inbound.http_app.origin_guard import reject_cross_site_writes
@@ -32,5 +32,5 @@ def build_app_router(
         )
 
     add_decks_routes(router, get_service, lang, static_dir)
-    router.include_router(build_add_router(get_service, settings))
+    router.include_router(build_edit_router(get_service, settings))
     return router

@@ -31,6 +31,9 @@ PRESEEDED_UNUSED_ADD: set[str] = set()
 # Used by server-side responses, not directly by templates.
 BACKEND_ONLY_STRINGS = {
     "app_add_edit_unavailable",
+    "app_edit_progress_reset_failed",
+    "app_edit_progress_reset_unrecorded",
+    "app_edit_progress_reset_uncleared",
     "app_login_error_empty",
     "app_login_error_wrong",
 }

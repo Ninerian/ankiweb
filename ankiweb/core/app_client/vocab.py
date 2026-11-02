@@ -132,12 +132,21 @@ def update_vocab_note(
     back: str,
     hint: str = "",
     example: str = "",
-) -> None:
-    """Update an existing vocab note, rejecting duplicates other than itself."""
+) -> bool:
+    """Update changed fields and return whether the note was modified."""
     note = _vocab_note(col, nid)
+    original = tuple(
+        unescape_field(note[name]).replace("\r\n", "\n") for name in _FIELD_NAMES
+    )
     _set_fields(note, front, back, hint, example)
+    updated = tuple(
+        unescape_field(note[name]).replace("\r\n", "\n") for name in _FIELD_NAMES
+    )
+    if original == updated:
+        return False
     _check_addable(col, note)
     col.update_note(note)
+    return True
 
 
 def read_vocab_note(col: Collection, nid: NoteId) -> dict[str, str]:

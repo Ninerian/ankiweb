@@ -2,6 +2,7 @@ import json
 from html.parser import HTMLParser
 from pathlib import Path
 
+import anki.lang
 import pytest
 from anki._backend import RustBackend
 from anki.cards import CardId
@@ -409,7 +410,7 @@ def _parse(html: str) -> _Page:
 
 
 def _client(
-    tmp_path: Path, names: list[str], password: str = ""
+    tmp_path: Path, names: list[str], password: str = "", lang: str = ""
 ) -> tuple[TestClient, dict[str, int]]:
     """Return a client over a collection holding one card per named deck."""
     path = tmp_path / "http.anki2"
@@ -420,11 +421,11 @@ def _client(
         ids = {node.name: node.deck_id for node in col.sched.deck_due_tree().children}
     finally:
         col.close()
-    app = create_app(Settings(collection_path=path, password=password))
+    app = create_app(Settings(collection_path=path, password=password, lang=lang))
     return TestClient(app), ids
 
 
-def test_page_has_one_learn_and_add_link_per_deck(tmp_path: Path) -> None:
+def test_page_has_one_learn_and_edit_link_per_deck(tmp_path: Path) -> None:
     client, ids = _client(tmp_path, ["Alpha", "Beta::Child"])
     with client:
         html = client.get("/app/").text
@@ -432,9 +433,22 @@ def test_page_has_one_learn_and_add_link_per_deck(tmp_path: Path) -> None:
     assert sorted(h for h in hrefs if h.startswith("/app/")) == sorted(
         f"/app/{kind}?deck={ids[name]}"
         for name in ("Alpha", "Beta")
-        for kind in ("review", "add")
+        for kind in ("review", "edit")
     )
     assert "Child" not in html
+
+
+@pytest.mark.parametrize(("lang", "label"), [("en", "Edit"), ("de_DE", "Bearbeiten")])
+def test_deck_edit_link_uses_localized_label(
+    tmp_path: Path, lang: str, label: str
+) -> None:
+    client, ids = _client(tmp_path, ["Alpha"], lang=lang)
+    try:
+        with client:
+            html = client.get("/app/").text
+    finally:
+        anki.lang.set_lang("en")
+    assert f'href="/app/edit?deck={ids["Alpha"]}">{label}</a>' in html
 
 
 def test_page_renders_complete_emoji_and_deck_names(tmp_path: Path) -> None:

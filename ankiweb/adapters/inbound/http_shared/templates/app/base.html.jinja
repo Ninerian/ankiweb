@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="Anki">
     <link rel="apple-touch-icon" href="/shell/static/icons/icon-192.png">
     <link rel="stylesheet" href="/shell/static/app-client.css?v={{ app_asset_version }}">
+    {# Register page helpers before Datastar evaluates initial effects. #}
     {% for script in scripts %}<script type="module" src="{{ script }}"></script>{% endfor %}
     <script type="module" src="/shell/static/datastar.js"></script>
     <script type="module">

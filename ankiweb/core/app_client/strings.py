@@ -26,7 +26,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_decks_no_results": "No decks found",
         "app_decks_try_search": "Try a different search.",
         "app_decks_add_first": "Add your first deck",
-        "app_decks_edit_add": "Edit / Add",
+        "app_decks_edit": "Edit",
         "app_decks_learn_deck": "Learn {deck}",
         "app_decks_learn": "Learn",
         "app_decks_new": "New deck",
@@ -110,8 +110,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_front_preview": "Front Prompt",
         "app_add_back_preview": "Back Answer",
         "app_add_edit_preview": "Edit text before adding",
-        "app_add_no_cards": "No cards added yet",
-        "app_add_first_card": "Add your first card above!",
+        "app_add_no_cards": "No vocabulary cards in this deck",
+        "app_add_first_card": "Add a card above!",
         "app_add_stack_cards_one": "card",
         "app_add_stack_cards_other": "cards",
         "app_add_next_back": "Next: Back →",
@@ -125,7 +125,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_unavailable": (
             "This card is unavailable for editing. Please try again."
         ),
-        "app_add_card_first": "Add a card first.",
         "app_add_cards_ready": "Cards Ready!",
         "app_add_start_studying": "Start studying",
         "app_add_discard_leave": (
@@ -134,6 +133,33 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_discard_finish": (
             "You have unsaved text in your current card. Discard it and finish?"
         ),
+        "app_edit_pile_cue": "Tap or swipe up to edit",
+        "app_edit_stack_label_one": "card in this deck. Tap or swipe up to edit.",
+        "app_edit_stack_label_other": "cards in this deck. Tap or swipe up to edit.",
+        "app_edit_browse_title": "Choose a card to edit",
+        "app_edit_back_to_editor": "Back to card editor",
+        "app_edit_back_to_cards": "Back to cards",
+        "app_edit_row_label": "Edit card: {front}",
+        "app_edit_row_action": "Edit",
+        "app_edit_learned": "Learned",
+        "app_edit_warning": "Changes to this learned card will reset its learning progress.",
+        "app_edit_progress_reset": "Learning progress was reset.",
+        "app_edit_progress_reset_failed": (
+            "The note text was saved, but learning progress was not reset. "
+            "Please try saving again."
+        ),
+        "app_edit_progress_reset_unrecorded": (
+            "Could not save this edit because the learning progress reset could not "
+            "be recorded. Please try later or contact support."
+        ),
+        "app_edit_progress_reset_uncleared": (
+            "The note text was saved and learning progress was reset, but the "
+            "pending reset could not be cleared. Please contact support."
+        ),
+        "app_edit_discard": "Discard your unsaved changes?",
+        "app_edit_ready_to_save": "Ready to save?",
+        "app_edit_preview_edit": "Edit text before saving",
+        "app_edit_save": "Save changes",
         "app_add_chip_der": "der",
         "app_add_chip_die": "die",
         "app_add_chip_das": "das",
@@ -168,7 +194,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_decks_no_results": "Keine Stapel gefunden",
         "app_decks_try_search": "Versuche einen anderen Suchbegriff.",
         "app_decks_add_first": "Füge deinen ersten Stapel hinzu",
-        "app_decks_edit_add": "Bearbeiten / Hinzufügen",
+        "app_decks_edit": "Bearbeiten",
         "app_decks_learn_deck": "{deck} lernen",
         "app_decks_learn": "Lernen",
         "app_decks_new": "Neuer Stapel",
@@ -251,8 +277,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_front_preview": "Vorderseite: Frage",
         "app_add_back_preview": "Rückseite: Antwort",
         "app_add_edit_preview": "Text vor dem Hinzufügen bearbeiten",
-        "app_add_no_cards": "Noch keine Karten hinzugefügt",
-        "app_add_first_card": "Füge oben deine erste Karte hinzu!",
+        "app_add_no_cards": "Keine Vokabelkarten in diesem Stapel",
+        "app_add_first_card": "Füge oben eine Karte hinzu!",
         "app_add_stack_cards_one": "Karte",
         "app_add_stack_cards_other": "Karten",
         "app_add_next_back": "Weiter: Rückseite →",
@@ -268,7 +294,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_unavailable": (
             "Diese Karte kann nicht bearbeitet werden. Bitte erneut versuchen."
         ),
-        "app_add_card_first": "Füge zuerst eine Karte hinzu.",
         "app_add_cards_ready": "Karten bereit!",
         "app_add_discard_leave": (
             "Die aktuelle Karte enthält ungespeicherten Text. Verwerfen und verlassen?"
@@ -276,6 +301,35 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_discard_finish": (
             "Die aktuelle Karte enthält ungespeicherten Text. Verwerfen und abschließen?"
         ),
+        "app_edit_pile_cue": "Tippen oder nach oben wischen zum Bearbeiten",
+        "app_edit_stack_label_one": "Karte in diesem Stapel. Zum Bearbeiten tippen oder nach oben wischen.",
+        "app_edit_stack_label_other": "Karten in diesem Stapel. Zum Bearbeiten tippen oder nach oben wischen.",
+        "app_edit_browse_title": "Karte zum Bearbeiten wählen",
+        "app_edit_back_to_editor": "Zurück zum Karteneditor",
+        "app_edit_back_to_cards": "Zurück zu den Karten",
+        "app_edit_row_label": "Karte bearbeiten: {front}",
+        "app_edit_row_action": "Bearbeiten",
+        "app_edit_learned": "Gelernt",
+        "app_edit_warning": "Änderungen an dieser gelernten Karte setzen den Lernfortschritt zurück.",
+        "app_edit_progress_reset": "Der Lernfortschritt wurde zurückgesetzt.",
+        "app_edit_progress_reset_failed": (
+            "Der Kartentext wurde gespeichert, aber der Lernfortschritt wurde "
+            "nicht zurückgesetzt. Bitte erneut speichern."
+        ),
+        "app_edit_progress_reset_unrecorded": (
+            "Die Änderung konnte nicht gespeichert werden, weil das Zurücksetzen "
+            "des Lernfortschritts nicht vorgemerkt werden konnte. Bitte später "
+            "erneut versuchen oder den Support kontaktieren."
+        ),
+        "app_edit_progress_reset_uncleared": (
+            "Der Kartentext wurde gespeichert und der Lernfortschritt zurückgesetzt, "
+            "aber die ausstehende Zurücksetzung konnte nicht gelöscht werden. "
+            "Bitte den Support kontaktieren."
+        ),
+        "app_edit_discard": "Ungespeicherte Änderungen verwerfen?",
+        "app_edit_ready_to_save": "Bereit zum Speichern?",
+        "app_edit_preview_edit": "Text vor dem Speichern bearbeiten",
+        "app_edit_save": "Änderungen speichern",
         "app_add_start_studying": "Lernen beginnen",
         "app_add_chip_der": "der",
         "app_add_chip_die": "die",

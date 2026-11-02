@@ -1,9 +1,11 @@
 import html
 import re
+from typing import cast
 
 import pytest
 from anki.collection import Collection
 from anki.decks import DeckId
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 
@@ -17,7 +19,7 @@ from fastapi.testclient import TestClient
         ("🇩🇪 German", "🗂️", "🇩🇪 German"),
     ],
 )
-def test_review_and_add_show_the_same_deck_display(
+def test_review_and_edit_show_the_same_deck_display(
     client: TestClient, stored: str, emoji: str, name: str
 ) -> None:
     def seed(col: Collection) -> tuple[int, int]:
@@ -31,12 +33,12 @@ def test_review_and_add_show_the_same_deck_display(
         return int(deck_id), int(note.cards()[0].id)
 
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     deck_id, card_id = client.portal.call(service.run, seed)
 
     review = client.get("/app/review", params={"deck": deck_id})
-    add = client.get("/app/add", params={"deck": deck_id})
-    assert review.status_code == add.status_code == 200
+    edit = client.get("/app/edit", params={"deck": deck_id})
+    assert review.status_code == edit.status_code == 200
 
     def display(markup: str, element_id: str) -> tuple[str, str]:
         match = re.search(
@@ -49,13 +51,13 @@ def test_review_and_add_show_the_same_deck_display(
         return html.unescape(rendered_emoji), html.unescape(rendered_name)
 
     assert display(review.text, "card-deck") == (emoji, name)
-    assert display(add.text, "deck-chip") == (emoji, name)
+    assert display(edit.text, "deck-chip") == (emoji, name)
     if "<" in name:
         assert "&lt;b&gt;x&lt;/b&gt;" in review.text
-        assert "&lt;b&gt;x&lt;/b&gt;" in add.text
+        assert "&lt;b&gt;x&lt;/b&gt;" in edit.text
     if "'" in name:
         assert "&#39;" in review.text and "&#34;" in review.text
-        assert "&#39;" in add.text and "&#34;" in add.text
+        assert "&#39;" in edit.text and "&#34;" in edit.text
 
     marked = client.post(
         "/app/review/action/mark",
@@ -83,7 +85,7 @@ def test_review_header_of_subdeck_card_uses_root_emoji(client: TestClient) -> No
         return int(root_id)
 
     assert client.portal is not None
-    service = client.app.state.service
+    service = cast(FastAPI, client.app).state.service
     root_id = client.portal.call(service.run, seed)
 
     review = client.get("/app/review", params={"deck": root_id})

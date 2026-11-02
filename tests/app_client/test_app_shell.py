@@ -87,7 +87,7 @@ def test_layout_escapes_title_and_loads_extra_scripts() -> None:
         active="",
         static_dir=CSS.parent,
         scripts=(
-            "/shell/static/app/add.js",
+            "/shell/static/app/edit.js",
             "/shell/static/app/nested/other.js",
             "/shell/static/datastar.js",
             "/app/a.js",
@@ -96,13 +96,23 @@ def test_layout_escapes_title_and_loads_extra_scripts() -> None:
     assert "&lt;title &amp; &#34;test&#34;&gt;" in page
     version = re.search(r"/shell/static/app-client\.css\?v=([0-9a-f]{12})", page)
     assert version is not None
-    assert f'/shell/static/app/add.js?v={version.group(1)}"' in page
+    assert f'/shell/static/app/edit.js?v={version.group(1)}"' in page
     assert (
         '<script type="module" src="/shell/static/app/nested/other.js"></script>'
         in page
     )
     assert '<script type="module" src="/shell/static/datastar.js"></script>' in page
     assert '<script type="module" src="/app/a.js"></script>' in page
+
+
+def test_layout_loads_page_scripts_before_datastar() -> None:
+    page = render_app_page(
+        "", "", active="", static_dir=CSS.parent, scripts=("/app/a.js", "/app/b.js")
+    )
+    a = '<script type="module" src="/app/a.js"></script>'
+    b = '<script type="module" src="/app/b.js"></script>'
+    datastar = '<script type="module" src="/shell/static/datastar.js"></script>'
+    assert page.index(a) < page.index(b) < page.index(datastar)
 
 
 def test_app_css_build_has_system_themes() -> None:

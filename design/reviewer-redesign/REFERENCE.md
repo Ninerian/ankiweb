@@ -106,12 +106,14 @@ The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good and 2 E
 
 ### 2.4 `editor-mockup.html` (editor)
 
+This section describes the standalone historical mockup, not the mobile `/app/edit` data model. The mobile editor retains its open/close motion but uses a compact pile below the editor and lists supported notes from the whole selected deck rather than only session additions; see §2.5.
+
 | Element | Behaviour |
 |---|---|
 | Header | Back button, deck-name chip and Done on the first row; step bar on the second row. No count pill in the header |
 | Deck chip `#deck-chip` | Shows emoji and name; guarded link to `decks-mockup.html?deck=<id>` |
 | Active card | Note-type pill, without a repeated deck badge |
-| Pile `#stack-pile-layer` and cue `#pile-cue` | Cards stand at the bottom of the stage; the cue ("Tap or swipe up to edit") stands on the floor under them. Both hidden at 0 cards. A tap on either, or an upward drag of at least 28 px on either, opens the list; a shorter drag does not |
+| Pile `#stack-pile-layer` and cue `#pile-cue` | Cards stand at the bottom of the stage; the cue ("Tap or swipe up to edit") stands on the floor under them. Both hidden at 0 cards. A tap on either, or an upward drag of more than 28 px on either, opens the list |
 | Count badge `#stack-badge` | Starburst on the pile, hidden at 0 cards. Tapping it opens or closes the list (`aria-expanded`) |
 | Step badges `.step-indicator-row` | Fade out and collapse while the list is open (`body.is-browsing`), fade back in on close or when a card is picked |
 | Browse list `#browse-list` | One `.browse-card` button per added card, oldest first, vertically scrollable. Opens after the input card slides away; folds back onto the pile on pick or close |
@@ -123,7 +125,40 @@ The initial `14/20` is mockup-only demo history: 2 Again, 3 Hard, 7 Good and 2 E
 
 **Guard rule** (`confirmDiscard`): the page shows `confirm("You have unsaved text in your current card. <action>")` and cancels on "Cancel" when the editor holds text that is not already saved. For a new card that is any non-empty front, back, hint or example. For a card loaded for editing it is only a **difference from the saved card**, so an unchanged loaded card never prompts. Navigation and edit/finish actions are blocked while a card is committing.
 
-### 2.5 Link matrix
+### 2.5 Mobile deck editor (`/app/edit`)
+
+The mobile editor combines creation with editing `AnkiWeb Vocab` notes that have at least one card in the selected deck, including notes from earlier sessions. Deleted notes, other note types and notes without a card in that deck are excluded. The deck list's **Edit** / **Bearbeiten** action and its empty state lead to `GET /app/edit?deck=<id>`; the separate desktop `/add` remains unchanged.
+
+| Element | Behaviour |
+|---|---|
+| Deck pile `#added-cards` | Up to five newest supported notes, 104px high and stepping upward by 16px, with rotation, perspective and shadow. The compact pile follows the editor with a 12px gap; the upper-right badge counts all supported deck notes without overlapping the editor. The newest note is in front. Editing preserves pile size and order; only creating a note grows and animates it |
+| Opener `#pile` | Tap the pile or badge, or swipe upward, to open `#deck-cards`. During a swipe, the editor and pile fade as the actual list rows unfold with the finger; the preview remains inert until release. Releasing below the threshold reverses the transition and returns to the editor. A cue below the pile identifies the action. An empty deck shows the empty state rather than an actionable pile |
+| Session counter and Done | Counts only additions in the current session and deck, separately from the deck-wide badge. Done opens the existing summary even with zero additions; the summary uses the session count. Unsaved drafts still require discard confirmation |
+| Deck-card list `#deck-cards` | All supported deck notes, oldest first, in a scrollable list. On a tap, the editor slides away while the pile rises, then cards fan upward from its captured screen position with capped staggering. On a swipe, the rows unfold continuously with the gesture and complete without restarting. Neither path causes a layout jump. The three step badges, Done and footer fade out during opening, remain hidden while the list is open or closing, and fade back in on return; steps and footer retain their layout space during opening and return and are inert while browsing. There is no visible list header or separate Back to new card control; the screen-reader-only `#deck-cards-title` labels the focusable list region. Each row is a labelled button with its note ID; selecting it folds the list and loads the same note in the wizard at Step 1, focusing the first field. A failed load keeps the list open |
+| List and draft controls | Opening the list asks before discarding unsaved text; an unchanged loaded note does not prompt. Escape or the top-left Back control folds the list and returns to the editor, focusing the pile. Back can interrupt opening, but is disabled during closing and return. In an existing-note wizard, Back or Escape discards the unsaved draft and returns to the list; in a new-card wizard, Back navigates to the deck overview (`/app/`) with the unsaved-draft guard. Saving and animation handling remain in effect. Leaving an edit does not undo a change already persisted before a reset failure |
+| Accessibility | The pile button has `aria-expanded`, `aria-controls="deck-cards"`, a visible focus ring and localized spoken deck count and action; Enter and Space activate it. Once open, the labelled `#deck-cards` region receives focus; Back or Escape from the list returns focus to the pile, while selection focuses the first field. The top-left Back control is labelled **Back to card editor** / **Zurück zum Karteneditor** in the list, **Back to cards** / **Zurück zu den Karten** in the existing-note wizard, and uses `app_add_exit` in the new-card wizard. Only a clean, idle new-card exit is a native link to `/app/`; with a draft, while editing, browsing, saving or transitioning it has button semantics without an href, supports Enter and Space, and retains phase and discard guards. It is temporarily disabled during closing and return. Rows are labelled buttons, and motion respects `prefers-reduced-motion` |
+| Editing indication | No editing label or note-type badge is shown in either editor mode. Back cancels editing and returns to the list |
+| Learned status | A note is learned when any of its cards in the selected deck has `type != 0`. Its row has both a theme warning color and **Learned** / **Gelernt** text; there is no separate list legend. Editing a learned note shows the `role="note"` warning `#edit-warning`. The Front textarea retains `input-front-help` in `aria-describedby` and adds `edit-warning` only while editing a learned note |
+| Save and progress | A successful existing-note save updates the same note ID without a duplicate and reopens the deck-wide list with the updated row, using the existing fan animation and list focus; the pile is the logical opener for focus return. This includes unchanged saves and successful retries of pending resets. New-card creation stays in the wizard at Step 1; validation, network and reset failures stay in the editor with their existing errors. A reset failure can occur after the note fields were persisted. Changed fields on a learned note trigger rescheduling of that note's cards in the selected deck as new with `reset_counts=True`, clearing `reps` and `lapses`; a localized `role="status"` notice remains visible in the reopened list. Without a pending reset, unchanged saves and edits to unlearned notes do not reset progress. Cancellation itself neither triggers a reset nor clears a pending marker. Cards in other decks are not rescheduled. Revlog history remains and the rescheduling is logged. A durably pending failed reset can be retried on an unchanged save; see [Plan 9](../../docs/superpowers/plans/2026-10-30-reviewer-redesign-09-edit-deck-cards.md) for failure caveats |
+
+The final success signal sets `_editSaved: true` only for successful existing-note edits (including unchanged edits). The template starts it as false; after the SSE element and signal patches, the client consumes and clears it once when `$saving` becomes false, then starts the existing list-opening transition. Creation and failures do not set it; Datastar `finished` alone is not a success signal.
+
+| Method and route | Purpose |
+|---|---|
+| `GET /app/edit?deck=<id>` | Open the new-card wizard |
+| `GET /app/edit?deck=<id>&view=cards` | Open the deck-card list directly |
+| `GET /app/edit?deck=<id>&card=<nid>` | Open a supported note directly for editing |
+| `POST /app/edit/preview` | Preview fields without saving |
+| `POST /app/edit/card/{nid}?deck=<id>` | Load a supported note belonging to the selected deck at Step 1 |
+| `POST /app/edit/commit?deck=<id>` | Create with `nid: 0`, otherwise update the selected deck's existing note |
+
+Missing, deck-foreign and unsupported notes cannot be loaded or updated. App navigation, templates and client calls use these routes and `shell_src/app/edit.js`; there are no old app-route aliases. User-facing list, warning and notice strings are available in German and English.
+
+The URL tracks the selected deck and editor view. Browser Back and Forward restore in-page views, asking before discarding unsaved changes. The editor's Back control returns from a card to the list, from the list to the editor, and from the editor to the deck overview; for direct card or list links it replaces the URL with the parent view. Saving a card opened from the list returns to the existing list history entry, so the first browser Back reaches the prior editor or, for a direct list, the earlier page. Forward returns to the saved list and can then reopen the saved card. A direct-card save replaces its entry with the list; browser Back reaches the earlier page, while in-app Back opens the editor. Reload preserves valid editor-history and legacy skip metadata. An invalid, foreign or unsupported card link returns to the editor and normalizes its URL. If a history card load fails with an HTTP error, an error signal or exhausted network retries, the editor shows an unavailable notice and replaces the card URL with the editor URL; later card selections continue to update the URL normally.
+
+### 2.6 Mockup link matrix
+
+The following links describe only the standalone mockups, not the mobile editor routes.
 
 | From | To | Link | Carries `?deck=` |
 |---|---|---|---|
@@ -157,22 +192,20 @@ separate from the existing client and uses the following routes. *Read.*
 | Route | Purpose |
 |---|---|
 | `GET`, `POST /app/login` | App login; successful authentication opens `/app/`, without returning to the original URL |
-| `GET /app/` | Deck list; Learn links to `/app/review?deck=<id>`, Edit / Add to `/app/add?deck=<id>`. The empty-list action opens the deck-creation dialog |
+| `GET /app/` | Deck list; Learn links to `/app/review?deck=<id>`, Edit to `/app/edit?deck=<id>`. The empty-list action opens the deck-creation dialog |
 | `GET /app/review?deck=<id>` | Review for a deck; Back and completion return to `/app/` |
 | `POST /app/review/answer`, `/app/review/action/*`, `/app/review/due` | Answer and card actions |
 | `GET /app/review/info/<card_id>` | Card information |
-| `GET /app/add?deck=<id>` | Quick-add; Back and deck chip return to `/app/` |
-| `POST /app/add/preview`, `/app/add/commit`, `/app/add/edit/<nid>` | Preview, persist, and load a session-added note for editing |
+| `GET /app/edit?deck=<id>` | Mobile editor; Back and deck chip return to `/app/` (see §2.5) |
+| `POST /app/edit/preview`, `/app/edit/commit`, `/app/edit/card/<nid>` | Preview, persist, and load a deck note for editing |
 | `GET /app/manifest.webmanifest`, `/app/service-worker.js`, `/app/offline` | Public app install assets and static offline fallback |
 
-Quick-add commits each new card to the collection immediately as an `AnkiWeb Vocab`
-note. The server supports loading and updating session-added notes, but the current
-pile has no browse/edit control. Done does not perform a batch save. It requires at
-least one session-added card, guards unsaved text, and opens a summary with links to
-the deck list and to the same deck's review. Session-added IDs and the review tally
-are kept in server memory, not persisted as a separate browser draft; the collection
-notes survive a session or server restart. The pile shows at most the four most recent
-session additions for the current deck. *Read.*
+The editor commits each new card to the collection immediately as an `AnkiWeb Vocab`
+note and can browse and edit every such note in the deck (§2.5). Done does not perform
+a batch save. It requires at least one session-added card, guards unsaved text, and
+opens a summary with links to the deck list and to the same deck's review.
+Session-added IDs and the review tally are kept in server memory, not persisted as a
+separate browser draft; the collection notes survive a session or server restart. *Read.*
 
 The reviewer uses the scheduler's queue without filtering by note type, so other
 types are shown with an “Other note type” badge rather than silently occupying the

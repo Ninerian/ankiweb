@@ -46,7 +46,7 @@ The prototype delivers instant dopamine and flow state without requiring backend
 1. **Top HUD**:
    - Left: Back to Decks button (chunky rounded square icon) → `decks-mockup.html`.
    - Center: Animated Streak pill badge.
-   - Right: More Actions button (`⋮`) opens the card actions sheet, without a mode switch. Use Back to Decks, then the deck's **Edit / Add** action to reach the editor. The day/night icon is intentionally not shown; dark mode follows `prefers-color-scheme` automatically.
+   - Right: More Actions button (`⋮`) opens the card actions sheet, without a mode switch. Use Back to Decks, then the deck's **Edit** action to reach the mobile editor. The day/night icon is intentionally not shown; dark mode follows `prefers-color-scheme` automatically.
    - Bottom: Session progress meter bar.
 2. **Card Stage**:
    - Contained inside an elevated white card with rounded corners (`border-radius: 24px`) and hard shadows.
@@ -68,7 +68,7 @@ The prototype delivers instant dopamine and flow state without requiring backend
 
 The mobile design is implemented as a separate HTTP client under `/app/`, not by
 replacing the existing reviewer's Jinja templates. `/app/` lists decks;
-`/app/review?deck=<id>` studies a deck; `/app/add?deck=<id>` opens quick-add.
+`/app/review?deck=<id>` studies a deck; `/app/edit?deck=<id>` opens the mobile editor.
 The existing client and `/add` remain available. The app uses Jinja, Datastar and
 its own app assets; it does not depend on the legacy `/ws` reviewer bridge.
 
@@ -117,39 +117,49 @@ The editor presents a focused single-purpose card interface divided into three d
    - Primary CTA: **Add to Stack 📥** (vibrant emerald green `#40c057`).
    - Once tapped, the card is **saved immediately as a note** in the target deck (not held in the browser) and the editor resets to Step 1. Saved notes survive reload; uncommitted text is a draft and is not saved by Done.
 
-### C. Card-Stack Physical Metaphor & Animation
+### C. Deck Pile & Animation
 
-> Naming (see `CONTEXT.md`): the visual pile is the **added cards** of this session. "Stack" stays only as the animation metaphor and in the mockup's identifiers; the Anki object is a **deck**.
+> Naming (see `CONTEXT.md`): the visual pile represents supported notes in the selected **deck**, including earlier sessions. The separate session additions counter remains the source for Done and the summary.
 
-The core psychological hook of the creator is the **physical growing card pile**:
-- **Slide-to-Stack Keyframe Animation (`@keyframes slideToStack`)**:
-  - Upon tapping **Add to Stack**, the active card physically slides down and rotates (`transform: translate(x, y) rotate(deg)`), visibly joining the stack beneath the editing stage.
-  - A fresh blank card simultaneously drops into place from above (`@keyframes popInFreshCard`).
-- **Dealt Physical Stack Layers**:
-  - Completed cards stand on the floor at the **bottom of the stage**, below the input card: the newest sits in front, older ones step back and rise behind it (`26px` per layer, slight rotations `-3.2°`, `+2.8°`, `-2.0°`, opaque and slightly darker with depth), so each top edge stays visible. At most five layers are drawn.
-- **Cue standing on the floor**:
-  - A small label under the pile reads **Tap or swipe up to edit**, with a chevron that nudges upward. It has a hard foot and a soft contact shadow so it reads as standing on the same surface as the cards. It is hidden at 0 cards and while the list is open.
-- **Count starburst on the pile**:
-  - The count sits in a spinning starburst badge at the lower right edge of the pile (as on `/app/add`), with the unit ("CARD" / "CARDS") set on an arc. It bumps when the count changes (`@keyframes stackPillPop`); no separate add-success toast repeats it.
+The mobile editor shows a compact pile 12px below the editor: up to five opaque, 104px-high layers step upward by 16px, with rotation, perspective and shadow; the newest note is in front. The upper-right badge counts all supported deck notes, not just the visible layers, without overlapping the editor. Only a new note grows and animates the pile; editing updates the same note without changing its size or order.
 
 ### D. Added cards and editing
+Tap the pile or badge, or swipe upward, to open the deck-card list. On a tap, the editor slides away and the pile rises before the list cards fan upward from its captured screen position. During a swipe, the actual rows unfold continuously with the finger as the editor and pile fade; the preview remains inert until release. A short swipe reverses to the editor; a committed swipe completes without restarting. Neither path jumps. The three step badges, Done and footer fade out during opening, remain hidden while the list is open or closing, and fade back in on return. The steps and footer keep their layout space during opening and return and are inert while browsing. Closing or selecting a row folds the list back and restores the editor. Staggering is capped for large decks, and reduced-motion preferences are respected. An empty deck shows the empty state instead of an actionable pile.
 
-The prototype explores a browse-and-edit list of all cards added in the session.
-The implemented `/app/add` currently renders the four most recent session-added
-cards in the pile, with a count of all session-added cards still in that deck.
-The server has routes to load and update a session-added note, but the current
-pile has no browse/edit control. Session IDs are kept in server memory, so the
-pile is session-scoped; the notes themselves are persisted in the collection.
+### D. Browse and Edit Deck Cards
 
-### E. Implemented route and scope
+- **Scope**: `#deck-cards` lists all `AnkiWeb Vocab` notes with at least one card in the selected deck, including notes from earlier sessions, oldest first. Other note types, deleted notes and notes without a card in that deck are excluded. The pile shows at most the five newest notes, but the list has no such limit.
+- **Open and choose**: activating the pile or badge, or swiping upward, opens the list and focuses its labelled `#deck-cards` region once open. There is no visible list header or separate **Back to new card** control; the list title remains available to screen readers. Each row is a labelled button carrying its note ID. Selecting it folds the list and loads that note in the same three-step wizard at Step 1 and focuses the first field. There is no editing label, separate edit/cancel banner or note-type badge. If loading fails, the list stays open.
+- **Save and Back**: a successful existing-note save, including an unchanged save or a successful retry of a pending reset, updates the same note ID without a duplicate and automatically reopens the deck-wide list with the updated row. It uses the same fan animation and list focus as opening from the pile; the pile is the logical opener for focus return. Creating a note stays in the wizard at Step 1. Validation, network and reset failures stay in the editor with their existing errors; a reset failure can follow a persisted note update. Back or Escape in an existing-note wizard returns to the list through the guarded opening flow, discarding only the unsaved draft, not an already persisted change. Back or Escape from the list returns to the new-card editor and focuses the pile. Back can interrupt opening, but is disabled during closing and return. Back from the new-card wizard navigates to the deck overview (`/app/`) with the unsaved-draft guard.
+- **Draft safety**: opening the list or navigating away asks before discarding unsaved text. An unchanged loaded note is not an unsaved draft and never triggers that prompt. Saving and animation handling remain in effect for Back.
+- **Learned cards**: a note is learned when at least one of its cards in the selected deck has Anki `type != 0`. Its row shows a theme warning color and the text **Learned** / **Gelernt**; there is no separate list legend. Editing a learned note shows a warning that changes reset progress, associated with the Front field in addition to its existing help text.
+- **Progress reset**: an actual field change to a learned note reschedules that note's cards in the selected deck as new with `reset_counts=True`, clearing `reps` and `lapses`, and shows a localized `role="status"` notice in the reopened list. Without a pending reset, unchanged saves and edits to unlearned notes do not reset progress; cards in other decks are not rescheduled. Cancellation itself neither triggers a reset nor clears a pending marker. Existing review history is not deleted; rescheduling is logged. A durably pending failed reset can be retried on an unchanged save; see [Plan 9](../../docs/superpowers/plans/2026-10-30-reviewer-redesign-09-edit-deck-cards.md) for its failure caveats.
+- **Accessibility**: the pile button has `aria-expanded`, `aria-controls="deck-cards"`, a visible focus ring and a localized spoken count and action. Enter and Space open the list; its screen-reader-only title labels the focusable list region. Back or Escape from the list returns focus to the pile; selecting a row focuses the first field. The top-left Back control is labelled **Back to card editor** / **Zurück zum Karteneditor** in the list, **Back to cards** / **Zurück zu den Karten** in the existing-note wizard, and uses `app_add_exit` in the new-card wizard. It is a native link to `/app/` only for a clean, idle new-card exit; with a draft, while editing, browsing, saving or transitioning it has button semantics without an href, supports Enter and Space, and applies the same phase and discard guards. It is temporarily disabled during closing and return. Rows are labelled buttons, and motion respects `prefers-reduced-motion`. Labels, warnings and feedback are available in German and English.
 
-The dedicated mobile route is `/app/add?deck=<id>`; preview and persistence use
-`/app/add/preview`, `/app/add/commit` and `/app/add/edit/<nid>`. Quick-add
-creates `AnkiWeb Vocab` notes (§5.F); the existing full-featured `/add` remains
-separate. Done requires at least one session-added card, confirms before
-discarding unsaved text, and opens a summary. It is not a batch-save action.
-From the summary, **Start studying** opens `/app/review?deck=<id>` and the
-deck-list action returns to `/app/`.
+### E. Mobile Editor Routes & Scope
+
+The deck list's **Edit** / **Bearbeiten** action and its empty state lead to `/app/edit?deck=<id>`. The mobile editor uses:
+
+| Route | Purpose |
+|---|---|
+| `GET /app/edit?deck=<id>` | Open the new-card wizard |
+| `GET /app/edit?deck=<id>&view=cards` | Open the deck-card list directly |
+| `GET /app/edit?deck=<id>&card=<nid>` | Open a supported note directly for editing |
+| `POST /app/edit/preview` | Preview `front`, `back`, `hint` and `example` without saving |
+| `POST /app/edit/card/{nid}?deck=<id>` | Load an editable note in the selected deck at Step 1 |
+| `POST /app/edit/commit?deck=<id>` | Create for `nid: 0`; otherwise update the selected deck's existing note |
+
+Missing, deck-foreign and unsupported notes cannot be loaded or updated. App navigation, templates and client calls use these routes and `shell_src/app/edit.js`, without legacy app-route aliases. The separate full-featured desktop `/add` editor remains unchanged.
+
+The URL tracks the deck and editor view. Browser Back and Forward restore views with a discard guard; the in-app Back control moves from card to list, list to editor, then editor to deck overview. For a direct card or list link, in-app Back replaces that entry with its parent view. After saving a card opened from the list, the existing list history entry is restored: the first browser Back reaches the prior editor, or the earlier page if the list was a direct link. Forward returns to the saved list and can then reopen the saved card. A direct-card save replaces its entry with the list; browser Back reaches the earlier page, while in-app Back opens the editor. Invalid or unavailable card links normalize to the editor URL.
+
+#### Unimplemented alternative: light-DOM pile element
+
+A native custom element could wrap the existing pile button, preserving its native keyboard and accessibility behavior while encapsulating pointer lifecycle and local gesture state. Datastar could pass page state into observed attributes with `data-attr:*`; the element could emit bubbling custom events for gesture progress and open requests, which the page handles. The page would still own draft guards, list/editor choreography, focus, server updates and URL/history state.
+
+This is not implemented. Morphs may replace or reconnect the element, requiring listener and state cleanup and careful handling of pointer capture; animation still spans the pile, list and editor. Encapsulation does not remove browser history or deep-link state. [Rocket](https://data-star.dev/reference/rocket) is an optional beta web-component API in a separate `datastar-rocket.js` bundle loaded instead of `datastar.js`, not an installed dependency. Datastar's [web-component example](https://data-star.dev/examples/web_component) illustrates signal-to-attribute and event communication without Rocket.
+
+Done requires at least one session-added card, confirms before discarding unsaved text, and opens a summary. From the summary, **Start studying** opens `/app/review?deck=<id>` and the deck-list action returns to `/app/`.
 
 ### F. Dedicated Note Type Contract (`AnkiWeb Vocab`)
 Quick-add creates the dedicated `AnkiWeb Vocab` note type. Its templates carry **no CSS and no JavaScript**: presentation lives in the app stylesheet, and card HTML is rendered by Anki. The implementation creates and validates the model directly in the collection.
@@ -211,8 +221,8 @@ state and New deck sheet. Its fixed ids and `mockup.html` / `editor-mockup.html`
 links are prototype data, not production routes.
 
 In the implemented client, **Learn** links to `/app/review?deck=<id>` and
-**Edit / Add** links to `/app/add?deck=<id>`. Review Back, Add Back and the
-Add deck chip return to `/app/`; Done opens the summary described in §5.E.
+**Edit / Add** links to `/app/edit?deck=<id>`. Review Back, Edit Back and the
+Edit deck chip return to `/app/`; Done opens the summary described in §5.E.
 There is no mode switch. The app has no theme toggle: it follows
 `prefers-color-scheme`, independently of the old client's night toggle.
 

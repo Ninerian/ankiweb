@@ -175,9 +175,9 @@ def test_rendered_app_link_matrix(
     for deck_id, _ in link_decks:
         row = f"deck-{deck_id}"
         learn = _link(decks_links, text="Learn", ancestor=row)
-        add = _link(decks_links, text="Edit / Add", ancestor=row)
+        add = _link(decks_links, text="Edit", ancestor=row)
         review_url = f"/app/review?deck={deck_id}"
-        add_url = f"/app/add?deck={deck_id}"
+        add_url = f"/app/edit?deck={deck_id}"
         _assert_target(client, "/app/", learn, review_url)
         _assert_target(client, "/app/", add, add_url)
 
@@ -259,10 +259,10 @@ def test_add_summary_study_link_after_commit(
     client: TestClient, link_decks: list[tuple[int, int]]
 ) -> None:
     deck_id, _ = link_decks[0]
-    add_url = f"/app/add?deck={deck_id}"
+    add_url = f"/app/edit?deck={deck_id}"
     assert client.get(add_url).status_code == 200
     added = client.post(
-        f"/app/add/commit?deck={deck_id}",
+        f"/app/edit/commit?deck={deck_id}",
         json={"front": "A new word", "back": "A new meaning"},
     )
     assert added.status_code == 200
