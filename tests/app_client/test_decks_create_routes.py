@@ -114,7 +114,7 @@ def test_create_requires_password(tmp_path: Path) -> None:
             follow_redirects=False,
         )
         assert response.status_code == 303
-        assert response.headers["location"] == "/login"
+        assert response.headers["location"] == "/app/login"
         client.cookies.set(COOKIE, auth_token(password))
         assert (
             client.post(

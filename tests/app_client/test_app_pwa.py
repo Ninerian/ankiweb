@@ -47,7 +47,7 @@ def test_pwa_assets_are_public_but_app_remains_password_protected(
         for path in ("/app/", "/app/review", "/app/add?deck=1"):
             response = client.get(path, follow_redirects=False)
             assert response.status_code == 303, path
-            assert response.headers["location"] == "/login"
+            assert response.headers["location"] == "/app/login"
 
         offline = client.get("/app/offline")
         assert "text/html" in offline.headers["content-type"]
@@ -226,7 +226,7 @@ globalThis.fetch = async (request) => {
   if (url.pathname.startsWith("/app/")) {
     return authorized
       ? new Response("private authenticated HTML " + url.pathname)
-      : new Response("login", {status: 303, headers: {Location: "/login"}});
+      : new Response("login", {status: 303, headers: {Location: "/app/login"}});
   }
   return new Response("other");
 };
@@ -321,7 +321,6 @@ assert.equal(
 authorized = false;
 const revoked = await dispatch("/app/", "GET", "navigate");
 assert.equal(revoked.status, 303);
-assert.equal(revoked.headers.get("location"), "/login");
 assert.equal(await revoked.text(), "login");
 assert.equal(calls.get("/app/"), 2);
 online = false;

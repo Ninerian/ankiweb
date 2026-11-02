@@ -162,14 +162,26 @@ def _seed_http_cache(page: Page, base: str, css_url: str) -> None:
 
 def _wait_for_app_worker(page: Page) -> None:
     page.wait_for_function(
-        """async () => {
-          const registration = await navigator.serviceWorker.getRegistration('/app/');
+        """() => {
           const worker = navigator.serviceWorker.controller;
-          return registration?.active && worker &&
-            registration.scope === new URL('/app/', location.origin).href &&
+          return worker?.state === 'activated' &&
             worker.scriptURL === new URL('/app/service-worker.js', location.origin).href;
         }"""
     )
+    registration = page.evaluate(
+        """async () => {
+          const registration = await navigator.serviceWorker.getRegistration('/app/');
+          return {
+            activeScriptURL: registration?.active?.scriptURL ?? null,
+            scope: registration?.scope ?? null,
+            origin: location.origin,
+          };
+        }"""
+    )
+    assert registration["activeScriptURL"] == (
+        f"{registration['origin']}/app/service-worker.js"
+    )
+    assert registration["scope"] == f"{registration['origin']}/app/"
 
 
 def test_study_add_and_study_new_card(page: Page, journey_app: tuple[str, int]) -> None:
@@ -225,9 +237,6 @@ def test_app_script_updates_before_worker_upgrade(
     install = css.parent / "app" / "install.js"
     page.goto(f"{base}/app/")
     _wait_for_app_worker(page)
-    page.wait_for_function(
-        "() => navigator.serviceWorker.controller?.state === 'activated'"
-    )
     hold_worker.set()
 
     script_response = re.compile(r"/shell/static/app/install\.js(?:\?.*)?$")
@@ -270,7 +279,13 @@ def test_versioned_assets_update_without_losing_draft(
     page.goto(f"{base}/app/")
     _wait_for_app_worker(page)
     assert _build_marker(page) == "v1"
-    css_v1_url = _app_css(page)
+    old_app_caches = [
+        name
+        for name in page.evaluate("() => caches.keys()")
+        if name.startswith("ankiweb-app-")
+    ]
+    assert len(old_app_caches) == 1
+    old_cache = old_app_caches[0]
     css_v1 = css.read_text(encoding="utf-8")
     css_v2 = css_v1.replace("--pwa-test-build: v1", "--pwa-test-build: v2")
     assert css_v1 != css_v2
@@ -316,13 +331,9 @@ def test_versioned_assets_update_without_losing_draft(
         "() => navigator.serviceWorker.controller !== window.__oldWorker && "
         "navigator.serviceWorker.controller?.state === 'activated'"
     )
+    _wait_for_app_worker(page)
     expect(front).to_have_value("unsaved draft")
-    old_version = css_v1_url.partition("v=")[2]
-    assert old_version
-    assert page.evaluate(
-        "async version => !(await caches.keys()).includes('ankiweb-app-' + version)",
-        old_version,
-    )
+    assert old_cache not in page.evaluate("() => caches.keys()")
     other_page = page.context.new_page()
     try:
         other_page.goto(f"{base}/app/")

@@ -46,7 +46,7 @@ def test_ping_follows_password_gate(tmp_path: Path) -> None:
     with TestClient(app) as test_client:
         response = test_client.get("/app/ping", follow_redirects=False)
         assert response.status_code == 303
-        assert response.headers["location"] == "/login"
+        assert response.headers["location"] == "/app/login"
         test_client.cookies.set(COOKIE, auth_token(password))
         assert test_client.get("/app/ping").status_code == 200
 

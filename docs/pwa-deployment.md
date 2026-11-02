@@ -51,6 +51,12 @@ deployed setup. The separate `app_sid` session cookie currently does **not** set
 
 ## Install
 
+When a password is configured, unauthenticated visits to `/app` or `/app/...`
+redirect to the same-origin `/app/login`. Both the standard form and Datastar login
+return to `/app/` after successful authentication; failed attempts stay on the
+app login page. The legacy client continues to use `/login` and returns to `/`
+after a successful login.
+
 1. Open `https://anki.example.com/app/` in the phone's browser and log in if needed.
 2. On Android Chromium, use **Install app** if it appears, or the browser's install /
    add-to-home-screen menu. The in-app button appears only when the browser supplies
@@ -68,9 +74,11 @@ verified; the shared icons are placeholders.
 App pages and the offline page use `/shell/static/app-client.css?v=<build_hash>`.
 Top-level app scripts under `/shell/static/app/*.js` use the same version; other
 scripts, including `datastar.js`, do not. The 12-character build hash reflects
-the deployed app CSS and JavaScript and also versions the worker cache. After
-changing `shell_src/app-client.css` or app JavaScript sources, run `npm run build`
-before deployment to rebuild the served assets.
+the deployed app CSS and JavaScript. The worker cache version also includes the
+rendered offline page, so changes to its content or language create a new worker
+cache without changing asset URL versions. After changing `shell_src/app-client.css`
+or app JavaScript sources, run `npm run build` before deployment to rebuild the
+served assets.
 
 The `/app/` worker precaches the public offline page and the same versioned CSS.
 App CSS and JavaScript are served cache-first; precaching and cache misses use

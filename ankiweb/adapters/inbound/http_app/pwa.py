@@ -110,13 +110,24 @@ def build_app_pwa_router(static_dir: Path, lang: ResolvedLang) -> APIRouter:
     def manifest() -> JSONResponse:
         return JSONResponse(APP_MANIFEST, media_type="application/manifest+json")
 
+    def render_offline(asset_version: str) -> str:
+        return templating.render(
+            "app/offline.html.jinja",
+            app_lang=lang,
+            app_asset_version=asset_version,
+        )
+
     @router.get(APP_SERVICE_WORKER_PATH)
     def service_worker() -> Response:
-        version = build_hash(static_dir)
-        cache_name = f"ankiweb-app-{version}"
+        asset_version = build_hash(static_dir)
+        offline_html = render_offline(asset_version)
+        cache_version = sha256(
+            asset_version.encode() + b"\0" + offline_html.encode("utf-8")
+        ).hexdigest()[:12]
+        cache_name = f"ankiweb-app-{cache_version}"
         return Response(
             SERVICE_WORKER_JS.replace("__CACHE_NAME__", cache_name).replace(
-                "__BUILD_HASH__", version
+                "__BUILD_HASH__", asset_version
             ),
             media_type="application/javascript",
             headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": APP_SCOPE},
@@ -124,12 +135,6 @@ def build_app_pwa_router(static_dir: Path, lang: ResolvedLang) -> APIRouter:
 
     @router.get(APP_OFFLINE_PATH, response_class=HTMLResponse)
     def offline() -> HTMLResponse:
-        return HTMLResponse(
-            templating.render(
-                "app/offline.html.jinja",
-                app_lang=lang,
-                app_asset_version=build_hash(static_dir),
-            )
-        )
+        return HTMLResponse(render_offline(build_hash(static_dir)))
 
     return router
