@@ -668,7 +668,11 @@
   }
 
   .add-label-row {
-    @apply mb-1.5 flex flex-wrap items-baseline justify-between gap-1;
+    @apply mb-3 flex flex-wrap items-baseline justify-between gap-1;
+  }
+
+  #add-editor .add-label-row:has(> label) {
+    @apply mb-5;
   }
 
   .add-label {
@@ -733,12 +737,16 @@
       text-xs font-black uppercase tracking-wide text-muted-fg;
   }
 
+  #add-wizard { position: relative; }
+  #add-wizard:is([data-browse-phase="open"], [data-browse-phase="closing"]) #add-stage { display: none; }
   #add-stage { overflow-x: hidden; perspective: 1000px; }
+  #add-wizard[data-browse-drag] { clip-path: inset(0); overflow: clip; }
 
   .pile-region {
     display: flex;
-    flex: 1 0 auto;
+    flex: 0 0 auto;
     min-width: 0;
+    margin-top: 12px;
   }
   .pile-button {
     position: relative;
@@ -752,10 +760,10 @@
   .pile-button:disabled { cursor: default; }
   .pile-size-0 { min-height: 80px; }
   .pile-size-1 { min-height: 160px; }
-  .pile-size-2 { min-height: 186px; }
-  .pile-size-3 { min-height: 212px; }
-  .pile-size-4 { min-height: 238px; }
-  .pile-size-5 { min-height: 264px; }
+  .pile-size-2 { min-height: 176px; }
+  .pile-size-3 { min-height: 192px; }
+  .pile-size-4 { min-height: 208px; }
+  .pile-size-5 { min-height: 224px; }
   .pile-cards {
     position: absolute;
     inset: 0;
@@ -780,10 +788,10 @@
     transform-origin: center bottom;
   }
   .added-0 { --target-x: -3px; --target-y: 0px; --target-rot: -3.2deg; --target-scale: 1; z-index: 5; }
-  .added-1 { --target-x: 8px; --target-y: -26px; --target-rot: 2.8deg; --target-scale: 0.97; z-index: 4; filter: brightness(0.95); }
-  .added-2 { --target-x: -5px; --target-y: -52px; --target-rot: -2deg; --target-scale: 0.94; z-index: 3; filter: brightness(0.9); }
-  .added-3 { --target-x: 7px; --target-y: -78px; --target-rot: 3deg; --target-scale: 0.91; z-index: 2; filter: brightness(0.85); }
-  .added-4 { --target-x: -4px; --target-y: -104px; --target-rot: -1.5deg; --target-scale: 0.88; z-index: 1; filter: brightness(0.82); }
+  .added-1 { --target-x: 8px; --target-y: -16px; --target-rot: 2.8deg; --target-scale: 0.97; z-index: 4; filter: brightness(0.95); }
+  .added-2 { --target-x: -5px; --target-y: -32px; --target-rot: -2deg; --target-scale: 0.94; z-index: 3; filter: brightness(0.9); }
+  .added-3 { --target-x: 7px; --target-y: -48px; --target-rot: 3deg; --target-scale: 0.91; z-index: 2; filter: brightness(0.85); }
+  .added-4 { --target-x: -4px; --target-y: -64px; --target-rot: -1.5deg; --target-scale: 0.88; z-index: 1; filter: brightness(0.82); }
   .stacked-card-front, .stacked-card-back {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -798,7 +806,7 @@
     pointer-events: none;
     position: absolute;
     right: 0;
-    bottom: 60px;
+    top: 16px;
     z-index: 20;
     width: 64px;
     height: 64px;
@@ -841,6 +849,7 @@
 
   .editor-leaving { animation: editor-leave 0.42s cubic-bezier(0.55, 0, 0.9, 0.4) forwards; }
   .editor-returning { animation: editor-return 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+  #add-wizard[data-browse-restored] #add-editor { animation: none; }
   @keyframes editor-leave {
     from { transform: translateY(0) rotate(0); opacity: 1; }
     to { transform: translateY(-115%) rotate(-4deg); opacity: 0; }
@@ -850,7 +859,39 @@
     70% { transform: translateY(6px) rotate(0.6deg); opacity: 1; }
     to { transform: translateY(0) rotate(0); opacity: 1; }
   }
-  .deck-browse { display: flex; flex: 1 1 0; min-height: 0; min-width: 0; flex-direction: column; }
+  /* The gesture scrubs the same lift and editor exit used by opening. */
+  #add-wizard[data-browse-drag] .pile-cards {
+    transform: translateY(calc(-48px * var(--browse-drag)));
+    opacity: calc(1 - var(--browse-drag));
+    transition: transform var(--browse-drag-duration, 0ms) ease-out,
+      opacity var(--browse-drag-duration, 0ms) ease-out;
+  }
+  #add-wizard[data-browse-drag] #add-editor {
+    animation: none;
+    transform: translateY(calc(-115% * var(--browse-drag))) rotate(calc(-4deg * var(--browse-drag)));
+    opacity: calc(1 - var(--browse-drag));
+    transition: transform var(--browse-drag-duration, 0ms) ease-out,
+      opacity var(--browse-drag-duration, 0ms) ease-out;
+  }
+  .deck-browse {
+    @apply px-4 pb-3 pt-2;
+    display: flex;
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    flex-direction: column;
+  }
+  /* The real list occupies its eventual open-view rectangle, independently of
+     the still-visible editor and pile. It cannot intercept the captured pointer. */
+  #add-wizard[data-browse-drag] #deck-cards {
+    display: flex !important;
+    position: absolute;
+    top: var(--browse-preview-top);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    pointer-events: none;
+  }
   .deck-browse-list {
     display: flex;
     flex: 1;
@@ -863,7 +904,24 @@
     overscroll-behavior: contain;
     padding: 4px 4px 28px;
   }
+  /* Let folded rows emerge from the pile even outside the list's scrollport.
+     The measured gutter keeps their final widths identical at handoff. */
+  #add-wizard:is([data-browse-drag="dragging"], [data-browse-drag="settling"]) .deck-browse-list {
+    overflow: visible;
+    padding-inline-end: calc(4px + var(--browse-scrollbar, 0px));
+  }
   .browse-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; animation: browse-fan 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.15) var(--fan-delay) both; }
+  #add-wizard[data-browse-drag] .browse-card {
+    animation: none;
+    transform: translate(
+      calc(var(--fan-offset-x, 0px) * (1 - var(--browse-drag))),
+      calc(var(--fan-offset-y, 0px) * (1 - var(--browse-drag)))
+    ) rotate(calc(3deg * (1 - var(--browse-drag)))) scale(calc(0.94 + 0.06 * var(--browse-drag)));
+    opacity: var(--browse-drag);
+    transition: transform var(--browse-drag-duration, 0ms) ease-out,
+      opacity var(--browse-drag-duration, 0ms) ease-out;
+  }
+  #add-wizard[data-browse-unfolded][data-browse-phase="open"] .browse-card { animation: none; }
   .browse-num { @apply text-primary border-neo-edge; display: flex; align-self: stretch; align-items: center; justify-content: center; min-width: 38px; padding-right: 12px; border-right-width: 2px; border-right-style: dashed; font-size: 1.3rem; font-weight: 900; }
   .browse-body { display: block; min-width: 0; }
   .is-folding .browse-card { animation: browse-fold 0.34s cubic-bezier(0.55, 0, 0.9, 0.4) var(--fold-delay) both; }
@@ -905,8 +963,18 @@
     #add-wizard[data-browse-phase="returning"] .browse-fade { opacity: 0; }
   }
 
+  #add-wizard[data-browse-drag] .browse-fade {
+    opacity: calc(1 - var(--browse-drag));
+    transition: opacity var(--browse-drag-duration, 0ms) ease-out;
+  }
+
   #add-wizard .add-optional {
     @apply mt-2.5 rounded-review-sheet-control border-deck-pill border-solid border-neo-edge bg-base-200;
+  }
+
+  /* Compact summary rows, as in editor-mockup.html (.optional-field summary). */
+  #add-wizard .add-optional > .collapse-title {
+    @apply min-h-0 ps-2.5 pe-12 py-2;
   }
 
   /* Lift the validation toast above the action bar, including its safe area. */

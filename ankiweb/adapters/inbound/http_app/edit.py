@@ -154,6 +154,19 @@ def _editable_note(
     )
 
 
+def _initial_card(
+    col: anki.collection.Collection, deck_id: int, requested_card: str | None
+) -> dict[str, str | int | bool] | None:
+    if requested_card is None:
+        return None
+    try:
+        nid = int(requested_card)
+        values, _, learned = _editable_note(col, deck_id, nid)
+    except (ValueError, _NoteNotEditable):
+        return None
+    return {"nid": nid, **values, "learned": learned}
+
+
 def _prepare_reset(
     col: anki.collection.Collection,
     deck_id: int,
@@ -349,21 +362,31 @@ class _EditRoutes:
             return RedirectResponse("/app/", status_code=303)
         deck_emoji, deck_name = deck_display
         session, new_session_id = get_session(request)
-        count, deck_cards = await self.get_service().run(
+        requested_card = request.query_params.get("card")
+        count, deck_cards, initial_card = await self.get_service().run(
             lambda col: (
                 self.added_count(col, session, deck_id),
                 self.deck_cards(col, deck_id),
+                _initial_card(col, deck_id, requested_card),
             )
+        )
+        initial_view = (
+            "card"
+            if initial_card is not None
+            else "cards"
+            if requested_card is None and request.query_params.get("view") == "cards"
+            else "editor"
         )
         body = render(
             "app/edit.html.jinja",
             app_lang=self.lang,
             deck_id=deck_id,
-            note_type=NOTETYPE_NAME,
             deck_emoji=deck_emoji,
             deck_name=deck_name,
             count=count,
             deck_cards=deck_cards,
+            initial_view=initial_view,
+            initial_card=initial_card,
             pile_animate=False,
             preview={},
         )

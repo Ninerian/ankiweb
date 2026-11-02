@@ -76,6 +76,7 @@ class _Region(HTMLParser):
         self.region_id = region_id
         self.depth = 0
         self.found = False
+        self.attributes: dict[str, str | None] = {}
         self.ids: list[int] = []
         self.text: list[str] = []
         self.rows: dict[int, list[str]] = {}
@@ -90,6 +91,7 @@ class _Region(HTMLParser):
             if attributes.get("id") != self.region_id or self.found:
                 return
             self.found = True
+            self.attributes = attributes
             self.depth = 1
         elif tag not in _VOID_TAGS:
             self.depth += 1
@@ -321,24 +323,22 @@ def test_deck_list_spans_sessions_and_edits_without_growing_pile(
 
 
 @pytest.mark.parametrize(
-    ("lang", "marker", "legend", "warning"),
+    ("lang", "marker", "warning"),
     [
         (
             "en",
             "Learned",
-            "Changing a learned card resets its learning progress.",
             "Changes to this learned card will reset its learning progress.",
         ),
         (
             "de_DE",
             "Gelernt",
-            "Änderungen an gelernten Karten setzen den Lernfortschritt zurück.",
             "Änderungen an dieser gelernten Karte setzen den Lernfortschritt zurück.",
         ),
     ],
 )
 def test_learned_deck_card_is_localized(
-    tmp_path: Path, lang: str, marker: str, legend: str, warning: str
+    tmp_path: Path, lang: str, marker: str, warning: str
 ) -> None:
     settings = Settings(collection_path=tmp_path / "localized.anki2", lang=lang)
     try:
@@ -367,7 +367,6 @@ def test_learned_deck_card_is_localized(
             assert deck.ids == [nid]
             row = deck.rows[int(nid)]
             assert "Reviewed" in row and "Answer" in row and marker in row
-            assert "".join(_region(page, "deck-cards-legend").text).strip() == legend
             assert "".join(_region(page, "edit-warning").text).strip() == warning
 
             loaded = _load(client, nid)
@@ -475,3 +474,133 @@ def test_changed_unlearned_note_ignores_learned_cards_in_another_deck(
     assert response.status_code == 200
     assert _signals(response)["progressReset"] is False
     assert _snapshots(client, ids) == before
+
+
+def _assert_edit_page(
+    response: _Response,
+    view: str,
+    card: int = 0,
+    fields: dict[str, str] | None = None,
+    learned: bool = False,
+) -> dict[str, str | None]:
+    assert response.status_code == 200
+    attributes = _region(response, "add-wizard").attributes
+    assert attributes["data-initial-view"] == view
+    assert attributes["data-initial-card"] == str(card)
+    encoded_fields = attributes["data-initial-fields"]
+    assert encoded_fields is not None
+    assert json.loads(encoded_fields) == (
+        fields
+        if fields is not None
+        else {"front": "", "back": "", "hint": "", "example": ""}
+    )
+    signals = attributes["data-signals"]
+    assert signals is not None
+    assert f"nid: {card}," in signals
+    assert f"learned: {str(learned).lower()}," in signals
+    assert f"_browsing: {str(view == 'cards').lower()}," in signals
+    assert "...JSON.parse(el.dataset.initialFields)" in signals
+    assert "editOriginal: JSON.parse(el.dataset.initialFields)" in signals
+    return attributes
+
+
+@pytest.mark.parametrize(
+    ("query", "view"),
+    [
+        ("", "editor"),
+        ("&view=editor", "editor"),
+        ("&view=cards", "cards"),
+        ("&view=other", "editor"),
+        ("&view=", "editor"),
+    ],
+)
+def test_edit_url_initial_view(client: TestClient, query: str, view: str) -> None:
+    page = client.get(f"/app/edit?deck=1{query}")
+    _assert_edit_page(page, view)
+
+
+def test_edit_url_loads_plain_text_card_and_original_values(client: TestClient) -> None:
+    values = {
+        "front": (
+            'Front <script>alert("x")</script>\n& more " autofocus onfocus="alert(1)'
+        ),
+        "back": 'Back "quoted"',
+        "hint": "Hint & help",
+        "example": "Example\n*word*",
+    }
+    nid = _run(
+        client,
+        lambda col: add_vocab_note(
+            col,
+            DEFAULT_DECK,
+            values["front"],
+            values["back"],
+            values["hint"],
+            values["example"],
+        ),
+    )
+    page = client.get(f"/app/edit?deck=1&view=cards&card={nid}")
+    attributes = _assert_edit_page(page, "card", nid, values)
+    assert "autofocus" not in attributes
+    assert "onfocus" not in attributes
+    assert "<script>alert" not in page.text
+    response = _load(client, nid)
+    assert response.status_code == 200
+    loaded = _signals(response)
+    assert {key: loaded[key] for key in values} == values
+    assert loaded["editOriginal"] == values
+
+
+def test_edit_url_learned_status_matches_selected_deck(client: TestClient) -> None:
+    nid, _, _, foreign = _run(client, lambda col: _siblings(col, "review", None))
+    other_deck = _run(client, lambda col: col.get_card(foreign).did)
+    for deck, learned in ((DEFAULT_DECK, True), (other_deck, False)):
+        page = client.get(f"/app/edit?deck={deck}&card={nid}")
+        attributes = _assert_edit_page(
+            page,
+            "card",
+            nid,
+            {
+                "front": "Original",
+                "back": "Answer",
+                "hint": "Hint",
+                "example": "Example",
+            },
+            learned,
+        )
+        assert attributes["data-deck-id"] == str(deck)
+        response = _load(client, nid, deck)
+        assert response.status_code == 200
+        assert _signals(response)["learned"] is learned
+
+
+@pytest.mark.parametrize(
+    "card", ["", "nope", "0", "-1", "9223372036854775808", "999999999"]
+)
+def test_edit_url_invalid_card_opens_plain_editor(
+    client: TestClient, card: str
+) -> None:
+    page = client.get(f"/app/edit?deck=1&view=cards&card={card}")
+    _assert_edit_page(page, "editor")
+
+
+def test_edit_url_rejects_foreign_unsupported_and_deleted_notes(
+    client: TestClient,
+) -> None:
+    def seed(col: anki.collection.Collection) -> tuple[NoteId, NoteId, NoteId]:
+        other = col.decks.id("Foreign deck")
+        model = col.models.by_name("Basic")
+        assert other is not None and model is not None
+        foreign = add_vocab_note(col, other, "Foreign vocabulary", "Answer")
+        basic = col.new_note(model)
+        basic["Front"], basic["Back"] = "Unsupported type", "Answer"
+        col.add_note(basic, DEFAULT_DECK)
+        deleted = add_vocab_note(col, DEFAULT_DECK, "Deleted", "Answer")
+        col.remove_notes([deleted])
+        return foreign, basic.id, deleted
+
+    foreign, basic, deleted = _run(client, seed)
+    for nid in (foreign, basic, deleted):
+        assert _load(client, nid).status_code == 404
+        page = client.get(f"/app/edit?deck=1&view=cards&card={nid}")
+        _assert_edit_page(page, "editor")

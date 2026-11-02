@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ title }}</title>
     <link rel="stylesheet" href="/shell/static/app-client.css">
-    <script type="module" src="/shell/static/datastar.js"></script>
+    {# Register page helpers before Datastar evaluates initial effects. #}
     {% for script in scripts %}<script type="module" src="{{ script }}"></script>{% endfor %}
+    <script type="module" src="/shell/static/datastar.js"></script>
   </head>
   <body data-signals="{error: ''}">
     {{ body | safe }}

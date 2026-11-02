@@ -13,7 +13,7 @@ from ankiweb.app import create_app
 from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import ConsoleMessage, sync_playwright
+from playwright.sync_api import ConsoleMessage, expect, sync_playwright
 
 DECKS = (
     "German B1 Vocab · 🇩🇪",
@@ -116,3 +116,59 @@ def test_deck_list_search_and_links(
         assert page.evaluate("document.documentElement.scrollWidth") == 375
         browser.close()
     assert problems == []
+
+
+def test_deck_overview_initializes_before_and_after_editor_navigation(
+    decks_server: tuple[str, dict[str, int]],
+) -> None:
+    base, ids = decks_server
+    problems: list[str] = []
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 375, "height": 812})
+
+        def on_console(message: ConsoleMessage) -> None:
+            if message.type == "error":
+                problems.append(f"console: {message.text}")
+
+        def check_deck_sheet() -> None:
+            page.wait_for_load_state("networkidle")
+            opener = page.locator("#btn-new-deck")
+            sheet = page.locator("#deck-sheet")
+            expect(sheet).to_have_attribute("aria-hidden", "true")
+            expect(opener).not_to_be_focused()
+            opener.click()
+            expect(sheet).to_have_attribute("aria-hidden", "false")
+            expect(page.locator("#deck-name")).to_be_focused()
+            page.keyboard.press("Escape")
+            expect(sheet).to_have_attribute("aria-hidden", "true")
+            expect(opener).to_be_focused()
+
+        page.on("console", on_console)
+        page.on("pageerror", lambda error: problems.append(f"pageerror: {error}"))
+        page.goto(f"{base}/app/")
+        check_deck_sheet()
+        assert problems == []
+
+        deck_id = ids["German B1 Vocab · 🇩🇪"]
+        page.locator(f"#deck-{deck_id}").get_by_role(
+            "link", name="Edit", exact=True
+        ).click()
+        expect(page).to_have_url(f"{base}/app/edit?deck={deck_id}")
+        expect(page.locator("#input-front")).to_be_visible()
+        page.wait_for_load_state("networkidle")
+        assert problems == []
+
+        page.locator("#edit-back").click()
+        expect(page).to_have_url(f"{base}/app/")
+        check_deck_sheet()
+        assert problems == []
+
+        page.goto(f"{base}/app/edit?deck={deck_id}&view=cards")
+        cards = page.locator("#deck-cards")
+        expect(cards).to_be_visible()
+        expect(cards).to_be_focused()
+        page.wait_for_load_state("networkidle")
+        expect(cards).to_be_focused()
+        assert problems == []
+        browser.close()

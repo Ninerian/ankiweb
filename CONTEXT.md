@@ -29,7 +29,7 @@ Die Vorlage einer Notiz mit Feldern und Kartenvorlagen. Der mobile Client nutzt 
 _Avoid_: Note-Type, Modell, Template
 
 **Hinzugefuegte Karten**:
-Die in der laufenden Sitzung neu gespeicherten Notizen im Wizard unter `/app/edit`; sie sind sofort im Deck gespeichert. Der Sitzungszaehler erfasst nur Neuanlagen und bleibt fuer „Fertig“ und die Zusammenfassung vom deckweiten Stapel-Badge getrennt. Bearbeiten erhoeht keinen der beiden Zaehler. Anki-Wortlaut: `adding_added` ("Hinzugefuegt").
+Die in der laufenden Sitzung neu gespeicherten Notizen im Wizard unter `/app/edit`; sie sind sofort im Deck gespeichert. Der Sitzungszaehler erfasst nur Neuanlagen und bleibt vom deckweiten Stapel-Badge getrennt. „Fertig“ oeffnet auch bei null hinzugefuegten Karten die Zusammenfassung, die den Sitzungszaehler anzeigt; bei ungespeichertem Entwurf erfolgt vorher eine Abfrage. Bearbeiten erhoeht keinen der beiden Zaehler. Anki-Wortlaut: `adding_added` ("Hinzugefuegt").
 _Avoid_: Stack, Stapel, Batch, Neue Karten
 
 **Deck-Kartenliste**:

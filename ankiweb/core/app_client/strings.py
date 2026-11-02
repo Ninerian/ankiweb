@@ -111,7 +111,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_unavailable": (
             "This card is unavailable for editing. Please try again."
         ),
-        "app_add_card_first": "Add a card first.",
         "app_add_cards_ready": "Cards Ready!",
         "app_add_start_studying": "Start studying",
         "app_add_discard_leave": (
@@ -129,9 +128,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_edit_row_label": "Edit card: {front}",
         "app_edit_row_action": "Edit",
         "app_edit_learned": "Learned",
-        "app_edit_learned_legend": "Changing a learned card resets its learning progress.",
-        "app_edit_editing": "Editing card",
-        "app_edit_cancel": "Cancel editing",
         "app_edit_warning": "Changes to this learned card will reset its learning progress.",
         "app_edit_progress_reset": "Learning progress was reset.",
         "app_edit_progress_reset_failed": (
@@ -272,7 +268,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_edit_unavailable": (
             "Diese Karte kann nicht bearbeitet werden. Bitte erneut versuchen."
         ),
-        "app_add_card_first": "Füge zuerst eine Karte hinzu.",
         "app_add_cards_ready": "Karten bereit!",
         "app_add_discard_leave": (
             "Die aktuelle Karte enthält ungespeicherten Text. Verwerfen und verlassen?"
@@ -289,9 +284,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_edit_row_label": "Karte bearbeiten: {front}",
         "app_edit_row_action": "Bearbeiten",
         "app_edit_learned": "Gelernt",
-        "app_edit_learned_legend": "Änderungen an gelernten Karten setzen den Lernfortschritt zurück.",
-        "app_edit_editing": "Karte wird bearbeitet",
-        "app_edit_cancel": "Bearbeitung abbrechen",
         "app_edit_warning": "Änderungen an dieser gelernten Karte setzen den Lernfortschritt zurück.",
         "app_edit_progress_reset": "Der Lernfortschritt wurde zurückgesetzt.",
         "app_edit_progress_reset_failed": (

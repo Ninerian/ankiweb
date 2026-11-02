@@ -252,7 +252,15 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
         expect(other.locator("#added-cards")).to_contain_text(front)
         expect(other.locator("#added-cards .add-stack-count")).to_have_text("1")
         other.get_by_role("button", name="Done", exact=True).click()
-        expect(other.get_by_text("Add a card first.")).to_be_visible()
+        summary = other.get_by_role("dialog")
+        expect(summary).to_be_visible()
+        expect(summary.locator("[data-text='$count']")).to_have_text("0")
+        expect(
+            summary.get_by_role("link", name="Back to decks", exact=True)
+        ).to_have_attribute("href", "/app/")
+        expect(
+            summary.get_by_role("link", name="Start studying", exact=True)
+        ).to_have_attribute("href", "/app/review?deck=1")
         assert live_app.notes() == saved
     finally:
         isolated.close()
@@ -306,8 +314,9 @@ def test_added_stack_opens_list_and_preserves_draft(
     expect(_front(page)).to_have_value("a < b & c")
     expect(_front(page)).to_be_focused()
     expect(_back(page)).to_have_value("first answer")
-    page.locator("#edit-cancel").click()
-    expect(_front(page)).to_have_value("")
+    page.locator("#edit-back").click()
+    expect(cards).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("a < b & c")
     assert live_app.notes() == original
     assert live_app.persisted_notes() == original
 
@@ -336,7 +345,7 @@ def test_pile_keyboard_badge_and_back_restore_focus(
     expect(cards.get_by_role("button", name="Back to new card")).to_have_count(0)
     expect(cards.get_by_role("button")).to_have_count(1)
     expect(page.locator("#edit-back")).to_have_accessible_name("Back to card editor")
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
     expect(pile).to_have_attribute("aria-expanded", "true")
     page.keyboard.press("Escape")
     expect(cards).not_to_be_visible()
@@ -465,6 +474,1003 @@ def test_pile_pointer_swipe_requires_upward_threshold(
     page.locator("#edit-back").click()
     expect(cards).not_to_be_visible()
     expect(pile).to_be_focused()
+
+
+def test_touch_swipe_scrubs_and_settles_without_extra_history(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Drag card", "answer"))
+    browser = page.context.browser
+    assert browser is not None
+    context = browser.new_context(
+        has_touch=True, viewport={"width": 375, "height": 812}
+    )
+    try:
+        touch_page = context.new_page()
+        touch_page.emulate_media(reduced_motion="no-preference")
+        editor_url = f"{live_app}/app/edit?deck=1"
+        touch_page.goto(f"{live_app}/app/")
+        touch_page.goto(editor_url)
+        wizard = touch_page.locator("#add-wizard")
+        cards = touch_page.locator("#deck-cards")
+        pile = touch_page.locator("#pile")
+        cue = touch_page.locator(".pile-cue").bounding_box()
+        assert cue is not None
+        x = cue["x"] + cue["width"] / 2
+        y = cue["y"] + cue["height"] / 2
+        client = context.new_cdp_session(touch_page)
+        touch_page.evaluate(
+            """() => {
+              const wizard = document.querySelector('#add-wizard');
+              const stack = document.querySelector('#added-cards');
+              window.swipePointerEvents = {pointerdown: 0, pointermove: 0, pointerup: 0, pointercancel: 0};
+              window.pileReturnFrames = [];
+              for (const type of Object.keys(window.swipePointerEvents)) {
+                document.addEventListener(type, event => {
+                  if (event.pointerType === 'touch') window.swipePointerEvents[type]++;
+                });
+              }
+              document.addEventListener('pointerup', event => {
+                if (event.pointerType !== 'touch' || wizard.dataset.browseDrag !== 'settling' ||
+                    window.pileReturnFrames.length) return;
+                const sample = () => {
+                  window.pileReturnFrames.push(new DOMMatrixReadOnly(getComputedStyle(stack).transform).m42);
+                  if (wizard.hasAttribute('data-browse-drag')) requestAnimationFrame(sample);
+                };
+                requestAnimationFrame(sample);
+              });
+            }"""
+        )
+        pointer_events = {
+            "touchStart": "pointerdown",
+            "touchMove": "pointermove",
+            "touchEnd": "pointerup",
+            "touchCancel": "pointercancel",
+        }
+        pointer_counts = dict.fromkeys(pointer_events.values(), 0)
+
+        def touch(kind: str, distance: int = 0) -> None:
+            points = (
+                []
+                if kind in ("touchEnd", "touchCancel")
+                else [{"x": x, "y": y - distance}]
+            )
+            client.send(
+                "Input.dispatchTouchEvent", {"type": kind, "touchPoints": points}
+            )
+            pointer = pointer_events[kind]
+            pointer_counts[pointer] += 1
+            touch_page.wait_for_function(
+                "([type, count]) => window.swipePointerEvents[type] >= count",
+                arg=[pointer, pointer_counts[pointer]],
+            )
+
+        def pile_y() -> float:
+            return touch_page.locator("#added-cards").evaluate(
+                "el => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42"
+            )
+
+        touch("touchStart")
+        touch("touchMove", 8)
+        first = pile_y()
+        touch("touchMove", 20)
+        second = pile_y()
+        touch("touchMove", 8)
+        returned = pile_y()
+        assert first == pytest.approx(-8, abs=1)
+        assert second == pytest.approx(-20, abs=1)
+        assert returned == pytest.approx(-8, abs=1)
+        touch("touchEnd")
+        expect(wizard).to_have_attribute("data-browse-phase", "closed")
+        touch_page.wait_for_function(
+            "() => !document.querySelector('#add-wizard').hasAttribute('data-browse-drag')"
+        )
+        assert pile_y() == pytest.approx(0, abs=1)
+        return_frames = touch_page.evaluate("window.pileReturnFrames")
+        assert any(-7.5 < value < -0.5 for value in return_frames)
+        expect(touch_page).to_have_url(editor_url)
+
+        touch("touchStart")
+        touch("touchMove", 20)
+        touch("touchCancel")
+        touch_page.wait_for_function(
+            "() => !document.querySelector('#add-wizard').hasAttribute('data-browse-drag')"
+        )
+        expect(cards).not_to_be_visible()
+        assert pile_y() == pytest.approx(0, abs=1)
+        expect(touch_page).to_have_url(editor_url)
+
+        _front(touch_page).fill("Unsaved")
+        messages = _respond_to_confirm(touch_page, accept=False)
+        touch("touchStart")
+        touch("touchMove", 28)
+        touch("touchEnd")
+        assert messages
+        touch_page.wait_for_function(
+            "() => !document.querySelector('#add-wizard').hasAttribute('data-browse-drag')"
+        )
+        expect(cards).not_to_be_visible()
+        expect(_front(touch_page)).to_have_value("Unsaved")
+        assert pile_y() == pytest.approx(0, abs=1)
+        expect(touch_page).to_have_url(editor_url)
+
+        # A tap during a canceled swipe's return must also settle if discard is rejected.
+        touch("touchStart")
+        touch("touchMove", 20)
+        touch("touchEnd")
+        expect(wizard).to_have_attribute("data-browse-drag", "settling")
+        messages = _respond_to_confirm(touch_page, accept=False)
+        touch("touchStart")
+        touch("touchEnd")
+        touch_page.wait_for_function(
+            "() => !document.querySelector('#add-wizard').hasAttribute('data-browse-drag')"
+        )
+        assert messages
+        expect(cards).not_to_be_visible()
+        expect(_front(touch_page)).to_have_value("Unsaved")
+        assert pile_y() == pytest.approx(0, abs=1)
+        expect(touch_page).to_have_url(editor_url)
+
+        # Back during the swipe-driven opening must clear its settling state.
+        _front(touch_page).fill("")
+        touch_page.evaluate(
+            """() => document.addEventListener('pointerup', () => {
+              window.openingBeforeBack = document.querySelector('#add-wizard').dataset.browsePhase;
+              history.back();
+            }, {once: true})"""
+        )
+        touch("touchStart")
+        touch("touchMove", 28)
+        touch("touchEnd")
+        assert touch_page.evaluate("window.openingBeforeBack") == "opening"
+        expect(touch_page).to_have_url(editor_url)
+        expect(wizard).to_have_attribute("data-browse-phase", "closed")
+        touch_page.wait_for_function(
+            "() => !document.querySelector('#add-wizard').hasAttribute('data-browse-drag')"
+        )
+        expect(cards).not_to_be_visible()
+        expect(pile).to_be_focused()
+        assert pile_y() == pytest.approx(0, abs=1)
+
+        _front(touch_page).fill("")
+        touch("touchStart")
+        touch("touchMove", 28)
+        touch("touchEnd")
+        expect(wizard).to_have_attribute("data-browse-phase", "open")
+        expect(cards).to_be_visible()
+        expect(
+            cards.get_by_role("button", name=re.compile("Drag card"))
+        ).to_be_visible()
+        expect(cards).to_be_focused()
+        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        touch_page.go_back()
+        expect(touch_page).to_have_url(editor_url)
+        expect(wizard).to_have_attribute("data-browse-phase", "closed")
+        expect(pile).to_be_focused()
+        touch_page.go_back()
+        expect(touch_page).to_have_url(f"{live_app}/app/")
+    finally:
+        context.close()
+
+
+def _assert_swipe_drag_samples(
+    initial: dict, samples: list[dict], distance: Callable[[dict, dict], float]
+) -> dict:
+    first, middle, _, furthest, reversed_frame = samples
+    for index in range(2):
+        rows = [sample["rows"][index] for sample in samples]
+        assert f"Unfold card {index + 1}" in rows[3]["text"]
+        assert all(
+            row["displayed"] and row["width"] > 30 and row["height"] > 20
+            for row in rows
+        )
+        assert all(row["opacity"] > 0 for row in rows)
+        assert (
+            rows[0]["opacity"]
+            < rows[1]["opacity"]
+            < rows[2]["opacity"]
+            < rows[3]["opacity"]
+        )
+        assert rows[4]["opacity"] == pytest.approx(rows[1]["opacity"], abs=0.03)
+        # Intersect against every clipping ancestor, not just the element's box.
+        assert all(
+            row["visibleArea"] > 100 and row["textArea"] > 20
+            for row in (rows[0], rows[1], rows[3])
+        )
+        assert rows[3]["background"] not in ("transparent", "rgba(0, 0, 0, 0)")
+        assert rows[3]["border"] > 0
+    assert distance(*furthest["rows"]) > distance(*first["rows"]) + 10
+    assert distance(*reversed_frame["rows"]) == pytest.approx(
+        distance(*middle["rows"]), abs=3
+    )
+    _assert_swipe_drag_chrome(initial, samples)
+    return reversed_frame
+
+
+def _assert_swipe_drag_chrome(initial: dict, samples: list[dict]) -> None:
+    first, middle, further, furthest, reversed_frame = samples
+    for element in ("pileCard", "cue"):
+        opacities = [sample[element]["visualOpacity"] for sample in samples]
+        assert (
+            initial[element]["visualOpacity"]
+            > opacities[0]
+            > opacities[1]
+            > opacities[2]
+            > opacities[3]
+        )
+        assert opacities[4] == pytest.approx(opacities[1], abs=0.03)
+    assert (
+        first["editor"]["opacity"]
+        > middle["editor"]["opacity"]
+        > further["editor"]["opacity"]
+        > furthest["editor"]["opacity"]
+    )
+    assert reversed_frame["editor"]["opacity"] == pytest.approx(
+        middle["editor"]["opacity"], abs=0.03
+    )
+    assert furthest["editor"]["y"] < first["editor"]["y"] - 20
+    assert reversed_frame["editor"]["y"] == pytest.approx(middle["editor"]["y"], abs=3)
+
+
+def _assert_swipe_return_chrome(
+    initial: dict, restored: dict, reversed_frame: dict, returned: list[dict]
+) -> None:
+    for element in ("pileCard", "cue"):
+        assert restored[element]["displayed"]
+        assert restored[element]["visualOpacity"] == pytest.approx(
+            initial[element]["visualOpacity"], abs=0.02
+        )
+        assert any(
+            reversed_frame[element]["visualOpacity"] + 0.01
+            < item[element]["visualOpacity"]
+            < initial[element]["visualOpacity"] - 0.01
+            for item in returned
+        )
+
+
+def _assert_swipe_open_chrome(before: dict, boundary: dict, final: dict) -> None:
+    for element in ("pileCard", "cue"):
+        assert boundary["after"][element]["visualOpacity"] == pytest.approx(
+            boundary["before"][element]["visualOpacity"], abs=0.03
+        )
+        opacities = [
+            before[element]["visualOpacity"],
+            *(item[element]["visualOpacity"] for item in boundary["frames"]),
+            final[element]["visualOpacity"],
+        ]
+        assert opacities[-1] == pytest.approx(0, abs=0.02)
+        assert any(0.02 < value < opacities[0] - 0.02 for value in opacities[1:-1])
+        assert all(-0.03 <= a - b < 0.25 for a, b in pairwise(opacities))
+
+
+def _assert_swipe_open_rows(
+    before: dict,
+    final: dict,
+    samples: list[dict],
+    boundary: dict,
+    distance: Callable[[dict, dict], float],
+) -> None:
+    for index in range(2):
+        start = before["rows"][index]
+        end = final["rows"][index]
+        assert distance(start, end) > 10
+        drag_distances = [
+            distance(sample["rows"][index], end) for sample in samples[:4]
+        ]
+        assert all(a > b + 1 for a, b in pairwise(drag_distances))
+        assert (
+            distance(
+                boundary["before"]["rows"][index], boundary["after"]["rows"][index]
+            )
+            < 3
+        )
+        assert boundary["after"]["rows"][index]["opacity"] == pytest.approx(
+            boundary["before"]["rows"][index]["opacity"], abs=0.03
+        )
+        _assert_swipe_open_row_frames(boundary, start, end, index, distance)
+
+
+def _assert_swipe_open_row_frames(
+    boundary: dict,
+    start: dict,
+    end: dict,
+    index: int,
+    distance: Callable[[dict, dict], float],
+) -> None:
+    distances = [distance(item["rows"][index], end) for item in boundary["frames"]]
+    assert all(a >= b - 12 for a, b in pairwise(distances))
+    assert all(
+        item["rows"][index]["displayed"] and item["rows"][index]["visibleArea"] > 100
+        for item in boundary["frames"]
+    )
+    assert any(
+        0.1 * distance(start, end) < value < 0.9 * distance(start, end)
+        for value in distances
+    )
+    assert all(
+        item["rows"][index]["opacity"] >= start["opacity"] - 0.03
+        for item in boundary["frames"]
+    )
+
+
+def test_touch_swipe_previews_real_cards_and_unwinds_or_opens(
+    page: Page, live_app: LiveApp
+) -> None:
+    ids = _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), f"Unfold card {i}", f"Answer {i}")
+            for i in range(1, 11)
+        ],
+    )
+    browser = page.context.browser
+    assert browser is not None
+    context = browser.new_context(
+        has_touch=True, viewport={"width": 375, "height": 812}
+    )
+    try:
+        touch_page = context.new_page()
+        touch_page.emulate_media(reduced_motion="no-preference")
+        editor_url = f"{live_app}/app/edit?deck=1"
+        touch_page.goto(f"{live_app}/app/")
+        touch_page.goto(editor_url)
+        cards = touch_page.locator("#deck-cards")
+        pile = touch_page.locator("#pile")
+        expect(pile).to_be_enabled()
+        expect(cards).not_to_be_visible()
+        cue = touch_page.locator(".pile-cue").bounding_box()
+        assert cue is not None
+        x = cue["x"] + cue["width"] / 2
+        y = cue["y"] + cue["height"] / 2
+        client = context.new_cdp_session(touch_page)
+        touch_page.evaluate(
+            """ids => {
+              const rows = ids.map(id =>
+                document.querySelector(`#deck-cards button[data-note-id="${id}"]`));
+              const editor = document.querySelector('#add-editor');
+              const pileCard = document.querySelector('#added-cards .stacked-card');
+              const cue = document.querySelector('.pile-cue');
+              const list = document.querySelector('#deck-cards');
+              const measure = el => {
+                const rect = el.getBoundingClientRect();
+                let left = Math.max(0, rect.left), right = Math.min(innerWidth, rect.right);
+                let top = Math.max(0, rect.top), bottom = Math.min(innerHeight, rect.bottom);
+                let opacity = 1, displayed = true;
+                for (let node = el; node; node = node.parentElement) {
+                  const style = getComputedStyle(node);
+                  opacity *= Number(style.opacity);
+                  displayed &&= style.display !== 'none' && style.visibility === 'visible';
+                  if (node !== el && /(auto|scroll|hidden|clip)/.test(style.overflow)) {
+                    const clip = node.getBoundingClientRect();
+                    left = Math.max(left, clip.left); right = Math.min(right, clip.right);
+                    top = Math.max(top, clip.top); bottom = Math.min(bottom, clip.bottom);
+                  }
+                }
+                return {
+                  x: rect.left + rect.width / 2, y: rect.top + rect.height / 2,
+                  width: rect.width, height: rect.height, opacity, displayed,
+                  visualOpacity: displayed ? opacity : 0,
+                  visibleArea: Math.max(0, right - left) * Math.max(0, bottom - top)
+                };
+              };
+              window.swipeFrame = () => ({
+                rows: rows.map(row => ({
+                  ...measure(row),
+                  text: row.textContent,
+                  textArea: measure(row.querySelector('[dir="auto"]')).visibleArea,
+                  background: getComputedStyle(row).backgroundColor,
+                  border: parseFloat(getComputedStyle(row).borderTopWidth)
+                })),
+                editor: measure(editor), pileCard: measure(pileCard), cue: measure(cue),
+                stage: measure(document.querySelector('#add-stage')),
+                listDisplayed: getComputedStyle(list).display !== 'none'
+              });
+              window.swipeEvents = {pointerdown: 0, pointermove: 0, pointerup: 0};
+              for (const type of Object.keys(window.swipeEvents)) {
+                document.addEventListener(type, event => {
+                  if (event.pointerType === 'touch') window.swipeEvents[type]++;
+                });
+              }
+              window.recordSwipeRelease = () => {
+                window.releaseFrames = [];
+                document.addEventListener('pointerup', event => {
+                  if (event.pointerType !== 'touch') return;
+                  window.beforeRelease = window.swipeFrame();
+                  document.addEventListener('pointerup', () => {
+                    window.afterRelease = window.swipeFrame();
+                  }, {once: true});
+                  const record = () => {
+                    window.releaseFrames.push(window.swipeFrame());
+                    if (window.recordingRelease) requestAnimationFrame(record);
+                  };
+                  window.recordingRelease = true;
+                  requestAnimationFrame(record);
+                }, {capture: true, once: true});
+              };
+            }""",
+            [int(ids[0]), int(ids[1])],
+        )
+        events = {
+            "touchStart": "pointerdown",
+            "touchMove": "pointermove",
+            "touchEnd": "pointerup",
+        }
+        counts = dict.fromkeys(events.values(), 0)
+
+        def touch(kind: str, distance: int = 0) -> None:
+            points = [] if kind == "touchEnd" else [{"x": x, "y": y - distance}]
+            client.send(
+                "Input.dispatchTouchEvent", {"type": kind, "touchPoints": points}
+            )
+            event = events[kind]
+            counts[event] += 1
+            touch_page.wait_for_function(
+                "([type, count]) => window.swipeEvents[type] >= count",
+                arg=[event, counts[event]],
+            )
+
+        def frame() -> dict:
+            return touch_page.evaluate(
+                "() => new Promise(resolve => requestAnimationFrame(() => resolve(window.swipeFrame())))"
+            )
+
+        def distance(first: dict, second: dict) -> float:
+            return (
+                (first["x"] - second["x"]) ** 2 + (first["y"] - second["y"]) ** 2
+            ) ** 0.5
+
+        initial = frame()
+        editor_start = initial["editor"]
+        history_length = touch_page.evaluate("history.length")
+        touch("touchStart")
+        samples = []
+        for drag in (8, 18, 30, 40, 18):
+            touch("touchMove", drag)
+            samples.append(frame())
+            expect(touch_page).to_have_url(editor_url)
+            assert touch_page.evaluate("history.length") == history_length
+            assert touch_page.evaluate("window.swipeEvents.pointerup") == 0
+            for dimension in ("x", "y", "width", "height"):
+                assert samples[-1]["stage"][dimension] == pytest.approx(
+                    initial["stage"][dimension], abs=1
+                )
+            expect(pile).to_have_attribute("aria-expanded", "false")
+            expect(cards).to_have_attribute("aria-hidden", "true")
+            assert cards.evaluate("el => !!el.closest('[inert]')")
+            expect(
+                touch_page.get_by_role("button", name=re.compile("Unfold card [12]"))
+            ).to_have_count(0)
+
+        reversed_frame = _assert_swipe_drag_samples(initial, samples, distance)
+        assert cards.evaluate(
+            """el => {
+              const row = el.querySelector('button');
+              row.focus();
+              const rect = row.getBoundingClientRect();
+              const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+              return !el.contains(document.activeElement) && !el.contains(hit);
+            }"""
+        )
+
+        touch_page.evaluate("window.recordSwipeRelease()")
+        touch("touchEnd")
+        expect(cards).not_to_be_visible()
+        touch_page.evaluate("window.recordingRelease = false")
+        returned = touch_page.evaluate("window.releaseFrames")
+        assert any(
+            item["listDisplayed"]
+            and 0.01
+            < item["rows"][0]["opacity"]
+            < reversed_frame["rows"][0]["opacity"] - 0.01
+            for item in returned
+        )
+        restored = frame()
+        assert restored["editor"]["opacity"] == pytest.approx(
+            editor_start["opacity"], abs=0.02
+        )
+        assert restored["editor"]["y"] == pytest.approx(editor_start["y"], abs=2)
+        _assert_swipe_return_chrome(initial, restored, reversed_frame, returned)
+        expect(touch_page).to_have_url(editor_url)
+        assert touch_page.evaluate("history.length") == history_length
+        expect(pile).to_have_attribute("aria-expanded", "false")
+
+        touch("touchStart")
+        touch("touchMove", 28)
+        before = frame()
+        touch_page.evaluate("window.recordSwipeRelease()")
+        touch("touchEnd")
+        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(cards).to_be_visible()
+        expect(cards).to_be_focused()
+        touch_page.wait_for_function(
+            """() => window.releaseFrames.length >= 2 &&
+              window.swipeFrame().rows.every(row => row.opacity > 0.99)"""
+        )
+        final = frame()
+        touch_page.evaluate("window.recordingRelease = false")
+        boundary = touch_page.evaluate(
+            "({before: window.beforeRelease, after: window.afterRelease, frames: window.releaseFrames})"
+        )
+        _assert_swipe_open_chrome(before, boundary, final)
+        _assert_swipe_open_rows(before, final, samples, boundary, distance)
+        expect(pile).to_have_attribute("aria-expanded", "true")
+        rows = cards.locator("button[data-note-id]")
+        expect(rows).to_have_count(10)
+        last = cards.locator(f"button[data-note-id='{ids[-1]}']")
+        last.scroll_into_view_if_needed()
+        assert cards.locator("ul").evaluate("el => el.scrollTop") > 0
+        last.click()
+        expect(_front(touch_page)).to_have_value("Unfold card 10")
+        expect(_front(touch_page)).to_be_focused()
+        touch_page.go_back()
+        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(cards).to_be_focused()
+        touch_page.go_back()
+        expect(touch_page).to_have_url(editor_url)
+        expect(pile).to_be_focused()
+        touch_page.go_back()
+        expect(touch_page).to_have_url(f"{live_app}/app/")
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("second_distance", [3, 14], ids=["tap", "further-drag"])
+def test_touch_regrab_of_returning_pile_opens_without_a_snap(
+    page: Page, live_app: LiveApp, second_distance: int
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Regrab", "answer"))
+    browser = page.context.browser
+    assert browser is not None
+    context = browser.new_context(
+        has_touch=True, viewport={"width": 375, "height": 812}
+    )
+    try:
+        touch_page = context.new_page()
+        touch_page.emulate_media(reduced_motion="no-preference")
+        editor_url = f"{live_app}/app/edit?deck=1"
+        touch_page.goto(editor_url)
+        cue = touch_page.locator(".pile-cue").bounding_box()
+        assert cue is not None
+        x = cue["x"] + cue["width"] / 2
+        y = cue["y"] + cue["height"] / 2
+        client = context.new_cdp_session(touch_page)
+        touch_page.evaluate(
+            """() => {
+              window.touchCounts = {pointerdown: 0, pointermove: 0, pointerup: 0};
+              for (const type of Object.keys(window.touchCounts)) {
+                document.addEventListener(type, event => {
+                  if (event.pointerType === 'touch') window.touchCounts[type]++;
+                });
+              }
+              const measure = () => {
+                const editor = document.querySelector('#add-editor');
+                const pile = document.querySelector('#added-cards');
+                return {
+                  editorY: editor.getBoundingClientRect().y,
+                  editorOpacity: Number(getComputedStyle(editor).opacity),
+                  pileY: new DOMMatrixReadOnly(getComputedStyle(pile).transform).m42
+                };
+              };
+              window.freezePileReturn = () => {
+                document.addEventListener('pointerup', () => {
+                  const freeze = () => {
+                    if (measure().pileY >= -20) {
+                      for (const animation of document.getAnimations()) {
+                        if (animation instanceof CSSTransition) animation.pause();
+                      }
+                      window.pileReturnFrozen = true;
+                    } else {
+                      requestAnimationFrame(freeze);
+                    }
+                  };
+                  requestAnimationFrame(freeze);
+                }, {once: true});
+              };
+              window.recordRegrabRelease = () => {
+                document.addEventListener('pointerup', event => {
+                  if (event.pointerType !== 'touch') return;
+                  window.beforeRegrabRelease = measure();
+                  document.addEventListener('pointerup', () => {
+                    window.afterRegrabRelease = measure();
+                  }, {once: true});
+                }, {capture: true, once: true});
+              };
+            }"""
+        )
+        events = {
+            "touchStart": "pointerdown",
+            "touchMove": "pointermove",
+            "touchEnd": "pointerup",
+        }
+        counts = dict.fromkeys(events.values(), 0)
+
+        def touch(kind: str, distance: int = 0) -> None:
+            points = [] if kind == "touchEnd" else [{"x": x, "y": y - distance}]
+            client.send(
+                "Input.dispatchTouchEvent", {"type": kind, "touchPoints": points}
+            )
+            event = events[kind]
+            counts[event] += 1
+            touch_page.wait_for_function(
+                "([type, count]) => window.touchCounts[type] >= count",
+                arg=[event, counts[event]],
+            )
+
+        touch("touchStart")
+        touch("touchMove", 26)
+        # Freeze the visible return partway through so regrab starts at a known
+        # position regardless of the speed of browser automation.
+        touch_page.evaluate("window.freezePileReturn()")
+        touch("touchEnd")
+        touch_page.wait_for_function("() => window.pileReturnFrozen === true")
+        touch("touchStart")
+        touch("touchMove", second_distance)
+        touch_page.evaluate("window.recordRegrabRelease()")
+        touch("touchEnd")
+
+        boundary = touch_page.evaluate(
+            "({before: window.beforeRegrabRelease, after: window.afterRegrabRelease})"
+        )
+        assert boundary["before"]["pileY"] < -10
+        assert boundary["after"]["pileY"] == pytest.approx(
+            boundary["before"]["pileY"], abs=1
+        )
+        assert boundary["after"]["editorY"] == pytest.approx(
+            boundary["before"]["editorY"], abs=2
+        )
+        assert boundary["after"]["editorOpacity"] == pytest.approx(
+            boundary["before"]["editorOpacity"], abs=0.03
+        )
+        cards = touch_page.locator("#deck-cards")
+        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(cards.get_by_role("button", name=re.compile("Regrab"))).to_be_visible()
+        expect(cards).to_be_focused()
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("terminal_event", ["pointerup", "pointercancel"])
+def test_history_open_during_touch_drag_finishes_after_pointer_ends(
+    page: Page, live_app: LiveApp, terminal_event: str
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "History drag", "answer"))
+    browser = page.context.browser
+    assert browser is not None
+    context = browser.new_context(
+        has_touch=True, viewport={"width": 375, "height": 812}
+    )
+    try:
+        touch_page = context.new_page()
+        touch_page.emulate_media(reduced_motion="no-preference")
+        editor_url = f"{live_app}/app/edit?deck=1"
+        touch_page.goto(editor_url)
+        pile = touch_page.locator("#pile")
+        cards = touch_page.locator("#deck-cards")
+        pile.tap()
+        expect(cards).to_be_focused()
+        touch_page.go_back()
+        expect(touch_page).to_have_url(editor_url)
+        expect(pile).to_be_focused()
+        cue = touch_page.locator(".pile-cue").bounding_box()
+        assert cue is not None
+        x = cue["x"] + cue["width"] / 2
+        y = cue["y"] + cue["height"] / 2
+        client = context.new_cdp_session(touch_page)
+        touch_page.evaluate(
+            """terminal => {
+              document.addEventListener('pointermove', event => {
+                if (event.pointerType === 'touch') {
+                  window.activeTouch = {
+                    pointerId: event.pointerId, pointerType: event.pointerType,
+                    clientX: event.clientX, clientY: event.clientY,
+                    isPrimary: true, bubbles: true
+                  };
+                }
+              });
+              window.addEventListener('popstate', () => requestAnimationFrame(() => {
+                window.expandedAtInterruption =
+                  document.querySelector('#pile').getAttribute('aria-expanded');
+                window.opacityAtInterruption =
+                  Number(getComputedStyle(document.querySelector('#add-editor')).opacity);
+                document.dispatchEvent(new PointerEvent(terminal, window.activeTouch));
+                window.interrupted = true;
+              }), {once: true});
+            }""",
+            terminal_event,
+        )
+        client.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]},
+        )
+        client.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchMove", "touchPoints": [{"x": x, "y": y - 18}]},
+        )
+        touch_page.wait_for_function("() => !!window.activeTouch")
+        touch_page.evaluate("history.forward()")
+        touch_page.wait_for_function("() => window.interrupted === true")
+        assert touch_page.evaluate("window.expandedAtInterruption") == "true"
+        assert touch_page.evaluate("window.opacityAtInterruption") > 0
+        client.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+
+        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(
+            cards.get_by_role("button", name=re.compile("History drag"))
+        ).to_be_visible()
+        expect(cards).to_be_focused()
+        touch_page.locator("#edit-back").tap()
+        expect(touch_page).to_have_url(editor_url)
+        expect(pile).to_be_focused()
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("open_method", ["enter", "tap", "forward"])
+def test_reopening_while_swipe_return_is_in_progress_reverses(
+    page: Page, live_app: LiveApp, open_method: str
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Return", "answer"))
+    browser = page.context.browser
+    assert browser is not None
+    context = browser.new_context(
+        has_touch=True, viewport={"width": 375, "height": 812}
+    )
+    try:
+        touch_page = context.new_page()
+        touch_page.emulate_media(reduced_motion="no-preference")
+        editor_url = f"{live_app}/app/edit?deck=1"
+        touch_page.goto(editor_url)
+        pile = touch_page.locator("#pile")
+        cards = touch_page.locator("#deck-cards")
+        wizard = touch_page.locator("#add-wizard")
+
+        # Create a forward entry and return to the fully settled editor.
+        pile.tap()
+        expect(cards).to_be_focused()
+        touch_page.go_back()
+        expect(wizard).to_have_attribute("data-browse-phase", "closed")
+        expect(pile).to_be_focused()
+        cue = touch_page.locator(".pile-cue").bounding_box()
+        assert cue is not None
+        x = cue["x"] + cue["width"] / 2
+        y = cue["y"] + cue["height"] / 2
+        client = context.new_cdp_session(touch_page)
+        touch_page.evaluate(
+            """method => {
+              const stack = document.querySelector('#added-cards');
+              const editor = document.querySelector('#add-editor');
+              const row = document.querySelector('#deck-cards .browse-card');
+              const measure = () => ({
+                pileY: new DOMMatrixReadOnly(getComputedStyle(stack).transform).m42,
+                editorOpacity: Number(getComputedStyle(editor).opacity),
+                rowOpacity: Number(getComputedStyle(row).opacity)
+              });
+              const transitions = () => [stack, editor, row].flatMap(element =>
+                element.getAnimations().filter(animation => animation instanceof CSSTransition)
+              );
+              const seek = (animations, fraction) => {
+                for (const animation of animations) {
+                  animation.currentTime = animation.effect.getComputedTiming().endTime * fraction;
+                }
+              };
+              document.addEventListener('pointermove', event => {
+                if (event.pointerType === 'touch') window.returnSwipeMoved = true;
+              });
+              document.addEventListener('pointerup', event => {
+                if (event.pointerType !== 'touch') return;
+                // Pause and seek the real return transitions to an intermediate
+                // rendered frame, independent of automation and frame timing.
+                measure();
+                const animations = transitions();
+                for (const animation of animations) animation.pause();
+                seek(animations, 0.35);
+                window.beforeReopen = measure();
+                window.returnFrozen = true;
+              }, {once: true});
+              const recordOpen = () => {
+                window.afterReopen = measure();
+                const animations = transitions();
+                for (const animation of animations) animation.pause();
+                seek(animations, 0.25);
+                window.openEarly = measure();
+                seek(animations, 0.75);
+                window.openLate = measure();
+                for (const animation of animations) animation.play();
+                window.reopenRecorded = true;
+              };
+              if (method === 'forward') {
+                window.addEventListener('popstate', recordOpen, {once: true});
+              } else {
+                document.addEventListener('click', event => {
+                  if (event.target.closest('#pile')) recordOpen();
+                }, {once: true});
+              }
+            }""",
+            open_method,
+        )
+        client.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]},
+        )
+        client.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchMove", "touchPoints": [{"x": x, "y": y - 26}]},
+        )
+        touch_page.wait_for_function("() => window.returnSwipeMoved === true")
+        client.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        touch_page.wait_for_function("() => window.returnFrozen === true")
+        expect(wizard).to_have_attribute("data-browse-drag", "settling")
+
+        if open_method == "forward":
+            touch_page.evaluate("history.forward()")
+        elif open_method == "tap":
+            pile.tap()
+        else:
+            pile.press("Enter")
+        touch_page.wait_for_function("() => window.reopenRecorded === true")
+        frames = touch_page.evaluate(
+            """() => ({
+              before: window.beforeReopen, after: window.afterReopen,
+              early: window.openEarly, late: window.openLate
+            })"""
+        )
+        assert -25 < frames["before"]["pileY"] < -1
+        assert 0 < frames["before"]["rowOpacity"] < 1
+        for key in ("pileY", "editorOpacity", "rowOpacity"):
+            assert frames["after"][key] == pytest.approx(
+                frames["before"][key], abs=1 if key == "pileY" else 0.03
+            )
+        assert frames["late"]["pileY"] < frames["early"]["pileY"] - 2
+        assert frames["late"]["editorOpacity"] < frames["early"]["editorOpacity"] - 0.05
+        assert frames["late"]["rowOpacity"] > frames["early"]["rowOpacity"] + 0.05
+        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(wizard).to_have_attribute("data-browse-phase", "open")
+        expect(cards.get_by_role("button", name=re.compile("Return"))).to_be_visible()
+        expect(cards).to_be_focused()
+    finally:
+        context.close()
+
+
+def test_reopening_during_swipe_return_animates_editor_out(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Reopen", "answer"))
+    browser = page.context.browser
+    assert browser is not None
+    context = browser.new_context(
+        has_touch=True, viewport={"width": 375, "height": 812}
+    )
+    try:
+        touch_page = context.new_page()
+        touch_page.emulate_media(reduced_motion="no-preference")
+        editor_url = f"{live_app}/app/edit?deck=1"
+        touch_page.goto(editor_url)
+        cue = touch_page.locator(".pile-cue").bounding_box()
+        assert cue is not None
+        x = cue["x"] + cue["width"] / 2
+        y = cue["y"] + cue["height"] / 2
+        client = context.new_cdp_session(touch_page)
+        touch_page.evaluate(
+            """() => {
+              document.addEventListener('pointermove', event => {
+                if (event.pointerType === 'touch') window.firstSwipeMoved = true;
+              });
+              document.addEventListener('pointerup', event => {
+                if (event.pointerType === 'touch') history.back();
+              }, {once: true});
+              window.addEventListener('popstate', () => {
+                window.firstReturnNavigated = true;
+                // Reopen as soon as the pile finishes returning, before the
+                // longer editor return finishes.
+                const reopen = () => {
+                  const pile = document.querySelector('#added-cards');
+                  const y = new DOMMatrixReadOnly(getComputedStyle(pile).transform).m42;
+                  if (Math.abs(y) >= 0.5 || pile.getAnimations().length) {
+                    requestAnimationFrame(reopen);
+                    return;
+                  }
+                  window.reopenFrames = [];
+                  window.addEventListener('popstate', () => {
+                    const sample = () => {
+                      const editor = document.querySelector('#add-editor');
+                      const style = getComputedStyle(editor);
+                      if (style.display === 'none') return;
+                      window.reopenFrames.push(Number(style.opacity));
+                      requestAnimationFrame(sample);
+                    };
+                    requestAnimationFrame(sample);
+                  }, {once: true});
+                  history.forward();
+                };
+                requestAnimationFrame(reopen);
+              }, {once: true});
+            }"""
+        )
+        client.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]},
+        )
+        client.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchMove", "touchPoints": [{"x": x, "y": y - 28}]},
+        )
+        touch_page.wait_for_function("() => window.firstSwipeMoved === true")
+        client.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        touch_page.wait_for_function("() => window.firstReturnNavigated === true")
+        cards = touch_page.locator("#deck-cards")
+        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(cards.get_by_role("button", name=re.compile("Reopen"))).to_be_visible()
+        expect(cards).to_be_focused()
+        opacities = touch_page.evaluate("window.reopenFrames")
+        assert len(opacities) >= 2
+        assert max(opacities) > 0.9
+        assert min(opacities) < 0.8
+    finally:
+        context.close()
+
+
+def test_long_card_list_does_not_overflow_page_during_touch_drag(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), f"Long list {i}", f"Answer {i}")
+            for i in range(40)
+        ],
+    )
+    browser = page.context.browser
+    assert browser is not None
+    context = browser.new_context(
+        has_touch=True, viewport={"width": 375, "height": 812}
+    )
+    try:
+        touch_page = context.new_page()
+        touch_page.emulate_media(reduced_motion="no-preference")
+        touch_page.goto(f"{live_app}/app/edit?deck=1")
+        cue = touch_page.locator(".pile-cue").bounding_box()
+        assert cue is not None
+        x = cue["x"] + cue["width"] / 2
+        y = cue["y"] + cue["height"] / 2
+        client = context.new_cdp_session(touch_page)
+        touch_page.evaluate(
+            """() => {
+              window.touchMoves = 0;
+              document.addEventListener('pointermove', event => {
+                if (event.pointerType === 'touch') window.touchMoves++;
+              });
+            }"""
+        )
+        document_size = """() => {
+          const el = document.documentElement;
+          return {width: el.scrollWidth, height: el.scrollHeight,
+                  viewportWidth: el.clientWidth, viewportHeight: el.clientHeight};
+        }"""
+        initial = touch_page.evaluate(document_size)
+        assert initial["width"] <= initial["viewportWidth"]
+        client.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]},
+        )
+        for count, distance in enumerate((8, 18, 30, 40), start=1):
+            client.send(
+                "Input.dispatchTouchEvent",
+                {"type": "touchMove", "touchPoints": [{"x": x, "y": y - distance}]},
+            )
+            touch_page.wait_for_function(
+                "count => window.touchMoves >= count", arg=count
+            )
+            size = touch_page.evaluate(document_size)
+            assert size["width"] <= initial["viewportWidth"]
+            assert size["height"] <= initial["height"]
+        client.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        cards = touch_page.locator("#deck-cards")
+        expect(cards).to_be_focused()
+        last = cards.get_by_role("button", name=re.compile("Long list 39"))
+        last.scroll_into_view_if_needed()
+        expect(last).to_be_visible()
+    finally:
+        context.close()
 
 
 def test_browse_fans_and_folds_with_bounded_stagger(
@@ -990,10 +1996,14 @@ def test_empty_session_list_reopens_after_edit_and_selects_another_card(
     expect(page.locator("#added-cards .add-stack-count")).to_have_text("2")
     page.locator("#edit-back").click()
     expect(cards).not_to_be_visible()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
     expect(opener).to_be_focused()
     page.get_by_role("button", name="Done", exact=True).click()
-    expect(page.get_by_text("Add a card first.")).to_be_visible()
-    expect(page.get_by_role("dialog")).not_to_be_visible()
+    summary = page.get_by_role("dialog")
+    expect(summary).to_be_visible()
+    expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    summary.get_by_role("button", name="Close", exact=True).click()
+    expect(summary).not_to_be_visible()
 
     opener.click()
     expect(cards).to_be_visible()
@@ -1036,6 +2046,7 @@ def test_failed_card_load_keeps_list_open_and_can_retry(
     expect(alert).to_be_visible()
     expect(alert).to_contain_text(error)
     expect(cards).to_be_visible()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
     expect(row).to_be_enabled()
     expect(page.locator("#input-front")).not_to_be_visible()
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Retry card"
@@ -1044,8 +2055,864 @@ def test_failed_card_load_keeps_list_open_and_can_retry(
     row.click()
     expect(cards).not_to_be_visible()
     expect(alert).not_to_be_visible()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&card={nid}")
     expect(page.locator("#input-front")).to_have_value("Retry card")
     expect(page.locator("#input-front")).to_be_focused()
+
+
+def test_browser_back_traverses_card_list_editor_and_decks(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    card_url = f"{editor_url}&card={nid}"
+    page.goto(f"{live_app}/app/")
+    page.goto(editor_url)
+    cards = page.locator("#deck-cards")
+    expect(_front(page)).to_have_value("")
+
+    page.locator("#pile").click()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(page).to_have_url(card_url)
+    expect(_front(page)).to_have_value("Saved")
+    expect(_back(page)).to_have_value("answer")
+
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Saved")
+    page.go_back()
+    expect(page).to_have_url(editor_url)
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("")
+    page.go_back()
+    expect(page).to_have_url(f"{live_app}/app/")
+
+
+def test_reload_dirty_card_rejected_back_preserves_history(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    card_url = f"{editor_url}&card={nid}"
+    page.goto(f"{live_app}/app/")
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("Saved")
+    page.reload()
+    expect(_front(page)).to_have_value("Saved")
+    _front(page).fill("Unsaved")
+    page.evaluate(
+        "() => { window.historyPops = []; window.addEventListener('popstate', () => window.historyPops.push(location.href)); }"
+    )
+    rejected = _respond_to_confirm(page, accept=False)
+    page.go_back()
+    page.wait_for_function("() => window.historyPops.length >= 2")
+    assert len(rejected) == 1
+    expect(page).to_have_url(card_url)
+    expect(_front(page)).to_have_value("Unsaved")
+
+    accepted = _respond_to_confirm(page, accept=True)
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    assert len(accepted) == 1
+    page.go_back()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_have_value("")
+    page.go_forward()
+    expect(page).to_have_url(cards_url)
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Saved")
+    page.go_forward()
+    expect(page).to_have_url(card_url)
+    expect(_front(page)).to_have_value("Saved")
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    page.go_back()
+    expect(page).to_have_url(editor_url)
+    page.go_back()
+    expect(page).to_have_url(f"{live_app}/app/")
+
+
+def test_reload_list_keeps_back_and_rejected_forward_usable(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    page.goto(f"{live_app}/app/")
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    expect(page).to_have_url(cards_url)
+    page.reload()
+    expect(page.locator("#deck-cards")).to_be_visible()
+    page.go_back()
+    expect(page).to_have_url(editor_url)
+    _front(page).fill("Unsaved")
+    page.evaluate(
+        "() => { window.historyPops = []; window.addEventListener('popstate', () => window.historyPops.push(location.href)); }"
+    )
+    rejected = _respond_to_confirm(page, accept=False)
+    page.go_forward()
+    page.wait_for_function("() => window.historyPops.length >= 2")
+    assert len(rejected) == 1
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_have_value("Unsaved")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.go_forward()
+    expect(page).to_have_url(cards_url)
+    expect(page.locator("#deck-cards")).to_contain_text("Saved")
+    assert len(accepted) == 1
+    page.go_back()
+    expect(page).to_have_url(editor_url)
+    page.go_back()
+    expect(page).to_have_url(f"{live_app}/app/")
+
+
+def test_browser_forward_reloads_each_card_from_list(
+    page: Page, live_app: LiveApp
+) -> None:
+    ids = _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), front, back)
+            for front, back in [("First", "first answer"), ("Second", "second answer")]
+        ],
+    )
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    expect(cards).to_be_visible()
+
+    for nid, front, back in zip(
+        ids, ("First", "Second"), ("first answer", "second answer"), strict=True
+    ):
+        cards.locator(f"button[data-note-id='{nid}']").click()
+        expect(page).to_have_url(f"{editor_url}&card={nid}")
+        expect(_front(page)).to_have_value(front)
+        page.go_back()
+        expect(page).to_have_url(cards_url)
+        expect(cards).to_be_visible()
+        with page.expect_request(f"{live_app}/app/edit/card/{nid}?deck=1") as request:
+            page.go_forward()
+        assert request.value.method == "POST"
+        expect(page).to_have_url(f"{editor_url}&card={nid}")
+        expect(cards).not_to_be_visible()
+        expect(_front(page)).to_have_value(front)
+        expect(_back(page)).to_have_value(back)
+        page.go_back()
+        expect(page).to_have_url(cards_url)
+        expect(cards).to_be_visible()
+
+
+def test_history_card_load_blocks_reverse_navigation_until_complete(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    card_url = f"{editor_url}&card={nid}"
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    row = cards.locator(f"button[data-note-id='{nid}']")
+    row.click()
+    expect(_front(page)).to_have_value("Saved")
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+
+    pending: list[Route] = []
+    load_url = f"{live_app}/app/edit/card/{nid}?deck=1"
+
+    def hold_load(route: Route) -> None:
+        pending.append(route)
+
+    page.route(load_url, hold_load)
+    with page.expect_request(load_url):
+        page.go_forward()
+    expect(page).to_have_url(card_url)
+    expect(row).to_be_disabled()
+    row.evaluate("(row) => row.click()")
+    assert len(pending) == 1
+    page.evaluate(
+        "() => { window.historyPops = []; window.addEventListener('popstate', () => window.historyPops.push(location.href)); }"
+    )
+    page.go_back()
+    page.wait_for_function("() => window.historyPops.length >= 2")
+    expect(page).to_have_url(card_url)
+    expect(cards).to_be_visible()
+    assert len(pending) == 1
+    pending[0].continue_()
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_have_value("Saved")
+    expect(_back(page)).to_have_value("answer")
+    expect(page).to_have_url(card_url)
+
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    expect(row).to_be_enabled()
+
+
+def test_failed_history_card_load_restores_usable_editor(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    row = cards.locator(f"button[data-note-id='{nid}']")
+    row.click()
+    expect(_front(page)).to_have_value("Saved")
+    page.go_back()
+    expect(cards).to_be_visible()
+    load_url = f"{live_app}/app/edit/card/{nid}?deck=1"
+    page.route(load_url, lambda route: route.fulfill(status=404, body="Unavailable"))
+    page.go_forward()
+    expect(page.locator("#app-error")).to_be_visible()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("")
+    page.unroute(load_url)
+    page.locator("#pile").click()
+    expect(row).to_be_enabled()
+    row.click()
+    expect(_front(page)).to_have_value("Saved")
+    expect(page).to_have_url(f"{editor_url}&card={nid}")
+
+
+def test_history_card_error_signal_restores_editor_and_next_card_url(
+    page: Page, live_app: LiveApp
+) -> None:
+    first, second = _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), front, back)
+            for front, back in [("First", "first answer"), ("Second", "second answer")]
+        ],
+    )
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    cards.locator(f"button[data-note-id='{first}']").click()
+    expect(page).to_have_url(f"{editor_url}&card={first}")
+    expect(_front(page)).to_have_value("First")
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+
+    load_url = f"{live_app}/app/edit/card/{first}?deck=1"
+    page.route(
+        load_url,
+        lambda route: route.fulfill(
+            status=200,
+            content_type="text/event-stream",
+            body=(
+                "event: datastar-patch-signals\n"
+                'data: signals {"error":"Simulated AnkiException"}\n\n'
+            ),
+        ),
+    )
+    with page.expect_request(load_url) as request:
+        page.go_forward()
+    assert request.value.method == "POST"
+    alert = page.locator("#app-error")
+    expect(alert).to_be_visible()
+    expect(alert).to_contain_text(
+        "This card is unavailable for editing. Please try again."
+    )
+    expect(page).to_have_url(editor_url)
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("")
+
+    page.unroute(load_url)
+    page.locator("#pile").click()
+    expect(page).to_have_url(cards_url)
+    row = cards.locator(f"button[data-note-id='{second}']")
+    expect(row).to_be_enabled()
+    row.click()
+    expect(cards).not_to_be_visible()
+    expect(alert).not_to_be_visible()
+    expect(_front(page)).to_have_value("Second")
+    expect(_front(page)).to_be_focused()
+    expect(_back(page)).to_have_value("second answer")
+    expect(page).to_have_url(f"{editor_url}&card={second}")
+
+
+def test_forward_card_load_clears_previous_card_error(
+    page: Page, live_app: LiveApp
+) -> None:
+    first, second = _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), front, back)
+            for front, back in [("First", "first answer"), ("Second", "second answer")]
+        ],
+    )
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    cards.locator(f"button[data-note-id='{first}']").click()
+    expect(page).to_have_url(f"{editor_url}&card={first}")
+    expect(_front(page)).to_have_value("First")
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+
+    second_url = f"{live_app}/app/edit/card/{second}?deck=1"
+    page.route(second_url, lambda route: route.fulfill(status=404, body="Unavailable"))
+    second_row = cards.locator(f"button[data-note-id='{second}']")
+    second_row.click()
+    alert = page.locator("#app-error")
+    expect(alert).to_be_visible()
+    expect(alert).to_contain_text(
+        "This card is unavailable for editing. Please try again."
+    )
+    expect(page).to_have_url(cards_url)
+    expect(second_row).to_be_enabled()
+    page.unroute(second_url)
+
+    with page.expect_request(f"{live_app}/app/edit/card/{first}?deck=1") as request:
+        page.go_forward()
+    assert request.value.method == "POST"
+    expect(alert).not_to_be_visible()
+    expect(page).to_have_url(f"{editor_url}&card={first}")
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_have_value("First")
+    expect(_front(page)).to_be_focused()
+    expect(_back(page)).to_have_value("first answer")
+
+
+def test_unrelated_failed_preview_does_not_cancel_history_card_load(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    card_url = f"{editor_url}&card={nid}"
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(page).to_have_url(card_url)
+    expect(_front(page)).to_have_value("Saved")
+
+    previews: list[Route] = []
+    preview_url = f"{live_app}/app/edit/preview"
+
+    def hold_preview(route: Route) -> None:
+        previews.append(route)
+
+    page.route(preview_url, hold_preview)
+    page.evaluate(
+        """() => {
+          window.previewFinished = false;
+          document.addEventListener('datastar-fetch', event => {
+            if (event.detail.el.id === 'btn-next' && event.detail.type === 'finished')
+              window.previewFinished = true;
+          });
+        }"""
+    )
+    _front(page).press("Enter")
+    with page.expect_request(preview_url):
+        _back(page).press("Enter")
+    assert len(previews) == 1
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+
+    loads: list[Route] = []
+    load_url = f"{live_app}/app/edit/card/{nid}?deck=1"
+
+    def hold_load(route: Route) -> None:
+        loads.append(route)
+        page.evaluate("() => { window.historyLoadHeld = true; }")
+
+    page.route(load_url, hold_load)
+    with page.expect_request(load_url):
+        page.go_forward()
+    page.wait_for_function("() => window.historyLoadHeld === true")
+    assert len(loads) == 1
+    previews[0].fulfill(status=404, body="Unavailable")
+    page.wait_for_function("() => window.previewFinished")
+    expect(page).to_have_url(card_url)
+    expect(cards).to_be_visible()
+    expect(page.locator("#app-error")).not_to_be_visible()
+
+    loads[0].continue_()
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_have_value("Saved")
+    expect(_front(page)).to_be_focused()
+    expect(_back(page)).to_have_value("answer")
+    expect(page).to_have_url(card_url)
+
+
+def test_history_navigation_closes_summary_and_focuses_destination(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("Saved")
+    page.get_by_role("button", name="Done", exact=True).click()
+    summary = page.get_by_role("dialog")
+    expect(summary).to_be_visible()
+    expect(summary.locator("#summary-keep-adding")).to_be_focused()
+    page.go_back()
+    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(summary).not_to_be_visible()
+    expect(cards).to_be_visible()
+    expect(cards).to_be_focused()
+    page.go_forward()
+    expect(page).to_have_url(editor_url)
+    expect(summary).not_to_be_visible()
+    expect(cards).not_to_be_visible()
+    expect(page.locator("#pile")).to_be_focused()
+
+
+def test_rejected_forward_preserves_previous_history_entry(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    page.goto(f"{live_app}/app/")
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("Saved")
+    page.go_back()
+    expect(page.locator("#deck-cards")).to_be_visible()
+    page.go_back()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_be_visible()
+    _front(page).fill("Unsaved")
+    page.evaluate(
+        "() => { window.historyPops = []; window.addEventListener('popstate', () => window.historyPops.push(location.href)); }"
+    )
+    rejected = _respond_to_confirm(page, accept=False)
+    page.go_forward()
+    page.wait_for_function("() => window.historyPops.length >= 2")
+    expect(page).to_have_url(editor_url)
+    assert len(rejected) == 1
+    expect(_front(page)).to_have_value("Unsaved")
+    page.go_back()
+    expect(page).to_have_url(f"{live_app}/app/")
+
+
+def test_browser_back_during_list_opening_finishes_at_editor(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="no-preference")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    page.goto(editor_url)
+    wizard = page.locator("#add-wizard")
+    cards = page.locator("#deck-cards")
+    page.locator("#pile").click()
+    expect(cards).to_be_visible()
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("Saved")
+    expect(wizard).to_have_attribute("data-browse-phase", "closed")
+
+    page.go_back()
+    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(wizard).to_have_attribute("data-browse-phase", "opening")
+    page.go_back()
+    expect(page).to_have_url(editor_url)
+    expect(wizard).to_have_attribute("data-browse-phase", "closed")
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("")
+
+
+def test_done_while_editing_keeps_url_and_editor_in_sync(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    original = live_app.notes()
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    card_url = f"{editor_url}&card={nid}"
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
+    expect(page).to_have_url(card_url)
+    expect(_front(page)).to_have_value("Saved")
+    _front(page).fill("Unsaved edit")
+    done = page.get_by_role("button", name="Done", exact=True)
+    rejected = _respond_to_confirm(page, accept=False)
+    done.click()
+    assert len(rejected) == 1
+    expect(page).to_have_url(card_url)
+    expect(_front(page)).to_have_value("Unsaved edit")
+    expect(page.get_by_role("dialog")).not_to_be_visible()
+
+    accepted = _respond_to_confirm(page, accept=True)
+    done.click()
+    assert len(accepted) == 1
+    summary = page.get_by_role("dialog")
+    expect(summary).to_be_visible()
+    expect(page).to_have_url(editor_url)
+    summary.get_by_role("button", name="Close", exact=True).click()
+    expect(summary).not_to_be_visible()
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("")
+    expect(page.locator("#edit-back")).to_have_accessible_name("Exit Creator")
+    page.reload()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_have_value("")
+    assert live_app.notes() == original
+
+
+def test_direct_card_list_reload_and_ui_back(page: Page, live_app: LiveApp) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Listed", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    page.goto(cards_url)
+    cards = page.locator("#deck-cards")
+    expect(cards).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Listed")
+    page.reload()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Listed")
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(editor_url)
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_have_value("")
+
+
+def test_direct_card_reload_and_ui_back_to_list(page: Page, live_app: LiveApp) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Direct", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    page.goto(f"{editor_url}&view=cards&card={nid}")
+    expect(page).to_have_url(f"{editor_url}&card={nid}")
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("Direct")
+    expect(_back(page)).to_have_value("answer")
+    expect(page.locator("#edit-back")).to_have_accessible_name("Back to cards")
+    page.reload()
+    expect(_front(page)).to_have_value("Direct")
+    expect(_back(page)).to_have_value("answer")
+
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(f"{editor_url}&view=cards")
+    cards = page.locator("#deck-cards")
+    expect(cards).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Direct")
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("")
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        None,
+        {"avEdit": True, "avIndex": -1},
+        {"avEdit": True, "avIndex": "2"},
+        {"avEdit": True, "avIndex": 999999},
+        {"avEdit": False, "avIndex": 0},
+    ],
+)
+def test_invalid_history_state_on_direct_card_keeps_navigation_usable(
+    page: Page, live_app: LiveApp, state: dict | None
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Direct", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    page.goto(f"{editor_url}&card={nid}")
+    expect(_front(page)).to_have_value("Direct")
+    page.evaluate("(state) => history.replaceState(state, '', location.href)", state)
+    page.reload()
+    expect(_front(page)).to_have_value("Direct")
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(page.locator("#deck-cards")).to_contain_text("Direct")
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_have_value("")
+
+
+def test_reload_preserves_legacy_saved_list_navigation(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    page.goto(editor_url)
+    page.locator("#pile").click()
+    page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value("Saved")
+    # Simulate the duplicate list entry written by the previous save implementation.
+    page.evaluate(
+        "(url) => history.replaceState({avEdit: true, avIndex: 2, avSkipList: 2}, '', url)",
+        cards_url,
+    )
+    page.reload()
+    expect(page.locator("#deck-cards")).to_be_visible()
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_have_value("")
+    page.go_forward()
+    expect(page).to_have_url(cards_url)
+    expect(page.locator("#deck-cards")).to_contain_text("Saved")
+
+
+def test_direct_card_preserves_special_fields_without_executing_them(
+    page: Page, live_app: LiveApp
+) -> None:
+    front = "C:\\"
+    back = 'a; b ${window.directLinkInjected = true} <b>"quotes"</b>\nsecond'
+    hint = "O'Reilly \\"
+    example = "`$front`; </textarea> & more"
+
+    def seed(col: Collection) -> NoteId:
+        nid = add_vocab_note(col, DeckId(1), front, back, hint, example)
+        card = col.get_note(nid).cards()[0]
+        card.type = CardType(2)
+        card.queue = CardQueue(2)
+        col.update_card(card)
+        return nid
+
+    nid = _run(live_app, seed)
+    page.emulate_media(reduced_motion="reduce")
+    requests: list[str] = []
+    page.on(
+        "request",
+        lambda request: (
+            requests.append(request.url) if request.method == "POST" else None
+        ),
+    )
+    editor_url = f"{live_app}/app/edit?deck=1"
+    page.goto(f"{editor_url}&card={nid}")
+    for visit in range(2):
+        expect(_front(page)).to_have_value(front)
+        expect(_back(page)).to_have_value(back)
+        expect(page.locator("#input-hint")).to_have_value(hint)
+        expect(page.locator("#input-example")).to_have_value(example)
+        expect(page.locator("#edit-warning")).to_be_visible()
+        assert page.evaluate("window.directLinkInjected") is None
+        if visit == 0:
+            page.reload()
+    assert requests == []
+    _front(page).fill("Changed")
+    rejected = _respond_to_confirm(page, accept=False)
+    page.locator("#edit-back").click()
+    assert len(rejected) == 1
+    expect(_front(page)).to_have_value("Changed")
+    _front(page).fill(front)
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(page.locator("#deck-cards")).to_be_visible()
+    page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
+    expect(_front(page)).to_have_value(front)
+    expect(page.locator("#edit-back")).to_have_attribute("aria-disabled", "false")
+    _front(page).fill("Changed again")
+    page.evaluate(
+        "() => { window.historyPops = []; window.addEventListener('popstate', () => window.historyPops.push(location.href)); }"
+    )
+    rejected = _respond_to_confirm(page, accept=False)
+    page.go_back()
+    page.wait_for_function("() => window.historyPops.length >= 2")
+    assert len(rejected) == 1
+    expect(page).to_have_url(f"{editor_url}&card={nid}")
+    expect(_front(page)).to_have_value("Changed again")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.go_back()
+    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(page.locator("#deck-cards")).to_be_visible()
+    assert len(accepted) == 1
+
+
+@pytest.mark.parametrize("card", ["not-a-note", "999999999999999"])
+def test_invalid_direct_card_opens_plain_editor(
+    page: Page, live_app: LiveApp, card: str
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    page.goto(f"{editor_url}&view=cards&card={card}")
+    expect(page).to_have_url(editor_url)
+    expect(page.locator("#deck-cards")).not_to_be_visible()
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("")
+    expect(_back(page)).to_have_value("")
+    expect(page.locator("#edit-back")).to_have_accessible_name("Exit Creator")
+
+
+def test_save_returns_to_list_without_duplicate_browser_back(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    page.goto(f"{live_app}/app/")
+    page.goto(editor_url)
+    _add(page, "Saved", "answer")
+    nid = NoteId(live_app.notes()[0][0])
+    page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    expect(page).to_have_url(cards_url)
+    cards.locator(f"button[data-note-id='{nid}']").click()
+    expect(page).to_have_url(f"{editor_url}&card={nid}")
+    expect(_front(page)).to_have_value("Saved")
+    _front(page).fill("Updated")
+    _front(page).press("Enter")
+    _back(page).press("Enter")
+    page.locator("#btn-add").click()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Updated")
+    assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Updated"
+
+    page.go_back()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("")
+    expect(page.locator("#added-cards")).to_contain_text("Updated")
+    page.get_by_role("button", name="Done", exact=True).click()
+    summary = page.get_by_role("dialog")
+    expect(summary).to_be_visible()
+    expect(summary.locator("[data-text='$count']")).to_have_text("1")
+    summary.get_by_role("button", name="Close", exact=True).click()
+    expect(summary).not_to_be_visible()
+    page.go_forward()
+    expect(page).to_have_url(cards_url)
+    expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Updated")
+    page.go_forward()
+    expect(page).to_have_url(f"{editor_url}&card={nid}")
+    expect(_front(page)).to_have_value("Updated")
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_have_value("")
+    page.go_back()
+    expect(page).to_have_url(f"{live_app}/app/")
+
+
+def test_save_direct_card_back_and_forward_remain_usable(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Direct", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    page.goto(f"{live_app}/app/")
+    page.goto(f"{editor_url}&card={nid}")
+    expect(_front(page)).to_have_value("Direct")
+    _front(page).fill("Updated direct")
+    _front(page).press("Enter")
+    _back(page).press("Enter")
+    page.locator("#btn-add").click()
+    expect(page).to_have_url(cards_url)
+    expect(page.locator("#deck-cards")).to_contain_text("Updated direct")
+    page.go_back()
+    expect(page).to_have_url(f"{live_app}/app/")
+    page.go_forward()
+    expect(page).to_have_url(cards_url)
+    expect(page.locator("#deck-cards")).to_contain_text("Updated direct")
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(editor_url)
+    expect(_front(page)).to_have_value("")
+
+
+@pytest.mark.parametrize("direct_list", [False, True])
+def test_list_back_after_consecutive_saved_cards(
+    page: Page, live_app: LiveApp, direct_list: bool
+) -> None:
+    ids = _run(
+        live_app,
+        lambda col: [
+            add_vocab_note(col, DeckId(1), front, "answer")
+            for front in ("First", "Second")
+        ],
+    )
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    page.goto(f"{live_app}/app/")
+    page.goto(f"{editor_url}&view=cards" if direct_list else editor_url)
+    if not direct_list:
+        page.locator("#pile").click()
+    cards = page.locator("#deck-cards")
+    expect(cards).to_be_visible()
+    for nid, original in zip(ids, ("First", "Second"), strict=True):
+        row = cards.locator(f"button[data-note-id='{nid}']")
+        row.click()
+        expect(_front(page)).to_have_value(original)
+        expect(page.locator("#edit-back")).to_have_attribute("aria-disabled", "false")
+        _front(page).fill(f"{original} updated")
+        _front(page).press("Enter")
+        _back(page).press("Enter")
+        page.locator("#btn-add").click()
+        expect(page).to_have_url(f"{editor_url}&view=cards")
+        expect(cards).to_be_visible()
+        expect(row).to_contain_text(f"{original} updated")
+
+    page.reload()
+    expect(cards).to_be_visible()
+    if not direct_list:
+        page.go_back()
+        expect(page).to_have_url(editor_url)
+        expect(_front(page)).to_have_value("")
+        page.go_forward()
+        expect(page).to_have_url(f"{editor_url}&view=cards")
+        expect(cards).to_contain_text("First updated")
+        expect(cards).to_contain_text("Second updated")
+        page.go_forward()
+        expect(page).to_have_url(f"{editor_url}&card={ids[1]}")
+        expect(_front(page)).to_have_value("Second updated")
+        page.go_back()
+        expect(page).to_have_url(f"{editor_url}&view=cards")
+        expect(cards).to_be_visible()
+
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(editor_url)
+    expect(cards).not_to_be_visible()
+    expect(_front(page)).to_have_value("")
+    expect(page.locator("#pile")).to_be_focused()
+    assert [
+        _run(live_app, lambda col, nid=nid: col.get_note(nid)["Front"]) for nid in ids
+    ] == [
+        "First updated",
+        "Second updated",
+    ]
 
 
 def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) -> None:
@@ -1071,17 +2938,17 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
         dialog.dismiss()
 
     page.on("dialog", dismiss_unexpected)
-    page.locator("#edit-cancel").click()
-    expect(_front(page)).to_have_value("")
+    back.click()
+    expect(cards).to_be_visible()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
     assert unexpected == []
-    pile.click()
     cards.locator(f"button[data-note-id='{first}']").click()
     expect(_front(page)).to_have_value("First")
     _front(page).fill("Temporary change")
     _front(page).fill("First")
     back.click()
     expect(cards).to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
     cards.locator(f"button[data-note-id='{second}']").click()
     expect(_front(page)).to_have_value("Second")
     page.remove_listener("dialog", dismiss_unexpected)
@@ -1093,38 +2960,47 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     assert len(rejected) == 1
     expect(cards).not_to_be_visible()
     expect(_front(page)).to_have_value("Changed second")
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&card={second}")
     accepted = _respond_to_confirm(page, accept=True)
     back.click()
     assert len(accepted) == 1
     expect(cards).to_be_visible()
     expect(back).to_have_accessible_name("Back to card editor")
-    page.locator("#edit-back").click()
-    expect(back).to_be_focused()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
-    expect(_front(page)).to_have_value("Changed second")
-    rejected = _respond_to_confirm(page, accept=False)
-    page.keyboard.press("Escape")
-    assert len(rejected) == 1
-    expect(_front(page)).to_have_value("Changed second")
-    assert live_app.notes() == original
-    accepted = _respond_to_confirm(page, accept=True)
-    page.keyboard.press("Escape")
-    assert len(accepted) == 1
-    expect(_front(page)).to_have_value("")
-    assert live_app.notes() == original
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(cards.locator(f"button[data-note-id='{second}']")).to_contain_text("Second")
 
-    pile.click()
     cards.locator(f"button[data-note-id='{first}']").click()
     expect(_front(page)).to_have_value("First")
     _front(page).fill("Changed first")
     rejected = _respond_to_confirm(page, accept=False)
-    page.locator("#edit-cancel").click()
+    page.go_back()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&card={first}")
     assert len(rejected) == 1
     expect(_front(page)).to_have_value("Changed first")
+    expect(cards).not_to_be_visible()
     accepted = _respond_to_confirm(page, accept=True)
-    page.locator("#edit-cancel").click()
+    page.go_back()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
     assert len(accepted) == 1
+    expect(cards).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{first}']")).to_contain_text("First")
+
+    cards.locator(f"button[data-note-id='{first}']").click()
+    expect(_front(page)).to_have_value("First")
+    _front(page).fill("Changed with Escape")
+    rejected = _respond_to_confirm(page, accept=False)
+    page.keyboard.press("Escape")
+    assert len(rejected) == 1
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&card={first}")
+    expect(_front(page)).to_have_value("Changed with Escape")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.keyboard.press("Escape")
+    assert len(accepted) == 1
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(cards).to_be_visible()
+    expect(cards.locator(f"button[data-note-id='{first}']")).to_contain_text("First")
+    back.click()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
     expect(_front(page)).to_have_value("")
     assert live_app.notes() == original
 
@@ -1148,7 +3024,7 @@ def test_back_has_button_semantics_and_guards_for_browse_and_edit(
     back.click(button="middle")
     back.click(button="right")
     expect(cards).to_be_visible()
-    expect(page).to_have_url(url)
+    expect(page).to_have_url(f"{url}&view=cards")
     assert len(page.context.pages) == 1
     back.focus()
     page.keyboard.press(key)
@@ -1165,7 +3041,7 @@ def test_back_has_button_semantics_and_guards_for_browse_and_edit(
     back.click(button="right")
     expect(_front(page)).to_have_value("Unsaved edit")
     expect(cards).not_to_be_visible()
-    expect(page).to_have_url(url)
+    expect(page).to_have_url(f"{url}&card={nid}")
     assert len(page.context.pages) == 1
     rejected = _respond_to_confirm(page, accept=False)
     back.focus()
@@ -1289,9 +3165,15 @@ def test_back_does_not_leave_existing_card_while_saving(
     back.focus()
     expect(back).to_be_focused()
     page.keyboard.press("Enter")
-    expect(page).to_have_url(url)
+    expect(page).to_have_url(f"{url}&card={nid}")
     page.keyboard.press("Space")
-    expect(page).to_have_url(url)
+    expect(page).to_have_url(f"{url}&card={nid}")
+    page.evaluate(
+        "() => { window.historyPops = []; window.addEventListener('popstate', () => window.historyPops.push(location.href)); }"
+    )
+    page.go_back()
+    page.wait_for_function("() => window.historyPops.length >= 2")
+    expect(page).to_have_url(f"{url}&card={nid}")
     expect(cards).not_to_be_visible()
     expect(page.locator("#preview")).to_contain_text("Updated")
     expect(page.locator("#btn-add")).to_be_disabled()
@@ -1310,22 +3192,24 @@ def test_back_does_not_leave_existing_card_while_saving(
     expect(cards).to_be_focused()
     expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Updated")
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Updated"
+    expect(page).to_have_url(f"{url}&view=cards")
+    page.go_back()
+    expect(page).to_have_url(url)
+    expect(_front(page)).to_have_value("")
 
 
 @pytest.mark.parametrize(
-    ("live_app", "marker", "legend", "warning", "notice"),
+    ("live_app", "marker", "warning", "notice"),
     [
         (
             "",
             "Learned",
-            "Changing a learned card resets its learning progress.",
             "Changes to this learned card will reset its learning progress.",
             "Learning progress was reset.",
         ),
         (
             "de_DE",
             "Gelernt",
-            "Änderungen an gelernten Karten setzen den Lernfortschritt zurück.",
             "Änderungen an dieser gelernten Karte setzen den Lernfortschritt zurück.",
             "Der Lernfortschritt wurde zurückgesetzt.",
         ),
@@ -1337,7 +3221,6 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     page: Page,
     live_app: LiveApp,
     marker: str,
-    legend: str,
     warning: str,
     notice: str,
     card_type: int,
@@ -1362,7 +3245,6 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     opener = page.locator("#pile")
     cards = page.locator("#deck-cards")
     opener.click()
-    expect(cards.locator("#deck-cards-legend")).to_have_text(legend)
     row = cards.locator(f"button[data-note-id='{nid}']")
     expect(row).to_contain_text(marker)
     row.click()
@@ -1388,13 +3270,13 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     expect(front).to_have_value("Reviewed")
     front.fill("Cancelled reviewed")
     accepted = _respond_to_confirm(page, accept=True)
-    page.locator("#edit-cancel").click()
+    page.locator("#edit-back").click()
     assert len(accepted) == 1
-    expect(front).to_have_value("")
+    expect(cards).to_be_visible()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
     assert _progress(live_app, nid) == before
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Reviewed"
 
-    opener.click()
     expect(row).to_contain_text(marker)
     row.click()
     expect(front).to_have_value("Reviewed")
@@ -1442,6 +3324,107 @@ def _seed_reviewed_note(col: Collection) -> NoteId:
     card.lapses = 2
     col.update_card(card)
     return nid
+
+
+def test_front_description_tracks_learned_selection_history_and_reset(
+    page: Page, live_app: LiveApp
+) -> None:
+    learned = _run(live_app, _seed_reviewed_note)
+    unlearned = _run(
+        live_app, lambda col: add_vocab_note(col, DeckId(1), "New card", "answer")
+    )
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    help_text = "What will you test?"
+    warning = "Changes to this learned card will reset its learning progress."
+    front = page.locator("#input-front")
+    cards = page.locator("#deck-cards")
+    pile = page.locator("#pile")
+
+    page.goto(editor_url)
+    expect(front).to_have_accessible_description(help_text)
+    expect(page.locator("#edit-warning")).not_to_be_visible()
+    pile.click()
+    expect(cards).to_be_visible()
+    cards.locator(f"button[data-note-id='{learned}']").click()
+    expect(front).to_have_value("Reviewed")
+    expect(front).to_be_focused()
+    expect(front).to_have_accessible_description(f"{help_text} {warning}")
+    expect(page.get_by_role("note")).to_have_text(warning)
+
+    page.go_back()
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_focused()
+    page.go_forward()
+    expect(front).to_have_value("Reviewed")
+    expect(front).to_be_focused()
+    expect(front).to_have_accessible_description(f"{help_text} {warning}")
+
+    page.go_back()
+    expect(cards).to_be_visible()
+    cards.locator(f"button[data-note-id='{unlearned}']").click()
+    expect(front).to_have_value("New card")
+    expect(front).to_be_focused()
+    expect(front).to_have_accessible_description(help_text)
+    expect(page.locator("#edit-warning")).not_to_be_visible()
+
+    page.locator("#edit-back").click()
+    expect(cards).to_be_visible()
+    page.locator("#edit-back").click()
+    expect(page).to_have_url(editor_url)
+    expect(pile).to_be_focused()
+    expect(front).to_have_value("")
+    expect(front).to_have_accessible_description(help_text)
+
+    pile.click()
+    cards.locator(f"button[data-note-id='{learned}']").click()
+    expect(front).to_have_accessible_description(f"{help_text} {warning}")
+    front.fill("Edited reviewed")
+    front.press("Enter")
+    page.locator("#input-back").press("Enter")
+    page.locator("#btn-add").click()
+    expect(cards).to_be_visible()
+    row = cards.locator(f"button[data-note-id='{learned}']")
+    expect(row).to_contain_text("Edited reviewed")
+    row.click()
+    expect(front).to_have_value("Edited reviewed")
+    expect(front).to_be_focused()
+    expect(front).to_have_accessible_description(help_text)
+    expect(page.locator("#edit-warning")).not_to_be_visible()
+
+
+@pytest.mark.parametrize(
+    ("live_app", "help_text", "warning"),
+    [
+        (
+            "",
+            "What will you test?",
+            "Changes to this learned card will reset its learning progress.",
+        ),
+        (
+            "de_DE",
+            "Was möchtest du abfragen?",
+            "Änderungen an dieser gelernten Karte setzen den Lernfortschritt zurück.",
+        ),
+    ],
+    indirect=["live_app"],
+)
+def test_direct_learned_card_front_description_survives_reload(
+    page: Page, live_app: LiveApp, help_text: str, warning: str
+) -> None:
+    nid = _run(live_app, _seed_reviewed_note)
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1&card={nid}")
+    front = page.locator("#input-front")
+    for reload_page in (False, True):
+        if reload_page:
+            page.reload()
+        expect(front).to_have_value("Reviewed")
+        expect(front).to_have_accessible_description(f"{help_text} {warning}")
+        expect(page.get_by_role("note")).to_have_text(warning)
+        front.focus()
+        expect(front).to_be_focused()
 
 
 @pytest.mark.parametrize("retry_mode", ["same_session", "reopen"])
@@ -1508,7 +3491,7 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
 
     expect(page.locator("#app-error")).to_be_visible()
     expect(page.locator("#app-error")).to_have_text(failure)
-    expect(page.locator("#edit-cancel")).to_be_visible()
+    expect(page.locator("#edit-back")).to_be_visible()
     expect(page.locator("#edit-warning")).to_be_visible()
     expect(page.locator("#edit-warning")).to_have_text(warning)
     expect(front).to_have_value("Edited reviewed")
@@ -1521,9 +3504,9 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
 
     if retry_mode == "reopen":
         accepted = _respond_to_confirm(page, accept=True)
-        page.locator("#edit-cancel").click()
+        page.locator("#edit-back").click()
         assert len(accepted) == 1
-        expect(front).to_have_value("")
+        expect(page.locator("#deck-cards")).to_be_visible()
         assert calls == [([cid], True)]
         assert _progress(live_app, nid) == before
         assert (
@@ -1666,41 +3649,52 @@ def test_five_card_floor_stack_is_opaque_stepped_and_does_not_overflow(
         """els => els.map(el => {
           const box = el.getBoundingClientRect();
           const style = getComputedStyle(el);
-          const transform = new DOMMatrixReadOnly(style.transform);
           const canvas = document.createElement('canvas');
           canvas.width = canvas.height = 1;
           const ctx = canvas.getContext('2d');
           ctx.fillStyle = style.backgroundColor;
           ctx.fillRect(0, 0, 1, 1);
           return {
-            top: box.top, bottom: box.bottom, height: el.offsetHeight,
+            left: box.left, right: box.right, top: box.top, bottom: box.bottom,
+            width: box.width, height: box.height,
             opacity: Number(style.opacity),
             alpha: ctx.getImageData(0, 0, 1, 1).data[3],
             z: Number(style.zIndex),
-            lift: transform.m42, rotation: transform.m12,
-            floor: parseFloat(style.bottom), shadow: style.boxShadow,
           };
         })"""
     )
-    assert all(card["height"] == 104 for card in geometry)
     assert all(card["opacity"] == 1 and card["alpha"] == 255 for card in geometry)
     assert all(geometry[i]["z"] > geometry[i + 1]["z"] for i in range(4))
-    assert [card["lift"] for card in geometry] == [0, -26, -52, -78, -104]
-    assert all(card["floor"] == 38 and card["rotation"] != 0 for card in geometry)
-    assert all(card["shadow"] != "none" for card in geometry)
-    assert (
-        page.locator("#add-stage").evaluate("el => getComputedStyle(el).perspective")
-        == "1000px"
-    )
     for front, behind in pairwise(geometry):
-        assert 5 < front["top"] - behind["top"] < 45
-        assert behind["bottom"] > front["top"]
+        assert behind["top"] < front["top"] < behind["bottom"]
+        assert behind["left"] < front["right"] and front["left"] < behind["right"]
+
+    stack_left = min(card["left"] for card in geometry)
+    stack_right = max(card["right"] for card in geometry)
+    stack_top = min(card["top"] for card in geometry)
+    stack_bottom = max(card["bottom"] for card in geometry)
+    assert all(card["width"] > 0 and card["height"] > 0 for card in geometry)
 
     pile_box = page.locator("#pile").bounding_box()
-    badge_box = region.locator(".add-stack-badge").bounding_box()
+    badge = region.locator(".add-stack-badge")
+    expect(badge).to_be_visible()
+    expect(badge.locator(".add-stack-count")).to_have_text("6")
+    badge_box = badge.bounding_box()
+    editor_box = page.locator("#add-editor").bounding_box()
     cue_box = region.locator(".pile-cue").bounding_box()
-    assert pile_box is not None and badge_box is not None and cue_box is not None
-    assert badge_box["x"] > pile_box["x"] + pile_box["width"] / 2
+    assert pile_box is not None and badge_box is not None and editor_box is not None
+    assert cue_box is not None
+    badge_center_x = badge_box["x"] + badge_box["width"] / 2
+    badge_center_y = badge_box["y"] + badge_box["height"] / 2
+    assert (stack_left + stack_right) / 2 < badge_center_x < stack_right
+    assert badge_center_y < (stack_top + stack_bottom) / 2
+    assert badge_box["y"] + badge_box["height"] > stack_top
+    assert (
+        badge_box["x"] + badge_box["width"] <= editor_box["x"]
+        or editor_box["x"] + editor_box["width"] <= badge_box["x"]
+        or badge_box["y"] + badge_box["height"] <= editor_box["y"]
+        or editor_box["y"] + editor_box["height"] <= badge_box["y"]
+    )
     assert cue_box["y"] > pile_box["y"] + pile_box["height"] / 2
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
@@ -1786,12 +3780,36 @@ def test_duplicate_preserves_preview_and_saved_note(
     assert live_app.notes() == saved
 
 
+def test_finish_empty_session_confirms_unsaved_draft(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.goto(f"{live_app}/app/edit?deck=1")
+    _front(page).fill("unfinished card")
+    done = page.get_by_role("button", name="Done", exact=True)
+    cancelled = _respond_to_confirm(page, accept=False)
+    done.click()
+    assert len(cancelled) == 1
+    expect(_front(page)).to_have_value("unfinished card")
+    expect(page.get_by_role("dialog")).not_to_be_visible()
+
+    accepted = _respond_to_confirm(page, accept=True)
+    done.click()
+    assert len(accepted) == 1
+    summary = page.get_by_role("dialog")
+    expect(summary).to_be_visible()
+    expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    assert live_app.notes() == []
+
+
 def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> None:
     page.goto(f"{live_app}/app/edit?deck=1")
     done = page.get_by_role("button", name="Done", exact=True)
     done.click()
-    expect(page.get_by_text("Add a card first.")).to_be_visible()
-    expect(page.get_by_role("dialog")).not_to_be_visible()
+    summary = page.get_by_role("dialog")
+    expect(summary).to_be_visible()
+    expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    summary.get_by_role("button", name="Close", exact=True).click()
+    expect(summary).not_to_be_visible()
     _add(page)
     saved = live_app.notes()
     _front(page).fill("unfinished card")

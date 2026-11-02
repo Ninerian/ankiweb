@@ -2,16 +2,15 @@
          data-attr:aria-describedby="$progressReset ? 'deck-progress-reset-notice' : null"
          data-show="$_browsePhase === 'open' || $_browsePhase === 'closing'"
          data-class:is-folding="$_browsePhase === 'closing'"
-         data-attr:inert="$_browsePhase === 'closing'" style="display:none">
+         data-attr:inert="$_browsePhase !== 'open'"
+         data-attr:aria-hidden="$_browsePhase === 'open' ? null : 'true'" inert aria-hidden="true" style="display:none">
   <h2 id="deck-cards-title" class="sr-only">{{ s('app_edit_browse_title') }}</h2>
   <div id="deck-progress-reset-notice" class="alert alert-success mb-3 text-sm font-bold" role="status" data-show="$progressReset" style="display:none">{{ s('app_edit_progress_reset') }}</div>
-  <p id="deck-cards-legend" class="mb-3 rounded-deck bg-warning p-3 text-sm font-bold text-warning-content">{{ s('app_edit_learned_legend') }}</p>
   <ul class="deck-browse-list">
     {% for card in deck_cards|reverse %}
     <li style="--fan-delay: {{ [loop.index0, 5]|min * 38 }}ms; --fold-delay: {{ [loop.revindex0, 5]|min * 24 }}ms">
-      <button type="button" class="browse-card w-full rounded-deck border-2 border-neo-edge bg-base-100 p-3 text-start shadow-neo focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary"
+      <button type="button" class="browse-card w-full rounded-deck border-2 border-neo-edge bg-base-200 p-3 text-start shadow-neo focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary"
               data-note-id="{{ card.nid }}" aria-label="{{ s('app_edit_row_label', front=card.front) }}{% if card.learned %}, {{ s('app_edit_learned') }}{% endif %}"
-              {% if card.learned %}aria-describedby="deck-cards-legend"{% endif %}
               data-load-failed="{{ s('app_add_edit_unavailable') }}"
               data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.loadFailed) : null"
               data-on:click="$saving ? null : ($error = '', @post('/app/edit/card/{{ card.nid }}?deck={{ deck_id }}'))"

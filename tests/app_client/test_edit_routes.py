@@ -46,7 +46,10 @@ def test_edit_page_initializes_model_and_session(client: TestClient) -> None:
     assert "Deck &lt;img src=x onerror=&#34;x&#34;&gt;" in page.text
     assert "<img src=x" not in page.text
     assert "/shell/static/app/edit.js" in page.text
-    assert 'data-signals="{step: 1, front:' in page.text
+    assert (
+        'data-signals="{step: 1, ...JSON.parse(el.dataset.initialFields)' in page.text
+    )
+    assert "data-initial-fields=" in page.text
     assert "_editSaved: false" in page.text
     for name in ("front", "back", "hint", "example"):
         assert f'id="input-{name}"' in page.text
@@ -1182,6 +1185,7 @@ def test_learned_edit_reset_failure_survives_reopen_and_retries(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     settings, message, _, _ = _reset_settings
+    learned_label = "Gelernt" if settings.lang == "de_DE" else "Learned"
     with TestClient(create_app(settings)) as client:
         assert client.get("/app/edit?deck=1").status_code == 200
         sid = client.cookies.get("app_sid")
@@ -1190,7 +1194,7 @@ def test_learned_edit_reset_failure_survives_reopen_and_retries(
         learned_page = client.get("/app/edit?deck=1")
         assert _stack_ids(learned_page.text) == [nid]
         assert _list_ids(learned_page.text) == [nid]
-        assert 'aria-describedby="deck-cards-legend"' in learned_page.text
+        assert f", {learned_label}" in learned_page.text
         before = _reset_snapshot(client, nid, cid)
         edit = client.post(f"/app/edit/card/{nid}?deck=1")
         loaded = _signals(edit)
@@ -1210,7 +1214,7 @@ def test_learned_edit_reset_failure_survives_reopen_and_retries(
         )
         assert _signals(unchanged)["progressReset"] is False
         assert _signals(unchanged)["_editSaved"] is True
-        assert 'aria-describedby="deck-cards-legend"' in unchanged.text
+        assert f", {learned_label}" in unchanged.text
         assert calls == []
         assert _reset_snapshot(client, nid, cid) == before
         assert _signals(client.post(f"/app/edit/card/{nid}?deck=1"))["learned"] is True
@@ -1260,7 +1264,7 @@ def test_learned_edit_reset_failure_survives_reopen_and_retries(
         assert _signals(retry)["deckCount"] == 1
         assert _stack_ids(retry.text) == [nid]
         assert _list_ids(retry.text) == [nid]
-        assert 'aria-describedby="deck-cards-legend"' not in retry.text
+        assert f", {learned_label}" not in retry.text
         assert calls == [([cid], True)] * 2
         assert _reset_pending(client) == []
         fields, reset = _reset_snapshot(client, nid, cid)

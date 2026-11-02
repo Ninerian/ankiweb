@@ -56,14 +56,175 @@ window.avBackKey = (event, control) => {
 };
 
 let browseTimer;
-let browseTrigger;
-let browseOpener;
+let browseSequence = 0;
+let browseTrigger = "pile";
 let browseOrigin;
 let browseEditing = false;
 const browseMotionTime = (duration) =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : duration;
 const browseEvent = (name, detail = {}) =>
   document.getElementById("add-wizard")?.dispatchEvent(new CustomEvent(name, { detail }));
+
+let editUrl;
+let editState;
+let skipHistoryDiscard = false;
+let restoringHistory = false;
+let pendingHistoryFailure = false;
+let pendingBrowseAfterSave = false;
+let pendingSavedList = false;
+let historyCard = false;
+
+const editViewUrl = (view, card) => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("view");
+  url.searchParams.delete("card");
+  if (view === "cards") url.searchParams.set("view", "cards");
+  if (view === "card") url.searchParams.set("card", String(card));
+  return url.href;
+};
+
+const validEditHistory = (state) =>
+  state?.avEdit === true && Number.isSafeInteger(state.avIndex) &&
+  state.avIndex >= 0 && state.avIndex < history.length;
+
+const setEditHistory = (view, card, replace = false) => {
+  const listSkips = view === "card" ? editState?.avSkipList : 0;
+  const state = {
+    avEdit: true,
+    avIndex: (editState?.avIndex ?? 0) + (replace ? 0 : 1),
+    ...(listSkips ? { avSkipList: listSkips } : {}),
+  };
+  const url = editViewUrl(view, card);
+  history[replace ? "replaceState" : "pushState"](state, "", url);
+  editUrl = url;
+  editState = state;
+};
+
+const finishHistoryRestore = () => {
+  restoringHistory = false;
+  if (pendingHistoryFailure) {
+    pendingHistoryFailure = false;
+    window.avEditHistoryFailed();
+  }
+  if (pendingBrowseAfterSave) {
+    pendingBrowseAfterSave = false;
+    window.avOpenBrowseAfterSave();
+  }
+};
+
+const restoreEditHistory = (state) => {
+  const targetIndex = validEditHistory(state) ? state.avIndex : null;
+  const delta = targetIndex === null ? 0 : editState.avIndex - targetIndex;
+  if (delta) {
+    restoringHistory = true;
+    history.go(delta);
+  } else {
+    history.replaceState(editState, "", editUrl);
+    finishHistoryRestore();
+  }
+};
+
+
+window.avEditCardLoaded = (nid) => {
+  if (historyCard) historyCard = false;
+  else setEditHistory("card", nid);
+};
+
+window.avEditHistoryFailed = () => {
+  if (!historyCard) return;
+  if (restoringHistory) {
+    pendingHistoryFailure = true;
+    return;
+  }
+  historyCard = false;
+  setEditHistory("editor", null, true);
+  browseEvent("av-history", { view: "editor" });
+  browseEvent("av-history-failed");
+};
+
+window.avEditBack = (event, front, back, hint, example, saving, message, nid, original, browsing, phase) => {
+  if (saving || phase === "closing" || phase === "returning") {
+    event.preventDefault();
+    return;
+  }
+  if (!browsing && !nid) {
+    if (event.currentTarget.hasAttribute("href")) {
+      window.avGuardNav(event, front, back, hint, example, saving, message, nid, original);
+    } else {
+      event.preventDefault();
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (window.avConfirmDiscard(front, back, hint, example, saving, message, nid, original)) {
+        window.location.assign("/app/");
+      }
+    }
+    return;
+  }
+  event.preventDefault();
+  if (!browsing && !window.avConfirmDiscard(front, back, hint, example, saving, message, nid, original)) return;
+  if (browsing && editState?.avSkipList > editState.avIndex) {
+    setEditHistory("editor", null, true);
+    browseEvent("av-history", { view: "editor" });
+  } else if (editState?.avIndex > 0) {
+    skipHistoryDiscard = true;
+    history.go(browsing && editState.avSkipList ? -editState.avSkipList : -1);
+  } else {
+    const view = browsing ? "editor" : "cards";
+    setEditHistory(view, null, true);
+    browseEvent("av-history", { view });
+  }
+};
+
+window.avEditPop = (event, front, back, hint, example, saving, message, nid, original, browsing, phase) => {
+  if (restoringHistory) {
+    if (event.state?.avEdit && event.state.avIndex === editState.avIndex && location.href === editUrl) {
+      finishHistoryRestore();
+    } else {
+      restoreEditHistory(event.state);
+    }
+    return;
+  }
+  const url = new URL(window.location.href);
+  const card = url.searchParams.get("card");
+  const view = card ? "card" : url.searchParams.get("view") === "cards" ? "cards" : "editor";
+  const sameView = view === "card" ? !browsing && Number(card) === nid :
+    view === "cards" ? browsing && !nid && (phase === "opening" || phase === "open") : !browsing && !nid;
+  if (saving || (!sameView && !skipHistoryDiscard && !browsing &&
+      !window.avConfirmDiscard(front, back, hint, example, saving, message, nid, original))) {
+    skipHistoryDiscard = false;
+    restoreEditHistory(event.state);
+    return;
+  }
+  skipHistoryDiscard = false;
+  editUrl = url.href;
+  editState = validEditHistory(event.state) ? event.state : { avEdit: true, avIndex: 0 };
+  if (sameView) {
+    if (pendingSavedList && view === "cards") {
+      window.avOpenBrowse(document.getElementById("pile"), false);
+    }
+    pendingSavedList = false;
+    return;
+  }
+  pendingSavedList = false;
+  historyCard = view === "card";
+  browseEvent("av-history", { view, card });
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const wizard = document.getElementById("add-wizard");
+  if (!wizard) return;
+  editState = validEditHistory(history.state) ? { ...history.state } : { avEdit: true, avIndex: 0 };
+  if (!Number.isSafeInteger(editState.avSkipList) || editState.avSkipList <= 0 ||
+      editState.avSkipList > history.length) delete editState.avSkipList;
+  editUrl = editViewUrl(wizard.dataset.initialView, wizard.dataset.initialCard);
+  history.replaceState(editState, "", editUrl);
+});
+
+// The focus helper reads the browse phase initialized by Datastar.
+document.addEventListener("datastar-ready", () => {
+  if (document.getElementById("add-wizard")?.dataset.initialView === "cards") {
+    window.avBrowseReadyFocus();
+  }
+}, { once: true });
 
 const captureBrowseOrigin = () => {
   const card = document.querySelector("#added-cards .stacked-card");
@@ -91,33 +252,127 @@ const positionBrowseRows = () => {
     row.style.setProperty("--fan-offset-y", `${offsetY}px`);
   }
 };
-
-window.avBrowseFromBack = (trigger) => {
-  browseOpener = trigger.id;
-  try {
-    document.getElementById("pile")?.click();
-  } finally {
-    browseOpener = undefined;
-  }
+// Match the future stage slot without changing the current editor layout or scroll.
+const prepareBrowsePreview = (wizard) => {
+  const header = wizard.querySelector(".review-hud");
+  const steps = header.querySelector(":scope > .browse-fade");
+  const stepStyle = getComputedStyle(steps);
+  const stepHeight = steps.getBoundingClientRect().height +
+    parseFloat(stepStyle.marginTop) + parseFloat(stepStyle.marginBottom);
+  const top = header.getBoundingClientRect().bottom - wizard.getBoundingClientRect().top - stepHeight;
+  wizard.style.setProperty("--browse-preview-top", `${top}px`);
+  captureBrowseOrigin();
+  wizard.style.setProperty("--browse-drag", "0");
+  wizard.dataset.browseDrag = "measuring";
+  const list = wizard.querySelector(".deck-browse-list");
+  list.scrollTop = 0;
+  wizard.style.setProperty("--browse-scrollbar", `${list.offsetWidth - list.clientWidth}px`);
+  wizard.dataset.browseDrag = "dragging";
+  positionBrowseRows();
 };
 
-window.avOpenBrowse = (trigger) => {
+
+const pileSwipeThreshold = 28;
+const pileDragDistance = 48;
+let pilePointer;
+let pileDragTransition;
+
+const clearPileDrag = (wizard) => {
+  pileDragTransition = null;
+  wizard.removeAttribute("data-browse-drag");
+  wizard.style.removeProperty("--browse-drag");
+  wizard.style.removeProperty("--browse-drag-duration");
+  wizard.style.removeProperty("--browse-preview-top");
+  wizard.style.removeProperty("--browse-scrollbar");
+};
+
+const returnPileDrag = (wizard) => {
+  if (!wizard?.hasAttribute("data-browse-drag")) return;
+  // Commit the last pointer position before enabling transitions.
+  void wizard.offsetWidth;
+  wizard.dataset.browseDrag = "settling";
+  wizard.style.setProperty("--browse-drag-duration", "300ms");
+  wizard.style.setProperty("--browse-drag", "0");
+  const stack = wizard.querySelector("#added-cards");
+  pileDragTransition = stack?.getAnimations().find((animation) => animation.transitionProperty === "transform");
+  if (!pileDragTransition) {
+    clearPileDrag(wizard);
+    return;
+  }
+  const transition = pileDragTransition;
+  transition.finished.then(() => {
+    if (pileDragTransition === transition) clearPileDrag(wizard);
+  }, () => {});
+};
+
+document.addEventListener("av-browse-returning", (event) => {
+  if (event.target instanceof HTMLElement && event.target.hasAttribute("data-browse-drag")) {
+    event.target.dataset.browseRestored = "";
+    returnPileDrag(event.target);
+  }
+}, { capture: true });
+document.addEventListener("av-browse-settled", (event) => {
+  if (event.target instanceof HTMLElement) event.target.removeAttribute("data-browse-restored");
+}, { capture: true });
+
+
+window.avOpenBrowse = (trigger, pushHistory = true) => {
   clearTimeout(browseTimer);
+  const sequence = ++browseSequence;
   document.getElementById("add-editor")?.classList.remove("animate-fresh-card");
   for (const element of document.querySelectorAll("#added-cards .animate-slide-to-added, #added-cards .animate-bump")) {
     element.classList.remove("animate-slide-to-added", "animate-bump");
   }
-  browseTrigger = browseOpener || trigger.id;
+  browseTrigger = trigger?.id || "pile";
+  if (pushHistory) setEditHistory("cards");
   browseEditing = false;
-  browseTimer = setTimeout(() => {
+  const wizard = document.getElementById("add-wizard");
+  wizard?.removeAttribute("data-browse-restored");
+  if (pilePointer && pilePointer.wizard === wizard) pilePointer.committed = true;
+  const returning = wizard?.dataset.browseDrag === "settling";
+  const dragged = returning || wizard?.dataset.browseDrag === "dragging";
+  if (!dragged) wizard?.removeAttribute("data-browse-unfolded");
+  const stack = returning && wizard.querySelector("#added-cards");
+  const progress = returning
+    ? stack ? Math.max(0, Math.min(1, -new DOMMatrixReadOnly(getComputedStyle(stack).transform).m42 / pileDragDistance)) : 0
+    : dragged ? Number(wizard.style.getPropertyValue("--browse-drag")) : 0;
+  if (returning) pileDragTransition = null;
+  const duration = browseMotionTime(dragged ? 300 * (1 - progress) : 300);
+  if (dragged) {
+    wizard.dataset.browseUnfolded = "";
+    void wizard.offsetWidth;
+    wizard.dataset.browseDrag = "settling";
+    wizard.style.setProperty("--browse-drag-duration", `${duration}ms`);
+    wizard.style.setProperty("--browse-drag", "1");
+  }
+  const finishOpening = () => {
+    if (sequence !== browseSequence) return;
     captureBrowseOrigin();
     browseEvent("av-browse-ready");
     positionBrowseRows();
-  }, browseMotionTime(300));
+    if (dragged) clearPileDrag(wizard);
+  };
+  const transition = dragged && wizard.querySelector("#added-cards")?.getAnimations()
+    .find((animation) => animation.transitionProperty === "transform");
+  if (transition) transition.finished.then(finishOpening, () => {});
+  else browseTimer = setTimeout(finishOpening, duration);
 };
 
 window.avOpenBrowseAfterSave = () => {
-  window.avOpenBrowse(document.getElementById("pile"));
+  if (restoringHistory) {
+    pendingBrowseAfterSave = true;
+    return;
+  }
+  // Cards reached from a list already have that list immediately behind them.
+  // Returning there avoids replacing the card with a second identical list.
+  if (editState?.avIndex > 0) {
+    pendingSavedList = true;
+    history.back();
+    return;
+  } else {
+    setEditHistory("cards", null, true);
+  }
+  window.avOpenBrowse(document.getElementById("pile"), false);
 };
 
 window.avCloseBrowse = (editing = false, phase = "open") => {
@@ -128,6 +383,7 @@ window.avCloseBrowse = (editing = false, phase = "open") => {
     return;
   }
   clearTimeout(browseTimer);
+  browseSequence++;
   const returnEditor = () => {
     browseEvent("av-browse-returning", { editing: browseEditing });
     const duration = browseMotionTime(500);
@@ -163,24 +419,82 @@ window.avBrowseFocus = (editing) => {
 };
 
 // Delegate gestures so server morphs can replace the pile without losing listeners.
-let pilePointer;
 let suppressPileClickUntil = 0;
 document.addEventListener("pointerdown", (event) => {
   const pile = event.target instanceof Element ? event.target.closest("#pile") : null;
   if (!pile || pile.disabled || !event.isPrimary || event.button !== 0) return;
-  pilePointer = { id: event.pointerId, x: event.clientX, y: event.clientY, pile };
+  suppressPileClickUntil = 0;
+  const wizard = document.getElementById("add-wizard");
+  let startProgress = 0;
+  if (wizard?.dataset.browsePhase === "closed" && wizard.dataset.browseDrag === "settling") {
+    const stack = document.getElementById("added-cards");
+    if (stack) {
+      startProgress = Math.max(0, Math.min(1, -new DOMMatrixReadOnly(getComputedStyle(stack).transform).m42 / pileDragDistance));
+    }
+    pileDragTransition = null;
+    wizard.dataset.browseDrag = "dragging";
+    wizard.style.removeProperty("--browse-drag-duration");
+    wizard.style.setProperty("--browse-drag", `${startProgress}`);
+  }
+  pilePointer = {
+    id: event.pointerId, x: event.clientX, y: event.clientY, pile, wizard, moved: false, startProgress,
+    touch: event.pointerType === "touch" || event.pointerType === "pen",
+    interactive: (event.pointerType === "touch" || event.pointerType === "pen") &&
+      wizard?.dataset.browsePhase === "closed" && browseMotionTime(1) !== 0,
+  };
   pile.setPointerCapture?.(event.pointerId);
 });
-document.addEventListener("pointercancel", () => { pilePointer = null; });
+const updatePileDrag = (event) => {
+  if (!pilePointer || pilePointer.id !== event.pointerId) return;
+  const { x, y, wizard, startProgress } = pilePointer;
+  const dx = event.clientX - x;
+  const dy = y - event.clientY;
+  if (Math.abs(dx) > 6 || Math.abs(dy) > 6) pilePointer.moved = true;
+  if (pilePointer.committed) return;
+  if (!pilePointer.interactive) return;
+  const progress = dy > Math.abs(dx)
+    ? Math.min(startProgress + dy / pileDragDistance, 1)
+    : Math.max(startProgress + Math.min(dy, 0) / pileDragDistance, 0);
+  if (progress > 0 && !wizard.hasAttribute("data-browse-drag")) {
+    if (!pilePointer.moved) return;
+    prepareBrowsePreview(wizard);
+  }
+  if (wizard.dataset.browseDrag === "dragging") {
+    wizard.style.setProperty("--browse-drag", `${progress}`);
+  }
+};
+document.addEventListener("pointermove", updatePileDrag);
+const cancelPilePointer = (event) => {
+  if (!pilePointer || pilePointer.id !== event.pointerId) return;
+  if (pilePointer.moved || pilePointer.committed) suppressPileClickUntil = performance.now() + 700;
+  if (!pilePointer.committed) returnPileDrag(pilePointer.wizard);
+  pilePointer = null;
+};
+document.addEventListener("pointercancel", cancelPilePointer);
+document.addEventListener("lostpointercapture", cancelPilePointer);
 document.addEventListener("pointerup", (event) => {
   if (!pilePointer || pilePointer.id !== event.pointerId) return;
-  const { x, y, pile } = pilePointer;
+  updatePileDrag(event);
+  const { x, y, pile, wizard, moved, touch, startProgress, committed } = pilePointer;
   pilePointer = null;
   const dx = event.clientX - x;
   const dy = y - event.clientY;
-  if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+  if (committed) {
     suppressPileClickUntil = performance.now() + 700;
-    if (dy > 28 && dy > Math.abs(dx)) pile.click();
+    return;
+  }
+  const distance = startProgress * pileDragDistance + dy;
+  if (moved) {
+    suppressPileClickUntil = performance.now() + 700;
+    if ((touch ? distance >= pileSwipeThreshold : distance > pileSwipeThreshold) && dy > Math.abs(dx)) {
+      pile.click();
+      // Discard confirmation can reject the open.
+      if (wizard?.dataset.browseDrag === "dragging") returnPileDrag(wizard);
+    } else {
+      returnPileDrag(wizard);
+    }
+  } else if (wizard?.dataset.browseDrag === "dragging" && !startProgress) {
+    clearPileDrag(wizard);
   }
 });
 document.addEventListener("click", (event) => {
@@ -191,16 +505,12 @@ document.addEventListener("click", (event) => {
     suppressPileClickUntil = 0;
   }
 }, true);
+document.addEventListener("click", (event) => {
+  if (!(event.target instanceof Element) || !event.target.closest("#pile")) return;
+  const wizard = document.getElementById("add-wizard");
+  if (wizard?.dataset.browseDrag === "dragging") returnPileDrag(wizard);
+});
 
-let toastTimer;
-window.avAddToast = (message) => {
-  const toast = document.getElementById("add-toast");
-  if (!toast) return;
-  toast.querySelector(".alert").textContent = message;
-  toast.style.display = "grid";
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast.style.display = "none"; }, 4000);
-};
 
 window.avAnimateCommit = () => {
   const editor = document.getElementById("add-editor");
@@ -234,8 +544,15 @@ document.addEventListener("animationend", (event) => {
 
 let summaryTrigger;
 window.avOpenSummary = (trigger) => {
+  if (new URL(window.location.href).searchParams.has("card")) {
+    setEditHistory("editor", null, true);
+  }
   summaryTrigger = trigger;
-  requestAnimationFrame(() => document.getElementById("summary-keep-adding")?.focus());
+  requestAnimationFrame(() => {
+    if (document.getElementById("add-summary")?.classList.contains("modal-open")) {
+      document.getElementById("summary-keep-adding")?.focus();
+    }
+  });
 };
 
 window.avCloseSummary = () => {

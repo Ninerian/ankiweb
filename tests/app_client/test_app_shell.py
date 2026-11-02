@@ -80,9 +80,14 @@ def test_layout_is_independent() -> None:
 
 
 def test_layout_escapes_title_and_loads_extra_scripts() -> None:
-    page = render_app_page('<title & "test">', "", active="", scripts=("/app/a.js",))
+    page = render_app_page(
+        '<title & "test">', "", active="", scripts=("/app/a.js", "/app/b.js")
+    )
     assert "&lt;title &amp; &#34;test&#34;&gt;" in page
-    assert '<script type="module" src="/app/a.js"></script>' in page
+    a = '<script type="module" src="/app/a.js"></script>'
+    b = '<script type="module" src="/app/b.js"></script>'
+    datastar = '<script type="module" src="/shell/static/datastar.js"></script>'
+    assert page.index(a) < page.index(b) < page.index(datastar)
 
 
 def test_app_css_build_has_system_themes() -> None:
