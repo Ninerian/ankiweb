@@ -110,7 +110,7 @@ def test_app_redirects_to_scoped_login_without_a_live_cookie(
         assert response.status_code == 303
         assert response.headers["location"] == "/app/login"
 
-        for path in ("/deckbrowser", "/application"):
+        for path in ("/deckbrowser", "/application", "/appx"):
             response = client.get(path, follow_redirects=False)
             assert response.status_code == 303
             assert response.headers["location"] == "/login"
@@ -202,3 +202,100 @@ def test_login_ignores_next_query_parameter(
                 )
                 assert response.status_code == 303
                 assert response.headers["location"] == destination
+
+
+@pytest.mark.parametrize("cookie_state", ["missing", "invalid"])
+@pytest.mark.parametrize("datastar", [False, True])
+@pytest.mark.parametrize("path", ["/app", "/app/", "/app/ping", "/app/add?deck=1"])
+def test_app_guard_redirects_by_request_protocol(
+    tmp_path: Path, cookie_state: str, datastar: bool, path: str
+) -> None:
+    app = create_app(
+        Settings(collection_path=tmp_path / "c.anki2", password=f"test-{tmp_path.name}")
+    )
+    with TestClient(app) as client:
+        if cookie_state == "invalid":
+            client.cookies.set(COOKIE, "invalid")
+        headers = {"Datastar-Request": "true"} if datastar else {}
+        response = client.get(path, headers=headers, follow_redirects=False)
+        if datastar:
+            assert response.status_code == 200
+            assert response.headers["content-type"].startswith("text/event-stream")
+            assert "event: datastar-patch-elements" in response.text
+            assert "window.location = '/app/login'" in response.text
+            assert "location" not in response.headers
+        else:
+            assert response.status_code == 303
+            assert response.headers["location"] == "/app/login"
+        assert "app_sid" not in response.cookies
+
+
+@pytest.mark.parametrize("datastar", [False, True])
+def test_app_prefix_neighbor_keeps_legacy_guard(tmp_path: Path, datastar: bool) -> None:
+    app = create_app(
+        Settings(collection_path=tmp_path / "c.anki2", password=f"test-{tmp_path.name}")
+    )
+    with TestClient(app) as client:
+        headers = {"Datastar-Request": "true"} if datastar else {}
+        response = client.get("/appx", headers=headers, follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers["location"] == "/login"
+
+
+@pytest.mark.parametrize("login_path", ["/login", "/app/login"])
+def test_logout_invalidates_shared_cookie_even_with_app_session(
+    tmp_path: Path, login_path: str
+) -> None:
+    password = f"test-{tmp_path.name}"
+    app = create_app(Settings(collection_path=tmp_path / "c.anki2", password=password))
+    with TestClient(app) as client:
+        response = client.post(
+            login_path, data={"password": password}, follow_redirects=False
+        )
+        assert response.cookies.get(COOKIE) == auth_token(password)
+        assert client.get("/deckbrowser", follow_redirects=False).status_code == 200
+        assert client.get("/app/", follow_redirects=False).status_code == 200
+        client.cookies.set("app_sid", "not-an-authentication-cookie")
+        logout = client.get("/logout", follow_redirects=False)
+        assert logout.status_code == 303
+        assert logout.headers["location"] == "/login"
+        assert not client.cookies.get(COOKIE)
+        assert client.cookies.get("app_sid") == "not-an-authentication-cookie"
+        legacy = client.get("/deckbrowser", follow_redirects=False)
+        app_page = client.get("/app/", follow_redirects=False)
+        assert legacy.status_code == 303 and legacy.headers["location"] == "/login"
+        assert (
+            app_page.status_code == 303 and app_page.headers["location"] == "/app/login"
+        )
+
+
+@pytest.mark.parametrize("scheme", ["http", "https"])
+@pytest.mark.parametrize("datastar", [False, True])
+def test_legacy_and_app_login_issue_identical_auth_cookie(
+    tmp_path: Path, scheme: str, datastar: bool
+) -> None:
+    password = f"test-{tmp_path.name}"
+    app = create_app(Settings(collection_path=tmp_path / "c.anki2", password=password))
+    cookies = []
+    for path in ("/login", "/app/login"):
+        with TestClient(app, base_url=f"{scheme}://testserver") as client:
+            if datastar:
+                response = client.post(
+                    path,
+                    json={"password": password},
+                    headers={"Datastar-Request": "true"},
+                    follow_redirects=False,
+                )
+            else:
+                response = client.post(
+                    path, data={"password": password}, follow_redirects=False
+                )
+            _assert_auth_cookie(response, secure=scheme == "https", password=password)
+            cookies.append(
+                next(
+                    h
+                    for h in response.headers.get_list("set-cookie")
+                    if h.startswith(f"{COOKIE}=")
+                )
+            )
+    assert cookies[0] == cookies[1]

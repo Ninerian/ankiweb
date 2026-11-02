@@ -16,6 +16,7 @@ from ankiweb.adapters.inbound.http_app.pwa import (
     APP_PWA_PUBLIC_PATHS,
     build_app_pwa_router,
 )
+from ankiweb.adapters.inbound.http_datastar.common import redirect_response
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.login import (
     datastar_login,
@@ -44,7 +45,7 @@ from ankiweb.assets import (
     build_router as build_assets_router,
 )
 from ankiweb.core.app_client.lang import resolve_lang
-from ankiweb.core.auth import COOKIE, cookie_ok
+from ankiweb.core.auth import COOKIE, OPEN_PATHS, cookie_ok
 from ankiweb.core.bridge.hub import BridgeHub
 from ankiweb.core.config import Settings, host_allowed
 from ankiweb.core.notify.engine import NotifierState
@@ -53,11 +54,11 @@ from ankiweb.core.notify.engine import NotifierState
 PWA_PUBLIC_PATHS = (MANIFEST_PATH, SERVICE_WORKER_PATH, *APP_PWA_PUBLIC_PATHS)
 
 
-def _login_html(request: Request, error: bool = False) -> str:
+def _login_html(error: bool = False) -> str:
     return templating.render(
         "login.html.jinja",
         error_text=wrong_password_text() if error else "",
-        login_path="/app/login" if request.url.path == "/app/login" else "/login",
+        login_path="/login",
     )
 
 
@@ -104,21 +105,18 @@ async def _auth_guard(request, call_next, settings):
     # Open by default; login, logout and health checks remain reachable without a cookie.
     if (
         settings.password
-        and request.url.path not in ("/login", "/app/login", "/logout", "/healthz")
+        and request.url.path not in OPEN_PATHS
         and request.url.path not in PWA_PUBLIC_PATHS
         and not request.url.path.startswith("/shell/static/")
         and not cookie_ok(request.cookies.get(COOKIE), settings.password)
     ):
         path = request.url.path
-        login_path = (
-            "/app/login" if path == "/app" or path.startswith("/app/") else "/login"
-        )
-        return RedirectResponse(login_path, status_code=303)
+        if path == "/app" or path.startswith("/app/"):
+            if "datastar-request" in request.headers:
+                return redirect_response("/app/login")
+            return RedirectResponse("/app/login", status_code=303)
+        return RedirectResponse("/login", status_code=303)
     return await call_next(request)
-
-
-def _login_destination(request: Request) -> str:
-    return "/app/" if request.url.path == "/app/login" else "/"
 
 
 def create_app(
@@ -151,22 +149,19 @@ def create_app(
     def healthz():
         return {"ok": True}
 
-    @app.get("/app/login", response_class=HTMLResponse)
     @app.get("/login", response_class=HTMLResponse)
-    def login_form(request: Request):
-        return HTMLResponse(_login_html(request))
+    def login_form():
+        return HTMLResponse(_login_html())
 
-    @app.post("/app/login")
     @app.post("/login")
     async def login_submit(request: Request, payload: ReadSignals = None):
-        destination = _login_destination(request)
         if is_datastar_login(request, payload):
-            return await datastar_login(request, payload, settings, destination)
+            return await datastar_login(request, payload, settings, "/")
         return await form_login(
             request,
             settings,
-            destination,
-            lambda: HTMLResponse(_login_html(request, error=True), status_code=401),
+            "/",
+            lambda: HTMLResponse(_login_html(error=True), status_code=401),
         )
 
     @app.get("/logout")

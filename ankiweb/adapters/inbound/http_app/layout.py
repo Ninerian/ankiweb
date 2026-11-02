@@ -23,6 +23,7 @@ def render_app_page(
     static_dir: Path,
     scripts: Sequence[str] = (),
     lang: ResolvedLang = _DEFAULT_LANG,
+    show_error_toast: bool = True,
 ) -> str:
     version = build_hash(static_dir)
     versioned_scripts = [
@@ -44,4 +45,5 @@ def render_app_page(
         app_service_worker_path=APP_SERVICE_WORKER_PATH,
         app_theme_color_light=APP_THEME_COLOR_LIGHT,
         app_theme_color_dark=APP_THEME_COLOR_DARK,
+        show_error_toast=show_error_toast,
     )

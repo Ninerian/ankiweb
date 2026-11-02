@@ -44,6 +44,15 @@ def test_pwa_assets_are_public_but_app_remains_password_protected(
             "/service-worker.js",
         ):
             assert client.get(path, follow_redirects=False).status_code == 200, path
+        assert client.get("/healthz", follow_redirects=False).status_code == 200
+        assert client.get("/login", follow_redirects=False).status_code == 200
+        assert client.get("/app/login", follow_redirects=False).status_code == 200
+        logout = client.get("/logout", follow_redirects=False)
+        assert logout.status_code == 303 and logout.headers["location"] == "/login"
+        assert (
+            client.get("/shell/static/datastar.js", follow_redirects=False).status_code
+            == 200
+        )
         for path in ("/app/", "/app/review", "/app/add?deck=1"):
             response = client.get(path, follow_redirects=False)
             assert response.status_code == 303, path

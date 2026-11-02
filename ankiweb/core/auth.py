@@ -13,7 +13,7 @@ import hmac
 
 COOKIE = "ankiweb_auth"
 # Paths reachable without a session cookie even when a password is set.
-OPEN_PATHS = frozenset({"/login", "/logout", "/healthz"})
+OPEN_PATHS = frozenset({"/login", "/app/login", "/logout", "/healthz"})
 
 
 def auth_token(password: str) -> str:

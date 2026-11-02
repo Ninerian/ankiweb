@@ -101,21 +101,47 @@ def test_invalid_signals_are_rejected(client: TestClient, payload: object) -> No
     assert _decks(client) == before
 
 
-def test_create_requires_password(tmp_path: Path) -> None:
+@pytest.mark.parametrize("cookie_state", ["missing", "invalid", "expired"])
+def test_create_requires_password(tmp_path: Path, cookie_state: str) -> None:
     password = f"test-{tmp_path.name}"
     settings = Settings(
         collection_path=tmp_path / "auth-decks.anki2", password=password
     )
     with TestClient(create_app(settings)) as client:
         client.headers["Datastar-Request"] = "true"
+        if cookie_state != "missing":
+            client.cookies.set(
+                COOKIE,
+                auth_token(password) if cookie_state == "expired" else "invalid",
+                domain="testserver.local",
+            )
+        if cookie_state == "expired":
+            cookie = next(c for c in client.cookies.jar if c.name == COOKIE)
+            cookie.expires = 1
+            assert cookie.is_expired()
+        before = _decks(client)
         response = client.post(
             "/app/decks",
             json={"newName": "Locked", "newEmoji": "📚"},
             follow_redirects=False,
         )
-        assert response.status_code == 303
-        assert response.headers["location"] == "/app/login"
-        client.cookies.set(COOKIE, auth_token(password))
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        assert "event: datastar-patch-elements" in response.text
+        assert "window.location = '/app/login'" in response.text
+        assert "location" not in response.headers
+        assert "app_sid" not in response.cookies
+        assert _decks(client) == before
+
+        login = client.post(
+            "/app/login", json={"password": password}, follow_redirects=False
+        )
+        assert login.status_code == 200
+        assert login.headers["content-type"].startswith("text/event-stream")
+        assert "window.location = '/app/'" in login.text
+        assert login.cookies.get(COOKIE) == auth_token(password)
+        assert client.get("/app/", follow_redirects=False).status_code == 200
+        assert _decks(client) == before
         assert (
             client.post(
                 "/app/decks", json={"newName": "Locked", "newEmoji": "📚"}

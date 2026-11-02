@@ -847,3 +847,138 @@
   .emoji-pop, .deck-drop { animation: none; }
   .deck-toast { animation-timing-function: steps(1, end); }
 }
+
+/* Login uses the same theme tokens as the rest of the app. */
+@layer components {
+  .login-page {
+    @apply bg-base-100 text-base-content;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-image: radial-gradient(color-mix(in srgb, var(--color-base-content) 14%, transparent) 1.6px, transparent 1.8px);
+    background-size: 22px 22px;
+  }
+
+  .login-viewport {
+    @apply relative mx-auto flex w-full max-w-review-shell flex-col justify-center pr-5.5 pl-5;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-top: calc(env(safe-area-inset-top) + 84px);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 84px);
+  }
+
+  .login-sticker {
+    @apply pointer-events-none absolute grid size-12.5 place-items-center rounded-[14px]
+      border-neo border-solid border-neo-edge shadow-neo text-[1.55rem] leading-none;
+    animation: login-float 5.5s ease-in-out infinite;
+    animation-delay: var(--login-delay, 0s);
+  }
+  .login-sticker-star {
+    @apply right-[8%] bg-warning;
+    top: calc(env(safe-area-inset-top) + 14px);
+    --login-rotation: 10deg;
+    --login-delay: -1s;
+  }
+  .login-sticker-book {
+    @apply left-[9%] size-10.5 bg-info text-[1.3rem];
+    top: calc(env(safe-area-inset-top) + 22px);
+    --login-rotation: -8deg;
+    --login-delay: -3s;
+  }
+  .login-sticker-fire {
+    @apply right-[9%] bg-review-streak-surface;
+    bottom: calc(env(safe-area-inset-bottom) + 14px);
+    --login-rotation: 8deg;
+    --login-delay: -2s;
+  }
+  .login-sticker-brain {
+    @apply left-[8%] size-11 bg-success text-[1.35rem];
+    bottom: calc(env(safe-area-inset-bottom) + 20px);
+    --login-rotation: -10deg;
+    --login-delay: -4s;
+  }
+
+  .login-hero {
+    @apply relative z-1 mb-13;
+  }
+  .login-hero h1 {
+    @apply m-0 mb-3 max-w-[9.5em] font-review-sheet text-deck-title font-black
+      leading-none tracking-deck-title;
+  }
+  .login-wave { @apply inline-block; }
+  .login-hero p { @apply m-0 max-w-[20em] text-[0.98rem] font-semibold text-muted-fg; }
+
+  .login-stage { @apply relative z-1 mr-1; }
+  .login-ghost {
+    @apply absolute inset-0 rounded-box border-neo border-solid border-neo-edge
+      shadow-[4px_4px_0_var(--color-neo-shadow)];
+  }
+  .login-ghost-blue {
+    @apply bg-info;
+    transform: translate(9px, 16px) rotate(3.2deg);
+  }
+  .login-ghost-yellow {
+    @apply bg-warning;
+    transform: translate(-7px, 9px) rotate(-2.8deg);
+  }
+  .login-card {
+    @apply relative block rounded-box border-neo border-solid border-neo-edge bg-base-200
+      px-5 pt-13 pb-5.5 shadow-[4px_4px_0_var(--color-neo-shadow)];
+  }
+  .login-mascot {
+    @apply absolute -top-8.5 left-5 grid size-17 place-items-center rounded-[20px]
+      border-neo border-solid border-neo-edge bg-accent shadow-neo text-[2.1rem] leading-none;
+    transform: rotate(-7deg);
+  }
+  .login-card h2 {
+    @apply m-0 mb-0.75 font-review-sheet text-review-reveal-label font-black tracking-deck-name;
+  }
+  .login-hint { @apply m-0 mb-4.5 text-[0.88rem] font-semibold text-muted-fg; }
+  .login-label {
+    @apply mb-1.75 block font-review-sheet text-deck-label font-black uppercase tracking-deck-label text-muted-fg;
+  }
+  .input.login-field {
+    @apply flex h-auto w-full items-center gap-1.5 rounded-field border-neo border-solid border-neo-edge
+      bg-base-100 py-0 pr-2 pl-3.5 shadow-[2px_2px_0_var(--color-neo-shadow)];
+  }
+  .input.login-field:focus-within { @apply outline-3 outline-solid outline-primary outline-offset-3; }
+  .input.login-field input {
+    @apply min-w-0 flex-1 border-0 bg-transparent px-0 py-3.75 font-[family-name:inherit] text-[1.05rem]
+      leading-[inherit] font-bold text-base-content outline-0;
+  }
+  .input.login-field input::placeholder { @apply font-semibold text-muted-fg opacity-100; }
+  .input.login-field input[type="password"]:not(:placeholder-shown) { @apply tracking-[0.14em]; }
+  .login-peek {
+    @apply h-auto min-h-9.5 flex-none gap-1.25 rounded-xl bg-base-200 px-2.75 py-0
+      font-review-sheet text-[0.78rem] font-black text-base-content;
+  }
+  .login-peek[aria-pressed="true"] { @apply bg-info; }
+  .login-peek:focus-visible, .login-submit:focus-visible { @apply outline-3 outline-solid outline-primary outline-offset-3; }
+  .login-error > :first-child { @apply text-xl leading-none; }
+  .login-submit {
+    @apply mt-5 flex min-h-15.5 w-full rounded-box border-3 font-review-sheet
+      text-[1.3rem] font-black uppercase tracking-review-reveal-label;
+  }
+  .login-submit span { @apply text-review-reveal-label; }
+
+  @keyframes login-float {
+    0%, 100% { transform: translateY(0) rotate(var(--login-rotation)); }
+    50% { transform: translateY(-9px) rotate(calc(var(--login-rotation) * -0.5)); }
+  }
+}
+
+@layer utilities {
+  /* daisyUI's alert and input defaults also live in the utilities layer. */
+  .alert.login-error {
+    @apply mt-3.5 flex items-center gap-2.25 rounded-[14px] border-neo border-solid
+      border-review-ease-error-border bg-none px-3 py-2.5 text-[0.9rem] leading-[inherit]
+      font-extrabold shadow-none;
+  }
+  .input.login-field:has(input[aria-invalid="true"]) {
+    @apply border-review-ease-error-border shadow-[2px_2px_0_var(--color-error-border)];
+  }
+  .login-error[hidden], .login-peek[hidden] { @apply hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-sticker { animation: none; transform: rotate(var(--login-rotation)); }
+}

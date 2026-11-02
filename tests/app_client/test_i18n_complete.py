@@ -64,6 +64,8 @@ ANKI_INVENTORY = {
     "actions_close",
     "actions_cancel",
     "actions_save",
+    "sync_password_label",
+    "sync_log_in_button",
 }
 
 

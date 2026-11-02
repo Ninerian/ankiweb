@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse
 from ankiweb.adapters.inbound.http_app.add import build_add_router
 from ankiweb.adapters.inbound.http_app.decks import add_decks_routes
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
+from ankiweb.adapters.inbound.http_app.login import add_login_routes
 from ankiweb.adapters.inbound.http_app.origin_guard import reject_cross_site_writes
 from ankiweb.adapters.inbound.http_app.review import make_review_router
 from ankiweb.adapters.inbound.http_shared.templating import render
@@ -20,6 +21,7 @@ def build_app_router(
     router = APIRouter(prefix="/app", dependencies=[Depends(reject_cross_site_writes)])
     lang = resolve_lang(settings)
     static_dir = settings.shell_dir / "static"
+    add_login_routes(router, settings, lang, static_dir)
     router.include_router(make_review_router(get_service, settings))
 
     @router.get("/ping", response_class=HTMLResponse)
