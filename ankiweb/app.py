@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from contextlib import asynccontextmanager
 
 from datastar_py.fastapi import ReadSignals
@@ -17,11 +16,13 @@ from ankiweb.adapters.inbound.http_app.pwa import (
     APP_PWA_PUBLIC_PATHS,
     build_app_pwa_router,
 )
-from ankiweb.adapters.inbound.http_datastar.common import (
-    error_response,
-    redirect_response,
-)
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.adapters.inbound.http_shared.login import (
+    datastar_login,
+    form_login,
+    is_datastar_login,
+    wrong_password_text,
+)
 from ankiweb.adapters.inbound.http_shared.pwa import (
     MANIFEST_PATH,
     SERVICE_WORKER_PATH,
@@ -43,26 +44,19 @@ from ankiweb.assets import (
     build_router as build_assets_router,
 )
 from ankiweb.core.app_client.lang import resolve_lang
-from ankiweb.core.auth import COOKIE, auth_token, cookie_ok, password_ok
+from ankiweb.core.auth import COOKIE, cookie_ok
 from ankiweb.core.bridge.hub import BridgeHub
 from ankiweb.core.config import Settings, host_allowed
-from ankiweb.core.i18n import tr
 from ankiweb.core.notify.engine import NotifierState
-
-logger = logging.getLogger(__name__)
 
 # Fetched by the browser without credentials (manifest) / before login (worker install).
 PWA_PUBLIC_PATHS = (MANIFEST_PATH, SERVICE_WORKER_PATH, *APP_PWA_PUBLIC_PATHS)
 
 
-def _wrong_password_text() -> str:
-    return templating.tr_clean(tr.sync_wrong_pass())
-
-
 def _login_html(request: Request, error: bool = False) -> str:
     return templating.render(
         "login.html.jinja",
-        error_text=_wrong_password_text() if error else "",
+        error_text=wrong_password_text() if error else "",
         login_path="/app/login" if request.url.path == "/app/login" else "/login",
     )
 
@@ -123,61 +117,8 @@ async def _auth_guard(request, call_next, settings):
     return await call_next(request)
 
 
-def _password_from_mapping(data: dict) -> str:
-    val = data.get("password", "")
-    return str(val) if val is not None else ""
-
-
-async def _datastar_login_password(request: Request, payload) -> str:
-    pwd_str = ""
-    if payload and isinstance(payload, dict):
-        pwd_str = _password_from_mapping(payload)
-    if not pwd_str:
-        try:
-            body = await request.json()
-            if isinstance(body, dict):
-                pwd_str = _password_from_mapping(body)
-        except (ValueError, RecursionError):
-            logger.warning("Failed to decode JSON body in Datastar login request")
-    return pwd_str
-
-
-def _set_login_cookie(resp, password: str, request: Request):
-    resp.set_cookie(
-        COOKIE,
-        auth_token(password),
-        httponly=True,
-        secure=request.url.scheme == "https",
-        samesite="lax",
-        max_age=30 * 86400,
-    )
-    return resp
-
-
 def _login_destination(request: Request) -> str:
     return "/app/" if request.url.path == "/app/login" else "/"
-
-
-async def _datastar_login(request: Request, payload, settings: Settings):
-    pwd_str = await _datastar_login_password(request, payload)
-    if settings.password and password_ok(pwd_str, settings.password):
-        return _set_login_cookie(
-            redirect_response(_login_destination(request)), settings.password, request
-        )
-    return error_response(_wrong_password_text())
-
-
-async def _form_login(request: Request, settings: Settings):
-    form = await request.form()
-    pwd = form.get("password", "")
-    pwd_str = pwd if isinstance(pwd, str) else ""
-    if settings.password and password_ok(pwd_str, settings.password):
-        return _set_login_cookie(
-            RedirectResponse(_login_destination(request), status_code=303),
-            settings.password,
-            request,
-        )
-    return HTMLResponse(_login_html(request, error=True), status_code=401)
 
 
 def create_app(
@@ -218,14 +159,15 @@ def create_app(
     @app.post("/app/login")
     @app.post("/login")
     async def login_submit(request: Request, payload: ReadSignals = None):
-        is_datastar = (
-            request.headers.get("datastar-request")
-            or "application/json" in request.headers.get("content-type", "")
-            or bool(payload)
+        destination = _login_destination(request)
+        if is_datastar_login(request, payload):
+            return await datastar_login(request, payload, settings, destination)
+        return await form_login(
+            request,
+            settings,
+            destination,
+            lambda: HTMLResponse(_login_html(request, error=True), status_code=401),
         )
-        if is_datastar:
-            return await _datastar_login(request, payload, settings)
-        return await _form_login(request, settings)
 
     @app.get("/logout")
     def logout():
