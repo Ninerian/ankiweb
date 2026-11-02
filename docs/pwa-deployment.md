@@ -65,11 +65,26 @@ verified; the shared icons are placeholders.
 
 ## Cache and updates
 
-The `/app/` worker precaches a public offline page and its CSS, caches app CSS and
-JavaScript on demand, and fetches app navigations from the network. Authenticated
-HTML is not deliberately cached. Its cache name includes a hash of the deployed app
-CSS and JavaScript. Rebuild assets with `npm run build` before deployment after
-changing them.
+App pages and the offline page use `/shell/static/app-client.css?v=<build_hash>`.
+Top-level app scripts under `/shell/static/app/*.js` use the same version; other
+scripts, including `datastar.js`, do not. The 12-character build hash reflects
+the deployed app CSS and JavaScript and also versions the worker cache. After
+changing `shell_src/app-client.css` or app JavaScript sources, run `npm run build`
+before deployment to rebuild the served assets.
+
+The `/app/` worker precaches the public offline page and the same versioned CSS.
+App CSS and JavaScript are served cache-first; precaching and cache misses use
+`cache: 'reload'` to bypass the browser HTTP cache. App navigations are network-only,
+with the offline page as a fallback; authenticated HTML is not deliberately cached.
+
+The app checks for worker updates at load and when it returns to the foreground.
+It does not forcibly reload the current screen, protecting unsaved inputs. Save
+your work and navigate or reload online to see updates; a new versioned CSS URL
+can be fetched on the next navigation even if the old worker still controls it.
+
+iOS device storage and workers are local to each device: updating a simulator or
+another device does not update a physical iPhone. Verify the installed app on the
+target iPhone over trusted HTTPS; physical-iPhone update behavior is not verified.
 
 On activation, the legacy root worker removes old `ankiweb-shell-` caches only;
 the app worker removes old `ankiweb-app-` caches only. Each preserves the other's

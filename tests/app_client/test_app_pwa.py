@@ -151,34 +151,6 @@ def test_theme_metadata_matches_source_css(client: TestClient) -> None:
     }
 
 
-def test_worker_cache_version_changes_with_deployed_css_and_js(tmp_path: Path) -> None:
-    static = tmp_path / "shell" / "static"
-    app_js = static / "app" / "install.js"
-    app_js.parent.mkdir(parents=True)
-    css = static / "app-client.css"
-    css.write_text("body { color: red }", encoding="utf-8")
-    app_js.write_text("export const version = 1;", encoding="utf-8")
-    settings = Settings(
-        collection_path=tmp_path / "hash.anki2", shell_dir=static.parent
-    )
-
-    def cache_name(client: TestClient) -> str:
-        response = client.get("/app/service-worker.js")
-        assert response.status_code == 200
-        match = re.search(r"ankiweb-app-[0-9a-f]+", response.text)
-        assert match is not None
-        return match.group()
-
-    with TestClient(create_app(settings)) as client:
-        initial = cache_name(client)
-        assert cache_name(client) == initial
-        css.write_text("body { color: blue }", encoding="utf-8")
-        changed_css = cache_name(client)
-        assert changed_css != initial
-        app_js.write_text("export const version = 2;", encoding="utf-8")
-        assert cache_name(client) != changed_css
-
-
 # Execute the actual HTTP-served worker, not a separately maintained implementation.
 _WORKER_HARNESS = r"""
 import assert from "node:assert/strict";
@@ -193,6 +165,13 @@ let cssVersion = "css-v1";
 let jsVersion = "js-v1";
 let skipped = false;
 let claimed = false;
+const NativeRequest = globalThis.Request;
+globalThis.Request = class extends NativeRequest {
+  constructor(input, options) {
+    super(typeof input === "string" ? new URL(input, origin) : input, options);
+  }
+};
+
 const key = (request) =>
   new URL(typeof request === "string" ? request : request.url, origin).href;
 
@@ -232,6 +211,10 @@ globalThis.self = {
 };
 globalThis.fetch = async (request) => {
   const url = new URL(key(request));
+  if (url.pathname === "/app/offline" ||
+      url.pathname.startsWith("/shell/static/app")) {
+    assert.equal(request.cache, "reload");
+  }
   calls.set(url.pathname, (calls.get(url.pathname) || 0) + 1);
   if (!online) throw new Error("network offline");
   if (url.pathname === "/app/offline") return new Response("public offline fallback");
@@ -261,7 +244,9 @@ async function lifecycle(type) {
 }
 async function dispatch(path, method = "GET", mode = "same-origin") {
   let pending;
-  const request = {url: new URL(path, origin).href, method, mode};
+  const request = mode === "navigate"
+    ? {url: new URL(path, origin).href, method, mode}
+    : new Request(new URL(path, origin), {method, mode});
   listeners.get("fetch")({request, respondWith(promise) { pending = promise; }});
   return pending === undefined ? undefined : await pending;
 }
@@ -306,9 +291,17 @@ assert.equal(
 listeners.clear();
 for (const [type, handler] of appListeners) listeners.set(type, handler);
 
+const precachedCss = [...appCache.keys()].find(
+  (url) => new URL(url).pathname === "/shell/static/app-client.css"
+);
+assert.ok(precachedCss);
+assert.match(new URL(precachedCss).search, /^\?v=[0-9a-f]{12}$/);
 cssVersion = "css-v2";
-assert.equal(await (await dispatch("/shell/static/app-client.css")).text(), "css-v1");
-assert.equal(calls.get("/shell/static/app-client.css"), 1);
+assert.equal(await (await dispatch(precachedCss)).text(), "css-v1");
+assert.equal(
+  await (await dispatch("/shell/static/app-client.css?v=new-version")).text(), "css-v2"
+);
+assert.equal(calls.get("/shell/static/app-client.css"), 2);
 assert.equal(await (await dispatch("/shell/static/app/install.js")).text(), "js-v1");
 jsVersion = "js-v2";
 assert.equal(await (await dispatch("/shell/static/app/install.js")).text(), "js-v1");

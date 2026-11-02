@@ -10,14 +10,19 @@ from ankiweb.core.app_client.lang import ResolvedLang, resolve_lang
 from ankiweb.core.config import Settings
 from ankiweb.core.i18n import tr
 
+STATIC_DIR = Path(__file__).resolve().parents[2] / "ankiweb/shell/static"
+
 
 def test_layout_defaults_to_english_and_accepts_explicit_language() -> None:
-    default_page = render_app_page("Title", "<main>Content</main>", active="")
+    default_page = render_app_page(
+        "Title", "<main>Content</main>", active="", static_dir=STATIC_DIR
+    )
     assert '<html lang="en" dir="ltr">' in default_page
     arabic_page = render_app_page(
         title="Title",
         body="<main>Content</main>",
         active="",
+        static_dir=STATIC_DIR,
         scripts=(),
         lang=ResolvedLang("ar", "rtl", "ar"),
     )
@@ -66,6 +71,7 @@ def test_layout_language_matches_rendered_anki_text(
                 title=tr.studying_again(),
                 body="",
                 active="",
+                static_dir=STATIC_DIR,
                 scripts=(),
                 lang=resolve_lang(settings),
             )

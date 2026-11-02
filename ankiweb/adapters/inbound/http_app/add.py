@@ -136,6 +136,7 @@ class _AddRoutes:
     ) -> None:
         self.get_service = get_service
         self.lang = resolve_lang(settings)
+        self.static_dir = settings.shell_dir / "static"
 
     def added_cards(
         self, col: Collection, session: StudySession, deck_id: int
@@ -202,6 +203,7 @@ class _AddRoutes:
                 tr.actions_add(),
                 body,
                 active="add",
+                static_dir=self.static_dir,
                 scripts=("/shell/static/app/add.js",),
                 lang=self.lang,
             )
