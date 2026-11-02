@@ -2,6 +2,13 @@
 
 STRINGS: dict[str, dict[str, str]] = {
     "en": {
+        # PWA bootstrap
+        "app_offline_title": "You're offline",
+        "app_offline_body": "AnkiWeb needs a connection to load your decks.",
+        "app_offline_retry": "Try again",
+        "app_install_button": "Install app",
+        "app_install_ios_hint": "To install: tap Share, then Add to Home Screen.",
+        "app_install_ios_dismiss": "Dismiss",
         # Deck list (plan 2)
         "app_decks_study_space": "Your study space",
         "app_decks_my_decks": "My Decks",
@@ -133,6 +140,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_chip_plural": "(Plural:)",
     },
     "de": {
+        "app_offline_title": "Du bist offline",
+        "app_offline_body": "AnkiWeb benötigt eine Verbindung, um deine Stapel zu laden.",
+        "app_offline_retry": "Erneut versuchen",
+        "app_install_button": "App installieren",
+        "app_install_ios_hint": "Zum Installieren: Tippe auf Teilen und dann auf Zum Home-Bildschirm.",
+        "app_install_ios_dismiss": "Schließen",
         "app_decks_study_space": "Dein Lernbereich",
         "app_decks_my_decks": "Meine Stapel",
         "app_decks_search": "Stapel suchen",

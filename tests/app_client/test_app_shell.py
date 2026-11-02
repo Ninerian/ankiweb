@@ -1,3 +1,4 @@
+import re
 from http.cookies import SimpleCookie
 from pathlib import Path
 
@@ -45,13 +46,15 @@ def test_ping_follows_password_gate(tmp_path: Path) -> None:
     with TestClient(app) as test_client:
         response = test_client.get("/app/ping", follow_redirects=False)
         assert response.status_code == 303
-        assert response.headers["location"] == "/login"
+        assert response.headers["location"] == "/app/login"
         test_client.cookies.set(COOKIE, auth_token(password))
         assert test_client.get("/app/ping").status_code == 200
 
 
 def test_layout_is_independent() -> None:
-    page = render_app_page("Title", "<main>Content</main>", active="")
+    page = render_app_page(
+        "Title", "<main>Content</main>", active="", static_dir=CSS.parent
+    )
     for forbidden in (
         "/_anki/",
         "reviewer.js",
@@ -62,8 +65,6 @@ def test_layout_is_independent() -> None:
         "theme.css",
         "components.css",
         "data-theme",
-        "manifest",
-        "theme-color",
     ):
         assert forbidden not in page
     assert "/shell/static/app-client.css" in page
@@ -80,8 +81,27 @@ def test_layout_is_independent() -> None:
 
 
 def test_layout_escapes_title_and_loads_extra_scripts() -> None:
-    page = render_app_page('<title & "test">', "", active="", scripts=("/app/a.js",))
+    page = render_app_page(
+        '<title & "test">',
+        "",
+        active="",
+        static_dir=CSS.parent,
+        scripts=(
+            "/shell/static/app/add.js",
+            "/shell/static/app/nested/other.js",
+            "/shell/static/datastar.js",
+            "/app/a.js",
+        ),
+    )
     assert "&lt;title &amp; &#34;test&#34;&gt;" in page
+    version = re.search(r"/shell/static/app-client\.css\?v=([0-9a-f]{12})", page)
+    assert version is not None
+    assert f'/shell/static/app/add.js?v={version.group(1)}"' in page
+    assert (
+        '<script type="module" src="/shell/static/app/nested/other.js"></script>'
+        in page
+    )
+    assert '<script type="module" src="/shell/static/datastar.js"></script>' in page
     assert '<script type="module" src="/app/a.js"></script>' in page
 
 
@@ -90,7 +110,7 @@ def test_app_css_build_has_system_themes() -> None:
     assert "aw-light" in css
     assert "aw-dark" in css
     assert "prefers-color-scheme" in css
-    assert "data-theme" not in render_app_page("", "", active="")
+    assert "data-theme" not in render_app_page("", "", active="", static_dir=CSS.parent)
 
 
 def test_app_session_cookie_only_set_when_needed() -> None:

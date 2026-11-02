@@ -371,5 +371,6 @@ def test_review_inherits_password_gate(tmp_path: Path):
         ):
             response = client.request(method, url, follow_redirects=False)
             assert (
-                response.status_code == 303 and response.headers["location"] == "/login"
+                response.status_code == 303
+                and response.headers["location"] == "/app/login"
             )

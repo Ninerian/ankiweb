@@ -27,7 +27,7 @@
   </section>
 {% else %}
   <section id="no-decks" class="deck-card rounded-box bg-base-200 px-5 py-7 text-center">
-    <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" href="/app/add">{{ s("app_decks_add_first") }}</a>
+    <button type="button" class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" aria-haspopup="dialog" data-on:click="$newError = ''; window.avDeckOpener(el); $newOpen = true">{{ s("app_decks_add_first") }}</button>
   </section>
 {% endif %}
 </div>
@@ -41,6 +41,11 @@
 {% else %}
 <main id="decks-page" class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pb-30 pl-4" data-signals="{q: '', newName: '', newEmoji: '📚', newOpen: false, creating: false, newError: ''}">
   {{ content() }}
+  <button id="install-app" type="button" class="btn neo-press mt-4" hidden>{{ s('app_install_button') }}</button>
+  <div id="ios-install-hint" class="mt-4 rounded-box border-2 border-neo-edge bg-base-200 p-4 font-bold shadow-neo" hidden>
+    <p>{{ s('app_install_ios_hint') }}</p>
+    <button id="ios-install-dismiss" type="button" class="btn btn-sm neo-press mt-3">{{ s('app_install_ios_dismiss') }}</button>
+  </div>
   <div class="deck-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-5 pt-7 pb-[max(18px,env(safe-area-inset-bottom))]">
     <button id="btn-new-deck" type="button" class="btn btn-accent btn-block neo-press pointer-events-auto min-h-14 max-w-deck text-lg font-black" aria-haspopup="dialog" data-on:click="$newError = ''; window.avDeckOpener(el); $newOpen = true"><span aria-hidden="true">+</span> {{ s("app_decks_new") }}</button>
   </div>

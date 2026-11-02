@@ -11,9 +11,9 @@
   </head>
   <body class="context-login min-h-screen flex items-center justify-center bg-base-200">
     <form id="login" class="card bg-base-100 shadow-md p-8 w-80 flex flex-col gap-3 text-center"
-          method="post" action="/login"
+          method="post" action="{{ login_path }}"
           data-signals='{{ {"password": "", "error": error_text} | tojson }}'
-          data-on:submit__prevent="$error = ''; @post('/login')">
+          data-on:submit__prevent="$error = ''; @post('{{ login_path }}')">
       <h1 class="text-lg font-semibold">ankiweb</h1>
       <input type="password" name="password" class="input w-full" autofocus
              aria-label="{{ tr.sync_password_label() | tr_clean }}"

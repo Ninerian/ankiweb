@@ -45,6 +45,51 @@ def create_server(tmp_path: Path) -> Iterator[tuple[str, CollectionPort]]:
                 raise RuntimeError("server did not stop")
 
 
+def test_create_first_deck_from_empty_state(
+    create_server: tuple[str, CollectionPort], tmp_path: Path
+) -> None:
+    base, service = create_server
+    with sync_playwright() as playwright:
+        context = playwright.chromium.launch_persistent_context(
+            str(tmp_path / "profile-first-deck"),
+            headless=True,
+            viewport={"width": 375, "height": 812},
+        )
+        page = context.pages[0]
+        page.goto(f"{base}/app/")
+        page.wait_for_load_state("networkidle")
+        opener = page.locator("#no-decks").get_by_role(
+            "button", name="Add your first deck", exact=True
+        )
+        sheet = page.locator("#deck-sheet")
+        name = page.locator("#deck-name")
+        submit = page.locator("#btn-create-deck")
+
+        opener.click()
+        expect(sheet).to_have_attribute("aria-hidden", "false")
+        expect(name).to_be_focused()
+        page.keyboard.press("Escape")
+        expect(sheet).to_have_attribute("aria-hidden", "true")
+        expect(opener).to_be_focused()
+
+        opener.press("Enter")
+        expect(sheet).to_have_attribute("aria-hidden", "false")
+        expect(name).to_be_focused()
+        name.fill("First deck")
+        expect(submit).to_be_enabled()
+        submit.click()
+        expect(sheet).to_have_attribute("aria-hidden", "true")
+        expect(page.locator("#no-decks")).to_have_count(0)
+        expect(page.get_by_role("heading", name="First deck", level=3)).to_be_visible()
+        expect(page.locator("#toast")).to_contain_text("Deck created")
+        context.close()
+
+    saved = asyncio.run(
+        service.run(lambda col: [deck.name for deck in col.decks.all_names_and_ids()])
+    )
+    assert "First deck · 📚" in saved
+
+
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_create_decks_in_browser(
     create_server: tuple[str, CollectionPort],

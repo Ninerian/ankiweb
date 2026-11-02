@@ -101,7 +101,7 @@ def test_add_routes_follow_password_gate(tmp_path: Path) -> None:
             client.post("/app/add/edit/1?deck=1", follow_redirects=False),
         ):
             assert response.status_code == 303
-            assert response.headers["location"] == "/login"
+            assert response.headers["location"] == "/app/login"
             assert "app_sid" not in response.cookies
         client.cookies.set(COOKIE, auth_token(password))
         assert client.get("/app/add?deck=1").status_code == 200

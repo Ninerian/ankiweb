@@ -3,6 +3,7 @@
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from datastar_py.fastapi import DatastarResponse, ReadSignals
 from datastar_py.fastapi import ServerSentEventGenerator as SSE
@@ -64,7 +65,10 @@ def _render_decks(
 
 
 def add_decks_routes(
-    router: APIRouter, get_service: Callable[[], CollectionPort], lang: ResolvedLang
+    router: APIRouter,
+    get_service: Callable[[], CollectionPort],
+    lang: ResolvedLang,
+    static_dir: Path,
 ) -> None:
     """Attach GET /app/ and the /app redirect to the router prefixed with /app."""
 
@@ -82,7 +86,8 @@ def add_decks_routes(
             tr.actions_decks(),
             body,
             active="decks",
-            scripts=("/shell/static/app/decks.js",),
+            static_dir=static_dir,
+            scripts=("/shell/static/app/decks.js", "/shell/static/app/install.js"),
             lang=lang,
         )
 

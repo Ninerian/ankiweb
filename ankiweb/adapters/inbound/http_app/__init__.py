@@ -19,13 +19,16 @@ def build_app_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/app", dependencies=[Depends(reject_cross_site_writes)])
     lang = resolve_lang(settings)
+    static_dir = settings.shell_dir / "static"
     router.include_router(make_review_router(get_service, settings))
 
     @router.get("/ping", response_class=HTMLResponse)
     def ping() -> str:
         body = render("app/ping.html.jinja", app_lang=lang)
-        return render_app_page("AnkiWeb", body, active="", lang=lang)
+        return render_app_page(
+            "AnkiWeb", body, active="", static_dir=static_dir, lang=lang
+        )
 
-    add_decks_routes(router, get_service, lang)
+    add_decks_routes(router, get_service, lang, static_dir)
     router.include_router(build_add_router(get_service, settings))
     return router

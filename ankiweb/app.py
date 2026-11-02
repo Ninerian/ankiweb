@@ -13,6 +13,10 @@ from starlette_compress import CompressMiddleware
 # Initialize Anki through the collection adapter before screens import its cyclic modules.
 import ankiweb.adapters.outbound.anki_collection_adapter as collection_adapter
 from ankiweb.adapters.inbound.http_app import build_app_router
+from ankiweb.adapters.inbound.http_app.pwa import (
+    APP_PWA_PUBLIC_PATHS,
+    build_app_pwa_router,
+)
 from ankiweb.adapters.inbound.http_datastar.common import (
     error_response,
     redirect_response,
@@ -38,6 +42,7 @@ from ankiweb.assets import (
 from ankiweb.assets import (
     build_router as build_assets_router,
 )
+from ankiweb.core.app_client.lang import resolve_lang
 from ankiweb.core.auth import COOKIE, auth_token, cookie_ok, password_ok
 from ankiweb.core.bridge.hub import BridgeHub
 from ankiweb.core.config import Settings, host_allowed
@@ -47,16 +52,18 @@ from ankiweb.core.notify.engine import NotifierState
 logger = logging.getLogger(__name__)
 
 # Fetched by the browser without credentials (manifest) / before login (worker install).
-PWA_PUBLIC_PATHS = (MANIFEST_PATH, SERVICE_WORKER_PATH)
+PWA_PUBLIC_PATHS = (MANIFEST_PATH, SERVICE_WORKER_PATH, *APP_PWA_PUBLIC_PATHS)
 
 
 def _wrong_password_text() -> str:
     return templating.tr_clean(tr.sync_wrong_pass())
 
 
-def _login_html(error: bool = False) -> str:
+def _login_html(request: Request, error: bool = False) -> str:
     return templating.render(
-        "login.html.jinja", error_text=_wrong_password_text() if error else ""
+        "login.html.jinja",
+        error_text=_wrong_password_text() if error else "",
+        login_path="/app/login" if request.url.path == "/app/login" else "/login",
     )
 
 
@@ -100,16 +107,19 @@ async def _host_guard(request, call_next, settings):
 
 
 async def _auth_guard(request, call_next, settings):
-    # Open by default; only gates when ANKIWEB_PASSWORD is set. /login, /logout, /healthz
-    # stay reachable so an unauthenticated user can reach the login form.
+    # Open by default; login, logout and health checks remain reachable without a cookie.
     if (
         settings.password
-        and request.url.path not in ("/login", "/logout", "/healthz")
+        and request.url.path not in ("/login", "/app/login", "/logout", "/healthz")
         and request.url.path not in PWA_PUBLIC_PATHS
         and not request.url.path.startswith("/shell/static/")
         and not cookie_ok(request.cookies.get(COOKIE), settings.password)
     ):
-        return RedirectResponse("/login", status_code=303)
+        path = request.url.path
+        login_path = (
+            "/app/login" if path == "/app" or path.startswith("/app/") else "/login"
+        )
+        return RedirectResponse(login_path, status_code=303)
     return await call_next(request)
 
 
@@ -132,21 +142,28 @@ async def _datastar_login_password(request: Request, payload) -> str:
     return pwd_str
 
 
-def _set_login_cookie(resp, password: str):
+def _set_login_cookie(resp, password: str, request: Request):
     resp.set_cookie(
         COOKIE,
         auth_token(password),
         httponly=True,
+        secure=request.url.scheme == "https",
         samesite="lax",
         max_age=30 * 86400,
     )
     return resp
 
 
+def _login_destination(request: Request) -> str:
+    return "/app/" if request.url.path == "/app/login" else "/"
+
+
 async def _datastar_login(request: Request, payload, settings: Settings):
     pwd_str = await _datastar_login_password(request, payload)
     if settings.password and password_ok(pwd_str, settings.password):
-        return _set_login_cookie(redirect_response("/"), settings.password)
+        return _set_login_cookie(
+            redirect_response(_login_destination(request)), settings.password, request
+        )
     return error_response(_wrong_password_text())
 
 
@@ -156,9 +173,11 @@ async def _form_login(request: Request, settings: Settings):
     pwd_str = pwd if isinstance(pwd, str) else ""
     if settings.password and password_ok(pwd_str, settings.password):
         return _set_login_cookie(
-            RedirectResponse("/", status_code=303), settings.password
+            RedirectResponse(_login_destination(request), status_code=303),
+            settings.password,
+            request,
         )
-    return HTMLResponse(_login_html(error=True), status_code=401)
+    return HTMLResponse(_login_html(request, error=True), status_code=401)
 
 
 def create_app(
@@ -191,11 +210,12 @@ def create_app(
     def healthz():
         return {"ok": True}
 
+    @app.get("/app/login", response_class=HTMLResponse)
     @app.get("/login", response_class=HTMLResponse)
-    def login_form():
-        # already authenticated (or no gate) -> straight to the app
-        return HTMLResponse(_login_html())
+    def login_form(request: Request):
+        return HTMLResponse(_login_html(request))
 
+    @app.post("/app/login")
     @app.post("/login")
     async def login_submit(request: Request, payload: ReadSignals = None):
         is_datastar = (
@@ -223,6 +243,7 @@ def create_app(
     app.include_router(
         build_pwa_router()
     )  # GET /manifest.webmanifest, /service-worker.js
+    app.include_router(build_app_pwa_router(static_dir, resolve_lang(settings)))
 
     app.include_router(build_assets_router(settings.assets_dir))  # GET  /_anki/{path}
     app.include_router(

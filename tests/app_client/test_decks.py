@@ -493,12 +493,11 @@ def test_empty_state_is_rendered_hidden(tmp_path: Path) -> None:
     assert page.by_id("deck-search")["type"] == "search"
 
 
-def test_empty_collection_offers_first_deck(tmp_path: Path) -> None:
+def test_empty_collection_has_no_deck_rows_or_search(tmp_path: Path) -> None:
     client, _ = _client(tmp_path, [])
     with client:
         html = client.get("/app/").text
     page = _parse(html)
-    assert "/app/add" in page.hrefs()
     assert not any(t == "article" for t, _ in page.tags)
     assert "deck-search" not in html
 

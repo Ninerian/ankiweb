@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, cast
 
 from anki.collection import Collection
@@ -219,7 +220,9 @@ def _begin(
     return _snapshot(col, session, study.start(col, session, deck_id))
 
 
-def _make_review_page(get_service: Callable[[], CollectionPort], lang: ResolvedLang):
+def _make_review_page(
+    get_service: Callable[[], CollectionPort], lang: ResolvedLang, static_dir: Path
+):
     async def review_page(request: Request, deck: str | None = None) -> Response:
         deck_id = _deck_id(deck)
         if deck_id is None:
@@ -242,6 +245,7 @@ def _make_review_page(get_service: Callable[[], CollectionPort], lang: ResolvedL
             s("app_review_progress", lang=lang.catalog_lang),
             body,
             active="",
+            static_dir=static_dir,
             scripts=("/shell/static/app/card-render.js",),
             lang=lang,
         )
@@ -314,7 +318,11 @@ def make_review_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/review")
     lang = resolve_lang(settings)
-    router.add_api_route("", _make_review_page(get_service, lang), methods=["GET"])
+    router.add_api_route(
+        "",
+        _make_review_page(get_service, lang, settings.shell_dir / "static"),
+        methods=["GET"],
+    )
     router.add_api_route("/answer", _make_answer(get_service, lang), methods=["POST"])
     router.add_api_route(
         "/action/{name}", _make_action(get_service, lang), methods=["POST"]

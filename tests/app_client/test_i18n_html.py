@@ -5,22 +5,26 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
-from ankiweb.adapters.inbound.http_shared.templating import render
 from ankiweb.app import create_app
 from ankiweb.core.app_client.lang import ResolvedLang, resolve_lang
 from ankiweb.core.config import Settings
 from ankiweb.core.i18n import tr
 
+STATIC_DIR = Path(__file__).resolve().parents[2] / "ankiweb/shell/static"
+
 
 def test_layout_defaults_to_english_and_accepts_explicit_language() -> None:
-    default_page = render_app_page("Title", "<main>Content</main>", active="")
+    default_page = render_app_page(
+        "Title", "<main>Content</main>", active="", static_dir=STATIC_DIR
+    )
     assert '<html lang="en" dir="ltr">' in default_page
-    arabic_page = render(
-        "app/base.html.jinja",
+    arabic_page = render_app_page(
         title="Title",
         body="<main>Content</main>",
+        active="",
+        static_dir=STATIC_DIR,
         scripts=(),
-        app_lang=ResolvedLang("ar", "rtl", "ar"),
+        lang=ResolvedLang("ar", "rtl", "ar"),
     )
     assert '<html lang="ar" dir="rtl">' in arabic_page
 
@@ -63,12 +67,13 @@ def test_layout_language_matches_rendered_anki_text(
         with TestClient(create_app(settings)) as client:
             response = client.get("/app/ping")
             anki.lang.set_lang(code)
-            page = render(
-                "app/base.html.jinja",
+            page = render_app_page(
                 title=tr.studying_again(),
                 body="",
+                active="",
+                static_dir=STATIC_DIR,
                 scripts=(),
-                app_lang=resolve_lang(settings),
+                lang=resolve_lang(settings),
             )
     finally:
         anki.lang.set_lang("en")
