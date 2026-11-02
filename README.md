@@ -199,6 +199,8 @@ protected `/app` and `/app/…` routes lead to `/app/login`. Both logins set the
 `ankiweb_auth` cookie, unlocking both clients and the `/ws` bridge. The cookie is
 HTTP-only, SameSite=Lax, and Secure when the request uses HTTPS. `/logout` clears it
 and returns to `/login`. App login always opens `/app/`, not the original URL.
+The app login distinguishes an empty password from an incorrect one, without trimming
+the password. A show/hide control and mascot animation are available with JavaScript.
 
 If authentication expires during an app Datastar request, the browser navigates to
 `/app/login`. A rejected POST does not run or retry after login, and unsaved drafts

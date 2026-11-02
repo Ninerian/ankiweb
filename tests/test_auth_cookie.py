@@ -159,7 +159,12 @@ def test_failed_login_stays_on_its_own_path_and_remains_unauthenticated(
             assert response.status_code == 401
             assert f'action="{login_path}"' in response.text
             assert f"@post('{login_path}')" in response.text
-            assert "incorrect" in response.text.lower()
+            expected = (
+                "Wrong password. Try again!"
+                if login_path == "/app/login"
+                else "Email or password was incorrect"
+            )
+            assert expected in response.text
         assert "location" not in response.headers
         assert COOKIE not in response.cookies
         protected = client.get("/app/", follow_redirects=False)
@@ -202,6 +207,59 @@ def test_login_ignores_next_query_parameter(
                 )
                 assert response.status_code == 303
                 assert response.headers["location"] == destination
+
+
+@pytest.mark.parametrize(
+    ("login_path", "destination"), [("/login", "/"), ("/app/login", "/app/")]
+)
+@pytest.mark.parametrize("datastar", [False, True])
+@pytest.mark.parametrize(
+    ("password", "incorrect"),
+    [(" secret ", "secret"), ("  ", ""), ("secret", " secret ")],
+)
+def test_login_preserves_password_whitespace(
+    tmp_path: Path,
+    login_path: str,
+    destination: str,
+    datastar: bool,
+    password: str,
+    incorrect: str,
+) -> None:
+    app = create_app(Settings(collection_path=tmp_path / "c.anki2", password=password))
+    with TestClient(app) as client:
+        headers = {"Datastar-Request": "true"} if datastar else {}
+        payload = (
+            {"json": {"password": incorrect}}
+            if datastar
+            else {"data": {"password": incorrect}}
+        )
+        rejected = client.post(
+            login_path, headers=headers, follow_redirects=False, **payload
+        )
+        assert rejected.status_code == (200 if datastar else 401)
+        assert "location" not in rejected.headers
+        assert "window.location" not in rejected.text
+        assert COOKIE not in rejected.cookies
+        assert COOKIE not in client.cookies
+
+        payload = (
+            {"json": {"password": password}}
+            if datastar
+            else {"data": {"password": password}}
+        )
+        accepted = client.post(
+            login_path, headers=headers, follow_redirects=False, **payload
+        )
+        if datastar:
+            assert accepted.status_code == 200
+            assert accepted.headers["content-type"].startswith("text/event-stream")
+            assert f"window.location = '{destination}'" in accepted.text
+            assert "location" not in accepted.headers
+        else:
+            assert accepted.status_code == 303
+            assert accepted.headers["location"] == destination
+        assert accepted.cookies.get(COOKIE) == auth_token(password)
+        assert client.get("/app/", follow_redirects=False).status_code == 200
 
 
 @pytest.mark.parametrize("cookie_state", ["missing", "invalid"])

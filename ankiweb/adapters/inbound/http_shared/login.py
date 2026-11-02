@@ -1,7 +1,7 @@
 """HTTP login helpers shared by the legacy `/login` and the app's `/app/login`.
 
-Both logins set the same `ankiweb_auth` cookie; only the success destination and the
-failed-form page differ, so those are parameters.
+Both logins set the same `ankiweb_auth` cookie; failure responses may be supplied
+by the caller to distinguish app errors from the legacy login.
 """
 
 from __future__ import annotations
@@ -74,13 +74,20 @@ async def _datastar_login_password(request: Request, payload) -> str:
 
 
 async def datastar_login(
-    request: Request, payload, settings: Settings, destination: str
+    request: Request,
+    payload,
+    settings: Settings,
+    destination: str,
+    *,
+    render_password_failure: Callable[[str], Response] | None = None,
 ):
     pwd_str = await _datastar_login_password(request, payload)
     if settings.password and password_ok(pwd_str, settings.password):
         return set_login_cookie(
             redirect_response(destination), settings.password, request
         )
+    if render_password_failure is not None:
+        return render_password_failure(pwd_str)
     return error_response(wrong_password_text())
 
 
@@ -88,7 +95,9 @@ async def form_login(
     request: Request,
     settings: Settings,
     destination: str,
-    render_failure: Callable[[], Response],
+    render_failure: Callable[[], Response] | None = None,
+    *,
+    render_password_failure: Callable[[str], Response] | None = None,
 ):
     form = await request.form()
     pwd = form.get("password", "")
@@ -99,4 +108,8 @@ async def form_login(
             settings.password,
             request,
         )
+    if render_password_failure is not None:
+        return render_password_failure(pwd_str)
+    if render_failure is None:
+        raise TypeError("A failure renderer is required")
     return render_failure()
