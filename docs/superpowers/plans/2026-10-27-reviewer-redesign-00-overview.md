@@ -12,7 +12,7 @@ Dieses Dokument = Index, Entscheidungen, Abhängigkeiten. Details je Schritt in 
 | 5 | [05-pwa-bootstrap](2026-10-27-reviewer-redesign-05-pwa-bootstrap.md) | Einbindung aller Views, Manifest/SW auf `/app/`, Navigation, Doku |
 | 6 | [06-i18n](2026-10-27-reviewer-redesign-06-i18n.md) | Mehrsprachigkeit: Anki-Katalog plus kleiner eigener Katalog, `<html lang/dir>`, RTL, lokalisiertes Manifest |
 | 7 | [07-new-deck](2026-10-29-reviewer-redesign-07-new-deck.md) | Stapel anlegen: Name und Emoji (Suffix ` · 🧬` im Deck-Namen), `POST /app/decks`, Bottom-Sheet mit daisyUI; stellt `split_emoji` aus Plan 2 von Präfix auf Suffix um |
-| 10 | [10-app-login](2026-11-02-reviewer-redesign-10-app-login.md) | Noch nicht implementiert: Neo-Pop-Login unter `/app/login`, gemeinsames Auth-Cookie mit `/login`, nach Login immer `/app/` |
+| 10 | [10-app-login](2026-11-02-reviewer-redesign-10-app-login.md) | Neo-Pop-Login unter `/app/login`, gemeinsames Auth-Cookie mit `/login`, nach Login immer `/app/`; ersetzt abweichende Login-Ziele in Plan 1 und 5 |
 
 ## Festgelegte Entscheidungen
 
@@ -34,7 +34,7 @@ Begriffe: [`CONTEXT.md`](../../../CONTEXT.md) (Deck, Deck-Liste, Hinzugefügte K
 - Neue Inbound-Adapter unter `ankiweb/adapters/inbound/http_app/` (neues Paket). Logik ohne FastAPI-Typen in `ankiweb/core/app_client/`.
 - Collection-Zugriff nur über `service.run(fn)` (serialisiert, Executor).
 - Router-Reihenfolge: spezifische Routen **vor** Media-Catch-All `/{path}` (`app.py`, `create_app`).
-- Auth: `_auth_guard` schützt bei gesetztem Passwort alle Routen außer expliziten Ausnahmen; aktuell führt fehlende oder ungültige Authentifizierung zu `/login`. **Geplant in Plan 10:** `/app/login` wird neben den in früheren Plänen vorgesehenen öffentlichen Manifest- und SW-Routen ebenfalls öffentlich; nicht authentifizierte Anfragen an geschützte `/app/*`-Routen führen dorthin. Beide Login-Seiten nutzen dasselbe Auth-Cookie und erkennen gegenseitige Anmeldungen; nach erfolgreichem `/app/login` geht es immer zu `/app/`, ohne Rücksprungziel. Plan 10 ersetzt die Redirect-Erwartungen für `/app/*` aus Plan 1 und 5; für Routen außerhalb von `/app/*` bleibt das Verhalten unverändert.
+- Auth: `_auth_guard` schützt bei gesetztem Passwort alle Routen außer expliziten Ausnahmen. Plan 10 hat Vorrang vor den Redirect-Erwartungen für `/app/*` aus Plan 1 und 5: Geschützte App-Anfragen führen zu `/app/login`, andere geschützte Pfade zu `/login`. `/app/login` und die bereits implementierten PWA-Routen `/app/manifest.webmanifest`, `/app/service-worker.js` und `/app/offline` sind öffentlich. Beide Login-Seiten nutzen dasselbe Auth-Cookie; nach erfolgreichem `/app/login` geht es immer zu `/app/`, ohne Rücksprungziel. Bei abgewiesenen Datastar-Anfragen erfolgt eine vollständige Navigation; ein POST wird nicht ausgeführt oder nach Login wiederholt, ungespeicherte Entwürfe können verloren gehen.
 - Ruff (preview, "correctness/suspicious/complexity/performance/style/security"), complexipy max 15, ty. Zeilenlänge 88.
 - Datastar-Regeln (Skill): IDs auf allen gemorphten Elementen; `data-signals` im Scope jedes `data-init`/`data-on:*`; kein Block-Syntax (`if {}`) in Expressions; kein `localStorage` als State; `@post` für State-ändernde Calls; Fat-Morph.
 

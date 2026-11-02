@@ -146,7 +146,7 @@ All settings have safe localhost defaults; override via environment variables:
 | `ANKIWEB_AC_KEY` | *(none)* | AnkiConnect `apiKey` (overrides `ankiconnect.json`). |
 | `ANKIWEB_IMPORT_TMP_DIR` | `<collection dir>/import-tmp` | Where uploaded import/image files are staged before the backend reads them. |
 | `ANKIWEB_LANG` | *(empty → English)* | UI language, an Anki locale code (e.g. `zh-CN`, `ja`, `de`, `fr`). Chosen at startup — there is no in-app switcher; changing it means changing this var and restarting. See **Language** below. |
-| `ANKIWEB_PASSWORD` | *(empty → no password)* | If set, the web UI requires this password (a `/login` page sets a session cookie). Empty = open, the default. The AnkiConnect API keeps its own `ANKIWEB_AC_KEY`. |
+| `ANKIWEB_PASSWORD` | *(empty → no password)* | If set, the web UI requires this password (`/login` for the existing client, `/app/login` for the mobile app). Empty = open, the default. The AnkiConnect API keeps its own `ANKIWEB_AC_KEY`. |
 | `ANKIWEB_SOURCE_URL` | *(empty)* | AGPL §13 Corresponding-Source location for this deployment, shown on the `/about` page (only relevant if you run it as a public network service). |
 
 **`ankiconnect.json`** (optional) lives next to the collection file and uses AnkiConnect's
@@ -194,10 +194,21 @@ password, set `ANKIWEB_PASSWORD`:
 ANKIWEB_PASSWORD=mysecret uv run python -m ankiweb
 ```
 
-Visitors then get a `/login` page; the correct password sets an httponly session cookie and
-unlocks the UI (and the `/ws` bridge). `/logout` clears it. This gates the **web app only**;
-the AnkiConnect HTTP API (port 8765) is controlled separately by `ANKIWEB_AC_KEY`. It's a
-light gate for LAN use, not a hardened auth system — serve over HTTPS if it matters.
+With a password configured, protected routes in the existing client lead to `/login`;
+protected `/app` and `/app/…` routes lead to `/app/login`. Both logins set the same
+`ankiweb_auth` cookie, unlocking both clients and the `/ws` bridge. The cookie is
+HTTP-only, SameSite=Lax, and Secure when the request uses HTTPS. `/logout` clears it
+and returns to `/login`. App login always opens `/app/`, not the original URL.
+
+If authentication expires during an app Datastar request, the browser navigates to
+`/app/login`. A rejected POST does not run or retry after login, and unsaved drafts
+may be lost. The app manifest, service worker and offline page
+(`/app/manifest.webmanifest`, `/app/service-worker.js`, `/app/offline`) and
+`/shell/static/*` remain public without a cookie.
+
+This gates the **web app only**; the AnkiConnect HTTP API (port 8765) is controlled
+separately by `ANKIWEB_AC_KEY`. It's a light gate for LAN use, not a hardened auth
+system — serve over HTTPS if it matters.
 
 ### API docs (Swagger)
 

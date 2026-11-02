@@ -22,6 +22,7 @@ source, not executed. *Not verified* = no evidence.
 | `decks-mockup.html` | Static HTML | Deck list with search, empty state, per-deck Learn / Edit / Add links and a New deck sheet (name and emoji picker) |
 | `mockup.html` | Static HTML | Reviewer (card stage, ease tiles, streak, actions sheet, completion feedback) |
 | `editor-mockup.html` | Static HTML | Quick-add wizard (Front, Back, Preview), card pile with count starburst, browse-and-edit list |
+| `login-mockup.html` | Static HTML | App login with idle, error, success and dark states |
 | `card-render.js` | Script | Shared card model and renderer used by the reviewer and the editor preview |
 | `study-api-spike.py` | Archived Python | Study JSON API spike. **Not imported anywhere.** Per RESEARCH-independent-client.md the router was removed from the server code after its test |
 | `DESIGN.md` | Doc | Design rationale and porting blueprint |
@@ -29,8 +30,9 @@ source, not executed. *Not verified* = no evidence.
 | `RESEARCH-enrichment.md`, `RESEARCH-independent-client.md`, `RESEARCH-pwa.md`, `RESEARCH-fastpwa.md` | Docs | Research notes |
 | `screenshot-*.webp`, `screenshot-editor-*.png` | Images | 9 historical screenshots from before the deck list and the former mode switch were added; they also predate the current editor header. **Not regenerated** |
 | `screenshot-app-decks.png`, `screenshot-app-review.png`, `screenshot-app-add.png` | Images | Current app views captured on localhost at 390 × 844 |
+| `screenshot-login-1-idle.png`, `screenshot-login-2-error.png`, `screenshot-login-3-dark.png`, `screenshot-login-4-success.png` | Images | Login mockup states |
 
-All three mockups are standalone: no build step, no external assets, no network access.
+All four mockups are standalone: no build step, no external assets, no network access.
 
 ### Server files for the PWA
 
@@ -154,6 +156,7 @@ separate from the existing client and uses the following routes. *Read.*
 
 | Route | Purpose |
 |---|---|
+| `GET`, `POST /app/login` | App login; successful authentication opens `/app/`, without returning to the original URL |
 | `GET /app/` | Deck list; Learn links to `/app/review?deck=<id>`, Edit / Add to `/app/add?deck=<id>`. The empty-list action opens the deck-creation dialog |
 | `GET /app/review?deck=<id>` | Review for a deck; Back and completion return to `/app/` |
 | `POST /app/review/answer`, `/app/review/action/*`, `/app/review/due` | Answer and card actions |
@@ -182,8 +185,23 @@ scheduler; the summary's tally is session state. *Read.*
 ## 5. Manifest fields and auth
 
 The existing manifest and the new manifest are distinct installs. Both manifests,
-both workers, `/app/offline`, and `/shell/static/` assets are public even when a
-password is configured; `/app/` and its study routes remain protected. *Read.*
+both workers, `/app/offline`, `/shell/static/*` and both login pages are public even
+when a password is configured; `/app/` and its study routes remain protected. *Read.*
+
+The app and existing client use `/app/login` and `/login` respectively and share the
+`ankiweb_auth` cookie. It is HTTP-only, SameSite=Lax and Secure for HTTPS; `app_sid`
+is separate session state, not authentication. `/logout` clears the shared cookie
+and redirects to `/login`. App login always opens `/app/`, without a return URL.
+On an unauthenticated Datastar app request, an SSE redirect causes full navigation
+to `/app/login`. A rejected POST does not reach its handler and is not retried after
+login; unsaved drafts can be lost. Normal protected app requests receive a 303.
+
+`GET /app/login` displays the form only when a password is configured and the
+cookie is absent or invalid; otherwise it redirects to `/app/`. A successful form
+POST sets the shared cookie and returns a 303; an incorrect password returns 401
+with a visible localized error. Datastar POSTs return an SSE redirect on success
+or an error signal on failure. The app router's origin guard also applies to login
+POSTs. Legacy `/login` retains its existing contracts and success destination `/`.
 
 | Field | Existing `/manifest.webmanifest` | New `/app/manifest.webmanifest` |
 |---|---|---|
@@ -206,7 +224,7 @@ could not control `/app/`. *Read.*
 
 | Property | Legacy worker | `/app/` worker |
 |---|---|---|
-| Cache | `ankiweb-shell-v1` | `ankiweb-app-` plus hash of deployed app CSS and JS |
+| Cache | `ankiweb-shell-v1` | `ankiweb-app-` plus hash of deployed app CSS, JS and rendered offline page |
 | Cache-first | Same-origin `GET /shell/static/*` | Same-origin `GET /shell/static/app-client.css` and `/shell/static/app/*` |
 | Navigation | Normal network path | `/app/` navigations use network; a network failure returns the precached public `/app/offline` page |
 | Install | `skipWaiting()` | Precache offline page and its CSS, then `skipWaiting()` |

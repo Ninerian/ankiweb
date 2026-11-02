@@ -72,6 +72,12 @@ replacing the existing reviewer's Jinja templates. `/app/` lists decks;
 The existing client and `/add` remain available. The app uses Jinja, Datastar and
 its own app assets; it does not depend on the legacy `/ws` reviewer bridge.
 
+When password protection is enabled, the app uses `/app/login`; the existing client
+uses `/login`. Both share the same authentication cookie. App login always opens
+`/app/`, not the previously requested URL. If authentication expires during a
+Datastar request, full navigation to login can discard unsaved drafts; a rejected
+POST is neither executed nor retried after login.
+
 The app reviewer uses the Anki scheduler directly and saves each answer as it is
 rated. The queue is **not filtered by note type**: foreign note types remain
 reachable and are labelled, rather than consuming daily queue slots invisibly.

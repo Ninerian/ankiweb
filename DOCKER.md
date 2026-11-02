@@ -33,7 +33,7 @@ also editing `docker-compose.yml`:
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `ANKIWEB_PASSWORD` | *(empty → no password)* | If set, the web UI requires this password (a `/login` page sets a session cookie). |
+| `ANKIWEB_PASSWORD` | *(empty → no password)* | Protects the web UI; `/login` and `/app/login` share an authentication cookie. See [Password](README.md#password). |
 | `ANKIWEB_AC_KEY` | *(none)* | AnkiConnect `apiKey` — required by AnkiConnect clients if set. |
 | `ANKIWEB_ALLOWED_HOSTS` | *(empty)* | Comma-separated extra `Host` header values accepted past the DNS-rebinding guard. `*` disables the check (only on a trusted network). |
 | `ANKIWEB_LANG` | *(empty → English)* | UI language, an Anki locale code (e.g. `zh-CN`, `ja`, `de`, `fr`). |
