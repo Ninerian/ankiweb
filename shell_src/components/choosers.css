@@ -4,134 +4,85 @@
  */
 
 .item-chooser-modal .modal-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    border-bottom: 1px solid var(--color-base-300);
-    background: var(--color-base-100);
+    @apply flex items-center gap-3 border-b border-b-base-300 bg-base-100;
 }
 
-.item-chooser-modal .modal-header .modal-title {
-    margin: 0;
-    font-weight: 600;
-    color: var(--color-base-content);
-}
 
 .item-chooser-modal .modal-body {
-    display: flex;
-    flex-direction: column;
-    max-height: 80vh;
+    @apply flex max-h-[80vh] flex-col;
 }
 
 .item-chooser-modal .search-container {
-    padding: 1rem 0;
+    @apply py-4;
 }
 
 .item-chooser-modal .search-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    background: var(--color-base-100);
-    border: 1px solid var(--color-base-300);
+    @apply relative flex items-center border border-solid border-base-300 bg-base-100;
     border-radius: var(--radius-field, 0.375rem);
     transition: border-color 0.2s ease;
 }
 
 .item-chooser-modal .search-input-wrapper:focus-within {
-    border-color: var(--color-primary);
+    @apply border-primary;
 }
 
 .item-chooser-modal .search-icon {
-    padding: 0.5rem 0.75rem;
-    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
-    pointer-events: none;
-    display: inline-flex;
-    align-items: center;
+    @apply pointer-events-none inline-flex items-center px-3 py-2 text-base-content/60;
 }
 
 .item-chooser-modal .search-input {
-    flex: 1;
-    padding: 0.5rem 0.75rem 0.5rem 0;
-    border: none;
-    background: transparent;
-    color: var(--color-base-content);
-    font-size: 0.9rem;
-    outline: none;
+    @apply flex-1 border-0 bg-transparent py-2 pr-3 pl-0 text-[0.9rem] text-base-content outline-none;
 }
 
 .item-chooser-modal .search-input::placeholder {
-    color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+    @apply text-base-content/50;
 }
 
 .item-chooser-modal .clear-search {
-    padding: 0.25rem;
-    margin-right: 0.5rem;
-    border: none;
-    background: transparent;
-    color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
-    border-radius: 0.25rem;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    @apply mr-2 inline-flex cursor-pointer items-center justify-center rounded-[0.25rem] border-0 bg-transparent p-1 text-base-content/60;
 }
 
 .item-chooser-modal .clear-search:hover {
-    background: var(--color-base-200);
-    color: var(--color-base-content);
+    @apply bg-base-200 text-base-content;
 }
 
 .item-chooser-modal .item-grid {
-    display: grid;
+    @apply grid gap-4 py-2;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
-    padding: 0.5rem 0;
     padding-inline-end: 0.5em;
-    overflow-y: auto;
+    @apply overflow-y-auto;
 }
 
 .item-card {
+    @apply appearance-none cursor-pointer border border-solid border-base-300;
     -webkit-appearance: none;
-    appearance: none;
-    cursor: pointer;
-    border: 1px solid var(--color-base-300);
     border-bottom-color: rgba(0, 0, 0, 0.15);
-    border-top-left-radius: var(--radius-field, 4px);
-    border-bottom-left-radius: var(--radius-field, 4px);
-    border-top-right-radius: var(--radius-field, 4px);
-    border-bottom-right-radius: var(--radius-field, 4px);
-    padding: 1rem;
-    text-align: start;
-    background: var(--color-base-100);
-    color: var(--color-base-content);
+    border-radius: var(--radius-field, 4px);
+    @apply bg-base-100 p-4 text-start text-base-content;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .item-card:hover {
-    background: var(--color-base-200);
-    border-color: var(--color-base-300);
+    @apply border-base-300 bg-base-200;
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .item-card:active {
     box-shadow: inset 0 calc(var(--buttons-size, 10px) / 15) calc(var(--buttons-size, 10px) / 5) rgba(0, 0, 0, 0.35);
-    border-color: var(--color-base-300);
+    @apply border-base-300;
     transform: translateY(0);
 }
 
 .item-card.selected {
-    border-color: var(--color-primary);
+    @apply border-primary;
     outline: 2px solid var(--color-primary);
     outline-offset: 1px;
 }
 
 .item-title {
-    margin: 0 0 0.25rem 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: inherit;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @apply mb-1 overflow-hidden text-ellipsis whitespace-nowrap text-[1rem] font-semibold text-inherit;
+    margin-top: 0;
+    margin-right: 0;
+    margin-left: 0;
 }

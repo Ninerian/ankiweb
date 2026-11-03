@@ -11,7 +11,7 @@ from anki.scheduler.v3 import Scheduler
 from anki.scheduler_pb2 import CardAnswer
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from httpx import Response
+from httpx2 import Response
 from starlette.websockets import WebSocketDisconnect
 
 from ankiweb.core.app_client.vocab import VocabFields, escape_field

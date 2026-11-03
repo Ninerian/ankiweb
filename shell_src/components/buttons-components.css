@@ -15,17 +15,14 @@
    Icon & SVG
    ========================================================================== */
 svg.anki-icon {
-  display: inline-block;
-  vertical-align: middle;
-  fill: currentColor;
+  @apply inline-block align-middle fill-current;
 }
 
 /* ==========================================================================
    IconConstrain
    ========================================================================== */
 span.icon-constrain {
-  display: inline-block;
-  position: relative;
+  @apply relative inline-block;
   vertical-align: var(--icon-align, middle);
 
   /* constrain icon */
@@ -35,7 +32,7 @@ span.icon-constrain {
 
 span.icon-constrain > svg,
 span.icon-constrain > img {
-  position: absolute;
+  @apply absolute fill-current;
   width: var(--icon-size, 100%);
   height: var(--icon-size, 100%);
   top: calc((100% - var(--icon-size, 100%)) / 2);
@@ -43,7 +40,6 @@ span.icon-constrain > img {
   left: calc((100% - var(--icon-size, 100%)) / 2);
   right: calc((100% - var(--icon-size, 100%)) / 2);
 
-  fill: currentColor;
   vertical-align: unset;
 }
 
@@ -56,62 +52,47 @@ span.icon-constrain.flip-x > img {
    DropdownItem
    ========================================================================== */
 button.dropdown-item {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  padding: 0.25rem 1rem;
-  white-space: nowrap;
+  @apply flex w-full cursor-pointer items-center justify-start whitespace-nowrap px-4 py-1 text-left text-base-content;
   font-size: var(--dropdown-font-size, small);
 
-  background: none;
+  @apply rounded-none border-0 bg-transparent;
+  background-image: none;
   box-shadow: none !important;
-  border: none;
-  border-radius: 0;
-  color: var(--fg);
-  cursor: pointer;
-  text-align: left;
 }
 
 button.dropdown-item:hover {
-  border: none;
+  @apply border-0;
 }
 
 button.dropdown-item:hover:not([disabled]) {
-  background: var(--highlight-bg);
-  color: var(--highlight-fg);
+  @apply bg-primary text-primary-content;
 }
 
 button.dropdown-item.focus {
-  background: var(--highlight-bg);
-  color: var(--highlight-fg);
+  @apply bg-primary text-primary-content;
 }
 
 button.dropdown-item[disabled] {
-  cursor: default;
-  color: var(--fg-disabled);
-  background: none;
-  opacity: 0.5;
+  @apply cursor-default bg-transparent text-base-content/40 opacity-50;
+  background-image: none;
 }
 
 /* selection highlight */
 button.dropdown-item:not(.rtl) {
-  border-left: 3px solid transparent;
+  @apply border-l-[3px] border-solid border-l-transparent;
 }
 button.dropdown-item.rtl {
-  border-right: 3px solid transparent;
+  @apply border-r-[3px] border-solid border-r-transparent text-right;
   direction: rtl;
-  text-align: right;
 }
 button.dropdown-item.active {
-  background: var(--highlight-bg);
-  color: var(--highlight-fg);
+  @apply bg-primary text-primary-content;
 }
 button.dropdown-item.active:not(.rtl) {
-  border-left-color: var(--border-focus);
+  @apply border-l-primary;
 }
 button.dropdown-item.active.rtl {
-  border-right-color: var(--border-focus);
+  @apply border-r-primary;
 }
 
 /* ==========================================================================
@@ -119,21 +100,12 @@ button.dropdown-item.active.rtl {
    ========================================================================== */
 button.badge:not([class*="badge-"]) {
   color: var(--badge-color, inherit);
-  border: none;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  @apply inline-flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 shadow-none;
 }
 
 button.badge:not([class*="badge-"]):hover,
 button.badge:not([class*="badge-"]):active {
-  border: none;
-  background: transparent;
-  box-shadow: none;
+  @apply border-0 bg-transparent shadow-none;
 }
 
 
@@ -141,16 +113,11 @@ button.badge:not([class*="badge-"]):active {
    FloatingArrow
    ========================================================================== */
 div.arrow {
-  background-color: var(--canvas-elevated, var(--color-base-100));
-  width: 10px;
-  height: 10px;
-  z-index: 60;
+  @apply z-[60] box-border size-[10px] bg-base-100;
 
   /* outer border using daisyUI theme token */
   border: 1.5px solid var(--color-primary);
 
   /* Rotate the box to indicate the different directions */
-  border-right: none;
-  border-bottom: none;
-  box-sizing: border-box;
+  @apply border-r-0 border-b-0;
 }

@@ -1,0 +1,30 @@
+<details id="sidebar-decks-section" open>
+  <summary>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" class="size-4"><path d="M12 3l8 4.5l-8 4.5l-8 -4.5z"></path><path d="M4 12l8 4.5l8 -4.5"></path><path d="M4 16.5l8 4.5l8 -4.5"></path></svg>
+    <span>{{ tr.browsing_sidebar_decks() }}</span>
+  </summary>
+  <ul>
+    {% macro deck_nodes(nodes) %}
+      {% for item in nodes %}
+        <li class="min-w-0">
+          {% if item.children %}
+            <details{% if item.expanded %} open{% endif %}>
+              <summary>
+                <a class="side-item{% if item.selected %} menu-active{% endif %}"{% if item.selected %} aria-current="true"{% endif %} title="{{ item.full_name }}" href="/browse?{{ {'q': item.query} | urlencode }}">{{ item.name }}</a>
+              </summary>
+              <ul>{{ deck_nodes(item.children) }}</ul>
+            </details>
+          {% else %}
+            <a
+              class="side-item{% if item.selected %} menu-active{% endif %}"
+              {% if item.selected %}aria-current="true"{% endif %}
+              title="{{ item.full_name }}"
+              href="/browse?{{ {'q': item.query} | urlencode }}"
+            >{{ item.name }}</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    {% endmacro %}
+    {{ deck_nodes(decks) }}
+  </ul>
+</details>

@@ -26,7 +26,7 @@ function ensureMathjaxModal(): HTMLDialogElement {
                         <input class="toggle toggle-primary mj-block-switch" type="checkbox" id="mj-block-toggle">
                         <label class="text-sm cursor-pointer" for="mj-block-toggle">Display as Block equation (\\[ ... \\])</label>
                     </div>
-                    <div class="border border-base-300 rounded-box p-2 bg-base-200 mj-preview-box" style="min-height: 48px; display: flex; align-items: center; justify-content: center;">
+                    <div class="border border-base-300 rounded-box p-2 bg-base-200 mj-preview-box min-h-[48px] flex items-center justify-center">
                         <div class="mj-preview-content"></div>
                     </div>
                 </div>
@@ -102,8 +102,6 @@ export class AnkiMathjaxElement extends HTMLElement {
         const res = renderMathjaxSvg(tex, block);
 
         this.style.display = block ? "block" : "inline-block";
-        this.style.cursor = "pointer";
-        this.style.userSelect = "none";
         this.title = "Click to edit MathJax equation";
         this.classList.toggle("anki-mathjax-block", block);
 

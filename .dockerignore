@@ -21,3 +21,4 @@ data/
 ankiweb/web_assets/
 ankiweb/shell/static/*
 !ankiweb/shell/static/icons/
+ankiweb/shell/dev-static/

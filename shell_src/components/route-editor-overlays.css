@@ -2,10 +2,7 @@
 
 /* Plain text CodeMirror host */
 .plain-text-input {
-    border: 1px solid var(--color-base-300);
-    border-radius: var(--radius-field, 0.25rem);
-    background-color: var(--color-base-100);
-    min-height: 120px;
+    @apply border border-solid border-base-300 rounded-field bg-base-100 min-h-[120px];
 }
 
 .editor-field.has-plain-text .rich-text-input {
@@ -18,38 +15,32 @@
 
 /* MathJax element presentation */
 anki-mathjax {
-    display: inline-block;
-    vertical-align: middle;
-    margin: 0 2px;
-    padding: 1px 4px;
-    border-radius: var(--radius-selector, 0.25rem);
-    background-color: color-mix(in oklab, var(--color-primary) 10%, transparent);
-    border: 1px dashed color-mix(in oklab, var(--color-primary) 40%, transparent);
-    cursor: pointer;
+    @apply inline-block align-middle mx-[2px] my-0 px-[4px] py-[1px] rounded-selector bg-primary/10 border border-dashed border-primary/40 cursor-pointer select-none;
     transition: background-color 0.15s, border-color 0.15s;
 }
 
 anki-mathjax:hover {
-    background-color: color-mix(in oklab, var(--color-primary) 20%, transparent);
-    border-color: var(--color-primary);
+    @apply bg-primary/20 border-primary;
 }
 anki-mathjax.anki-mathjax-block {
     display: block !important;
     margin: 6px 0;
-    text-align: center;
+    @apply text-center;
 }
 
 /* Image overlay handles */
 .ankiweb-image-overlay-layer {
-    position: absolute;
-    pointer-events: none;
-    z-index: 1050;
+    @apply absolute pointer-events-none z-[1000];
+}
+
+.ankiweb-image-frame,
+.ankiweb-image-badge {
+    @apply absolute;
 }
 
 .ankiweb-image-handle {
-    border: 1px solid #fff;
+    @apply absolute border border-solid border-white rounded-[2px];
     box-shadow: 0 0 2px rgba(0,0,0,0.5);
-    border-radius: 2px;
 }
 
 .ankiweb-image-handle:hover {

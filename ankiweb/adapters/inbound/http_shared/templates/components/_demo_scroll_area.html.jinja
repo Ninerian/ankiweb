@@ -14,7 +14,7 @@
             <button class="btn btn-sm btn-outline" id="sa-scroll-bot">Scroll to Bottom</button>
         </div>
 
-        <div style="height: 220px; border: 1px solid var(--border-subtle, #dee2e6); border-radius: 4px; position: relative;">
+        <div class="relative h-[220px] rounded-[4px] border border-solid border-base-300">
             {% call scroll_area(id="demo-sa-vert", height="220px", scroll_y=true, scroll_x=false) %}
                 <div class="p-3" style="line-height: 1.8;">
                     <h6>Long Content Section</h6>
@@ -39,7 +39,7 @@
         <p class="text-base-content/60 text-sm mb-3">
             Demonstrates horizontal scrollbar with start/end shadows, thumb dragging, and RTL direction support.
         </p>
-        <div style="height: 120px; border: 1px solid var(--border-subtle, #dee2e6); border-radius: 4px; position: relative;">
+        <div class="relative h-[120px] rounded-[4px] border border-solid border-base-300">
             {% call scroll_area(id="demo-sa-horiz", height="120px", scroll_x=true, scroll_y=false) %}
                 <div class="p-3 flex gap-3" style="width: 1400px;">
                     <div class="card bg-base-200 p-2 text-center" style="min-width: 180px;">Item Box 1</div>

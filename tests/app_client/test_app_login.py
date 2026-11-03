@@ -5,7 +5,7 @@ from pathlib import Path
 import anki.lang
 import pytest
 from fastapi.testclient import TestClient
-from httpx import Response
+from httpx2 import Response
 
 from ankiweb.adapters.inbound.http_shared.templating import tr_clean
 from ankiweb.app import create_app

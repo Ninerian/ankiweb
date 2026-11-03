@@ -88,21 +88,6 @@
       {{ icon(name="eraserIcon", size="sm") }}
     </button>
 
-    <details class="dropdown join-item inline-block">
-      <summary
-        class="btn btn-sm btn-ghost"
-        title="{{ tr.editing_select_remove_formatting() }}"
-        aria-label="{{ tr.editing_select_remove_formatting() }}"
-        style="padding-left: 0.25rem; padding-right: 0.25rem;"
-      >▾</summary>
-      <ul class="dropdown-content menu bg-base-100 rounded-box shadow-sm z-50 p-1 w-48 text-sm">
-        <li><button type="button" onclick="this.closest('details')?.removeAttribute('open'); window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat', 'bold')">Remove Bold</button></li>
-        <li><button type="button" onclick="this.closest('details')?.removeAttribute('open'); window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat', 'italic')">Remove Italic</button></li>
-        <li><button type="button" onclick="this.closest('details')?.removeAttribute('open'); window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat', 'underline')">Remove Underline</button></li>
-        <li><button type="button" onclick="this.closest('details')?.removeAttribute('open'); window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat', 'strikethrough')">Remove Strikethrough</button></li>
-        <li><button type="button" onclick="this.closest('details')?.removeAttribute('open'); window.AnkiwebEditor && window.AnkiwebEditor.exec('removeFormat')">Clear All Formatting</button></li>
-      </ul>
-    </details>
   {% endcall %}
 
   {# Font Family and Size #}

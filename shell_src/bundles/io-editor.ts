@@ -1018,12 +1018,10 @@ export class IoEditor {
         input.type = "text";
         input.value = textShape.text;
         input.className = "io-text-editor-input";
-        input.style.position = "absolute";
         input.style.left = `${textShape.left * this.imgWidth}px`;
         input.style.top = `${textShape.top * this.imgHeight}px`;
         input.style.fontFamily = TEXT_FONT_FAMILY;
         input.style.fontSize = `${20 * (textShape.scale || 1)}px`;
-        input.style.zIndex = "1000";
 
         const finish = () => {
             textShape.text = input.value || "Text";
@@ -1272,7 +1270,6 @@ export class IoEditor {
                 rotCircle.setAttribute("cy", `${rotY}`);
                 rotCircle.setAttribute("r", "5");
                 rotCircle.setAttribute("class", "io-handle io-handle-rot");
-                rotCircle.style.cursor = "grab";
 
                 rotCircle.onpointerdown = (e: PointerEvent) => {
                     e.stopPropagation();

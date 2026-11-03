@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from httpx import Response
+from httpx2 import Response
 
 from ankiweb.app import create_app
 from ankiweb.core.auth import COOKIE, auth_token
@@ -228,13 +228,12 @@ def test_login_preserves_password_whitespace(
     app = create_app(Settings(collection_path=tmp_path / "c.anki2", password=password))
     with TestClient(app) as client:
         headers = {"Datastar-Request": "true"} if datastar else {}
-        payload = (
-            {"json": {"password": incorrect}}
-            if datastar
-            else {"data": {"password": incorrect}}
-        )
         rejected = client.post(
-            login_path, headers=headers, follow_redirects=False, **payload
+            login_path,
+            headers=headers,
+            data=None if datastar else {"password": incorrect},
+            json={"password": incorrect} if datastar else None,
+            follow_redirects=False,
         )
         assert rejected.status_code == (200 if datastar else 401)
         assert "location" not in rejected.headers
@@ -242,13 +241,12 @@ def test_login_preserves_password_whitespace(
         assert COOKIE not in rejected.cookies
         assert COOKIE not in client.cookies
 
-        payload = (
-            {"json": {"password": password}}
-            if datastar
-            else {"data": {"password": password}}
-        )
         accepted = client.post(
-            login_path, headers=headers, follow_redirects=False, **payload
+            login_path,
+            headers=headers,
+            data=None if datastar else {"password": password},
+            json={"password": password} if datastar else None,
+            follow_redirects=False,
         )
         if datastar:
             assert accepted.status_code == 200

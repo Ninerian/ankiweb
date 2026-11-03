@@ -1,20 +1,11 @@
 /* Scoped styles for AnkiWeb Tag Editor, ported from upstream Svelte TagEditor.svelte */
 
 .tag-editor-root {
-  position: relative;
-  width: 100%;
+  @apply relative w-full;
 }
 
 .tag-editor-root .tag-editor {
-  display: flex;
-  flex-grow: 1;
-  flex-flow: row wrap;
-  align-items: center;
-  background: var(--color-base-100);
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-field, 0.25rem);
-  padding: 4px 6px;
-  min-height: 38px;
+  @apply flex grow flex-row flex-wrap items-center bg-base-100 bg-none border border-solid border-base-300 rounded-field px-[6px] py-[4px] min-h-[38px];
 }
 
 .tag-editor-root .tag-editor:focus-within {
@@ -23,85 +14,61 @@
 }
 
 .tag-editor-root .tag-options-button {
-  display: inline-flex;
-  align-items: center;
-  margin-right: 0.5rem;
+  @apply inline-flex items-center mr-2;
 }
 
 .tag-editor-root .tag-add-button:not(.hidden) {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  line-height: 1;
-  user-select: none;
+  @apply inline-flex items-center cursor-pointer leading-none select-none;
 }
 
 .tag-editor-root .tag-add-button .tag-icon-add-hover {
-  display: none;
+  @apply hidden;
 }
 
 .tag-editor-root .tag-add-button:hover .tag-icon-add {
-  display: none;
+  @apply hidden;
 }
 
 .tag-editor-root .tag-add-button:hover .tag-icon-add-hover {
-  display: inline-block;
+  @apply inline-block;
 }
 
 .tag-editor-root .tag-add-button svg {
-  cursor: pointer;
-  fill: currentColor;
-  opacity: 0.6;
+  @apply cursor-pointer fill-current opacity-60;
 }
 
 .tag-editor-root .tag-add-button svg:hover {
-  opacity: 1;
+  @apply opacity-100;
 }
 
 .tag-editor-root .tag-add-button .tags-info {
-  margin-left: 0.35rem;
-  font-size: 0.85rem;
-  cursor: pointer;
+  @apply ml-[0.35rem] text-[0.85rem] cursor-pointer;
 }
 
 .tag-editor-root .tags-chips-container {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
+  @apply inline-flex flex-wrap items-center gap-[4px];
 }
 
 .tag-editor-root .tag-relative {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+  @apply relative inline-flex items-center;
 }
 
 .tag-editor-root .tag-chip {
   -webkit-appearance: none;
-  cursor: pointer;
+  @apply cursor-pointer rounded-selector bg-base-200 bg-none text-base-content align-middle text-[0.85rem] px-[6px] py-[2px] inline-flex items-center select-none;
   border: 1px solid var(--color-base-300) !important;
-  border-radius: var(--radius-selector, 0.25rem);
-  background: var(--color-base-200);
-  color: var(--color-base-content);
-  vertical-align: middle;
-  font-size: 0.85rem;
-  padding: 2px 6px;
-  display: inline-flex;
-  align-items: center;
   line-height: 1.3;
-  user-select: none;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .tag-editor-root .tag-chip:hover {
-  background: var(--color-base-300);
+  @apply bg-base-300;
 }
 
 .tag-editor-root .tag-chip.selected {
   box-shadow: 0 0 0 2px var(--color-primary);
   border-color: var(--color-primary) !important;
-  background: color-mix(in oklab, var(--color-primary) 15%, transparent);
+  @apply bg-primary/15;
 }
 .tag-editor-root .tag-chip.flashing {
   animation: ankiweb-tag-flash 0.3s linear;
@@ -114,75 +81,45 @@
 }
 
 .tag-editor-root .tag-chip .tag-delete-btn {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 4px;
-  cursor: pointer;
-  opacity: 0.5;
+  @apply inline-flex items-center ml-[4px] cursor-pointer opacity-50;
 }
 
 .tag-editor-root .tag-chip .tag-delete-btn:hover {
-  opacity: 1;
+  @apply opacity-100;
 }
 
 .tag-editor-root .tag-input-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+  @apply relative inline-flex items-center;
 }
 
 .tag-editor-root .tag-input {
-  color: var(--color-base-content);
-  background: transparent;
+  @apply text-base-content bg-transparent bg-none;
   font: inherit;
-  font-size: 0.85rem;
+  @apply text-[0.85rem];
   outline: none;
   border: 1px solid transparent !important;
-  margin: 0;
-  padding: 2px 4px;
-  min-width: 60px;
+  @apply m-0 px-[4px] py-[2px] min-w-[60px];
 }
 
 .tag-editor-root .tag-spacer {
-  cursor: text;
-  flex-grow: 1;
-  align-self: stretch;
-  min-width: 30px;
-  height: 100%;
+  @apply cursor-text grow self-stretch min-w-[30px] h-full;
 }
 
 .tag-editor-root .autocomplete-menu {
-  position: absolute;
-  z-index: 1050;
-  background: var(--color-base-100);
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-box, 0.5rem);
+  @apply absolute z-[1050] bg-base-100 bg-none border border-solid border-base-300 rounded-box;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  max-height: 200px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  width: max-content;
-  min-width: 150px;
-  max-width: 350px;
-  margin-top: 2px;
+  @apply max-h-[200px] overflow-y-auto overflow-x-hidden w-max min-w-[150px] max-w-[350px] mt-[2px];
 }
 
 .tag-editor-root .autocomplete-item {
-  padding: 4px 10px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--color-base-content);
+  @apply px-[10px] py-[4px] text-[0.85rem] cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis text-base-content;
 }
 
 .tag-editor-root .autocomplete-item:hover,
 .tag-editor-root .autocomplete-item.active {
-  background-color: var(--color-base-200);
+  @apply bg-base-200;
 }
 
 .tag-editor-root .autocomplete-item.selected {
-  background-color: var(--color-primary);
-  color: var(--color-primary-content);
+  @apply bg-primary text-primary-content;
 }

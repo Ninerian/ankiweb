@@ -117,7 +117,7 @@
 
 @source "../ankiweb/adapters/inbound/http_app";
 @source "../ankiweb/adapters/inbound/http_shared/templates/app";
-@source "../ankiweb/shell/static/app";
+@source "./app";
 /* Emit animation utilities even when their classes are added dynamically. */
 @source inline("animate-{streak-pop,streak-reset,slide-to-added,fresh-card,reveal-answer}");
 /* Emit the shared press utility before app templates consume it. */

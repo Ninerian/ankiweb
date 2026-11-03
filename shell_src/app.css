@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @plugin "daisyui" {
   themes: light --default, dark;
 }
@@ -8,18 +8,16 @@
 @source "../shell_src";
 @source not "../ankiweb/web_assets";
 @source not "../ankiweb/shell/static";
+@source not "../ankiweb/shell/dev-static";
+@source not "../ankiweb/adapters/inbound/http_shared/component_gallery.py";
+@source not "../ankiweb/adapters/inbound/http_datastar/dev_progress.py";
+@source not "../ankiweb/adapters/inbound/http_shared/templates/component_gallery.html.jinja";
+@source not "../ankiweb/adapters/inbound/http_shared/templates/components/_demo_*.html.jinja";
+@source not "../shell_src/dev";
 
 /* Global override so daisyUI .label wraps in option/setting lists */
 .label {
-  white-space: normal;
-}
-
-/* Neutralize daisyUI .card styling on user note HTML in the reviewer */
-body.card figure {
-  display: revert;
-  overflow: revert;
-  align-items: revert;
-  justify-content: revert;
+  @apply whitespace-normal;
 }
 
 @layer base {
@@ -27,41 +25,6 @@ body.card figure {
   .toggle,
   .checkbox,
   .radio {
-    flex-shrink: 0;
-  }
-
-  /* Ensure daisyUI components use 1px border-width even on pages loading vendored
-     stylesheets (e.g. /overview, /reviewer) that declare :root { --border: <color> }.
-     Element-level declarations beat inherited root values regardless of cascade layer. */
-  .btn,
-  .input,
-  .select,
-  .textarea,
-  .checkbox,
-  .radio,
-  .toggle,
-  .badge,
-  .table,
-  .join,
-  .join-item,
-  .alert,
-  .tabs,
-  .tab,
-  .modal-box,
-  .card,
-  .menu,
-  .dropdown-content,
-  .kbd,
-  .file-input,
-  .range,
-  .progress,
-  .collapse,
-  .fieldset,
-  .navbar,
-  .tooltip,
-  .list,
-  .stats,
-  .timeline {
-    --border: 1px;
+    @apply shrink-0;
   }
 }

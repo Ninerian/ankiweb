@@ -3,35 +3,17 @@
  * Batch: inputs
  */
 
-:root {
-    --canvas-inset: var(--color-base-200);
-    --border-radius: var(--radius-field, 4px);
-    --fg: var(--color-base-content);
-}
 
 .spin-box {
-    width: 100%;
-    background: var(--canvas-inset, var(--color-base-200));
-    border: 1px solid var(--color-base-300);
-    border-radius: var(--border-radius, 4px);
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    justify-content: space-between;
-    align-items: stretch;
-    box-sizing: border-box;
-    min-height: 32px;
+    @apply relative box-border flex min-h-[32px] w-full items-stretch justify-between overflow-hidden border border-solid border-base-300 bg-base-200;
+    border-radius: var(--radius-field, 0.375rem);
 }
 
 .spin-box .suffix {
-    position: absolute;
-    pointer-events: none;
-    white-space: pre;
-    left: 0.5em;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1rem;
+    @apply pointer-events-none absolute top-1/2 whitespace-pre text-[1rem];
     line-height: 1;
+    left: 0.5em;
+    transform: translateY(-50%);
 }
 
 @supports (-webkit-touch-callout: none) {
@@ -42,30 +24,19 @@
 }
 
 .spin-box .invisible {
-    color: transparent;
-    pointer-events: none;
-    user-select: none;
+    @apply pointer-events-none select-none text-transparent;
 }
 
 .spin-box input {
-    flex-grow: 1;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: inherit;
+    @apply box-border w-full min-w-0 grow border-0 bg-transparent text-[1rem] text-inherit outline-none;
     padding-left: 0.5em;
     padding-right: 0.5em;
-    min-width: 0;
-    width: 100%;
-    box-sizing: border-box;
-    font-size: 1rem;
 }
 
 .spin-box input::-webkit-inner-spin-button,
 .spin-box input::-webkit-outer-spin-button {
     -webkit-appearance: none;
-    margin: 0;
-    display: none;
+    @apply m-0 hidden;
 }
 
 .spin-box input[type="number"] {
@@ -74,66 +45,47 @@
 }
 
 .spin-box .spinner-column {
-    display: flex;
-    flex-direction: column;
-    width: 20px;
-    height: 100%;
-    flex-shrink: 0;
+    @apply flex h-full w-[20px] shrink-0 flex-col;
 }
 
 .spin-box .spinner {
-    opacity: 0;
-    flex: 1 1 50%;
-    height: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    user-select: none;
+    @apply box-border flex h-1/2 flex-[1_1_50%] select-none items-center justify-center overflow-hidden p-0 opacity-0;
     transition: opacity 0.15s ease-in-out;
-    overflow: hidden;
-    box-sizing: border-box;
 }
 
 .spin-box .spinner .icon-constrain {
-    min-width: 14px;
-    height: 14px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    @apply inline-flex h-[14px] min-w-[14px] items-center justify-center;
 }
 
 .spin-box .spinner svg {
-    width: 14px;
-    height: 14px;
+    @apply size-[14px];
 }
 
 .spin-box:hover .spinner,
 .spin-box:focus-within .spinner {
-    opacity: 0.15;
+    @apply opacity-15;
 }
 
 .spin-box .spinner.active {
-    opacity: 0.4;
-    cursor: pointer;
+    @apply cursor-pointer opacity-40;
 }
 
 .spin-box .spinner.active:hover {
-    opacity: 1;
+    @apply opacity-100;
 }
 
 .spin-box:hover .spinner.active,
 .spin-box:focus-within .spinner.active {
-    opacity: 0.6;
+    @apply opacity-60;
 }
 
 .spin-box:hover .spinner.active:hover,
 .spin-box:focus-within .spinner.active:hover {
-    opacity: 1;
+    @apply opacity-100;
 }
 
 
 /* DynamicallySlottable display contents wrapper */
 .dynamically-slottable {
-    display: contents;
+    @apply contents;
 }

@@ -182,6 +182,15 @@ def create_app(
     )  # GET /manifest.webmanifest, /service-worker.js
     app.include_router(build_app_pwa_router(static_dir, resolve_lang(settings)))
 
+    if settings.dev:
+        app.mount(
+            "/dev/static",
+            StaticFiles(
+                directory=str(settings.shell_dir / "dev-static"), check_dir=False
+            ),
+            name="dev-static",
+        )
+
     app.include_router(build_assets_router(settings.assets_dir))  # GET  /_anki/{path}
     app.include_router(
         build_rpc_router(lambda: app.state.service, lambda: app.state.hub)

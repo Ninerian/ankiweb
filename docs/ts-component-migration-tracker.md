@@ -19,7 +19,7 @@ This document tracks the strangler-fig migration of frontend components from [an
 
 ## Overview: what was converted and where to look
 
-**See the components.** Start the app with `ANKIWEB_DEV=1` (the gallery is a dev tool and is off by default) and open `/dev/components`: every ported macro from `ankiweb/adapters/inbound/http_shared/templates/components/` is rendered with its variants and is interactive (`_demo_<name>.html.jinja` next to each macro). Build first with `npm run build` (bundles and CSS).
+**See the components.** Build first with `npm run build:dev` (bundles, production CSS, and isolated gallery CSS), start the app with `ANKIWEB_DEV=1` (the gallery is off by default), and open `/dev/components`: every ported macro from `ankiweb/adapters/inbound/http_shared/templates/components/` is rendered with its variants and is interactive (`_demo_<name>.html.jinja` next to each macro). `npm run build` is production-only and removes generated gallery CSS.
 
 **Pages that replaced the SvelteKit routes** (all served at the original URL; Jinja + Datastar + small hand-written JS bundles, no compiled Svelte):
 
@@ -154,7 +154,7 @@ Reviewer runtime (`ts/reviewer/*`), MathJax setup, `sveltelib` and `tslib` are *
 
 ## Verification protocol and lessons (read before adding rows)
 
-- Gallery: `GET /dev/components` auto-discovers `templates/components/_demo_*.html.jinja`. Run `npm run build` after touching `shell_src/**`.
+- Gallery: `GET /dev/components` auto-discovers `templates/components/_demo_*.html.jinja`. Run `npm run build:dev` after touching `shell_src/**` or gallery/demo templates; `npm run build:css:dev` rebuilds CSS only. Gallery CSS is served separately at `/dev/static/gallery.css` only with `ANKIWEB_DEV=1`.
 - **Datastar needs settle time.** The full gallery takes seconds to be processed after `networkidle`; clicking earlier gives false failures. Wait ~3 s before interacting.
 - **Use real input**, not scripted `el.value = ...`: Datastar 1.0.3 patches element property setters (`datastar-prop-change`), so synthetic assignments can mask or fake results. Use `agent-browser select/click/fill`.
 - Datastar 1.0.3 syntax used here: `data-bind="signalName"` (bare name, never `$name`; the leaf macros strip a leading `$`), modifiers as `__prevent` / `__duration.60s`, non-empty expressions for `data-on:*`.

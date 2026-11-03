@@ -8,8 +8,9 @@ from urllib.parse import urldefrag, urljoin, urlsplit
 import pytest
 from anki.collection import Collection
 from conftest import parse_datastar_events
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from httpx import Response
+from httpx2 import Response
 
 
 @dataclass
@@ -161,6 +162,7 @@ def link_decks(client: TestClient) -> list[tuple[int, int]]:
         return decks
 
     assert client.portal is not None
+    assert isinstance(client.app, FastAPI)
     return client.portal.call(client.app.state.service.run, seed)
 
 

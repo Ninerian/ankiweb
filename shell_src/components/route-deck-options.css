@@ -1,82 +1,51 @@
 /* Route Deck Options styles */
 .route-deck-options {
-  padding-bottom: 4rem;
+  @apply pb-16;
 }
 
 .route-deck-options .deck-options-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background-color: var(--color-base-100);
-  border-bottom: 1px solid var(--color-base-300);
-  padding: 0.75rem 1rem;
+  @apply sticky top-0 z-20 border-b border-b-base-300 bg-base-100 px-4 py-3;
 }
 .route-deck-options .preset-selector-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
+  @apply flex flex-wrap items-center gap-2;
 }
 
 .route-deck-options .deck-options-nav {
-  margin-top: 1rem;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--color-base-300);
+  @apply mt-4 mb-6 border-b border-b-base-300;
 }
 
 .route-deck-options .section-card {
-  margin-bottom: 1.5rem;
-  background-color: var(--color-base-100);
-  color: var(--color-base-content);
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-box, 0.5rem);
-  padding: 1.25rem;
+  @apply mb-6 rounded-box border border-base-300 bg-base-100 p-5 text-base-content;
 }
 
 .route-deck-options .setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+  @apply flex items-center justify-between border-b border-b-base-content/10 px-0 py-2;
 }
 
 .route-deck-options .setting-row:last-child {
-  border-bottom: none;
+  @apply border-b-0;
 }
 
 .route-deck-options .setting-label-col {
+  @apply min-w-0 pr-4;
+  /* Retain the percentage flex basis. */
   flex: 1 1 60%;
-  min-width: 0;
-  padding-right: 1rem;
 }
 
 .route-deck-options .setting-input-col {
-  flex: 0 0 auto;
-  min-width: 140px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  @apply flex min-w-[140px] flex-none items-center justify-end;
 }
 
 .route-deck-options .help-badge {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 0.35rem;
-  vertical-align: middle;
+  @apply ml-[0.35rem] inline-flex items-center align-middle;
 }
 
 .route-deck-options .easy-days-grid {
-  display: grid;
+  @apply mt-3 grid gap-2;
   grid-template-columns: repeat(7, 1fr);
-  gap: 0.5rem;
-  margin-top: 0.75rem;
 }
 
 .route-deck-options .easy-day-cell {
-  text-align: center;
-  padding: 0.5rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-selector, 0.25rem);
+  @apply rounded-selector border border-base-300 p-2 text-center;
 }
 
