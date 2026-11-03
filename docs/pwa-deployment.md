@@ -67,7 +67,42 @@ after a successful login.
 Open the home-screen icon to start the `/app/` install. The old `/` client retains
 its own manifest and installation identity. Android and iOS device installation,
 HTTPS deployment in practice, and launcher maskable-icon cropping have **not** been
-verified; the shared icons are placeholders.
+verified.
+
+The app uses the Kartenblitz icon: yellow flashcards with a lightning bolt. The
+192- and 512-pixel PNGs are opaque, full-bleed squares, with the artwork inside
+the maskable safe zone (a radius of at most 102.4 in a 256-by-256 coordinate
+space). The 180-pixel apple-touch icon and simplified favicon (`favicon.svg`
+and `favicon.ico` with 16- and 32-pixel images) live alongside them in
+`ankiweb/shell/static/icons/`. These are committed assets, not build output.
+
+### Regenerating icons
+
+From the repository root, render the master SVG with `rsvg-convert` and
+ImageMagick. The PNGs must have no alpha channel:
+
+```sh
+rsvg-convert -w 512 -h 512 ankiweb/shell/static/icons/icon.svg | magick png:- -alpha off -colorspace sRGB PNG24:ankiweb/shell/static/icons/icon-512.png
+rsvg-convert -w 192 -h 192 ankiweb/shell/static/icons/icon.svg | magick png:- -alpha off -colorspace sRGB PNG24:ankiweb/shell/static/icons/icon-192.png
+rsvg-convert -w 180 -h 180 ankiweb/shell/static/icons/icon.svg | magick png:- -alpha off -colorspace sRGB PNG24:ankiweb/shell/static/icons/apple-touch-icon.png
+```
+
+`favicon.svg` is hand-simplified and must not be derived from `icon.svg`. Render
+it separately and use temporary PNGs to create the ICO:
+
+```sh
+tmpdir=$(mktemp -d)
+rsvg-convert -w 16 -h 16 ankiweb/shell/static/icons/favicon.svg | magick png:- -alpha off -colorspace sRGB PNG24:"$tmpdir/favicon-16.png"
+rsvg-convert -w 32 -h 32 ankiweb/shell/static/icons/favicon.svg | magick png:- -alpha off -colorspace sRGB PNG24:"$tmpdir/favicon-32.png"
+(cd "$tmpdir" && magick favicon-16.png favicon-32.png favicon.ico)
+cp "$tmpdir/favicon.ico" ankiweb/shell/static/icons/favicon.ico
+rm -r "$tmpdir"
+```
+
+Existing home-screen icons update only when the browser re-reads the manifest or
+the user re-adds the app. The legacy root worker caches `/shell/static/` assets
+cache-first, so already-installed clients may keep old PNGs until its cache
+version changes.
 
 ## Cache and updates
 

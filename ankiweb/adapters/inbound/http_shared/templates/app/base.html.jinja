@@ -9,7 +9,9 @@
     <meta name="theme-color" content="{{ app_theme_color_dark }}" media="(prefers-color-scheme: dark)">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Anki">
-    <link rel="apple-touch-icon" href="/shell/static/icons/icon-192.png">
+    <link rel="icon" href="/shell/static/icons/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/shell/static/icons/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/shell/static/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="/shell/static/app-client.css?v={{ app_asset_version }}">
     {# Register page helpers before Datastar evaluates initial effects. #}
     {% for script in scripts %}<script type="module" src="{{ script }}"></script>{% endfor %}
