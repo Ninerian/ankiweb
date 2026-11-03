@@ -405,11 +405,10 @@ class _EditRoutes:
         animation_stamp = monotonic_ns() if nid == 0 else None
 
         fragment = render(
-            "app/_edit_added_cards.html.jinja",
+            "app/_edit_deck_pile.html.jinja",
             app_lang=self.lang,
             deck_id=deck_id,
             deck_cards=deck_cards,
-            count=count,
             animation_stamp=animation_stamp,
             pile_animate=nid == 0,
         )
