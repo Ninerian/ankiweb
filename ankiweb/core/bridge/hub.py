@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 from ankiweb.core.bridge.ui_state import UiState
+
+logger = logging.getLogger(__name__)
 
 
 class BridgeHub:
@@ -40,8 +43,13 @@ class BridgeHub:
 
     async def broadcast_opchanges(self, flags: dict, initiator) -> None:
         msg = {"type": "opchanges", "flags": flags, "initiator": initiator}
-        for ctx in list(self._conns):
-            await self._send_all(ctx, msg)
+        for ctx, sockets in list(self._conns.items()):
+            for ws in list(sockets):
+                try:
+                    await ws.send_json(msg)
+                except Exception:
+                    logger.exception("Failed to broadcast operation changes to %s", ctx)
+                    self.unregister(ctx, ws)
 
     # --- request/response (evalWithCallback / cmd callback) ---
     def _alloc(self) -> tuple[int, asyncio.Future]:
