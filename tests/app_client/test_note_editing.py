@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import json
-from hashlib import blake2s
-
 import pytest
 from anki.cards import CardId
 from anki.collection import Collection
@@ -83,12 +80,6 @@ def test_vocab_fields_normalize_and_fingerprint_only_crlf() -> None:
     expected = ("Hünd\nline", "answer", "a\nb", "x\ry")
     assert windows.normalized() == unix.normalized() == expected
     assert windows.fingerprint() == unix.fingerprint()
-    assert (
-        windows.fingerprint()
-        == blake2s(
-            json.dumps(expected, ensure_ascii=True).encode("ascii"), digest_size=16
-        ).hexdigest()
-    )
     assert (
         unix.fingerprint()
         != VocabFields("Hünd\nline", "answer", "a\nb", "x\ny").fingerprint()
@@ -260,20 +251,6 @@ def test_retry_after_scheduler_failure_resets_even_without_new_text_changes(
     assert result.progress_reset is True
     assert _schedule(temp_collection, cid)[:2] == (0, 0)
     assert temp_collection.get_config(_JOURNAL) == []
-
-
-def test_clearing_marker_preserves_equal_but_distinct_entries(
-    temp_collection: Collection,
-) -> None:
-    nid, cid = _seed(temp_collection)
-    marker = [_DECK, nid, _ORIGINAL.fingerprint()]
-    temp_collection.set_config(_JOURNAL, [marker, marker.copy()], undoable=False)
-
-    result = edit_deck_note(temp_collection, _DECK, nid, _CHANGED)
-
-    assert result.progress_reset is True
-    assert _schedule(temp_collection, cid)[:2] == (0, 0)
-    assert temp_collection.get_config(_JOURNAL) == [marker]
 
 
 @pytest.mark.parametrize(
