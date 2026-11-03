@@ -119,6 +119,11 @@ def _set_fields(note: Note, front: str, back: str, hint: str, example: str) -> N
         note[name] = escape_field(value)
 
 
+def _normalized_note_fields(note: Note) -> tuple[str, ...]:
+    fields = VocabFields(*(unescape_field(note[name]) for name in _FIELD_NAMES))
+    return fields.normalized()
+
+
 def _check_addable(col: Collection, note: Note) -> None:
     # Anki's fields_check excludes note.id, including when another duplicate exists.
     ok, error = check_addable(col, note, {})
@@ -181,13 +186,9 @@ def update_vocab_note_with_changes(
 ) -> OpChanges | None:
     """Update changed fields and return the actual operation changes, if any."""
     note = _vocab_note(col, nid)
-    original = tuple(
-        unescape_field(note[name]).replace("\r\n", "\n") for name in _FIELD_NAMES
-    )
+    original = _normalized_note_fields(note)
     _set_fields(note, front, back, hint, example)
-    updated = tuple(
-        unescape_field(note[name]).replace("\r\n", "\n") for name in _FIELD_NAMES
-    )
+    updated = _normalized_note_fields(note)
     if original == updated:
         return None
     _check_addable(col, note)
