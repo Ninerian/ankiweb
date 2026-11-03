@@ -101,6 +101,23 @@ def test_unchanged_learned_note_has_no_changes_or_reset(
     assert not temp_collection.get_config(_JOURNAL, [])
 
 
+def test_unchanged_note_preserves_historical_pending_reset(
+    temp_collection: Collection,
+) -> None:
+    nid, cid = _seed(temp_collection)
+    before = _schedule(temp_collection, cid)
+    marker = [_DECK, nid, "4e712b93e3da7f1ec333a52483473508"]
+    temp_collection.set_config(_JOURNAL, [marker], undoable=False)
+
+    result = edit_deck_note(temp_collection, _DECK, nid, _ORIGINAL)
+
+    assert result.progress_reset is False
+    assert not any(op_changes_to_flags(result.changes).values())
+    assert _fields(temp_collection, nid) == _ORIGINAL
+    assert _schedule(temp_collection, cid) == before
+    assert temp_collection.get_config(_JOURNAL) == [marker]
+
+
 def test_changed_learned_note_resets_and_clears_journal(
     temp_collection: Collection, monkeypatch: pytest.MonkeyPatch
 ) -> None:
