@@ -474,7 +474,8 @@ for the migration that built it.
     `extra_actions/`), the `ACTIONS`/`ACTION_SPECS` registry, and `Runtime`.
   - **`app_client/`** — mobile app use cases; `deck_notes.py` selects editable deck
     notes and `note_editing.py` applies edits and journals pending progress resets.
-    Editor writes broadcast collection changes, including completed writes on failure.
+    Editor writes broadcast collection changes; completed note writes are also
+    broadcast when a subsequent progress reset fails.
   - **`rpc/`** — `dispatch_backend_rpc`: the passthrough/custom/concurrent routing decision
     for `/_anki/{method}`, plus the passthrough method lists and custom handlers.
   - **`notify/engine.py`**, **`auth.py`**, **`i18n.py`**, **`config.py`**,
