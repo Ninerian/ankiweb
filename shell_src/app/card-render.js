@@ -32,6 +32,20 @@ function highlightExamples(root) {
   }
 }
 
+function removeRepeatedVocabFront(root) {
+  // Only the dedicated vocabulary template has a known front/back structure.
+  // Other note types, including type-in cards, can use their answer HTML freely.
+  if (!root.querySelector('.review-vocab-label')) return;
+  const question = root.querySelector('#card-q > div > .av-front-text:first-child');
+  const answer = root.querySelector('#card-a > div');
+  const repeated = answer?.firstElementChild;
+  if (
+    question && repeated?.classList.contains('av-front-text') &&
+    repeated.isEqualNode(question) &&
+    answer.querySelector(':scope > .av-back-text')
+  ) repeated.remove();
+}
+
 window.avKeydown = (event, revealed, sheetOpen) => {
   if (sheetOpen || event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
   const target = event.target instanceof Element ? event.target : null;
@@ -76,6 +90,7 @@ document.addEventListener('datastar-fetch', (event) => {
 function syncReview() {
   const root = document.getElementById('review-app');
   if (!root) return;
+  removeRepeatedVocabFront(root);
   highlightExamples(root);
   const sheet = document.getElementById('sheet');
   const open = !!sheet?.classList.contains('modal-open');

@@ -12,12 +12,48 @@ from typing import Literal
 import pytest
 import uvicorn
 from anki.collection import Collection
+from anki.models import NotetypeDict
 
 from ankiweb.app import create_app
+from ankiweb.core.app_client.vocab import ensure_vocab_model
 from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import Page, expect, sync_playwright
+
+
+def _configure_review_model(
+    col: Collection, model: NotetypeDict, parameter: object, vocab: bool
+) -> NotetypeDict:
+    if parameter in ("vocab", "vocab_empty", "vocab_same"):
+        model = ensure_vocab_model(col)
+    elif vocab:
+        model["name"] = "AnkiWeb Vocab"
+        model["tmpls"][0]["qfmt"] = (
+            "{{Front}}"
+            if parameter == "vocab_without_class"
+            else '<div><div class="av-front-text">{{Front}}</div></div>'
+        )
+        model["tmpls"][0]["afmt"] = (
+            '{{FrontSide}}<div class="av-example">{{Back}}</div>'
+            if parameter == "vocab_without_class"
+            else '<div><div class="av-back-text">{{Back}}</div></div>'
+        )
+        col.models.update_dict(model)
+    elif parameter == "type_in":
+        model["tmpls"][0]["qfmt"] = "{{Front}}<br>{{type:Back}}"
+        model["tmpls"][0]["afmt"] = "{{FrontSide}}<hr>{{type:Back}}"
+        col.models.update_dict(model)
+    elif parameter == "nonvocab_with_classes":
+        model["tmpls"][0]["qfmt"] = (
+            '<div><div class="av-front-text">{{Front}}</div></div>'
+        )
+        model["tmpls"][0]["afmt"] = (
+            '<div><div class="av-front-text">{{Front}}</div>'
+            '<div class="av-back-text">{{Back}}</div></div>'
+        )
+        col.models.update_dict(model)
+    return model
 
 
 def _populate_collection(
@@ -25,37 +61,47 @@ def _populate_collection(
 ) -> tuple[Path, int]:
     """Create the collection and notes for the requested review variant."""
     parameter = getattr(request, "param", 3)
-    vocab = parameter in ("vocab", "vocab_without_class")
+    vocab = parameter in (
+        "vocab",
+        "vocab_empty",
+        "vocab_same",
+        "vocab_without_class",
+        "vocab_back_only",
+    )
     marker_in_text = parameter == "nonvocab_with_marker"
-    count = 2 if vocab else 1 if marker_in_text else parameter
+    count = (
+        2
+        if parameter in ("vocab", "vocab_without_class")
+        else 1
+        if isinstance(parameter, str)
+        else parameter
+    )
     collection_path = tmp_path / "review.anki2"
     col = Collection(str(collection_path))
     try:
         deck_id = col.decks.id("Browser review")
         model = col.models.by_name("Basic")
         assert deck_id is not None and model is not None
-        if vocab:
-            model["name"] = "AnkiWeb Vocab"
-            model["tmpls"][0]["qfmt"] = (
-                "{{Front}}"
-                if parameter == "vocab_without_class"
-                else '<div class="av-front-text">{{Front}}</div>'
-            )
-            model["tmpls"][0]["afmt"] = (
-                '{{FrontSide}}<div class="av-example">{{Back}}</div>'
-            )
-            col.models.update_dict(model)
+        model = _configure_review_model(col, model, parameter, vocab)
         for index in range(count):
             note = col.new_note(model)
             note["Front"] = "av-front-text" if marker_in_text else f"Question {index}"
-            if vocab:
+            note["Back"] = (
+                f"Question {index}" if parameter == "vocab_same" else f"Answer {index}"
+            )
+            if parameter == "vocab_without_class":
                 note["Back"] = escape(
                     f"Answer {index}: <b>*word*</b> "
                     "<script>window.__unsafeExecuted=1</script> "
                     "<img src=x onerror=window.__unsafeExecuted=2>"
                 )
-            else:
-                note["Back"] = f"Answer {index}"
+            if parameter == "vocab":
+                note["Hint"] = f"Hint {index}"
+                note["Example"] = escape(
+                    f"Example {index}: <b>*word*</b> "
+                    "<script>window.__unsafeExecuted=1</script> "
+                    "<img src=x onerror=window.__unsafeExecuted=2>"
+                )
             col.add_note(note, deck_id)
     finally:
         col.close()
@@ -199,6 +245,12 @@ def test_vocab_highlight_preserves_escaped_hostile_text_after_card_patch(
     for index in range(2):
         expect(page.locator("#card-q")).to_contain_text(f"Question {index}")
         _reveal(page)
+        answer = page.locator("#card-a")
+        expect(answer).to_contain_text(f"Answer {index}")
+        expect(answer).not_to_contain_text(f"Question {index}")
+        expect(answer.locator(".av-front-text")).to_have_count(0)
+        expect(page.locator("#card-q .av-hint")).to_have_text(f"Hint {index}")
+        expect(answer.locator(".av-hint")).to_have_text(f"Hint {index}")
         example = page.locator("#answer-box .av-example")
         expect(example.locator("mark")).to_have_text("word")
         expect(example).to_contain_text("<b>word</b>")
@@ -212,6 +264,46 @@ def test_vocab_highlight_preserves_escaped_hostile_text_after_card_patch(
             ):
                 page.keyboard.press("4")
             expect(page.locator("#answer-box")).to_be_hidden()
+
+
+@pytest.mark.parametrize(
+    "review_server", ["vocab_empty", "vocab_back_only"], indirect=True
+)
+def test_vocab_answer_without_optional_fields_or_repeated_front(
+    page: Page, review_server: tuple[str, int]
+) -> None:
+    _open(page, review_server)
+    expect(page.locator("#card-q .av-front-text")).to_have_text("Question 0")
+    _reveal(page)
+    answer = page.locator("#card-a")
+    expect(answer.locator(".av-back-text")).to_have_text("Answer 0")
+    expect(answer).not_to_contain_text("Question 0")
+    expect(answer.locator(".av-front-text, .av-hint, .av-example")).to_have_count(0)
+    expect(page.locator("#card-q .av-front-text")).to_have_text("Question 0")
+
+
+@pytest.mark.parametrize("review_server", ["vocab_same"], indirect=True)
+def test_vocab_keeps_back_when_it_equals_front(
+    page: Page, review_server: tuple[str, int]
+) -> None:
+    _open(page, review_server)
+    _reveal(page)
+    answer = page.locator("#card-a")
+    expect(answer.locator(".av-front-text")).to_have_count(0)
+    expect(answer.locator(".av-back-text")).to_have_text("Question 0")
+    expect(page.locator("#card-q .av-front-text")).to_have_text("Question 0")
+
+
+@pytest.mark.parametrize(
+    "review_server", ["type_in", "nonvocab_with_classes"], indirect=True
+)
+def test_foreign_answer_html_is_not_stripped(
+    page: Page, review_server: tuple[str, int]
+) -> None:
+    _open(page, review_server)
+    answer = page.locator("#card-a")
+    _reveal(page)
+    expect(answer).to_contain_text("Question 0")
 
 
 @pytest.mark.parametrize(

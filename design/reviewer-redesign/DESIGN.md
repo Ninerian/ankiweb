@@ -124,7 +124,7 @@ The editor presents a focused single-purpose card interface divided into three d
 The mobile editor shows a compact pile 12px below the editor: up to five opaque, 104px-high layers step upward by 16px, with rotation, perspective and shadow; the newest note is in front. The upper-right badge counts all supported deck notes, not just the visible layers, without overlapping the editor. Only a new note grows and animates the pile; editing updates the same note without changing its size or order.
 
 ### D. Added cards and editing
-Tap the pile or badge, or swipe upward, to open the deck-card list. On a tap, the editor slides away and the pile rises before the list cards fan upward from its captured screen position. During a swipe, the actual rows unfold continuously with the finger as the editor and pile fade; the preview remains inert until release. A short swipe reverses to the editor; a committed swipe completes without restarting. Neither path jumps. The three step badges, Done and footer fade out during opening, remain hidden while the list is open or closing, and fade back in on return. The steps and footer keep their layout space during opening and return and are inert while browsing. Closing or selecting a row folds the list back and restores the editor. Staggering is capped for large decks, and reduced-motion preferences are respected. An empty deck shows the empty state instead of an actionable pile.
+Tap the pile or badge, or swipe upward, to open the deck-card list. On a tap, the editor slides away and the pile rises before the list cards fan upward from its captured screen position. During a swipe, the actual rows unfold continuously with the finger as the editor and pile fade; the preview remains inert until release. A short swipe reverses to the editor; a committed swipe completes without restarting. Neither path jumps. The three step badges and footer fade out during opening, remain hidden while the list is open or closing, and fade back in on return. The steps and footer keep their layout space during opening and return and are inert while browsing. Done remains visible and available in the open list, subject to the same saving and transition guards as in the editor. Closing or selecting a row folds the list back and restores the editor. Staggering is capped for large decks, and reduced-motion preferences are respected. An empty deck shows the empty state instead of an actionable pile.
 
 ### D. Browse and Edit Deck Cards
 
@@ -159,7 +159,7 @@ A native custom element could wrap the existing pile button, preserving its nati
 
 This is not implemented. Morphs may replace or reconnect the element, requiring listener and state cleanup and careful handling of pointer capture; animation still spans the pile, list and editor. Encapsulation does not remove browser history or deep-link state. [Rocket](https://data-star.dev/reference/rocket) is an optional beta web-component API in a separate `datastar-rocket.js` bundle loaded instead of `datastar.js`, not an installed dependency. Datastar's [web-component example](https://data-star.dev/examples/web_component) illustrates signal-to-attribute and event communication without Rocket.
 
-Done requires at least one session-added card, confirms before discarding unsaved text, and opens a summary. From the summary, **Start studying** opens `/app/review?deck=<id>` and the deck-list action returns to `/app/`.
+Done is available in both the editor and the open deck-card list. It confirms before discarding unsaved text and is guarded while saving or transitioning. It opens a summary using the session count, including when no cards were added. The summary offers **Start studying** for `/app/review?deck=<id>` and **Back to decks** for `/app/`, with no separate close button. Focus stays within the dialog; Escape or the backdrop dismisses it and returns focus to Done. Browser Back dismisses it and also restores the previous editor history view.
 
 ### F. Dedicated Note Type Contract (`AnkiWeb Vocab`)
 Quick-add creates the dedicated `AnkiWeb Vocab` note type. Its templates carry **no CSS and no JavaScript**: presentation lives in the app stylesheet, and card HTML is rendered by Anki. The implementation creates and validates the model directly in the collection.
@@ -196,7 +196,7 @@ What the server enforces on `addNote` (belegt, `actions/_helpers.py:43`): it rej
 
 `{{#Field}}...{{/Field}}` is Anki's built-in conditional, so empty Hint/Example render no element and the fast two-field path is unchanged. The back template repeats the front markup instead of using `{{FrontSide}}`, so the design can address each part by class.
 
-The reviewer adds a localized front label outside the Anki template for `AnkiWeb Vocab` cards. The card content is centered for this note type; other note types keep their own presentation.
+The reviewer adds a localized front label outside the Anki template for `AnkiWeb Vocab` cards. The card content is centered for this note type; other note types keep their own presentation. The question and hint remain visible on reveal. For the dedicated vocabulary template, the client removes the repeated front-text element from the answer face after matching it against the question; the answer's hint and example are retained. The stored note template remains unchanged, so existing collections need no migration. A back-only answer is left intact. Foreign note-type answers, including type-in cards, are left unchanged because their HTML has no reliable shared front/back structure; the mobile reviewer does not implement type-in answer input or grading.
 
 **Escaping and highlight (change from the prototype):** Anki fields are HTML. The prototype stored plain text and escaped at render time (`CardRender.renderCard`). With server-rendered HTML the contract is: the **writer escapes on save** (the quick-add view must HTML-escape `<`, `>`, `&` before `addNote`, otherwise typed `<` is interpreted as markup), and the `*word*` → `<mark>` conversion for `.av-example` happens in the **client** after render, because Anki has no template filter for it. The converted text is already escaped, so only `<mark>` is added.
 
@@ -222,7 +222,7 @@ links are prototype data, not production routes.
 
 In the implemented client, **Learn** links to `/app/review?deck=<id>` and
 **Edit / Add** links to `/app/edit?deck=<id>`. Review Back, Edit Back and the
-Edit deck chip return to `/app/`; Done opens the summary described in §5.E.
+Edit deck chip return to `/app/`; Done opens the summary as described in §5.E.
 There is no mode switch. The app has no theme toggle: it follows
 `prefers-color-scheme`, independently of the old client's night toggle.
 

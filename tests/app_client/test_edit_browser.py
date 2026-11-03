@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterator
 from concurrent.futures import Future
 from itertools import pairwise
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pytest
 import uvicorn
@@ -252,15 +252,10 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
         expect(other.locator("#added-cards")).to_contain_text(front)
         expect(other.locator("#added-cards .add-stack-count")).to_have_text("1")
         other.get_by_role("button", name="Done", exact=True).click()
+        expect(other).to_have_url(f"{live_app}/app/edit?deck=1")
         summary = other.get_by_role("dialog")
         expect(summary).to_be_visible()
         expect(summary.locator("[data-text='$count']")).to_have_text("0")
-        expect(
-            summary.get_by_role("link", name="Back to decks", exact=True)
-        ).to_have_attribute("href", "/app/")
-        expect(
-            summary.get_by_role("link", name="Start studying", exact=True)
-        ).to_have_attribute("href", "/app/review?deck=1")
         assert live_app.notes() == saved
     finally:
         isolated.close()
@@ -1565,6 +1560,16 @@ def test_browse_fans_and_folds_with_bounded_stagger(
     assert phases[-5:] == ["opening", "open", "closing", "returning", "closed"]
 
 
+def _assert_browse_chrome_opacity(
+    opening: list[dict[str, Any]], returning: list[dict[str, Any]]
+) -> None:
+    for index in range(2):
+        assert any(0.05 < frame["opacity"][index] < 0.95 for frame in opening)
+        assert any(0.05 < frame["opacity"][index] < 0.95 for frame in returning)
+        assert opening[0]["opacity"][index] > opening[-1]["opacity"][index]
+        assert returning[0]["opacity"][index] < returning[-1]["opacity"][index]
+
+
 def _assert_browse_chrome_fades(page: Page) -> None:
     frames = page.evaluate("window.motionFrames")
     opening = [frame for frame in frames if frame["phase"] == "opening"]
@@ -1573,13 +1578,12 @@ def _assert_browse_chrome_fades(page: Page) -> None:
     assert all(value > 0 for frame in opening for value in frame["height"])
     assert all(all(frame["inert"]) for frame in opening)
     assert all(not frame["doneDisabled"] for frame in opening)
+    assert all(
+        frame["doneOpacity"] == 1 and not frame["doneInert"] for frame in opening
+    )
     done_background = page.evaluate("window.doneBackground")
     assert all(frame["doneBackground"] == done_background for frame in opening)
-    for index in range(3):
-        assert any(0.05 < frame["opacity"][index] < 0.95 for frame in opening)
-        assert any(0.05 < frame["opacity"][index] < 0.95 for frame in returning)
-        assert opening[0]["opacity"][index] > opening[-1]["opacity"][index]
-        assert returning[0]["opacity"][index] < returning[-1]["opacity"][index]
+    _assert_browse_chrome_opacity(opening, returning)
 
 
 def test_browse_visibly_lifts_stack_and_fades_chrome(
@@ -1621,9 +1625,11 @@ def test_browse_visibly_lifts_stack_and_fades_chrome(
                 rowOpacity: Number(style(row).opacity),
                 doneBackground: style(done).backgroundColor,
                 doneDisabled: done.disabled,
-                opacity: [steps, done, footer].map(el => Number(style(el).opacity)),
+                doneOpacity: Number(style(done).opacity),
+                doneInert: !!done.closest('[inert]'),
+                opacity: [steps, footer].map(el => Number(style(el).opacity)),
                 height: [steps, footer].map(el => el.getBoundingClientRect().height),
-                inert: [steps, done, footer].map(el =>
+                inert: [steps, footer].map(el =>
                   el.matches(':disabled') || !!el.closest('[inert]')),
               });
             }
@@ -1637,8 +1643,8 @@ def test_browse_visibly_lifts_stack_and_fades_chrome(
     expect(cards).to_be_focused()
     expect(steps.first).to_be_hidden()
     expect(footer).to_be_hidden()
-    expect(done).to_have_css("opacity", "0")
-    expect(done).to_be_disabled()
+    expect(done).to_have_css("opacity", "1")
+    expect(done).to_be_enabled()
     page.wait_for_function(
         """() => window.motionFrames.filter(frame =>
           frame.phase === 'open' && frame.rowOpacity > 0.9).length >= 2"""
@@ -1719,8 +1725,12 @@ def test_back_interrupts_opening_and_is_blocked_while_closing(
     pile = page.locator("#pile")
     back = page.locator("#edit-back")
     cards = page.locator("#deck-cards")
+    done = page.get_by_role("button", name="Done", exact=True)
     pile.click()
     expect(wizard).to_have_attribute("data-browse-phase", "opening")
+    done.evaluate("el => el.click()")
+    expect(page).to_have_url(url + "&view=cards")
+    expect(page.locator("#add-summary")).not_to_be_visible()
     expect(back).to_have_role("button")
     expect(back).not_to_have_attribute("href", re.compile("."))
     back.click()
@@ -1733,6 +1743,8 @@ def test_back_interrupts_opening_and_is_blocked_while_closing(
     expect(wizard).to_have_attribute("data-browse-phase", "open")
     back.click()
     expect(wizard).to_have_attribute("data-browse-phase", "closing")
+    done.evaluate("el => el.click()")
+    expect(page.locator("#add-summary")).not_to_be_visible()
     expect(back).to_have_role("button")
     expect(back).not_to_have_attribute("href", re.compile("."))
     expect(back).to_have_attribute("aria-disabled", "true")
@@ -1741,6 +1753,8 @@ def test_back_interrupts_opening_and_is_blocked_while_closing(
     page.keyboard.press("Enter")
     expect(page).to_have_url(url)
     expect(wizard).to_have_attribute("data-browse-phase", "returning")
+    done.evaluate("el => el.click()")
+    expect(page.locator("#add-summary")).not_to_be_visible()
     expect(pile).to_be_focused()
     expect(back).to_have_attribute("aria-disabled", "true")
     expect(back).not_to_have_attribute("href", re.compile("."))
@@ -1769,7 +1783,6 @@ def test_reduced_motion_browse_pick_and_close_are_usable(
           const card = document.querySelector('#added-cards .stacked-card');
           const chrome = [
             document.querySelector('.add-step').parentElement,
-            wizard.querySelector('header .review-hud-nav button'),
             wizard.querySelector('footer')
           ];
           window.reducedStart = card.getBoundingClientRect().y;
@@ -1790,7 +1803,7 @@ def test_reduced_motion_browse_pick_and_close_are_usable(
     reduced = page.evaluate("window.reducedOpening")
     assert reduced is not None
     assert abs(reduced["y"] - page.evaluate("window.reducedStart")) < 1
-    assert reduced["opacity"] == [0, 0, 0]
+    assert reduced["opacity"] == [0, 0]
     duration = row.evaluate(
         """el => {
           const value = getComputedStyle(el).animationDuration.split(',')[0];
@@ -2002,8 +2015,9 @@ def test_empty_session_list_reopens_after_edit_and_selects_another_card(
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
     expect(summary.locator("[data-text='$count']")).to_have_text("0")
-    summary.get_by_role("button", name="Close", exact=True).click()
+    page.keyboard.press("Escape")
     expect(summary).not_to_be_visible()
+    expect(page.get_by_role("button", name="Done", exact=True)).to_be_focused()
 
     opener.click()
     expect(cards).to_be_visible()
@@ -2479,6 +2493,7 @@ def test_history_navigation_closes_summary_and_focuses_destination(
     page.emulate_media(reduced_motion="reduce")
     editor_url = f"{live_app}/app/edit?deck=1"
     page.goto(editor_url)
+    _add(page, "Session addition", "answer")
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
     cards.locator(f"button[data-note-id='{nid}']").click()
@@ -2559,11 +2574,12 @@ def test_done_while_editing_keeps_url_and_editor_in_sync(
     page: Page, live_app: LiveApp
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
-    original = live_app.notes()
     page.emulate_media(reduced_motion="reduce")
     editor_url = f"{live_app}/app/edit?deck=1"
     card_url = f"{editor_url}&card={nid}"
     page.goto(editor_url)
+    _add(page, "Session addition", "answer")
+    original = live_app.notes()
     page.locator("#pile").click()
     page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
     expect(page).to_have_url(card_url)
@@ -2583,7 +2599,7 @@ def test_done_while_editing_keeps_url_and_editor_in_sync(
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
     expect(page).to_have_url(editor_url)
-    summary.get_by_role("button", name="Close", exact=True).click()
+    page.keyboard.press("Escape")
     expect(summary).not_to_be_visible()
     expect(_front(page)).to_be_visible()
     expect(_front(page)).to_have_value("")
@@ -2809,7 +2825,7 @@ def test_save_returns_to_list_without_duplicate_browser_back(
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
     expect(summary.locator("[data-text='$count']")).to_have_text("1")
-    summary.get_by_role("button", name="Close", exact=True).click()
+    page.keyboard.press("Escape")
     expect(summary).not_to_be_visible()
     page.go_forward()
     expect(page).to_have_url(cards_url)
@@ -3781,6 +3797,125 @@ def test_duplicate_preserves_preview_and_saved_note(
     assert live_app.notes() == saved
 
 
+def test_finish_clean_empty_session_opens_summary(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.goto(f"{live_app}/app/edit?deck=1")
+    page.get_by_role("button", name="Done", exact=True).click()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    summary = page.get_by_role("dialog")
+    expect(summary).to_be_visible()
+    expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    assert live_app.notes() == []
+
+
+def test_finish_from_clean_card_list_without_session_additions_opens_summary(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Existing", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit?deck=1")
+    page.locator("#pile").click()
+    expect(page.locator("#deck-cards")).to_be_visible()
+    page.get_by_role("button", name="Done", exact=True).click()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    summary = page.get_by_role("dialog")
+    expect(summary).to_be_visible()
+    expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    assert len(live_app.notes()) == 1
+
+    cards = page.locator("#deck-cards")
+    cards_url = f"{live_app}/app/edit?deck=1&view=cards"
+    page.keyboard.down("Escape")
+    expect(summary).not_to_be_visible()
+    expect(cards).to_be_visible()
+    expect(page).to_have_url(cards_url)
+
+    page.keyboard.down("Escape")
+    page.keyboard.up("Escape")
+    expect(summary).not_to_be_visible()
+    expect(cards).to_be_visible()
+    expect(page).to_have_url(cards_url)
+
+    page.keyboard.press("Escape")
+    expect(cards).not_to_be_visible()
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+
+
+@pytest.mark.parametrize("session_added", [False, True])
+def test_finish_from_card_list_guards_draft_and_preserves_focus(
+    page: Page, live_app: LiveApp, session_added: bool
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Existing", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit?deck=1"
+    cards_url = f"{editor_url}&view=cards"
+    page.goto(editor_url)
+    if session_added:
+        _add(page, "Session addition", "answer")
+    saved = live_app.notes()
+    _front(page).fill("unfinished draft")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.locator("#pile").click()
+    assert len(accepted) == 1
+    cards = page.locator("#deck-cards")
+    done = page.get_by_role("button", name="Done", exact=True)
+    summary = page.locator("#add-summary")
+    expect(cards).to_be_visible()
+    expect(done).to_be_visible()
+    expect(done).to_be_enabled()
+    expect(page).to_have_url(cards_url)
+
+    cancelled = _respond_to_confirm(page, accept=False)
+    done.click()
+    assert len(cancelled) == 1
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    expect(_front(page)).to_have_value("unfinished draft")
+    expect(summary).not_to_be_visible()
+
+    accepted = _respond_to_confirm(page, accept=True)
+    done.click()
+    assert len(accepted) == 1
+
+    expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    expect(summary).to_be_visible()
+    expect(summary.locator("[data-text='$count']")).to_have_text(
+        "1" if session_added else "0"
+    )
+    expect(summary.get_by_role("button", name="Close", exact=True)).to_have_count(0)
+    decks = summary.get_by_role("link", name="Back to decks", exact=True)
+    study = summary.get_by_role("link", name="Start studying", exact=True)
+    expect(decks).to_be_focused()
+    summary.focus()
+    page.keyboard.press("Tab")
+    expect(decks).to_be_focused()
+    summary.focus()
+    page.keyboard.press("Shift+Tab")
+    expect(study).to_be_focused()
+    page.keyboard.press("Escape")
+    expect(summary).not_to_be_visible()
+    expect(cards).to_be_visible()
+    expect(page).to_have_url(cards_url)
+    expect(done).to_be_focused()
+
+    done.click()
+    expect(summary).to_be_visible()
+    summary.locator(".modal-backdrop").click(position={"x": 5, "y": 5})
+    expect(summary).not_to_be_visible()
+    expect(cards).to_be_visible()
+    expect(done).to_be_focused()
+    done.click()
+    expect(summary).to_be_visible()
+    page.go_back()
+    expect(summary).not_to_be_visible()
+    expect(page).to_have_url(editor_url)
+    expect(cards).not_to_be_visible()
+    expect(page.locator("#pile")).to_be_focused()
+    assert live_app.notes() == saved
+
+
 def test_finish_empty_session_confirms_unsaved_draft(
     page: Page, live_app: LiveApp
 ) -> None:
@@ -3796,21 +3931,20 @@ def test_finish_empty_session_confirms_unsaved_draft(
     accepted = _respond_to_confirm(page, accept=True)
     done.click()
     assert len(accepted) == 1
+    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
     expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    page.keyboard.press("Escape")
+    expect(summary).not_to_be_visible()
+    expect(_front(page)).to_have_value("")
+    expect(done).to_be_focused()
     assert live_app.notes() == []
 
 
 def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> None:
     page.goto(f"{live_app}/app/edit?deck=1")
     done = page.get_by_role("button", name="Done", exact=True)
-    done.click()
-    summary = page.get_by_role("dialog")
-    expect(summary).to_be_visible()
-    expect(summary.locator("[data-text='$count']")).to_have_text("0")
-    summary.get_by_role("button", name="Close", exact=True).click()
-    expect(summary).not_to_be_visible()
     _add(page)
     saved = live_app.notes()
     _front(page).fill("unfinished card")
@@ -3831,11 +3965,13 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     expect(decks).to_have_attribute("href", "/app/")
     study = dialog.get_by_role("link", name="Start studying", exact=True)
     expect(study).to_have_attribute("href", "/app/review?deck=1")
-    close = dialog.get_by_role("button", name="Close", exact=True)
-    expect(close).to_be_visible()
-    close.focus()
-    expect(close).to_be_focused()
-    page.keyboard.press("Enter")
+    expect(dialog.get_by_role("button", name="Close", exact=True)).to_have_count(0)
+    expect(decks).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    expect(study).to_be_focused()
+    page.keyboard.press("Tab")
+    expect(decks).to_be_focused()
+    page.keyboard.press("Escape")
     expect(dialog).not_to_be_visible()
     expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
     expect(_front(page)).to_be_visible()
@@ -3854,6 +3990,7 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     expect(dialog).to_be_visible()
     dialog.locator(".modal-backdrop").click(position={"x": 5, "y": 5})
     expect(dialog).not_to_be_visible()
+    expect(done).to_be_focused()
     assert live_app.notes() == saved
     done.click()
     expect(dialog).to_be_visible()

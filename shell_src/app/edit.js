@@ -10,8 +10,17 @@ window.avInsert = (button) => {
   input.focus();
 };
 
+let editorFocusGeneration = 0;
+const requestEditorFocus = (callback) => {
+  const generation = editorFocusGeneration;
+  requestAnimationFrame(() => {
+    if (generation === editorFocusGeneration &&
+        !document.getElementById("add-summary")?.classList.contains("modal-open")) callback();
+  });
+};
+
 window.avFocus = (id) => {
-  requestAnimationFrame(() => document.getElementById(id)?.focus());
+  requestEditorFocus(() => document.getElementById(id)?.focus());
 };
 
 window.avAddKey = (event) => {
@@ -402,7 +411,7 @@ window.avCloseBrowse = (editing = false, phase = "open") => {
 };
 
 window.avBrowseReadyFocus = () => {
-  requestAnimationFrame(() => {
+  requestEditorFocus(() => {
     if (document.getElementById("add-wizard")?.dataset.browsePhase === "open") {
       document.getElementById("deck-cards")?.focus({ preventScroll: true });
     }
@@ -410,7 +419,7 @@ window.avBrowseReadyFocus = () => {
 };
 
 window.avBrowseFocus = (editing) => {
-  requestAnimationFrame(() => {
+  requestEditorFocus(() => {
     const phase = document.getElementById("add-wizard")?.dataset.browsePhase;
     if (phase === "returning" || phase === "closed") {
       document.getElementById(editing ? "input-front" : browseTrigger)?.focus({ preventScroll: true });
@@ -548,14 +557,18 @@ window.avOpenSummary = (trigger) => {
     setEditHistory("editor", null, true);
   }
   summaryTrigger = trigger;
-  requestAnimationFrame(() => {
-    if (document.getElementById("add-summary")?.classList.contains("modal-open")) {
+  const generation = ++editorFocusGeneration;
+  // Datastar flushes the visibility and class changes after the click handler.
+  queueMicrotask(() => {
+    if (generation === editorFocusGeneration &&
+        document.getElementById("add-summary")?.classList.contains("modal-open")) {
       document.getElementById("summary-keep-adding")?.focus();
     }
   });
 };
 
 window.avCloseSummary = () => {
+  editorFocusGeneration++;
   summaryTrigger?.focus();
 };
 
@@ -571,10 +584,10 @@ window.avModalKey = (event) => {
   }
   const first = controls[0];
   const last = controls[controls.length - 1];
-  if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+  if (event.shiftKey && (document.activeElement === first || !controls.includes(document.activeElement))) {
     event.preventDefault();
     last.focus();
-  } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+  } else if (!event.shiftKey && (document.activeElement === last || !controls.includes(document.activeElement))) {
     event.preventDefault();
     first.focus();
   }

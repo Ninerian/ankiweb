@@ -1281,7 +1281,7 @@
         <a class="deck-chip" id="deck-chip" href="decks-mockup.html" onclick="return guardNavigation()">🇩🇪 German B1 Vocab</a>
 
         <!-- Finish session -->
-        <button type="button" class="btn-finish-neo" id="btn-finish" title="Finish and Save All" onclick="finishSession()">
+        <button type="button" class="btn-finish-neo" id="btn-finish" title="Finish session" onclick="finishSession()">
           Done
         </button>
       </div>
@@ -1504,8 +1504,8 @@
           <button type="button" class="btn-step-primary" onclick="startStudying()">
             <span>Study Deck →</span>
           </button>
-          <button type="button" class="btn-icon-neo" style="width: 100%; font-size: 0.9rem;" onclick="closeSummaryModal()">
-            Keep Adding More Cards
+          <button type="button" class="btn-icon-neo" style="width: 100%; font-size: 0.9rem;" onclick="handleExit()">
+            Back to decks
           </button>
         </div>
       </div>
@@ -1531,6 +1531,8 @@
 
     // DOM Elements Cache
     const el = {
+      btnFinish: document.getElementById('btn-finish'),
+      stepIndicator: document.querySelector('.step-indicator-row'),
       stepPill1: document.getElementById('step-pill-1'),
       stepPill2: document.getElementById('step-pill-2'),
       stepPill3: document.getElementById('step-pill-3'),
@@ -1964,6 +1966,8 @@
       if (state.isCommitting || state.browsing || state.cardStack.length === 0) return;
       if (!confirmDiscard('Discard it and browse your added cards?')) return;
       state.browsing = true;
+      el.btnFinish.disabled = true;
+      el.stepIndicator.inert = true;
       document.body.classList.add('is-browsing');
       el.stackBadge.setAttribute('aria-expanded', 'true');
 
@@ -1979,13 +1983,16 @@
       el.browseLayer.hidden = false;
       el.creatorBottomBar.classList.add('is-browsing');
       el.browseList.scrollTop = 0;
+      el.btnFinish.disabled = false;
       el.browseList.querySelector('.browse-card')?.focus({ preventScroll: true });
     }
 
     async function closeBrowse({ focusBadge = true } = {}) {
       if (!state.browsing) return;
+      el.btnFinish.disabled = true;
       state.browsing = false;
       document.body.classList.remove('is-browsing');
+      el.stepIndicator.inert = false;
       el.stackBadge.setAttribute('aria-expanded', 'false');
 
       // 1. The list folds back onto the pile
@@ -2001,6 +2008,7 @@
       el.activeCard.classList.add('anim-return-down');
       await wait(500);
       el.activeCard.classList.remove('anim-return-down');
+      el.btnFinish.disabled = false;
       if (focusBadge) el.stackBadge.focus({ preventScroll: true });
     }
 
@@ -2035,12 +2043,14 @@
     async function pickCard(id) {
       const card = state.cardStack.find((c) => c.id === id);
       if (!card || !state.browsing) return;
+      el.btnFinish.disabled = true;
 
       // The list folds away, then the input card returns carrying the picked card
       el.browseLayer.classList.add('is-folding');
       await wait(120 + state.cardStack.length * 24 + 280);
       state.browsing = false;
       document.body.classList.remove('is-browsing');
+      el.stepIndicator.inert = false;
       el.stackBadge.setAttribute('aria-expanded', 'false');
       el.browseLayer.hidden = true;
       el.browseLayer.classList.remove('is-folding');
@@ -2055,6 +2065,7 @@
       el.activeCard.classList.add('anim-return-down');
       await wait(500);
       el.activeCard.classList.remove('anim-return-down');
+      el.btnFinish.disabled = false;
       el.inputFront.focus({ preventScroll: true });
     }
 
@@ -2119,12 +2130,9 @@
 
     function finishSession() {
       if (state.isCommitting) return;
-      if (!state.cardStack.length) {
-        showToast('Add a card to your stack first.');
-        return;
-      }
       if (!confirmDiscard('Discard it and finish?')) return;
       resetEditor();
+      setEditing(null);
       state.currentStep = 1;
       updateWizardUI(false);
       const count = state.cardStack.length;
@@ -2135,7 +2143,7 @@
 
     function closeSummaryModal() {
       el.summaryModal.classList.remove('open');
-      updateWizardUI();
+      el.btnFinish.focus({ preventScroll: true });
     }
 
     function startStudying() {
@@ -2145,13 +2153,22 @@
     function handleExit() {
       if (guardNavigation()) window.location.href = 'decks-mockup.html';
     }
+    el.summaryModal.addEventListener('click', (e) => {
+      if (e.target === el.summaryModal) closeSummaryModal();
+    });
+    window.addEventListener('popstate', () => {
+      if (el.summaryModal.classList.contains('open')) closeSummaryModal();
+    });
+    window.addEventListener('pagehide', () => {
+      if (el.summaryModal.classList.contains('open')) closeSummaryModal();
+    });
 
 
     // Keyboard shortcuts (Enter to advance / commit)
     document.addEventListener('keydown', (e) => {
       if (e.isComposing) return;
       if (el.summaryModal.classList.contains('open')) {
-        if (e.key === 'Escape') closeSummaryModal();
+        if (e.key === 'Escape') { e.preventDefault(); closeSummaryModal(); }
         if (e.key === 'Tab') {
           const buttons = el.summaryModal.querySelectorAll('button');
           const first = buttons[0];
