@@ -19,4 +19,5 @@ build/
 data/
 .env
 ankiweb/web_assets/
-ankiweb/shell/static/
+ankiweb/shell/static/*
+!ankiweb/shell/static/icons/
