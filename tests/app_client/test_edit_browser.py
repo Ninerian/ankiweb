@@ -3076,7 +3076,7 @@ def test_failed_edit_save_stays_in_editor_and_can_retry(
 
     with monkeypatch.context() as patch:
         patch.setattr(
-            "ankiweb.adapters.inbound.http_app.edit.update_vocab_note", fail_update
+            "ankiweb.core.app_client.note_editing.update_vocab_note", fail_update
         )
         page.locator("#btn-add").click()
         expect(page.locator("#app-error")).to_be_visible()

@@ -1,19 +1,15 @@
 """Card editor page, preview, and per-session additions."""
 
-import json
 import logging
 from collections.abc import Callable
-from hashlib import blake2s
+from dataclasses import dataclass
 from json import JSONDecodeError
 from time import monotonic_ns
 
 import anki.collection  # Initialize before anki.cards to avoid an import cycle.
-from anki.cards import CardId
+from anki.collection_pb2 import OpChanges
 from anki.decks import DeckId
 from anki.errors import AnkiException
-from anki.models import NotetypeId
-from anki.notes import NoteId
-from anki.utils import to_json_bytes
 from datastar_py.attributes import SignalValue
 from datastar_py.fastapi import DatastarResponse
 from datastar_py.fastapi import ServerSentEventGenerator as SSE
@@ -28,75 +24,37 @@ from ankiweb.adapters.inbound.http_datastar.common import (
     signals_response,
 )
 from ankiweb.adapters.inbound.http_shared.templating import render
+from ankiweb.core.app_client.deck_notes import (
+    DeckNote,
+    NoteNotEditable,
+    added_note_membership,
+    deck_notes,
+    editable_deck_note,
+)
 from ankiweb.core.app_client.decks import split_emoji
 from ankiweb.core.app_client.lang import resolve_lang
+from ankiweb.core.app_client.note_editing import (
+    InvalidFields,
+    ProgressResetFailed,
+    ProgressResetUncleared,
+    ProgressResetUnrecorded,
+    edit_deck_note,
+)
 from ankiweb.core.app_client.strings import s
 from ankiweb.core.app_client.study import StudySession
 from ankiweb.core.app_client.vocab import (
-    NOTETYPE_NAME,
     DuplicateNote,
+    VocabFields,
     add_vocab_note,
     ensure_vocab_model,
     escape_field,
     highlight_example,
-    read_vocab_note,
-    update_vocab_note,
 )
 from ankiweb.core.config import Settings
 from ankiweb.core.i18n import tr
 from ankiweb.core.ports import CollectionPort
 
 logger = logging.getLogger(__name__)
-_PENDING_PROGRESS_RESETS = "ankiweb_pending_progress_resets"
-_MAX_PENDING_RESETS = 50
-_MAX_PENDING_RESET_BYTES = 4096
-
-
-class _NoteNotEditable(Exception):
-    pass
-
-
-class _InvalidFields(Exception):
-    pass
-
-
-class _ProgressResetFailed(Exception):
-    pass
-
-
-class _ProgressResetUnrecorded(Exception):
-    pass
-
-
-class _ProgressResetUncleared(Exception):
-    pass
-
-
-def _normalized_fields(values: dict[str, str]) -> tuple[str, ...]:
-    return tuple(
-        values[key].replace("\r\n", "\n")
-        for key in ("front", "back", "hint", "example")
-    )
-
-
-def _fields_fingerprint(values: dict[str, str]) -> str:
-    encoded = json.dumps(_normalized_fields(values), ensure_ascii=True).encode("ascii")
-    return blake2s(encoded, digest_size=16).hexdigest()
-
-
-def _pending_resets(col: anki.collection.Collection) -> list[list[int | str]]:
-    pending = col.get_config(_PENDING_PROGRESS_RESETS, [])
-    if not isinstance(pending, list) or any(
-        not isinstance(item, list)
-        or len(item) != 3
-        or any(
-            not isinstance(value, int) or isinstance(value, bool) for value in item[:2]
-        )
-        or not isinstance(item[2], str)
-        for item in pending
-    ):
-        raise ValueError("Invalid pending progress reset configuration")
-    return pending
 
 
 def _parse_deck(request: Request) -> int | None:
@@ -132,26 +90,25 @@ def _deck_name(col: anki.collection.Collection, deck_id: int) -> tuple[str, str]
     return split_emoji(deck["name"])
 
 
-def _editable_note(
-    col: anki.collection.Collection, deck_id: int, nid: int
-) -> tuple[dict[str, str], list[CardId], bool]:
-    if not 0 < nid < 2**63:
-        raise _NoteNotEditable
-    db = col.db
-    if db is None:
-        raise RuntimeError("Collection database is not available")
-    cards = db.all("select id, type from cards where nid = ? and did = ?", nid, deck_id)
-    if not cards:
-        raise _NoteNotEditable
-    try:
-        values = read_vocab_note(col, NoteId(nid))
-    except ValueError as exc:
-        raise _NoteNotEditable from exc
-    return (
-        values,
-        [CardId(card_id) for card_id, _ in cards],
-        any(card_type != 0 for _, card_type in cards),
-    )
+def _note_fields(note: DeckNote) -> dict[str, str]:
+    return {
+        "front": note.fields.front,
+        "back": note.fields.back,
+        "hint": note.fields.hint,
+        "example": note.fields.example,
+    }
+
+
+def _note_view(note: DeckNote) -> dict[str, str | int]:
+    return {"nid": note.nid, **_note_fields(note), "learned": note.learned}
+
+
+@dataclass
+class _SaveResult:
+    count: int | None
+    deck_cards: list[dict[str, str | int]]
+    progress_reset: bool
+    changes: OpChanges
 
 
 def _initial_card(
@@ -160,139 +117,10 @@ def _initial_card(
     if requested_card is None:
         return None
     try:
-        nid = int(requested_card)
-        values, _, learned = _editable_note(col, deck_id, nid)
-    except (ValueError, _NoteNotEditable):
+        note, _ = editable_deck_note(col, deck_id, int(requested_card))
+    except (ValueError, NoteNotEditable):
         return None
-    return {"nid": nid, **values, "learned": learned}
-
-
-def _prepare_reset(
-    col: anki.collection.Collection,
-    deck_id: int,
-    nid: int,
-    original: dict[str, str],
-    values: dict[str, str],
-    learned: bool,
-    fingerprint: str,
-) -> tuple[list[list[int | str]], list[int | str] | None, bool]:
-    pending = _pending_resets(col)
-    marker = next((item for item in pending if item[:2] == [deck_id, nid]), None)
-    if (
-        marker is not None
-        or not learned
-        or _normalized_fields(original) == _normalized_fields(values)
-    ):
-        return pending, marker, False
-    marker = [deck_id, nid, fingerprint]
-    updated_pending = [*pending, marker]
-    try:
-        if (
-            len(updated_pending) > _MAX_PENDING_RESETS
-            or len(to_json_bytes(updated_pending)) > _MAX_PENDING_RESET_BYTES
-        ):
-            raise ValueError("Pending progress reset capacity exceeded")
-        # Preserve Anki undo history; a DB transaction is unsafe here.
-        col.set_config(_PENDING_PROGRESS_RESETS, updated_pending, undoable=False)
-    except Exception as exc:
-        raise _ProgressResetUnrecorded from exc
-    return pending, marker, True
-
-
-def _update_existing_note(
-    col: anki.collection.Collection,
-    nid: int,
-    values: dict[str, str],
-    original: dict[str, str],
-    pending: list[list[int | str]],
-    created_marker: bool,
-) -> bool:
-    try:
-        return update_vocab_note(
-            col,
-            NoteId(nid),
-            values["front"],
-            values["back"],
-            values["hint"],
-            values["example"],
-        )
-    except (AnkiException, ValueError):
-        if created_marker:
-            try:
-                persisted = read_vocab_note(col, NoteId(nid))
-                if _normalized_fields(persisted) == _normalized_fields(original):
-                    col.set_config(_PENDING_PROGRESS_RESETS, pending, undoable=False)
-            except Exception:
-                logger.exception("Failed to remove unused pending progress reset")
-        raise
-
-
-def _reset_and_clear(
-    col: anki.collection.Collection,
-    card_ids: list[CardId],
-    pending: list[list[int | str]],
-    marker: list[int | str],
-) -> None:
-    try:
-        col.sched.schedule_cards_as_new(card_ids, reset_counts=True)
-    except Exception as exc:
-        raise _ProgressResetFailed from exc
-    try:
-        col.set_config(
-            _PENDING_PROGRESS_RESETS,
-            [item for item in pending if item is not marker],
-            undoable=False,
-        )
-    except Exception as exc:
-        raise _ProgressResetUncleared from exc
-
-
-def _edit_note(
-    col: anki.collection.Collection,
-    deck_id: int,
-    nid: int,
-    values: dict[str, str] | None,
-) -> bool:
-    original, card_ids, learned = _editable_note(col, deck_id, nid)
-    if values is None:
-        raise _InvalidFields
-    fingerprint = _fields_fingerprint(original)
-    pending, marker, created_marker = _prepare_reset(
-        col, deck_id, nid, original, values, learned, fingerprint
-    )
-    changed = _update_existing_note(col, nid, values, original, pending, created_marker)
-    # A marker may precede a crashed note write: unchanged original text
-    # is not evidence that an edit completed, so do not reset it.
-    progress_reset = marker is not None and (changed or fingerprint != marker[2])
-    if progress_reset:
-        assert marker is not None
-        _reset_and_clear(col, card_ids, pending, marker)
-    return progress_reset
-
-
-def _is_vocab_type(
-    col: anki.collection.Collection, mid: int, cache: dict[int, bool]
-) -> bool:
-    if mid not in cache:
-        model = col.models.get(NotetypeId(mid))
-        if model is None:
-            raise ValueError(f"Note type {mid} is missing")
-        cache[mid] = model["name"] == NOTETYPE_NAME
-    return cache[mid]
-
-
-def _record_added_notes(
-    col: anki.collection.Collection,
-    rows: list[tuple[int, int, int]],
-    vocab_types: dict[int, bool],
-    present: set[int],
-    in_deck: set[int],
-) -> None:
-    for nid, mid, matches in rows:
-        if _is_vocab_type(col, mid, vocab_types):
-            present.add(nid)
-            if matches:
-                in_deck.add(nid)
+    return _note_view(note)
 
 
 class _EditRoutes:
@@ -307,27 +135,7 @@ class _EditRoutes:
         self, col: anki.collection.Collection, session: StudySession, deck_id: int
     ) -> int:
         ids = session.added_note_ids
-        if not ids:
-            return 0
-        db = col.db
-        if db is None:
-            raise RuntimeError("Collection database is not available")
-
-        present: set[int] = set()
-        in_deck: set[int] = set()
-        vocab_types: dict[int, bool] = {}
-        for start in range(0, len(ids), 32):
-            batch = ids[start : start + 32]
-            rows = db.all(
-                "select n.id, n.mid, exists(select 1 from cards c where c.nid = n.id "
-                "and c.did = ?) from notes n where n.id in ("
-                "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"
-                "?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                deck_id,
-                *batch,
-                *([None] * (32 - len(batch))),
-            )
-            _record_added_notes(col, rows, vocab_types, present, in_deck)
+        present, in_deck = added_note_membership(col, deck_id, ids)
 
         if len(present) != len(ids):
             ids[:] = [nid for nid in ids if nid in present]
@@ -336,21 +144,7 @@ class _EditRoutes:
     def deck_cards(
         self, col: anki.collection.Collection, deck_id: int
     ) -> list[dict[str, str | int]]:
-        db = col.db
-        if db is None:
-            raise RuntimeError("Collection database is not available")
-        model = ensure_vocab_model(col)
-        rows = db.all(
-            "select n.id, max(c.type != 0) from notes n "
-            "join cards c on c.nid = n.id "
-            "where n.mid = ? and c.did = ? group by n.id order by n.id desc",
-            model["id"],
-            deck_id,
-        )
-        return [
-            {"nid": nid, **read_vocab_note(col, NoteId(nid)), "learned": bool(learned)}
-            for nid, learned in rows
-        ]
+        return [_note_view(note) for note in deck_notes(col, deck_id)]
 
     async def edit_page(self, request: Request) -> Response:
         deck_id = _parse_deck(request)
@@ -436,10 +230,10 @@ class _EditRoutes:
             return RedirectResponse("/app/", status_code=303)
         _, new_session_id = get_session(request)
         try:
-            values, _, learned = await self.get_service().run(
-                lambda col: _editable_note(col, deck_id, nid)
+            note, _ = await self.get_service().run(
+                lambda col: editable_deck_note(col, deck_id, nid)
             )
-        except _NoteNotEditable:
+        except NoteNotEditable:
             response = PlainTextResponse(
                 s("app_add_edit_unavailable", lang=self.lang.catalog_lang),
                 status_code=404,
@@ -451,6 +245,7 @@ class _EditRoutes:
                 error_response(s("app_add_save_failed", lang=self.lang.catalog_lang)),
                 new_session_id,
             )
+        values = _note_fields(note)
         original: dict[str, SignalValue] = dict(values)
         response = signals_response(
             {
@@ -458,7 +253,7 @@ class _EditRoutes:
                 "nid": nid,
                 "step": 1,
                 "error": "",
-                "learned": learned,
+                "learned": note.learned,
                 "progressReset": False,
                 "editOriginal": original,
                 "editLoaded": monotonic_ns(),
@@ -513,16 +308,23 @@ class _EditRoutes:
         deck_id: int,
         nid: int,
         values: dict[str, str] | None,
-    ) -> tuple[int, list[dict[str, str | int]], bool] | None:
+    ) -> _SaveResult:
         if col.decks.get(DeckId(deck_id), default=False) is None:
-            return None
+            return _SaveResult(None, [], False, OpChanges())
         if nid:
-            progress_reset = _edit_note(col, deck_id, nid, values)
+            fields = VocabFields.from_mapping(values) if values is not None else None
+            outcome = edit_deck_note(col, deck_id, nid, fields, logger=logger)
             count = self.added_count(col, session, deck_id)
-            return count, self.deck_cards(col, deck_id), progress_reset
+            return _SaveResult(
+                count,
+                self.deck_cards(col, deck_id),
+                outcome.progress_reset,
+                outcome.changes,
+            )
         if values is None:
-            raise _InvalidFields
+            raise InvalidFields
         count = self.added_count(col, session, deck_id)
+        changes = OpChanges()
         note_id = add_vocab_note(
             col,
             DeckId(deck_id),
@@ -530,9 +332,10 @@ class _EditRoutes:
             values["back"],
             values["hint"],
             values["example"],
+            changes=changes,
         )
         session.added_note_ids.append(note_id)
-        return count + 1, self.deck_cards(col, deck_id), False
+        return _SaveResult(count + 1, self.deck_cards(col, deck_id), False, changes)
 
     async def save(
         self, request: Request, deck_id: int, nid: int, values: dict[str, str] | None
@@ -540,16 +343,17 @@ class _EditRoutes:
         session, new_session_id = get_session(request)
 
         try:
-            result = await self.get_service().run(
-                lambda col: self.add_card(col, session, deck_id, nid, values)
+            result = await self.get_service().run_op(
+                lambda col: self.add_card(col, session, deck_id, nid, values),
+                initiator="app",
             )
-        except _NoteNotEditable:
+        except NoteNotEditable:
             response = error_response(
                 s("app_add_save_failed", lang=self.lang.catalog_lang)
             )
             response.status_code = 404
             return _with_session_cookie(response, new_session_id)
-        except _InvalidFields:
+        except InvalidFields:
             return _with_session_cookie(
                 error_response(s("app_add_both_required", lang=self.lang.catalog_lang)),
                 new_session_id,
@@ -559,7 +363,7 @@ class _EditRoutes:
                 error_response(s("app_add_duplicate", lang=self.lang.catalog_lang)),
                 new_session_id,
             )
-        except _ProgressResetFailed:
+        except ProgressResetFailed:
             logger.exception("Failed to reset learning progress after saving note")
             return _with_session_cookie(
                 error_response(
@@ -567,7 +371,7 @@ class _EditRoutes:
                 ),
                 new_session_id,
             )
-        except _ProgressResetUnrecorded:
+        except ProgressResetUnrecorded:
             logger.exception(
                 "Failed to record pending learning progress reset before saving note"
             )
@@ -577,7 +381,7 @@ class _EditRoutes:
                 ),
                 new_session_id,
             )
-        except _ProgressResetUncleared:
+        except ProgressResetUncleared:
             logger.exception("Failed to clear pending learning progress reset")
             return _with_session_cookie(
                 error_response(
@@ -591,9 +395,13 @@ class _EditRoutes:
                 error_response(s("app_add_save_failed", lang=self.lang.catalog_lang)),
                 new_session_id,
             )
-        if result is None:
+        if result.count is None:
             return RedirectResponse("/app/", status_code=303)
-        count, deck_cards, progress_reset = result
+        count, deck_cards, progress_reset = (
+            result.count,
+            result.deck_cards,
+            result.progress_reset,
+        )
         animation_stamp = monotonic_ns() if nid == 0 else None
 
         fragment = render(
