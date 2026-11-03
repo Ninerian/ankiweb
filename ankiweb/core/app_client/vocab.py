@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import html
+import json
 import re
+from dataclasses import dataclass
+from hashlib import blake2s
 
 from anki.collection import Collection
+from anki.collection_pb2 import OpChanges
 from anki.decks import DeckId
 from anki.models import NotetypeDict, NotetypeId
 from anki.notes import Note, NoteId
@@ -26,6 +30,30 @@ _BACK_TEMPLATE = """<div class="av-card av-back">
   {{#Example}}<div class="av-example">{{Example}}</div>{{/Example}}
 </div>"""
 _EXAMPLE_HIGHLIGHT = re.compile(r"\*((?:(?!<br>)[^*\n])+)\*")
+
+
+@dataclass(frozen=True)
+class VocabFields:
+    """Plain-text fields of a dedicated vocabulary note."""
+
+    front: str
+    back: str
+    hint: str
+    example: str
+
+    @classmethod
+    def from_mapping(cls, values: dict[str, str]) -> VocabFields:
+        return cls(*(values[key] for key in ("front", "back", "hint", "example")))
+
+    def normalized(self) -> tuple[str, ...]:
+        return tuple(
+            value.replace("\r\n", "\n")
+            for value in (self.front, self.back, self.hint, self.example)
+        )
+
+    def fingerprint(self) -> str:
+        encoded = json.dumps(self.normalized(), ensure_ascii=True).encode("ascii")
+        return blake2s(encoded, digest_size=16).hexdigest()
 
 
 class DuplicateNote(ValueError):
@@ -116,12 +144,16 @@ def add_vocab_note(
     back: str,
     hint: str = "",
     example: str = "",
+    *,
+    changes: OpChanges | None = None,
 ) -> NoteId:
     """Validate and add a vocab note to the requested deck."""
     note = col.new_note(ensure_vocab_model(col))
     _set_fields(note, front, back, hint, example)
     _check_addable(col, note)
-    col.add_note(note, deck_id)
+    result = col.add_note(note, deck_id)
+    if changes is not None:
+        changes.MergeFrom(result.changes)
     return note.id
 
 
@@ -134,6 +166,20 @@ def update_vocab_note(
     example: str = "",
 ) -> bool:
     """Update changed fields and return whether the note was modified."""
+    return (
+        update_vocab_note_with_changes(col, nid, front, back, hint, example) is not None
+    )
+
+
+def update_vocab_note_with_changes(
+    col: Collection,
+    nid: NoteId,
+    front: str,
+    back: str,
+    hint: str = "",
+    example: str = "",
+) -> OpChanges | None:
+    """Update changed fields and return the actual operation changes, if any."""
     note = _vocab_note(col, nid)
     original = tuple(
         unescape_field(note[name]).replace("\r\n", "\n") for name in _FIELD_NAMES
@@ -143,10 +189,9 @@ def update_vocab_note(
         unescape_field(note[name]).replace("\r\n", "\n") for name in _FIELD_NAMES
     )
     if original == updated:
-        return False
+        return None
     _check_addable(col, note)
-    col.update_note(note)
-    return True
+    return col.update_note(note)
 
 
 def read_vocab_note(col: Collection, nid: NoteId) -> dict[str, str]:
