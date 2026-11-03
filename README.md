@@ -472,6 +472,9 @@ for the migration that built it.
     adapter calls into.
   - **`ankiconnect_actions/`** — the ≈120 AnkiConnect action handlers (`actions/`,
     `extra_actions/`), the `ACTIONS`/`ACTION_SPECS` registry, and `Runtime`.
+  - **`app_client/`** — mobile app use cases; `deck_notes.py` selects editable deck
+    notes and `note_editing.py` applies edits and journals pending progress resets.
+    Editor writes broadcast collection changes, including completed writes on failure.
   - **`rpc/`** — `dispatch_backend_rpc`: the passthrough/custom/concurrent routing decision
     for `/_anki/{method}`, plus the passthrough method lists and custom handlers.
   - **`notify/engine.py`**, **`auth.py`**, **`i18n.py`**, **`config.py`**,
