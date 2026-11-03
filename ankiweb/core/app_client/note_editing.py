@@ -123,11 +123,19 @@ def _reset_and_clear(
     card_ids: list[CardId],
     pending: list[list[int | str]],
     marker: list[int | str],
-) -> OpChanges:
+    changes: OpChanges,
+) -> None:
     try:
-        changes = col.sched.schedule_cards_as_new(card_ids, reset_counts=True)
+        reset_changes = col.sched.schedule_cards_as_new(card_ids, reset_counts=True)
     except Exception as exc:
+        # A scheduler may have written cards or revlog before failing, without
+        # returning OpChanges. Conservatively invalidate affected client views.
+        changes.card = True
+        changes.study_queues = True
+        changes.browser_table = True
         raise ProgressResetFailed from exc
+    if reset_changes is not None:
+        changes.MergeFrom(reset_changes)
     try:
         col.set_config(
             _PENDING_PROGRESS_RESETS,
@@ -136,7 +144,6 @@ def _reset_and_clear(
         )
     except Exception as exc:
         raise ProgressResetUncleared from exc
-    return changes
 
 
 def edit_deck_note(
@@ -146,8 +153,11 @@ def edit_deck_note(
     fields: VocabFields | None,
     *,
     logger: logging.Logger = _logger,
+    changes: OpChanges | None = None,
 ) -> EditOutcome:
     """Save a selected note and reset changed learned cards, with recovery journal."""
+    if changes is None:
+        changes = OpChanges()
     note, card_ids = editable_deck_note(col, deck_id, nid)
     if fields is None:
         raise InvalidFields
@@ -163,12 +173,9 @@ def edit_deck_note(
     progress_reset = marker is not None and (
         updated is not None or fingerprint != marker[2]
     )
-    changes = OpChanges()
     if updated is not None:
         changes.MergeFrom(updated)
     if progress_reset:
         assert marker is not None
-        reset_changes = _reset_and_clear(col, card_ids, pending, marker)
-        if reset_changes is not None:
-            changes.MergeFrom(reset_changes)
+        _reset_and_clear(col, card_ids, pending, marker, changes)
     return EditOutcome(progress_reset, changes)

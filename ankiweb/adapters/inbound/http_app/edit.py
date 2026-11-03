@@ -109,6 +109,7 @@ class _SaveResult:
     deck_cards: list[dict[str, str | int]]
     progress_reset: bool
     changes: OpChanges
+    error: Exception | None = None
 
 
 def _initial_card(
@@ -308,12 +309,15 @@ class _EditRoutes:
         deck_id: int,
         nid: int,
         values: dict[str, str] | None,
+        changes: OpChanges,
     ) -> _SaveResult:
         if col.decks.get(DeckId(deck_id), default=False) is None:
-            return _SaveResult(None, [], False, OpChanges())
+            return _SaveResult(None, [], False, changes)
         if nid:
             fields = VocabFields.from_mapping(values) if values is not None else None
-            outcome = edit_deck_note(col, deck_id, nid, fields, logger=logger)
+            outcome = edit_deck_note(
+                col, deck_id, nid, fields, logger=logger, changes=changes
+            )
             count = self.added_count(col, session, deck_id)
             return _SaveResult(
                 count,
@@ -324,7 +328,6 @@ class _EditRoutes:
         if values is None:
             raise InvalidFields
         count = self.added_count(col, session, deck_id)
-        changes = OpChanges()
         note_id = add_vocab_note(
             col,
             DeckId(deck_id),
@@ -337,6 +340,23 @@ class _EditRoutes:
         session.added_note_ids.append(note_id)
         return _SaveResult(count + 1, self.deck_cards(col, deck_id), False, changes)
 
+    def save_operation(
+        self,
+        col: anki.collection.Collection,
+        session: StudySession,
+        deck_id: int,
+        nid: int,
+        values: dict[str, str] | None,
+    ) -> _SaveResult:
+        changes = OpChanges()
+        try:
+            return self.add_card(col, session, deck_id, nid, values, changes)
+        except Exception as exc:
+            if not changes.ListFields():
+                raise
+            # Broadcast completed mutations before the HTTP layer handles the error.
+            return _SaveResult(None, [], False, changes, exc)
+
     async def save(
         self, request: Request, deck_id: int, nid: int, values: dict[str, str] | None
     ) -> Response:
@@ -344,9 +364,11 @@ class _EditRoutes:
 
         try:
             result = await self.get_service().run_op(
-                lambda col: self.add_card(col, session, deck_id, nid, values),
+                lambda col: self.save_operation(col, session, deck_id, nid, values),
                 initiator="app",
             )
+            if result.error is not None:
+                raise result.error
         except NoteNotEditable:
             response = error_response(
                 s("app_add_save_failed", lang=self.lang.catalog_lang)
