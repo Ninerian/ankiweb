@@ -14,9 +14,7 @@ from ankiweb.core.app_client.deck_notes import editable_deck_note
 from ankiweb.core.app_client.vocab import (
     VocabFields,
     read_vocab_note,
-)
-from ankiweb.core.app_client.vocab import (
-    update_vocab_note_with_changes as update_vocab_note,
+    update_vocab_note_with_changes,
 )
 
 _logger = logging.getLogger(__name__)
@@ -104,7 +102,7 @@ def _update_existing_note(
     logger: logging.Logger,
 ) -> OpChanges | None:
     try:
-        return update_vocab_note(
+        return update_vocab_note_with_changes(
             col, NoteId(nid), values.front, values.back, values.hint, values.example
         )
     except (AnkiException, ValueError):

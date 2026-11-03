@@ -975,7 +975,9 @@ def test_update_failure_preserves_form_and_note(
     def fail(*args, **kwargs):
         raise ValueError("private backend detail")
 
-    monkeypatch.setattr("ankiweb.core.app_client.note_editing.update_vocab_note", fail)
+    monkeypatch.setattr(
+        "ankiweb.core.app_client.note_editing.update_vocab_note_with_changes", fail
+    )
     response = client.post(
         "/app/edit/commit?deck=1",
         json={"nid": nid, "front": "Changed", "back": "Changed"},
