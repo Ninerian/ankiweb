@@ -1,0 +1,44 @@
+{% set group_labels = {'study': s('app_decks_emoji_group_study'), 'nature': s('app_decks_emoji_group_nature'), 'fun': s('app_decks_emoji_group_fun'), 'world': s('app_decks_emoji_group_world')} %}
+<div id="deck-sheet" class="modal modal-bottom" role="dialog" aria-modal="true" aria-labelledby="deck-sheet-title" aria-hidden="true" inert data-signals="{emojiGroup: 'study'}" data-class:modal-open="$newOpen" data-attr:aria-hidden="$newOpen ? 'false' : 'true'" data-attr:inert="!$newOpen" data-effect="window.avDeckFocus($newOpen)" data-on:keydown__window="$newOpen && evt.key === 'Escape' && ($newOpen = false)" data-on:keydown="window.avDeckModalKey(evt)" data-error-empty="{{ s('app_decks_name_empty') }}" data-error-too-long="{{ s('app_decks_name_too_long') }}" data-error-invalid="{{ s('app_decks_name_invalid') }}" data-error-taken="{{ s('app_decks_name_taken') }}">
+  <div class="modal-box max-h-review-sheet-max-height w-full max-w-xl mx-auto overflow-y-auto rounded-t-box border-2 border-neo-edge bg-base-200 p-5 pb-review-sheet-safe-bottom shadow-neo">
+    <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-base-300" aria-hidden="true"></div>
+    <div class="mb-4 flex items-center justify-between gap-4">
+      <h2 id="deck-sheet-title" class="text-xl font-black">{{ s('app_decks_new_title') }}</h2>
+      <button id="deck-sheet-close" type="button" class="review-sheet-close" aria-label="{{ tr.actions_close() | tr_clean }}" data-on:click="$newOpen = false"><span aria-hidden="true">✕</span></button>
+    </div>
+    <div class="mb-4 flex items-center gap-3 rounded-box border-2 border-dashed border-neo-edge bg-base-100 p-3" aria-hidden="true">
+      <span id="preview-emoji" class="grid size-15 flex-none place-items-center rounded-deck border-2 border-neo-edge bg-base-200 text-3xl shadow-neo" data-text="$newEmoji">📚</span>
+      <span id="preview-name" class="min-w-0 text-lg font-black wrap-anywhere" data-text="$newName.trim() || {{ js_literal(s('app_decks_name_placeholder')) }}">{{ s('app_decks_name_placeholder') }}</span>
+    </div>
+    <form data-on:submit__prevent="!$creating && $newName.trim() && !$newError && @post('/app/decks')" data-indicator:creating>
+      <fieldset class="fieldset mb-3">
+        <div class="flex items-baseline justify-between gap-2">
+          <label class="fieldset-legend" for="deck-name">{{ s('app_decks_name') }}</label>
+          <span class="text-xs font-bold text-muted-fg" data-class:text-error-content="$newName.length >= 40" data-text="$newName.length + ' / 40'"></span>
+        </div>
+        <label class="input flex h-12.5 w-full items-center gap-2.5 border-neo-edge bg-base-200 px-3.5 shadow-neo focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-primary">
+          <input id="deck-name" class="grow text-base font-bold placeholder:text-muted-fg placeholder:opacity-100" type="text" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="{{ s('app_decks_name_placeholder') }}" data-bind:new-name data-on:input="$newError = ''">
+        </label>
+      </fieldset>
+      <p id="deck-name-error" class="mb-3 text-sm font-bold text-error-content" role="alert" style="display:none" data-show="$newError" data-text="$newError"></p>
+      <p class="mb-2 text-sm font-black">{{ s('app_decks_pick_emoji') }}</p>
+      <div class="mb-3 flex flex-nowrap gap-2 overflow-x-auto pb-1" role="tablist" aria-label="{{ s('app_decks_pick_category') }}">
+        {% for group in emoji_groups %}
+        <button id="emoji-tab-{{ group.key }}" type="button" class="btn btn-sm flex-none rounded-full border-2 border-neo-edge bg-base-200 font-black uppercase shadow-none aria-selected:bg-accent aria-selected:text-accent-content aria-selected:shadow-[2px_2px_0_var(--color-neo-shadow)]" role="tab" aria-controls="emoji-group-{{ group.key }}" aria-selected="{{ 'true' if loop.first else 'false' }}" data-attr:aria-selected="$emojiGroup === {{ js_literal(group.key) }} ? 'true' : 'false'" data-on:click="$emojiGroup = {{ js_literal(group.key) }}">{{ group_labels[group.key] }}</button>
+        {% endfor %}
+      </div>
+      {% for group in emoji_groups %}
+      <div id="emoji-group-{{ group.key }}" class="mb-4 grid grid-cols-6 gap-2" role="radiogroup" aria-label="{{ s('app_decks_pick_emoji') }}" data-show="$emojiGroup === {{ js_literal(group.key) }}"{% if not loop.first %} style="display:none"{% endif %}>
+        {% for emoji in group.emojis %}
+        <label class="btn btn-square aspect-square h-auto min-h-0 w-full max-w-13.5 justify-self-center rounded-[10px] border-2 border-neo-edge bg-base-100 p-0 text-2xl leading-none shadow-[2px_2px_0_var(--color-neo-shadow)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none has-checked:translate-x-0.5 has-checked:translate-y-0.5 has-checked:bg-accent has-checked:shadow-none">
+          <input class="sr-only" type="radio" name="deck-emoji-{{ group.key }}" value="{{ emoji }}" aria-label="{{ emoji }}" data-bind:new-emoji{% if emoji == '📚' %} checked{% endif %}>
+          <span aria-hidden="true">{{ emoji }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      <button id="btn-create-deck" type="submit" class="btn btn-accent btn-block neo-press min-h-14 text-lg font-black shadow-neo active:shadow-none" data-attr:disabled="!$newName.trim() || $creating || !!$newError" disabled>{{ s('app_decks_create') }}</button>
+    </form>
+  </div>
+  <div id="deck-sheet-backdrop" class="modal-backdrop" data-on:click="$newOpen = false"></div>
+</div>

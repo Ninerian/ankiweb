@@ -1,0 +1,1189 @@
+@import "tailwindcss" source(none);
+
+@plugin "daisyui" {
+  themes: false;
+}
+
+/* Mockup token mapping (light / dark):
+   bg-base             -> base-100
+   bg-surface          -> base-200
+   bg-surface-elevated -> base-300
+   text-main           -> base-content
+   color-primary       -> primary (dark uses the mockup's answer blue)
+   color-meter-fill    -> accent
+   ease-again-*        -> error / error-content
+   ease-hard-*         -> warning / warning-content
+   ease-good-*         -> success / success-content
+   ease-easy-*         -> info / info-content
+   border, shadow, muted text, meter, streak and ease borders/shadows
+   retain dedicated theme tokens. */
+@plugin "daisyui/theme" {
+  name: "aw-light";
+  default: true;
+  color-scheme: light;
+  --color-base-100: #f4f3ed;
+  --color-base-200: #ffffff;
+  --color-base-300: #e5e3d8;
+  --color-base-content: #18191f;
+  --color-primary: #1971c2;
+  --color-primary-content: #ffffff;
+  --color-secondary: #e9ecef;
+  --color-secondary-content: #212529;
+  --color-accent: #ffd13b;
+  --color-accent-content: #18191f;
+  --color-neutral: #18191f;
+  --color-neutral-content: #ffffff;
+  --color-info: #d0ebff;
+  --color-info-content: #135087;
+  --color-success: #d3f9d8;
+  --color-success-content: #145b24;
+  --color-warning: #fff3bf;
+  --color-warning-content: #8f300b;
+  --color-error: #ffe3e3;
+  --color-error-content: #a62222;
+  --color-error-border: #fa5252;
+  --color-error-shadow: #c92a2a;
+  --color-warning-border: #fab005;
+  --color-warning-shadow: #e67700;
+  --color-success-border: #40c057;
+  --color-success-shadow: #2b8a3e;
+  --color-info-border: #228be6;
+  --color-info-shadow: #1864ab;
+  --color-muted: #5f6368;
+  --color-meter-track: #e5e3d8;
+  --color-streak: #ff4d00;
+  --color-streak-text: #a83200;
+  --color-streak-bg: #fff0eb;
+  --color-neo-border: #18191f;
+  --color-neo-shadow: #18191f;
+  --radius-selector: 1rem;
+  --radius-field: 16px;
+  --radius-box: 24px;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2.5px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "aw-dark";
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #121316;
+  --color-base-200: #1e2025;
+  --color-base-300: #282a30;
+  --color-base-content: #f8f9fa;
+  --color-primary: #74c0fc;
+  --color-primary-content: #121316;
+  --color-secondary: #2d3038;
+  --color-secondary-content: #e9ecef;
+  --color-accent: #ffd13b;
+  --color-accent-content: #18191f;
+  --color-neutral: #f8f9fa;
+  --color-neutral-content: #121316;
+  --color-info: #0c2b45;
+  --color-info-content: #a4d5ff;
+  --color-success: #0f361a;
+  --color-success-content: #8ce99a;
+  --color-warning: #382c0b;
+  --color-warning-content: #ffe066;
+  --color-error: #381519;
+  --color-error-content: #ffbdbd;
+  --color-neo-border: #f8f9fa;
+  --color-neo-shadow: #000000;
+  --color-error-border: #ff6b6b;
+  --color-error-shadow: #1a080a;
+  --color-warning-border: #fcc419;
+  --color-warning-shadow: #1a1402;
+  --color-success-border: #51cf66;
+  --color-success-shadow: #051408;
+  --color-info-border: #4dabf7;
+  --color-info-shadow: #04121e;
+  --color-muted: #a1a6b0;
+  --color-meter-track: #2a2c33;
+  --color-streak: #ff6b35;
+  --color-streak-text: #ff6b35;
+  --color-streak-bg: #2b170c;
+  --radius-selector: 1rem;
+  --radius-field: 16px;
+  --radius-box: 24px;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2.5px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@source "../ankiweb/adapters/inbound/http_app";
+@source "../ankiweb/adapters/inbound/http_shared/templates/app";
+@source "./app";
+/* Emit animation utilities even when their classes are added dynamically. */
+@source inline("animate-{streak-pop,streak-reset,slide-to-added,fresh-card,reveal-answer}");
+/* Emit the shared press utility before app templates consume it. */
+@source inline("neo-press");
+
+@theme inline {
+  --color-muted-fg: var(--color-muted);
+  --color-neo-edge: var(--color-neo-border);
+  --shadow-neo: 3px 3px 0 var(--color-neo-shadow);
+}
+
+@theme {
+  --text-av-front: 2rem;
+  --text-av-back: 1.85rem;
+  --text-av-sm: 0.95rem;
+  --tracking-av-front: -0.03em;
+  --tracking-av-back: -0.02em;
+  --radius-av-example: 10px;
+  --leading-av-example: 1.45;
+  --transition-duration-neo: 80ms;
+  --transition-duration-meter: 350ms;
+  --ease-neo: ease;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --animate-streak-pop: streakPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-streak-reset: streakReset 0.4s ease-in-out;
+  --animate-slide-to-added: slideToAdded 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  --animate-fresh-card: popInFreshCard 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  --animate-reveal-answer: revealAnswer 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+
+  @keyframes streakPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.35) rotate(-4deg); }
+    75% { transform: scale(0.95) rotate(2deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+
+  @keyframes streakReset {
+    0%, 100% { transform: translateX(0); opacity: 1; }
+    20% { transform: translateX(-6px) rotate(-3deg); opacity: 0.6; }
+    40% { transform: translateX(6px) rotate(3deg); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  @keyframes slideToAdded {
+    0% { transform: translate(0, 0) scale(1) rotate(0); opacity: 1; }
+    50% { transform: translate(8px, 60px) scale(0.97) rotate(3deg); opacity: 0.95; }
+    100% { transform: translate(var(--target-x, 0px), var(--target-y, 24px)) scale(var(--target-scale, 0.98)) rotate(var(--target-rot, -2deg)); opacity: 1; }
+  }
+
+  @keyframes popInFreshCard {
+    0% { opacity: 0; transform: translateY(-24px) scale(0.94); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes revealAnswer {
+    0% { opacity: 0; transform: translateY(16px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
+/* Reduced motion: neutralise the animation tokens themselves. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-streak-pop: none;
+    --animate-streak-reset: none;
+    --animate-slide-to-added: none;
+    --animate-fresh-card: none;
+    --animate-reveal-answer: none;
+  }
+}
+
+@utility border-neo {
+  border-width: var(--border);
+}
+
+@utility border-image-reset {
+  border-image: initial;
+}
+
+@utility transition-neo {
+  transition-property: transform, translate, box-shadow;
+}
+
+@utility transition-meter {
+  transition-property: width;
+}
+
+@utility neo-press {
+  @apply border-neo border-solid border-neo-edge border-image-reset shadow-neo
+    transition-neo duration-neo ease-neo motion-reduce:transition-none;
+
+  &:active {
+    @apply translate-x-0.5 translate-y-0.5 shadow-none motion-reduce:translate-none;
+  }
+}
+
+@layer components {
+  /* Component styles use @apply; plain CSS only for the stripe gradient. */
+  .meter-fill {
+    @apply h-full rounded-full border-e-2 border-neo-edge bg-accent transition-meter
+      duration-meter ease-spring motion-reduce:transition-none;
+    background-image: repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--color-accent-content) 8%, transparent) 0 8px,
+      transparent 8px 16px
+    );
+  }
+
+  .av-front-text {
+    @apply mb-2 text-av-front font-black tracking-av-front;
+  }
+
+  .av-hint {
+    @apply mb-3 text-muted-fg text-av-sm italic;
+  }
+
+  .av-back-text {
+    @apply mb-1.5 text-primary text-av-back font-black tracking-av-back;
+  }
+
+  .av-example {
+    @apply max-w-full mt-2.5 px-3.5 py-2.5 border-2 border-dashed border-neo-edge
+      border-image-reset rounded-av-example bg-base-100 text-base-content text-av-sm
+      font-medium leading-av-example;
+  }
+
+  .av-example mark {
+    @apply px-1 rounded-sm bg-accent text-accent-content font-bold;
+  }
+  /* plan 3 */
+  .review-app {
+    @apply mx-auto flex h-dvh min-h-72 w-full max-w-review-shell flex-col bg-base-100 text-base-content;
+  }
+
+  .review-hud {
+    @apply w-full shrink-0 px-4 pt-review-hud-safe-top pb-2;
+  }
+
+  .review-hud-nav {
+    @apply justify-between gap-2;
+  }
+
+  .review-streak {
+    @apply font-black uppercase tracking-av-back;
+  }
+
+  .review-progress-caption {
+    @apply mb-1 flex justify-between gap-2 text-xs font-black uppercase tracking-wide text-muted-fg;
+  }
+
+  .review-meter-track {
+    @apply overflow-hidden rounded-full border-2 border-neo-edge;
+  }
+
+  .review-deck-label {
+    @apply max-w-full whitespace-normal wrap-anywhere leading-review-deck
+      font-extrabold uppercase tracking-review-deck;
+  }
+
+  .review-card-body {
+    @apply flex flex-1 flex-col justify-center break-words py-4;
+  }
+
+  .review-stage {
+    @apply flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-3 pt-2;
+  }
+
+  .review-vocab-label {
+    @apply mb-2 text-review-vocab-label font-extrabold uppercase tracking-review-vocab-label text-muted-fg;
+  }
+
+  .review-answer {
+    @apply mt-6 border-t-2 border-dashed border-base-300 pt-6;
+  }
+
+  .review-bar {
+    @apply w-full shrink-0 px-4 pb-review-bar-safe-bottom pt-2;
+  }
+
+  .review-ease-grid {
+    @apply grid grid-cols-4 gap-2;
+  }
+
+  .review-actions-grid {
+    @apply grid grid-cols-2 gap-review-sheet-grid-gap;
+  }
+
+  .review-action-tile,
+  .review-sheet-close,
+  .review-sheet-dismiss {
+    @apply text-base-content cursor-pointer font-review-sheet font-extrabold
+      transition-neo duration-neo ease-neo;
+  }
+
+  .review-action-tile {
+    @apply flex min-h-review-sheet-tile-height min-w-0 items-center gap-review-sheet-tile-gap
+      py-review-sheet-tile-y px-review-sheet-control-x border-2 border-solid border-neo-edge
+      border-image-reset rounded-review-sheet-control bg-base-100 shadow-neo
+      text-review-sheet-tile leading-review-sheet-normal text-start no-underline wrap-anywhere;
+  }
+
+  .review-action-tile span {
+    @apply min-w-0;
+  }
+
+  [dir="rtl"] #action-undo svg {
+    @apply -scale-x-100;
+  }
+
+  .review-action-tile svg {
+    @apply size-review-sheet-icon shrink-0 fill-none stroke-current stroke-review-sheet-icon;
+  }
+
+  .review-action-tile--danger {
+    @apply border-review-sheet-danger-edge text-error-content;
+  }
+
+  .review-sheet-close {
+    @apply relative inline-flex size-review-sheet-close shrink-0 items-center justify-center p-0
+      border-neo border-solid border-neo-edge border-image-reset rounded-review-sheet-control
+      bg-base-200 shadow-neo text-review-sheet-close;
+  }
+
+  .review-sheet-close::before {
+    @apply absolute -inset-review-sheet-hit content-review-sheet-hit;
+  }
+
+  .review-sheet-dismiss {
+    @apply w-full min-h-review-sheet-dismiss-height mt-review-sheet-dismiss-top
+      py-review-sheet-dismiss-y px-review-sheet-control-x border-2 border-solid border-neo-edge
+      border-image-reset rounded-field bg-review-sheet-dismiss-bg shadow-neo
+      text-review-sheet-dismiss leading-review-sheet-normal wrap-anywhere;
+  }
+
+  .review-action-tile:active,
+  .review-sheet-close:active,
+  .review-sheet-dismiss:active {
+    @apply translate-review-sheet-press shadow-none;
+  }
+
+  .review-action-tile:focus-visible,
+  .review-sheet-close:focus-visible,
+  .review-sheet-dismiss:focus-visible {
+    @apply outline-2 outline-solid outline-primary outline-offset-3;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .review-action-tile, .review-sheet-close, .review-sheet-dismiss { @apply transition-none; }
+    .review-action-tile:active, .review-sheet-close:active, .review-sheet-dismiss:active { @apply translate-none; }
+  }
+
+  .flashcard {
+    @apply min-w-0 my-auto min-h-review-card-min-height shrink-0 bg-base-200 px-5 py-6;
+  }
+
+  .review-card-content {
+    @apply wrap-anywhere max-w-full;
+  }
+
+  .review-card-content img,
+  .review-card-content video,
+  .review-card-content iframe {
+    @apply max-w-full h-auto;
+  }
+
+  .review-ease {
+    @apply min-h-16 min-w-0 flex-col py-2;
+  }
+
+  .review-ease-label {
+    @apply max-w-full break-words text-center;
+  }
+
+  .review-ease-error {
+    @apply border-review-ease-error-border;
+  }
+  .review-ease-warning {
+    @apply border-review-ease-warning-border;
+  }
+  .review-ease-success {
+    @apply border-review-ease-success-border;
+  }
+  .review-ease-info {
+    @apply border-review-ease-info-border;
+  }
+  .review-ease:active {
+    @apply shadow-none;
+  }
+
+  .review-complete {
+    @apply shrink-0 animate-review-complete-arrive motion-reduce:animate-none
+      my-auto w-full bg-base-200 p-5 text-center sm:p-8;
+  }
+  .review-stats {
+    @apply mt-5 w-full grid-cols-3 border-2 border-neo-edge bg-base-100;
+  }
+
+  .review-stats > .stat {
+    @apply min-w-0;
+  }
+
+  .review-dist {
+    @apply mt-5 border-2 border-neo-edge rounded-review-sheet-control p-2.5 text-start;
+  }
+  .review-dist-heading {
+    @apply mb-1.5 font-mono text-review-dist-heading font-black uppercase tracking-[0.04em];
+  }
+  .review-dist-bar {
+    @apply flex h-3.5 overflow-hidden rounded-full border-2 border-neo-edge;
+  }
+  .review-dist-bar span {
+    @apply min-w-0 bg-(--swatch);
+  }
+  .review-dist-counts {
+    @apply mt-1.5 flex flex-wrap justify-between gap-x-2 gap-y-0.75 text-review-dist-count font-extrabold;
+  }
+  .review-dist-counts span {
+    @apply min-w-0 wrap-anywhere;
+  }
+  .review-dist-counts span::before {
+    @apply me-1 inline-block size-2 rounded-xs border border-neo-edge bg-(--swatch) content-[''];
+  }
+  .review-dist-error { --swatch: var(--color-error-border); }
+  .review-dist-warning { --swatch: var(--color-warning-border); }
+  .review-dist-success { --swatch: var(--color-success-border); }
+  .review-dist-info { --swatch: var(--color-info-border); }
+
+  .review-celebration {
+    @apply relative grid place-items-center h-24 my-2 mx-auto w-40;
+  }
+  .review-sticker {
+    @apply grid place-items-center size-20 border-neo border-solid border-neo-edge
+      border-image-reset rounded-review-complete-sticker bg-accent shadow-neo
+      text-review-complete-sticker animate-review-complete-sticker motion-reduce:animate-none motion-reduce:-rotate-7;
+  }
+  .review-confetti {
+    @apply absolute inset-0 pointer-events-none;
+  }
+  .review-confetti i {
+    @apply absolute top-1/2 left-1/2 w-review-complete-confetti-width h-review-complete-confetti-height
+      rounded-review-complete-confetti bg-review-complete-error animate-review-complete-confetti
+      motion-reduce:animate-none;
+  }
+  .review-confetti i:nth-child(1) {
+    @apply -translate-x-review-complete-offset-47 -translate-y-review-complete-offset-22 -rotate-24;
+  }
+  .review-confetti i:nth-child(2) {
+    @apply translate-x-review-complete-offset-42 -translate-y-review-complete-offset-24 rotate-35 bg-review-complete-info;
+  }
+  .review-confetti i:nth-child(3) {
+    @apply -translate-x-review-complete-offset-44 translate-y-review-complete-offset-14 rotate-40 bg-review-complete-warning;
+  }
+  .review-confetti i:nth-child(4) {
+    @apply translate-x-review-complete-offset-42 translate-y-review-complete-offset-13 -rotate-35 bg-review-complete-success;
+  }
+  .review-confetti i:nth-child(5) {
+    @apply -translate-x-review-complete-offset-28 -translate-y-review-complete-offset-29 rotate-25 bg-review-complete-info;
+  }
+  .review-confetti i:nth-child(6) {
+    @apply translate-x-review-complete-offset-28 translate-y-review-complete-offset-23 rotate-60 bg-review-complete-warning;
+  }
+
+  @keyframes review-arrive {
+    from { opacity: 0; transform: translateY(1rem); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes review-sticker {
+    from { opacity: 0; transform: scale(0.5) rotate(-20deg); }
+    to { opacity: 1; transform: scale(1) rotate(-7deg); }
+  }
+  @keyframes review-confetti {
+    from { opacity: 0; translate: 0 0; rotate: 0deg; }
+    to { opacity: 1; }
+  }
+
+  /* plan 2 */
+  .deck-card {
+    @apply border-neo border-solid border-neo-edge shadow-neo;
+  }
+}
+
+/* plan 3 */
+@theme inline {
+  --color-review-ease-error-border: var(--color-error-border);
+  --color-review-ease-warning-border: var(--color-warning-border);
+  --color-review-ease-success-border: var(--color-success-border);
+  --color-review-ease-info-border: var(--color-info-border);
+  --color-review-sheet-dismiss-bg: light-dark(var(--color-base-200), var(--color-base-300));
+  --color-review-sheet-danger-edge: var(--color-error-border);
+  --color-review-complete-error: var(--color-error-border);
+  --color-review-complete-info: var(--color-info-border);
+  --color-review-complete-warning: var(--color-warning-border);
+  --color-review-complete-success: var(--color-success-border);
+  --color-review-streak-accent: var(--color-streak);
+  --color-review-streak-surface: var(--color-streak-bg);
+  --color-review-streak-foreground: var(--color-streak-text);
+  --color-review-meter-track: var(--color-meter-track);
+}
+
+@theme {
+  --container-review-shell: 430px;
+  --spacing-review-hud-safe-top: calc(0.75rem + env(safe-area-inset-top));
+  --spacing-review-hud-control: 42px;
+  --spacing-review-streak-gap: 6px;
+  --spacing-review-streak-x: 14px;
+  --spacing-review-streak-y: 6px;
+  --spacing-review-bar-safe-bottom: calc(1rem + env(safe-area-inset-bottom));
+  --spacing-review-card-min-height: 280px;
+  --spacing-review-deck-tag-x: 10px;
+  --spacing-review-sheet-max-height: 85dvh;
+  --spacing-review-sheet-safe-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  --border-width-review-deck-tag-width: 1.5px;
+  --leading-review-deck: 1.4;
+  --tracking-review-deck: 0.06em;
+  --tracking-review-vocab-label: 0.08em;
+  --tracking-review-reveal-label: -0.01em;
+  --text-review-vocab-label: 0.8rem;
+  --text-review-streak-label: 1.05rem;
+  --text-review-streak-count: 1.2rem;
+  --text-review-deck-tag: 0.72rem;
+  --text-review-reveal-label: 1.35rem;
+  --text-review-dist-heading: 0.66rem;
+  --text-review-dist-count: 0.7rem;
+  --font-review-sheet: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
+  --text-review-sheet-tile: 0.9rem;
+  --text-review-sheet-close: 1.1rem;
+  --text-review-sheet-dismiss: 1rem;
+  --leading-review-sheet-normal: normal;
+  --radius-review-sheet-control: 10px;
+  --stroke-width-review-sheet-icon: 2.2;
+  --content-review-sheet-hit: "";
+  --spacing-review-sheet-grid-gap: 10px;
+  --spacing-review-sheet-tile-height: 46px;
+  --spacing-review-sheet-tile-gap: 8px;
+  --spacing-review-sheet-tile-y: 12px;
+  --spacing-review-sheet-control-x: 14px;
+  --spacing-review-sheet-icon: 18px;
+  --spacing-review-sheet-close: 32px;
+  --spacing-review-sheet-hit: 6px;
+  --spacing-review-sheet-dismiss-height: 48px;
+  --spacing-review-sheet-dismiss-top: 20px;
+  --spacing-review-sheet-dismiss-y: 10px;
+  --spacing-review-sheet-press: 2px;
+  --spacing-review-complete-confetti-width: 0.55rem;
+  --spacing-review-complete-confetti-height: 0.8rem;
+  --spacing-review-complete-offset-47: 4.7rem;
+  --spacing-review-complete-offset-42: 4.2rem;
+  --spacing-review-complete-offset-44: 4.4rem;
+  --spacing-review-complete-offset-28: 2.8rem;
+  --spacing-review-complete-offset-22: 2.2rem;
+  --spacing-review-complete-offset-24: 2.4rem;
+  --spacing-review-complete-offset-14: 1.4rem;
+  --spacing-review-complete-offset-13: 1.3rem;
+  --spacing-review-complete-offset-29: 2.9rem;
+  --spacing-review-complete-offset-23: 2.3rem;
+  --radius-review-complete-sticker: 1.4rem;
+  --radius-review-complete-confetti: 2px;
+  --text-review-complete-sticker: 2.5rem;
+  --animate-review-complete-arrive: review-arrive 0.4s ease both;
+  --animate-review-complete-sticker: review-sticker 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  --animate-review-complete-confetti: review-confetti 0.55s ease-out both;
+}
+
+/* plan 2 */
+@theme inline {
+  --color-deck-track: var(--color-meter-track);
+}
+
+@theme {
+  --container-deck: 430px;
+  --radius-deck: 10px;
+  --text-deck-label: 0.72rem;
+  --text-deck-title: 2.35rem;
+  --text-deck-name: 1.18rem;
+  --text-deck-pill: 0.73rem;
+  --text-deck-btn: 0.9rem;
+  --text-deck-empty: 1.1rem;
+  --tracking-deck-label: 0.08em;
+  --tracking-deck-title: -0.04em;
+  --tracking-deck-name: -0.03em;
+  --leading-deck-name: 1.15;
+  --leading-deck-pill: 1.3;
+}
+
+@utility depth-flat {
+  --depth: 0;
+}
+
+@utility border-deck-pill {
+  border-width: 1.5px;
+}
+
+@utility pt-deck-safe {
+  padding-top: max(1.5rem, env(safe-area-inset-top));
+}
+
+@utility pb-deck-safe {
+  padding-bottom: max(2.25rem, env(safe-area-inset-bottom));
+}
+
+/* plan 4 */
+@theme static {
+  --text-add-input: 1.35rem;
+  --text-add-step-num: 0.68rem;
+  --animate-bump: bump 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-badge-spin: badge-spin 28s linear infinite;
+
+  /* Reusable: element briefly grows, then settles. Add the animate-bump class, re-add to replay. */
+  @keyframes bump {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.7); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes badge-spin {
+    to { transform: rotate(360deg); }
+  }
+}
+
+
+@layer components {
+  .add-card {
+    @apply flex flex-col rounded-box border-3 border-solid border-neo-edge bg-base-200 p-4.5 shadow-neo;
+  }
+
+  .add-step {
+    @apply flex min-w-0 flex-auto cursor-pointer items-center justify-center gap-1 rounded-full
+      border-2 border-solid border-neo-edge bg-base-200 px-1 py-1.5 text-add-step-num font-black uppercase
+      tracking-normal text-muted-fg transition-neo duration-neo ease-neo motion-reduce:transition-none;
+  }
+
+  .add-step > span:last-child {
+    @apply min-w-0 truncate;
+  }
+
+  .add-step-active {
+    @apply -translate-y-px bg-accent text-accent-content shadow-neo;
+  }
+
+  .add-step-done {
+    @apply bg-success text-success-content;
+  }
+
+  .add-step-num {
+    @apply grid size-4 shrink-0 place-items-center rounded-full bg-secondary text-secondary-content text-add-step-num;
+  }
+
+  .add-label-row {
+    @apply mb-3 flex flex-wrap items-baseline justify-between gap-1;
+  }
+
+  #add-editor .add-label-row:has(> label) {
+    @apply mb-5;
+  }
+
+  .add-label {
+    @apply text-xs font-black uppercase tracking-deck-label text-muted-fg;
+  }
+
+  .add-help {
+    @apply text-xs font-semibold text-muted-fg;
+  }
+
+  .add-input {
+    @apply min-h-36 w-full resize-none rounded-field border-neo border-solid border-neo-edge bg-base-100
+      px-4 py-3.5 text-add-input leading-snug font-extrabold text-base-content transition-neo
+      duration-neo ease-neo placeholder:font-bold placeholder:text-muted-fg placeholder:opacity-100
+      motion-reduce:transition-none;
+  }
+
+  .add-input:focus {
+    @apply bg-base-200 shadow-neo outline-3 outline-offset-3 outline-primary;
+  }
+
+  .add-input-sm {
+    @apply min-h-20 p-2.5 text-base;
+  }
+
+  .add-counter {
+    @apply mt-1.5 text-end font-mono text-xs font-bold text-muted-fg;
+  }
+
+  .add-chips {
+    @apply mt-2.5 flex flex-wrap gap-1.5;
+  }
+
+  .add-chip {
+    @apply cursor-pointer select-none rounded-full border-deck-pill border-solid border-neo-edge
+      bg-base-100 px-2.5 py-1 text-xs font-extrabold text-base-content transition-neo duration-neo
+      ease-neo active:bg-accent active:text-accent-content motion-reduce:transition-none;
+  }
+
+  .add-preview {
+    @apply flex flex-col gap-3 rounded-field border-neo border-dashed border-neo-edge bg-base-100 p-4 text-center;
+  }
+
+  .add-preview-section {
+    @apply flex min-w-0 flex-col gap-1 wrap-anywhere;
+  }
+
+  .add-preview-tag {
+    @apply text-xs font-black uppercase tracking-deck-label text-muted-fg;
+  }
+
+  .add-preview-divider {
+    @apply my-1 border-t-2 border-base-300;
+  }
+
+  .add-preview-edit {
+    @apply cursor-pointer self-center p-2 text-xs font-extrabold text-muted-fg underline;
+  }
+
+  .add-empty {
+    @apply mt-1 flex flex-col gap-1 rounded-box border-2 border-dashed border-base-300 p-3 text-center
+      text-xs font-black uppercase tracking-wide text-muted-fg;
+  }
+
+  #add-wizard { position: relative; }
+  #add-wizard:is([data-browse-phase="open"], [data-browse-phase="closing"]) #add-stage { display: none; }
+  #add-stage { overflow-x: hidden; perspective: 1000px; }
+  #add-wizard[data-browse-drag] { clip-path: inset(0); overflow: clip; }
+
+  .pile-region {
+    display: flex;
+    flex: 0 0 auto;
+    min-width: 0;
+    margin-top: 12px;
+  }
+  .pile-button {
+    position: relative;
+    display: block;
+    flex: 1;
+    width: 100%;
+    padding: 0;
+    text-align: left;
+    touch-action: pan-x;
+  }
+  .pile-button:disabled { cursor: default; }
+  .pile-size-0 { min-height: 80px; }
+  .pile-size-1 { min-height: 160px; }
+  .pile-size-2 { min-height: 176px; }
+  .pile-size-3 { min-height: 192px; }
+  .pile-size-4 { min-height: 208px; }
+  .pile-size-5 { min-height: 224px; }
+  .pile-cards {
+    position: absolute;
+    inset: 0;
+    display: block;
+    transition: transform 300ms ease-out;
+  }
+  #add-wizard[data-browse-phase="opening"] .pile-cards { transform: translateY(-48px); }
+  .stacked-card {
+    @apply rounded-box border-3 border-solid border-neo-edge bg-base-200 shadow-neo;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 38px;
+    height: 104px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 14px 16px;
+    overflow: hidden;
+    transform: translate(var(--target-x), var(--target-y)) rotate(var(--target-rot)) scale(var(--target-scale));
+    transform-origin: center bottom;
+  }
+  .added-0 { --target-x: -3px; --target-y: 0px; --target-rot: -3.2deg; --target-scale: 1; z-index: 5; }
+  .added-1 { --target-x: 8px; --target-y: -16px; --target-rot: 2.8deg; --target-scale: 0.97; z-index: 4; filter: brightness(0.95); }
+  .added-2 { --target-x: -5px; --target-y: -32px; --target-rot: -2deg; --target-scale: 0.94; z-index: 3; filter: brightness(0.9); }
+  .added-3 { --target-x: 7px; --target-y: -48px; --target-rot: 3deg; --target-scale: 0.91; z-index: 2; filter: brightness(0.85); }
+  .added-4 { --target-x: -4px; --target-y: -64px; --target-rot: -1.5deg; --target-scale: 0.88; z-index: 1; filter: brightness(0.82); }
+  .stacked-card-front, .stacked-card-back {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 900;
+  }
+  .stacked-card-front { font-size: 1.15rem; }
+  .stacked-card-back { @apply text-primary; font-size: 0.95rem; }
+
+  .add-stack-badge {
+    @apply fill-primary text-primary-content;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    top: 16px;
+    z-index: 20;
+    width: 64px;
+    height: 64px;
+    overflow: visible;
+    font-weight: 900;
+    filter: drop-shadow(2px 2px 0 var(--color-neo-edge));
+  }
+  .add-stack-star {
+    @apply animate-badge-spin fill-primary stroke-neo-edge;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .add-stack-count { @apply fill-primary-content; font-size: 40px; transform-box: fill-box; transform-origin: center; }
+  .add-stack-unit { @apply fill-primary-content; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .pile-cue {
+    @apply border-2 border-solid border-neo-edge bg-base-200 text-base-content;
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    z-index: 15;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: max-content;
+    max-width: 100%;
+    padding: 5px 12px 5px 8px;
+    border-radius: 10px 10px 4px 4px;
+    box-shadow: 0 4px 0 var(--color-neo-edge);
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .pile-cue svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .pile-button .add-empty { display: flex; }
+
+  .editor-leaving { animation: editor-leave 0.42s cubic-bezier(0.55, 0, 0.9, 0.4) forwards; }
+  .editor-returning { animation: editor-return 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+  #add-wizard[data-browse-restored] #add-editor { animation: none; }
+  @keyframes editor-leave {
+    from { transform: translateY(0) rotate(0); opacity: 1; }
+    to { transform: translateY(-115%) rotate(-4deg); opacity: 0; }
+  }
+  @keyframes editor-return {
+    from { transform: translateY(-115%) rotate(-4deg); opacity: 0; }
+    70% { transform: translateY(6px) rotate(0.6deg); opacity: 1; }
+    to { transform: translateY(0) rotate(0); opacity: 1; }
+  }
+  /* The gesture scrubs the same lift and editor exit used by opening. */
+  #add-wizard[data-browse-drag] .pile-cards {
+    transform: translateY(calc(-48px * var(--browse-drag)));
+    opacity: calc(1 - var(--browse-drag));
+    transition: transform var(--browse-drag-duration, 0ms) ease-out,
+      opacity var(--browse-drag-duration, 0ms) ease-out;
+  }
+  #add-wizard[data-browse-drag] #add-editor {
+    animation: none;
+    transform: translateY(calc(-115% * var(--browse-drag))) rotate(calc(-4deg * var(--browse-drag)));
+    opacity: calc(1 - var(--browse-drag));
+    transition: transform var(--browse-drag-duration, 0ms) ease-out,
+      opacity var(--browse-drag-duration, 0ms) ease-out;
+  }
+  .deck-browse {
+    @apply px-4 pb-3 pt-2;
+    display: flex;
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    flex-direction: column;
+  }
+  /* The real list occupies its eventual open-view rectangle, independently of
+     the still-visible editor and pile. It cannot intercept the captured pointer. */
+  #add-wizard[data-browse-drag] #deck-cards {
+    display: flex !important;
+    position: absolute;
+    top: var(--browse-preview-top);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    pointer-events: none;
+  }
+  .deck-browse-list {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    padding: 4px 4px 28px;
+  }
+  /* Let folded rows emerge from the pile even outside the list's scrollport.
+     The measured gutter keeps their final widths identical at handoff. */
+  #add-wizard:is([data-browse-drag="dragging"], [data-browse-drag="settling"]) .deck-browse-list {
+    overflow: visible;
+    padding-inline-end: calc(4px + var(--browse-scrollbar, 0px));
+  }
+  .browse-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; animation: browse-fan 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.15) var(--fan-delay) both; }
+  #add-wizard[data-browse-drag] .browse-card {
+    animation: none;
+    transform: translate(
+      calc(var(--fan-offset-x, 0px) * (1 - var(--browse-drag))),
+      calc(var(--fan-offset-y, 0px) * (1 - var(--browse-drag)))
+    ) rotate(calc(3deg * (1 - var(--browse-drag)))) scale(calc(0.94 + 0.06 * var(--browse-drag)));
+    opacity: var(--browse-drag);
+    transition: transform var(--browse-drag-duration, 0ms) ease-out,
+      opacity var(--browse-drag-duration, 0ms) ease-out;
+  }
+  #add-wizard[data-browse-unfolded][data-browse-phase="open"] .browse-card { animation: none; }
+  .browse-num { @apply text-primary border-neo-edge; display: flex; align-self: stretch; align-items: center; justify-content: center; min-width: 38px; padding-right: 12px; border-right-width: 2px; border-right-style: dashed; font-size: 1.3rem; font-weight: 900; }
+  .browse-body { display: block; min-width: 0; }
+  .is-folding .browse-card { animation: browse-fold 0.34s cubic-bezier(0.55, 0, 0.9, 0.4) var(--fold-delay) both; }
+  @keyframes browse-fan {
+    from { transform: translate(var(--fan-offset-x, 0px), var(--fan-offset-y, 120px)) rotate(3deg) scale(0.94); opacity: 0; }
+    to { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
+  }
+  @keyframes browse-fold {
+    from { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
+    to { transform: translate(var(--fan-offset-x, 0px), var(--fan-offset-y, 120px)) rotate(3deg) scale(0.94); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root { --animate-bump: none; --animate-badge-spin: none; }
+    .pile-cards { transition: none; }
+    #add-wizard[data-browse-phase="opening"] .pile-cards { transform: none; }
+    .editor-leaving, .editor-returning, .browse-card, .is-folding .browse-card { animation: none; }
+  }
+
+}
+
+@layer utilities {
+  /* daisyUI's collapse and alert rules also live in the utility layer. */
+  /* Match the controls' existing press timing while the browse chrome fades. */
+  #add-wizard .browse-fade {
+    transition-property: opacity, transform, translate, box-shadow;
+    transition-duration: 300ms, var(--transition-duration-neo), var(--transition-duration-neo), var(--transition-duration-neo);
+    transition-timing-function: ease;
+  }
+  #add-wizard:is([data-browse-phase="opening"], [data-browse-phase="open"], [data-browse-phase="closing"]) .browse-fade {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #add-wizard[data-browse-phase="returning"] .browse-fade {
+    transition-duration: 500ms, var(--transition-duration-neo), var(--transition-duration-neo), var(--transition-duration-neo);
+  }
+  /* The step row and footer re-enter the layout from display:none. */
+  @starting-style {
+    #add-wizard[data-browse-phase="returning"] .browse-fade { opacity: 0; }
+  }
+
+  #add-wizard[data-browse-drag] .browse-fade {
+    opacity: calc(1 - var(--browse-drag));
+    transition: opacity var(--browse-drag-duration, 0ms) ease-out;
+  }
+
+  #add-wizard .add-optional {
+    @apply mt-2.5 rounded-review-sheet-control border-deck-pill border-solid border-neo-edge bg-base-200;
+  }
+
+  /* Compact summary rows, as in editor-mockup.html (.optional-field summary). */
+  #add-wizard .add-optional > .collapse-title {
+    @apply min-h-0 ps-2.5 pe-12 py-2;
+  }
+
+  /* Lift the validation toast above the action bar, including its safe area. */
+  body:has(#add-wizard) #app-error {
+    @apply pointer-events-none z-50 p-0;
+    --toast-y: calc(-1 * (var(--spacing-review-bar-safe-bottom) + 4.25rem));
+  }
+
+  body:has(#add-wizard) #app-error .alert {
+    @apply pointer-events-auto w-[calc(100vw-2rem)] max-w-full justify-center rounded-2xl border-3
+      border-solid border-error px-4 py-3 text-center text-sm font-black shadow-neo;
+    animation: add-toast-in 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  }
+
+  @keyframes add-toast-in {
+    from { opacity: 0; transform: translateY(0.75rem) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #add-wizard .browse-fade { transition: none; }
+    body:has(#add-wizard) #app-error .alert { animation: none; }
+  }
+}
+/* end plan 4 */
+
+@keyframes emoji-pop {
+  from { transform: scale(0.6) rotate(-10deg); }
+  to { transform: scale(1) rotate(0); }
+}
+
+@keyframes deck-drop {
+  from { opacity: 0; transform: translateY(-18px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes deck-toast {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+@layer components {
+  .deck-dock {
+    background: linear-gradient(to top, var(--color-base-100) 55%, transparent);
+  }
+  .emoji-pop { animation: emoji-pop 0.34s var(--ease-spring); }
+  .deck-drop { animation: deck-drop 0.5s var(--ease-spring); }
+  .deck-toast { animation: deck-toast 3s forwards; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emoji-pop, .deck-drop { animation: none; }
+  .deck-toast { animation-timing-function: steps(1, end); }
+}
+
+/* Login uses the same theme tokens as the rest of the app. */
+@layer components {
+  .login-page {
+    @apply bg-base-100 text-base-content;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-image: radial-gradient(color-mix(in srgb, var(--color-base-content) 14%, transparent) 1.6px, transparent 1.8px);
+    background-size: 22px 22px;
+  }
+
+  .login-viewport {
+    @apply relative mx-auto flex w-full max-w-review-shell flex-col justify-center pr-5.5 pl-5;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-top: calc(env(safe-area-inset-top) + 84px);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 84px);
+  }
+
+  .login-sticker {
+    @apply pointer-events-none absolute grid size-12.5 place-items-center rounded-[14px]
+      border-neo border-solid border-neo-edge shadow-neo text-[1.55rem] leading-none;
+    animation: login-float 5.5s ease-in-out infinite;
+    animation-delay: var(--login-delay, 0s);
+  }
+  .login-sticker-star {
+    @apply right-[8%] bg-warning;
+    top: calc(env(safe-area-inset-top) + 14px);
+    --login-rotation: 10deg;
+    --login-delay: -1s;
+  }
+  .login-sticker-book {
+    @apply left-[9%] size-10.5 bg-info text-[1.3rem];
+    top: calc(env(safe-area-inset-top) + 22px);
+    --login-rotation: -8deg;
+    --login-delay: -3s;
+  }
+  .login-sticker-fire {
+    @apply right-[9%] bg-review-streak-surface;
+    bottom: calc(env(safe-area-inset-bottom) + 14px);
+    --login-rotation: 8deg;
+    --login-delay: -2s;
+  }
+  .login-sticker-brain {
+    @apply left-[8%] size-11 bg-success text-[1.35rem];
+    bottom: calc(env(safe-area-inset-bottom) + 20px);
+    --login-rotation: -10deg;
+    --login-delay: -4s;
+  }
+
+  .login-hero {
+    @apply relative z-1 mb-13;
+  }
+  .login-hero h1 {
+    @apply m-0 max-w-[9.5em] font-review-sheet text-deck-title font-black
+      leading-none tracking-deck-title;
+  }
+  .login-wave { @apply inline-block; }
+
+  .login-stage { @apply relative z-1 mr-1; }
+  .login-ghost {
+    @apply absolute inset-0 rounded-box border-neo border-solid border-neo-edge
+      shadow-[4px_4px_0_var(--color-neo-shadow)];
+  }
+  .login-ghost-blue {
+    @apply bg-info;
+    transform: translate(9px, 16px) rotate(3.2deg);
+  }
+  .login-ghost-yellow {
+    @apply bg-warning;
+    transform: translate(-7px, 9px) rotate(-2.8deg);
+  }
+  .login-card {
+    @apply relative block rounded-box border-neo border-solid border-neo-edge bg-base-200
+      px-5 pt-13 pb-5.5 shadow-[4px_4px_0_var(--color-neo-shadow)];
+  }
+  .login-card.is-shaking { animation: login-wobble 0.5s ease; }
+  .login-mascot {
+    @apply absolute -top-8.5 left-5 grid size-17 place-items-center rounded-[20px]
+      border-neo border-solid border-neo-edge bg-accent shadow-neo text-[2.1rem] leading-none;
+    transform: rotate(-7deg);
+    animation: login-mascot-bob 3.6s ease-in-out infinite;
+  }
+  .login-card[data-error-kind="empty"] .login-mascot,
+  .login-card[data-error-kind="wrong"] .login-mascot { @apply bg-error; }
+  .login-mascot-emoji {
+    @apply block;
+    animation: login-emoji-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .login-card h2 {
+    @apply m-0 mb-0.75 font-review-sheet text-review-reveal-label font-black tracking-deck-name;
+  }
+  .login-hint { @apply m-0 mb-4.5 text-[0.88rem] font-semibold text-muted-fg; }
+  .login-label {
+    @apply mb-1.75 block font-review-sheet text-deck-label font-black uppercase tracking-deck-label text-muted-fg;
+  }
+  .login-error > :first-child { @apply text-xl leading-none; }
+
+  @keyframes login-float {
+    0%, 100% { transform: translateY(0) rotate(var(--login-rotation)); }
+    50% { transform: translateY(-9px) rotate(calc(var(--login-rotation) * -0.5)); }
+  }
+  @keyframes login-mascot-bob {
+    0%, 100% { transform: rotate(-7deg) translateY(0); }
+    50% { transform: rotate(-4deg) translateY(-4px); }
+  }
+  @keyframes login-emoji-pop {
+    from { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+    to { opacity: 1; transform: scale(1) rotate(0); }
+  }
+  @keyframes login-wobble {
+    0%, 100% { transform: translateX(0) rotate(0); }
+    18% { transform: translateX(-9px) rotate(-1.2deg); }
+    36% { transform: translateX(8px) rotate(1deg); }
+    54% { transform: translateX(-6px) rotate(-0.6deg); }
+    72% { transform: translateX(4px) rotate(0.4deg); }
+  }
+}
+
+@layer utilities {
+  /* daisyUI's alert and input defaults also live in the utilities layer. */
+  .input.login-field {
+    @apply flex h-auto w-full items-center gap-1.5 rounded-field border-neo border-solid border-neo-edge
+      bg-base-100 py-0 pr-2 pl-3.5 shadow-[2px_2px_0_var(--color-neo-edge)];
+  }
+  .input.login-field:focus-within { @apply outline-3 outline-solid outline-primary outline-offset-3; }
+  .input.login-field input {
+    @apply h-auto w-0 min-w-0 flex-1 border-0 bg-transparent px-0 py-3.75 font-[family-name:inherit] text-[1.05rem]
+      leading-[1.4] font-bold text-base-content outline-0;
+  }
+  .input.login-field input::placeholder { @apply font-semibold text-muted-fg opacity-100; }
+  .input.login-field input[type="password"]:not(:placeholder-shown) { @apply tracking-[0.14em]; }
+  .login-peek {
+    @apply h-9.5 min-h-9.5 flex-none gap-1.25 rounded-xl bg-base-200 px-2.75 py-0
+      font-review-sheet text-[0.78rem] font-black text-base-content shadow-[2px_2px_0_var(--color-neo-edge)];
+  }
+  .login-peek[aria-pressed="true"] { @apply bg-info; }
+  .login-peek:focus-visible { @apply outline-3 outline-solid outline-primary outline-offset-3; }
+  .alert.login-error {
+    @apply mt-3.5 flex items-center gap-2.25 rounded-[14px] border-neo border-solid
+      border-review-ease-error-border bg-none px-3 py-2.5 text-[0.9rem] leading-[inherit]
+      font-extrabold shadow-none;
+  }
+  .alert.login-error:not([hidden]) {
+    animation: login-emoji-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .input.login-field:has(input[aria-invalid="true"]) {
+    @apply border-review-ease-error-border shadow-[2px_2px_0_var(--color-error-border)];
+  }
+  .login-error[hidden], .login-peek[hidden] { @apply hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-sticker { animation: none; transform: rotate(var(--login-rotation)); }
+  .login-mascot, .login-mascot-emoji, .login-card.is-shaking,
+  .alert.login-error:not([hidden]) { animation: none; }
+  .login-peek { transition: none; }
+}

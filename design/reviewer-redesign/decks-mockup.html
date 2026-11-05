@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>My Decks — AnkiWeb</title>
+  <script>
+    const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      document.documentElement.dataset.theme = colorScheme.matches ? 'dark' : 'light';
+    };
+    applyTheme();
+    colorScheme.addEventListener('change', applyTheme);
+  </script>
+  <style>
+    :root {
+      --font-display: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+      --bg-base: #f4f3ed;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #ffffff;
+      --text-main: #18191f;
+      --text-muted: #5f6368;
+      --border-color: #18191f;
+      --border-width: 2.5px;
+      --shadow-offset: 4px;
+      --shadow-sm: 2px 2px 0px var(--border-color);
+      --shadow-card: 4px 4px 0px var(--border-color);
+      --shadow-button: 3px 3px 0px var(--border-color);
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-pill: 999px;
+      --color-streak: #ff4d00;
+      --color-streak-bg: #fff0eb;
+      --color-streak-glow: rgba(255, 77, 0, 0.35);
+      --color-meter-track: #e5e3d8;
+      --color-meter-fill: #ffd13b;
+      --color-primary: #1971c2;
+      --color-primary-accent: #ffd13b;
+      --ease-again-bg: #ffe3e3;
+      --ease-again-border: #fa5252;
+      --ease-again-text: #c92a2a;
+      --ease-again-shadow: #c92a2a;
+      --ease-hard-bg: #fff3bf;
+      --ease-hard-border: #fab005;
+      --ease-hard-text: #a5320c;
+      --ease-hard-shadow: #e67700;
+      --ease-good-bg: #d3f9d8;
+      --ease-good-border: #40c057;
+      --ease-good-text: #2b8a3e;
+      --ease-good-shadow: #2b8a3e;
+      --ease-easy-bg: #d0ebff;
+      --ease-easy-border: #228be6;
+      --ease-easy-text: #1864ab;
+      --ease-easy-shadow: #1864ab;
+      --badge-bg: #e9ecef;
+      --badge-text: #212529;
+      --sheet-backdrop: rgba(24, 25, 31, 0.65);
+    }
+
+    [data-theme="dark"] {
+      --bg-base: #121316;
+      --bg-surface: #1e2025;
+      --bg-surface-elevated: #282a30;
+      --text-main: #f8f9fa;
+      --text-muted: #a1a6b0;
+      --border-color: #f8f9fa;
+      --shadow-sm: 2px 2px 0px #000000;
+      --shadow-card: 4px 4px 0px #000000;
+      --shadow-button: 3px 3px 0px #000000;
+      --color-streak: #ff6b35;
+      --color-streak-bg: #2b170c;
+      --color-streak-glow: rgba(255, 107, 53, 0.45);
+      --color-meter-track: #2a2c33;
+      --color-meter-fill: #ffd13b;
+      --ease-again-bg: #381519;
+      --ease-again-border: #ff6b6b;
+      --ease-again-text: #ffa8a8;
+      --ease-again-shadow: #1a080a;
+      --ease-hard-bg: #382c0b;
+      --ease-hard-border: #fcc419;
+      --ease-hard-text: #ffe066;
+      --ease-hard-shadow: #1a1402;
+      --ease-good-bg: #0f361a;
+      --ease-good-border: #51cf66;
+      --ease-good-text: #8ce99a;
+      --ease-good-shadow: #051408;
+      --ease-easy-bg: #0c2b45;
+      --ease-easy-border: #4dabf7;
+      --ease-easy-text: #74c0fc;
+      --ease-easy-shadow: #04121e;
+      --badge-bg: #2d3038;
+      --badge-text: #e9ecef;
+      --sheet-backdrop: rgba(0, 0, 0, 0.8);
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      line-height: 1.4;
+    }
+
+    .app-viewport {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: 24px 20px 120px 16px;
+    }
+
+    .top-hud { margin-bottom: 24px; }
+    .eyebrow, .section-label, .progress-labels {
+      font-family: var(--font-display);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .eyebrow { margin: 0 0 5px; }
+    h1 {
+      margin: 0 0 18px;
+      font-family: var(--font-display);
+      font-size: 2.35rem;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      font-weight: 900;
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 50px;
+      padding: 0 14px;
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-button);
+    }
+    .search-box:focus-within { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+    .search-box svg { width: 20px; height: 20px; flex: none; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; }
+    .search-box input {
+      min-width: 0;
+      width: 100%;
+      padding: 12px 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text-main);
+      font: 700 1rem var(--font-ui);
+    }
+    .search-box input::placeholder { color: var(--text-muted); opacity: 1; }
+    .section-label { margin: 0 0 10px 2px; }
+    .deck-list { display: grid; gap: 14px; }
+    .deck-card {
+      padding: 16px;
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+    .deck-heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .deck-emoji {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      flex: none;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--badge-bg);
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+    .deck-heading h2 {
+      min-width: 0;
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.18rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+    .deck-counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+    .count {
+      padding: 3px 9px;
+      border: 1.5px solid currentColor;
+      border-radius: var(--radius-pill);
+      font-size: 0.73rem;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+    .count-due { color: var(--ease-hard-text); background: var(--ease-hard-bg); }
+    .count-new { color: var(--ease-easy-text); background: var(--ease-easy-bg); }
+    .progress-labels { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+    .meter-track { height: 12px; overflow: hidden; background: var(--color-meter-track); border: 2px solid var(--border-color); border-radius: var(--radius-pill); }
+    .meter-fill {
+      height: 100%;
+      background-color: var(--color-meter-fill);
+      background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08) 8px, transparent 8px, transparent 16px);
+      border-right: 2px solid var(--border-color);
+      border-radius: var(--radius-pill);
+    }
+    .deck-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; padding-right: 3px; padding-bottom: 3px; }
+    .deck-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 8px;
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-button);
+      color: var(--text-main);
+      background: var(--bg-surface-elevated);
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      font-weight: 900;
+      text-align: center;
+      text-decoration: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .deck-action-primary { background: var(--color-primary-accent); color: #18191f; }
+    .deck-action:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--border-color); }
+    .deck-action:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+    .empty-state {
+      margin: 0;
+      padding: 28px 20px;
+      background: var(--bg-surface);
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      font-weight: 700;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .empty-state strong { display: block; margin-bottom: 4px; color: var(--text-main); font-family: var(--font-display); font-size: 1.1rem; font-weight: 900; }
+
+    /* ===== New deck: FAB + bottom sheet (same sheet pattern as mockup.html) ===== */
+    .fab-dock {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      display: flex;
+      justify-content: center;
+      padding: 28px 20px max(18px, env(safe-area-inset-bottom)) 16px;
+      pointer-events: none;
+      background: linear-gradient(to top, var(--bg-base) 55%, transparent);
+    }
+    .btn-new-deck {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 394px;
+      min-height: 56px;
+      padding: 0 20px;
+      background: var(--color-primary-accent);
+      color: #18191f;
+      border: 3px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: 4px 4px 0 var(--border-color);
+      font-family: var(--font-display);
+      font-size: 1.08rem;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .btn-new-deck svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 3.2; stroke-linecap: round; }
+    .btn-new-deck:active, .btn-save-deck:not(:disabled):active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--border-color); }
+    .btn-new-deck:focus-visible, .btn-save-deck:focus-visible, .emoji-tile:focus-visible,
+    .btn-icon-neo:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+
+    .sheet-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      background: var(--sheet-backdrop);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+    .bottom-sheet {
+      width: 100%;
+      max-width: 430px;
+      max-height: 92dvh;
+      overflow-y: auto;
+      padding: 16px 20px max(28px, env(safe-area-inset-bottom)) 20px;
+      background: var(--bg-surface);
+      border: 3px solid var(--border-color);
+      border-bottom: 0;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+    }
+    .sheet-overlay.open .bottom-sheet { transform: translateY(0); }
+    .sheet-handle-bar { width: 44px; height: 5px; margin: 0 auto 14px; background: var(--text-muted); opacity: 0.3; border-radius: 999px; }
+    .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .sheet-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 900; letter-spacing: -0.02em; }
+    .btn-icon-neo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      flex: none;
+      background: var(--bg-surface);
+      color: var(--text-main);
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+      font: 800 1rem var(--font-ui);
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+    .btn-icon-neo:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--border-color); }
+
+    .preview-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+      padding: 14px;
+      background: var(--bg-base);
+      border: 2px dashed var(--text-muted);
+      border-radius: var(--radius-md);
+    }
+    .preview-row .deck-emoji { width: 60px; height: 60px; font-size: 2rem; background: var(--bg-surface); box-shadow: var(--shadow-sm); }
+    .preview-name {
+      min-width: 0;
+      font-family: var(--font-display);
+      font-size: 1.18rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      overflow-wrap: anywhere;
+    }
+    .preview-name.is-placeholder { color: var(--text-muted); opacity: 0.7; }
+    .deck-emoji.pop { animation: emoji-pop 0.34s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes emoji-pop { 0% { transform: scale(0.6) rotate(-10deg); } 100% { transform: scale(1) rotate(0); } }
+
+    .field-label { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 8px 2px; }
+    .field-label .section-label { margin: 0; }
+    .char-counter { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; color: var(--text-muted); }
+    .char-counter.is-full { color: var(--ease-again-text); }
+    .field-box { margin-bottom: 20px; }
+    .field-box input[type="text"] { padding: 14px 0; }
+    .search-box.has-error { border-color: var(--ease-again-border); box-shadow: 3px 3px 0 var(--ease-again-border); }
+    .field-error { margin: -12px 0 16px 2px; color: var(--ease-again-text); font-size: 0.8rem; font-weight: 800; }
+
+    .emoji-groups { display: flex; gap: 8px; margin: 0 0 12px; overflow-x: auto; padding: 2px 3px 6px 2px; scrollbar-width: none; }
+    .emoji-groups::-webkit-scrollbar { display: none; }
+    .emoji-group {
+      flex: none;
+      padding: 6px 12px;
+      background: var(--bg-surface);
+      color: var(--text-main);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-pill);
+      font: 900 0.76rem var(--font-display);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .emoji-group[aria-selected="true"] { background: var(--color-primary-accent); color: #18191f; box-shadow: var(--shadow-sm); }
+    .emoji-group:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 2px; }
+    .emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 22px; }
+    .emoji-tile {
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      background: var(--bg-base);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+      font-size: 1.45rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.12s ease;
+    }
+    .emoji-tile:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--border-color); }
+    .emoji-tile[aria-checked="true"] { background: var(--color-primary-accent); transform: translate(2px, 2px); box-shadow: 0 0 0 var(--border-color); }
+
+    .btn-save-deck {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 54px;
+      padding: 0 20px;
+      background: var(--color-primary-accent);
+      color: #18191f;
+      border: 3px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: 4px 4px 0 var(--border-color);
+      font: 900 1.05rem var(--font-display);
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.15s ease;
+    }
+    .btn-save-deck:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: 2px 2px 0 var(--border-color); }
+
+    .deck-card.is-new { animation: deck-drop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes deck-drop { 0% { opacity: 0; transform: translateY(-18px) scale(0.96); } 100% { opacity: 1; transform: none; } }
+    .empty-state .btn-inline { margin-top: 14px; }
+    .btn-inline {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 18px;
+      background: var(--color-primary-accent);
+      color: #18191f;
+      border: var(--border-width) solid var(--border-color);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-button);
+      font: 900 0.9rem var(--font-display);
+      cursor: pointer;
+    }
+    .btn-inline:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--border-color); }
+
+    .toast-pill {
+      position: fixed;
+      top: max(18px, env(safe-area-inset-top));
+      left: 50%;
+      z-index: 120;
+      padding: 9px 18px;
+      background: var(--border-color);
+      color: var(--bg-surface);
+      border-radius: var(--radius-pill);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      font: 800 0.85rem var(--font-display);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -20px);
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .toast-pill.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .deck-card.is-new, .deck-emoji.pop { animation: none; }
+      .sheet-overlay, .bottom-sheet, .toast-pill, .btn-new-deck, .emoji-tile { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-viewport">
+    <header class="top-hud">
+      <p class="eyebrow">Your study space</p>
+      <h1>My Decks</h1>
+      <label class="search-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
+        <input id="deck-search" type="search" placeholder="Search decks" aria-label="Search decks" autocomplete="off">
+      </label>
+    </header>
+
+    <main>
+      <p class="section-label">Your decks</p>
+      <div class="deck-list" id="deck-list">
+        <article class="deck-card" data-id="german-b1" data-name="German B1 Vocab">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🇩🇪</span><h2>German B1 Vocab</h2></div>
+          <div class="deck-counts"><span class="count count-due">20 due</span><span class="count count-new">8 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>70%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="German B1 Vocab study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="70"><div class="meter-fill" style="width: 70%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=german-b1">Learn</a><a class="deck-action" href="editor-mockup.html?deck=german-b1">Edit / Add</a></div>
+        </article>
+        <article class="deck-card" data-id="spanish-a2" data-name="Spanish A2">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🇪🇸</span><h2>Spanish A2</h2></div>
+          <div class="deck-counts"><span class="count count-due">12 due</span><span class="count count-new">6 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>55%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="Spanish A2 study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="55"><div class="meter-fill" style="width: 55%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=spanish-a2">Learn</a><a class="deck-action" href="editor-mockup.html?deck=spanish-a2">Edit / Add</a></div>
+        </article>
+        <article class="deck-card" data-id="biology" data-name="Biology Cells">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🧬</span><h2>Biology Cells</h2></div>
+          <div class="deck-counts"><span class="count count-due">9 due</span><span class="count count-new">4 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>80%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="Biology Cells study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80"><div class="meter-fill" style="width: 80%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=biology">Learn</a><a class="deck-action" href="editor-mockup.html?deck=biology">Edit / Add</a></div>
+        </article>
+        <article class="deck-card" data-id="history" data-name="History 1900s">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🏛️</span><h2>History 1900s</h2></div>
+          <div class="deck-counts"><span class="count count-due">15 due</span><span class="count count-new">5 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>40%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="History 1900s study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="40"><div class="meter-fill" style="width: 40%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=history">Learn</a><a class="deck-action" href="editor-mockup.html?deck=history">Edit / Add</a></div>
+        </article>
+        <article class="deck-card" data-id="chemistry" data-name="Chemistry Basics">
+          <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">⚗️</span><h2>Chemistry Basics</h2></div>
+          <div class="deck-counts"><span class="count count-due">7 due</span><span class="count count-new">10 new</span></div>
+          <div class="progress-labels"><span>Study progress</span><span>25%</span></div>
+          <div class="meter-track" role="progressbar" aria-label="Chemistry Basics study progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25"><div class="meter-fill" style="width: 25%"></div></div>
+          <div class="deck-actions"><a class="deck-action deck-action-primary" href="mockup.html?deck=chemistry">Learn</a><a class="deck-action" href="editor-mockup.html?deck=chemistry">Edit / Add</a></div>
+        </article>
+      </div>
+      <p class="empty-state" id="empty-state" role="status" hidden><strong>No decks found</strong>Try a different search.<br><button type="button" class="btn-inline" id="empty-new-deck">+ New deck</button></p>
+    </main>
+
+    <div class="fab-dock">
+      <button type="button" class="btn-new-deck" id="btn-new-deck" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        New deck
+      </button>
+    </div>
+
+    <div class="toast-pill" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- NEW DECK BOTTOM SHEET (same pattern as the reviewer actions sheet) -->
+    <div class="sheet-overlay" id="deck-sheet-overlay" inert>
+      <div class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="deck-sheet-title">
+        <div class="sheet-handle-bar"></div>
+        <div class="sheet-header">
+          <div class="sheet-title" id="deck-sheet-title">New deck</div>
+          <button type="button" class="btn-icon-neo" id="deck-sheet-close" aria-label="Close">✕</button>
+        </div>
+
+        <div class="preview-row" aria-hidden="true">
+          <span class="deck-emoji" id="preview-emoji">📚</span>
+          <span class="preview-name is-placeholder" id="preview-name">Your deck name</span>
+        </div>
+
+        <div class="field-label">
+          <label class="section-label" for="deck-name">Deck name</label>
+          <span class="char-counter" id="name-counter">0 / 40</span>
+        </div>
+        <label class="search-box field-box" id="name-box">
+          <input id="deck-name" type="text" maxlength="40" placeholder="e.g. French Verbs" autocomplete="off" autocapitalize="words" enterkeyhint="done">
+        </label>
+        <p class="field-error" id="name-error" role="alert" hidden></p>
+
+        <p class="section-label">Pick an emoji</p>
+        <div class="emoji-groups" role="tablist" aria-label="Emoji categories" id="emoji-groups"></div>
+        <div class="emoji-grid" role="radiogroup" aria-label="Deck emoji" id="emoji-grid"></div>
+
+        <button type="button" class="btn-save-deck" id="btn-save-deck" disabled>Create deck</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const search = document.getElementById('deck-search');
+    const deckList = document.getElementById('deck-list');
+    const emptyState = document.getElementById('empty-state');
+    const toast = document.getElementById('toast');
+    let decks = () => deckList.querySelectorAll('.deck-card');
+
+    function applySearch() {
+      const query = search.value.trim().toLocaleLowerCase();
+      let matches = 0;
+      decks().forEach((deck) => {
+        const visible = deck.dataset.name.toLocaleLowerCase().includes(query);
+        deck.hidden = !visible;
+        if (visible) matches += 1;
+      });
+      emptyState.hidden = matches !== 0;
+    }
+    search.addEventListener('input', applySearch);
+
+    // ---- New deck sheet ----
+    const EMOJI = {
+      Study:   ['📚','📖','📝','✏️','🎓','🧠','💡','🔬','🧪','🧮','📐','🔭','🗂️','📓','🏫','🧾','🔎','⏳'],
+      Words:   ['🇩🇪','🇬🇧','🇫🇷','🇪🇸','🇮🇹','🇵🇹','🇯🇵','🇰🇷','🇨🇳','🇹🇷','🇵🇱','🇳🇱','🗣️','💬','🔤','🈶','📣','🌍'],
+      Science: ['🧬','⚗️','🦠','🌋','🌱','🦴','🫀','🧲','⚡','🔋','🪐','☄️','🌊','🔥','❄️','🌡️','🧫','🪨'],
+      Fun:     ['🎮','🎨','🎵','⚽','🏀','🎬','🐙','🦊','🐼','🍕','🍓','🚀','👾','🦄','🎲','🏆','🌈','⭐'],
+    };
+    const MAX_NAME = 40;
+    const overlay = document.getElementById('deck-sheet-overlay');
+    const nameInput = document.getElementById('deck-name');
+    const nameBox = document.getElementById('name-box');
+    const nameError = document.getElementById('name-error');
+    const counter = document.getElementById('name-counter');
+    const saveBtn = document.getElementById('btn-save-deck');
+    const previewEmoji = document.getElementById('preview-emoji');
+    const previewName = document.getElementById('preview-name');
+    const groupsEl = document.getElementById('emoji-groups');
+    const gridEl = document.getElementById('emoji-grid');
+    let chosenEmoji = '📚';
+    let activeGroup = 'Study';
+    let opener = null;
+
+    function renderGroups() {
+      groupsEl.replaceChildren(...Object.keys(EMOJI).map((g) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'emoji-group';
+        b.role = 'tab';
+        b.textContent = g;
+        b.setAttribute('aria-selected', String(g === activeGroup));
+        b.addEventListener('click', () => { activeGroup = g; renderGroups(); renderGrid(); });
+        return b;
+      }));
+    }
+    function renderGrid() {
+      gridEl.replaceChildren(...EMOJI[activeGroup].map((e) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'emoji-tile';
+        b.role = 'radio';
+        b.textContent = e;
+        b.setAttribute('aria-checked', String(e === chosenEmoji));
+        b.setAttribute('aria-label', e);
+        b.addEventListener('click', () => pickEmoji(e));
+        return b;
+      }));
+    }
+    function pickEmoji(e) {
+      chosenEmoji = e;
+      previewEmoji.textContent = e;
+      previewEmoji.classList.remove('pop');
+      void previewEmoji.offsetWidth;
+      previewEmoji.classList.add('pop');
+      renderGrid();
+    }
+    function nameProblem(raw) {
+      const name = raw.trim();
+      if (!name) return 'empty';
+      if ([...decks()].some((d) => d.dataset.name.toLocaleLowerCase() === name.toLocaleLowerCase())) return 'duplicate';
+      return null;
+    }
+    function syncName() {
+      const raw = nameInput.value;
+      const name = raw.trim();
+      counter.textContent = `${raw.length} / ${MAX_NAME}`;
+      counter.classList.toggle('is-full', raw.length >= MAX_NAME);
+      previewName.textContent = name || 'Your deck name';
+      previewName.classList.toggle('is-placeholder', !name);
+      const problem = name ? nameProblem(raw) : null;
+      nameBox.classList.toggle('has-error', problem === 'duplicate');
+      nameError.hidden = problem !== 'duplicate';
+      nameError.textContent = problem === 'duplicate' ? 'A deck with this name already exists.' : '';
+      nameInput.setAttribute('aria-invalid', String(problem === 'duplicate'));
+      saveBtn.disabled = !name || problem !== null;
+    }
+    function openSheet(from) {
+      if (overlay.classList.contains('open')) return;
+      opener = from;
+      nameInput.value = '';
+      chosenEmoji = '📚';
+      activeGroup = 'Study';
+      previewEmoji.textContent = chosenEmoji;
+      renderGroups();
+      renderGrid();
+      syncName();
+      overlay.inert = false;
+      overlay.classList.add('open');
+      nameInput.focus({ preventScroll: true });
+    }
+    function closeSheet() {
+      const hadFocus = overlay.contains(document.activeElement);
+      overlay.classList.remove('open');
+      overlay.inert = true;
+      const target = opener && opener.isConnected && !opener.closest('[hidden]') ? opener : document.getElementById('btn-new-deck');
+      if (hadFocus) target.focus();
+    }
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(showToast.t);
+      showToast.t = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+    function slug(name) {
+      return name.toLocaleLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'deck';
+    }
+    function uniqueId(name) {
+      const taken = new Set([...decks()].map((d) => d.dataset.id));
+      const base = slug(name);
+      let id = base;
+      for (let n = 2; taken.has(id); n += 1) id = `${base}-${n}`;
+      return id;
+    }
+    function createDeck() {
+      const name = nameInput.value.trim();
+      if (nameProblem(nameInput.value) !== null) return;
+      const id = uniqueId(name);
+      const card = document.createElement('article');
+      card.className = 'deck-card is-new';
+      card.dataset.name = name;
+      card.dataset.id = id;
+      const heading = document.createElement('div');
+      heading.className = 'deck-heading';
+      const em = document.createElement('span');
+      em.className = 'deck-emoji';
+      em.setAttribute('aria-hidden', 'true');
+      em.textContent = chosenEmoji;
+      const h2 = document.createElement('h2');
+      h2.textContent = name;
+      heading.append(em, h2);
+      const counts = document.createElement('div');
+      counts.className = 'deck-counts';
+      counts.innerHTML = '<span class="count count-due">0 due</span><span class="count count-new">0 new</span>';
+      const labels = document.createElement('div');
+      labels.className = 'progress-labels';
+      labels.innerHTML = '<span>Study progress</span><span>0%</span>';
+      const track = document.createElement('div');
+      track.className = 'meter-track';
+      track.setAttribute('role', 'progressbar');
+      track.setAttribute('aria-label', `${name} study progress`);
+      track.setAttribute('aria-valuemin', '0');
+      track.setAttribute('aria-valuemax', '100');
+      track.setAttribute('aria-valuenow', '0');
+      track.innerHTML = '<div class="meter-fill" style="width: 0%; border-right-width: 0"></div>';
+      const actions = document.createElement('div');
+      actions.className = 'deck-actions';
+      const learn = document.createElement('a');
+      learn.className = 'deck-action deck-action-primary';
+      learn.href = `mockup.html?deck=${encodeURIComponent(id)}`;
+      learn.textContent = 'Learn';
+      const edit = document.createElement('a');
+      edit.className = 'deck-action';
+      edit.href = `editor-mockup.html?deck=${encodeURIComponent(id)}`;
+      edit.textContent = 'Edit / Add';
+      actions.append(learn, edit);
+      card.append(heading, counts, labels, track, actions);
+      deckList.prepend(card);
+      search.value = '';
+      applySearch();
+      closeSheet();
+      showToast(`${chosenEmoji} ${name} created`);
+      card.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+
+    document.getElementById('btn-new-deck').addEventListener('click', (e) => openSheet(e.currentTarget));
+    document.getElementById('empty-new-deck').addEventListener('click', (e) => {
+      const name = search.value.trim();
+      openSheet(e.currentTarget);
+      if (name) { nameInput.value = name.slice(0, MAX_NAME); syncName(); }
+    });
+    document.getElementById('deck-sheet-close').addEventListener('click', closeSheet);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSheet(); });
+    nameInput.addEventListener('input', syncName);
+    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !saveBtn.disabled) { e.preventDefault(); createDeck(); } });
+    saveBtn.addEventListener('click', createDeck);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && overlay.classList.contains('open')) closeSheet();
+    });
+  </script>
+</body>
+</html>

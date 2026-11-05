@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from contextlib import asynccontextmanager
 
 from datastar_py.fastapi import ReadSignals
@@ -12,11 +11,24 @@ from starlette_compress import CompressMiddleware
 
 # Initialize Anki through the collection adapter before screens import its cyclic modules.
 import ankiweb.adapters.outbound.anki_collection_adapter as collection_adapter
-from ankiweb.adapters.inbound.http_datastar.common import (
-    error_response,
-    redirect_response,
+from ankiweb.adapters.inbound.http_app import build_app_router
+from ankiweb.adapters.inbound.http_app.pwa import (
+    APP_PWA_PUBLIC_PATHS,
+    build_app_pwa_router,
 )
+from ankiweb.adapters.inbound.http_datastar.common import redirect_response
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.adapters.inbound.http_shared.login import (
+    datastar_login,
+    form_login,
+    is_datastar_login,
+    wrong_password_text,
+)
+from ankiweb.adapters.inbound.http_shared.pwa import (
+    MANIFEST_PATH,
+    SERVICE_WORKER_PATH,
+    build_pwa_router,
+)
 from ankiweb.adapters.inbound.http_shared.routes import (
     build_screen_router,
     register_screen_handlers,
@@ -32,22 +44,21 @@ from ankiweb.assets import (
 from ankiweb.assets import (
     build_router as build_assets_router,
 )
-from ankiweb.core.auth import COOKIE, auth_token, cookie_ok, password_ok
+from ankiweb.core.app_client.lang import resolve_lang
+from ankiweb.core.auth import COOKIE, OPEN_PATHS, cookie_ok
 from ankiweb.core.bridge.hub import BridgeHub
 from ankiweb.core.config import Settings, host_allowed
-from ankiweb.core.i18n import tr
 from ankiweb.core.notify.engine import NotifierState
 
-logger = logging.getLogger(__name__)
-
-
-def _wrong_password_text() -> str:
-    return templating.tr_clean(tr.sync_wrong_pass())
+# Fetched by the browser without credentials (manifest) / before login (worker install).
+PWA_PUBLIC_PATHS = (MANIFEST_PATH, SERVICE_WORKER_PATH, *APP_PWA_PUBLIC_PATHS)
 
 
 def _login_html(error: bool = False) -> str:
     return templating.render(
-        "login.html.jinja", error_text=_wrong_password_text() if error else ""
+        "login.html.jinja",
+        error_text=wrong_password_text() if error else "",
+        login_path="/login",
     )
 
 
@@ -91,64 +102,21 @@ async def _host_guard(request, call_next, settings):
 
 
 async def _auth_guard(request, call_next, settings):
-    # Open by default; only gates when ANKIWEB_PASSWORD is set. /login, /logout, /healthz
-    # stay reachable so an unauthenticated user can reach the login form.
+    # Open by default; login, logout and health checks remain reachable without a cookie.
     if (
         settings.password
-        and request.url.path not in ("/login", "/logout", "/healthz")
+        and request.url.path not in OPEN_PATHS
+        and request.url.path not in PWA_PUBLIC_PATHS
         and not request.url.path.startswith("/shell/static/")
         and not cookie_ok(request.cookies.get(COOKIE), settings.password)
     ):
+        path = request.url.path
+        if path == "/app" or path.startswith("/app/"):
+            if "datastar-request" in request.headers:
+                return redirect_response("/app/login")
+            return RedirectResponse("/app/login", status_code=303)
         return RedirectResponse("/login", status_code=303)
     return await call_next(request)
-
-
-def _password_from_mapping(data: dict) -> str:
-    val = data.get("password", "")
-    return str(val) if val is not None else ""
-
-
-async def _datastar_login_password(request: Request, payload) -> str:
-    pwd_str = ""
-    if payload and isinstance(payload, dict):
-        pwd_str = _password_from_mapping(payload)
-    if not pwd_str:
-        try:
-            body = await request.json()
-            if isinstance(body, dict):
-                pwd_str = _password_from_mapping(body)
-        except (ValueError, RecursionError):
-            logger.warning("Failed to decode JSON body in Datastar login request")
-    return pwd_str
-
-
-def _set_login_cookie(resp, password: str):
-    resp.set_cookie(
-        COOKIE,
-        auth_token(password),
-        httponly=True,
-        samesite="lax",
-        max_age=30 * 86400,
-    )
-    return resp
-
-
-async def _datastar_login(request: Request, payload, settings: Settings):
-    pwd_str = await _datastar_login_password(request, payload)
-    if settings.password and password_ok(pwd_str, settings.password):
-        return _set_login_cookie(redirect_response("/"), settings.password)
-    return error_response(_wrong_password_text())
-
-
-async def _form_login(request: Request, settings: Settings):
-    form = await request.form()
-    pwd = form.get("password", "")
-    pwd_str = pwd if isinstance(pwd, str) else ""
-    if settings.password and password_ok(pwd_str, settings.password):
-        return _set_login_cookie(
-            RedirectResponse("/", status_code=303), settings.password
-        )
-    return HTMLResponse(_login_html(error=True), status_code=401)
 
 
 def create_app(
@@ -183,19 +151,18 @@ def create_app(
 
     @app.get("/login", response_class=HTMLResponse)
     def login_form():
-        # already authenticated (or no gate) -> straight to the app
         return HTMLResponse(_login_html())
 
     @app.post("/login")
     async def login_submit(request: Request, payload: ReadSignals = None):
-        is_datastar = (
-            request.headers.get("datastar-request")
-            or "application/json" in request.headers.get("content-type", "")
-            or bool(payload)
+        if is_datastar_login(request, payload):
+            return await datastar_login(request, payload, settings, "/")
+        return await form_login(
+            request,
+            settings,
+            "/",
+            lambda: HTMLResponse(_login_html(error=True), status_code=401),
         )
-        if is_datastar:
-            return await _datastar_login(request, payload, settings)
-        return await _form_login(request, settings)
 
     @app.get("/logout")
     def logout():
@@ -210,6 +177,10 @@ def create_app(
         StaticFiles(directory=str(static_dir), check_dir=False),
         name="shell",
     )
+    app.include_router(
+        build_pwa_router()
+    )  # GET /manifest.webmanifest, /service-worker.js
+    app.include_router(build_app_pwa_router(static_dir, resolve_lang(settings)))
 
     if settings.dev:
         app.mount(
@@ -237,6 +208,9 @@ def create_app(
             settings=settings,
         )
     )  # GET / + /notify
+    app.include_router(
+        build_app_router(lambda: app.state.service, settings)
+    )  # GET /app/*
     app.include_router(
         build_media_router(lambda: app.state.service)
     )  # GET  /{path} — LAST

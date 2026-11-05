@@ -1,3 +1,5 @@
+import json
+from html import unescape
 from pathlib import Path
 
 import anki.lang
@@ -5,9 +7,11 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from ankiweb.adapters.inbound.http_shared.templating import tr_clean
 from ankiweb.app import create_app
 from ankiweb.core.auth import COOKIE, auth_token
 from ankiweb.core.config import Settings
+from ankiweb.core.i18n import tr
 
 
 def _client(tmp_path: Path, password: str = "") -> TestClient:
@@ -44,6 +48,52 @@ def test_login_wrong_password(tmp_path: Path):
         r = c.post("/login", data={"password": "nope"}, follow_redirects=False)
         assert r.status_code == 401
         assert "password" in r.text.lower() or "密码" in r.text
+
+
+@pytest.mark.parametrize("lang", ["en", "de"])
+@pytest.mark.parametrize("submitted", ["", "wrong", "   ", " secret "])
+def test_legacy_login_keeps_its_error_for_all_failed_passwords(
+    tmp_path: Path, lang: str, submitted: str
+) -> None:
+    try:
+        with _client(tmp_path, "secret") as client:
+            anki.lang.set_lang(lang)
+            expected = tr_clean(tr.sync_wrong_pass())
+            if lang == "en":
+                assert "Email or password was incorrect" in expected
+            else:
+                assert "falsch" in expected.lower()
+
+            form = client.post(
+                "/login", data={"password": submitted}, follow_redirects=False
+            )
+            sse = client.post(
+                "/login",
+                json={"password": submitted},
+                headers={"Datastar-Request": "true"},
+                follow_redirects=False,
+            )
+            assert form.status_code == 401
+            assert f'data-text="$error">{expected}</div>' in unescape(form.text)
+            assert sse.status_code == 200
+            assert sse.headers["content-type"].startswith("text/event-stream")
+            assert "event: datastar-patch-signals" in sse.text
+            signals = next(
+                json.loads(line.removeprefix("data: signals "))
+                for line in sse.text.splitlines()
+                if line.startswith("data: signals ")
+            )
+            assert signals == {"error": expected}
+            for response in (form, sse):
+                assert "location" not in response.headers
+                assert "window.location" not in response.text
+                assert COOKIE not in response.cookies
+            assert COOKIE not in client.cookies
+            protected = client.get("/deckbrowser", follow_redirects=False)
+            assert protected.status_code == 303
+            assert protected.headers["location"] == "/login"
+    finally:
+        anki.lang.set_lang("en")
 
 
 def test_login_correct_unlocks(tmp_path: Path):

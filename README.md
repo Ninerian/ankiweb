@@ -12,10 +12,12 @@ A **browser port of Anki desktop + AnkiConnect**, built on the official `anki` P
 package (pylib) + FastAPI. It serves Anki's real study UI in a browser and re-implements
 the full AnkiConnect HTTP API — for a single user, on your own machine.
 
-**Frontend architecture: Jinja + Datastar components, styled with Tailwind CSS 4 + daisyUI 5**
-(theming comes only from daisyUI's built-in `light`/`dark` themes; see `shell_src/app.css`). Anki desktop's frontend was migrated
-from the vendored compiled SvelteKit SPA pages to a lightweight, reactive Jinja + Datastar
-architecture. Reusable components live under `ankiweb/adapters/inbound/http_shared/templates/components/`
+**Frontend architecture: Jinja + Datastar components, styled with Tailwind CSS 4 + daisyUI 5**.
+The existing client uses daisyUI's built-in `light`/`dark` themes (`shell_src/app.css`);
+the mobile `/app/` client uses its own `aw-light`/`aw-dark` themes, following the OS.
+Anki desktop's frontend was migrated from the vendored compiled SvelteKit SPA pages
+to a lightweight, reactive Jinja + Datastar architecture. Reusable components live
+under `ankiweb/adapters/inbound/http_shared/templates/components/`
 (with an interactive gallery at `/dev/components` after `npm run build:dev` and with
 `ANKIWEB_DEV=1`), while page templates
 reside under `ankiweb/adapters/inbound/http_shared/templates/pages/`. Minimal JS bundles
@@ -104,10 +106,10 @@ uv run python tools/fetch_web_assets.py
 #    ankiweb/shell/static/ — tracked in git, but re-run this to update the pinned version).
 uv run python tools/fetch_datastar.py
 
-# 3. Build the shell bundles and compile app.css, theme.css and components.css
-#    into the gitignored ankiweb/shell/static/ directory.
+# 3. Build the shell bundles and compile app.css, app-client.css, theme.css and
+#    components.css into the gitignored ankiweb/shell/static/ directory.
 #    Re-run after changing templates, route modules or shell sources (Tailwind scans them).
-#    For CSS-only changes, npm run build:css compiles all three stylesheets.
+#    For CSS-only changes, npm run build:css compiles all four stylesheets.
 npm install && npm run build
 
 # 4. (optional) for the Playwright integration tests
@@ -132,6 +134,16 @@ This starts **two servers in one process**:
 
 Open <http://127.0.0.1:8000> in a browser. The AnkiConnect port defaults to **8765** on
 purpose — existing AnkiConnect clients/scripts work unchanged.
+
+## Mobile PWA (`/app/`)
+
+Open `/app/` for the mobile deck list, reviewer, and quick-add flow. It is a
+separate install from the existing client at `/`, with its own manifest and worker.
+Quick-add saves each card as a note immediately; the new client uses HTTP and does
+not require the legacy reviewer's `/ws` bridge. It cannot study or edit offline.
+
+For HTTPS setup and Android/iOS installation, see [PWA deployment](docs/pwa-deployment.md).
+Device installation, HTTPS in practice, and maskable icon cropping remain unverified.
 
 ## Docker
 
@@ -162,7 +174,7 @@ All settings have safe localhost defaults; override via environment variables:
 | `ANKIWEB_AC_KEY` | *(none)* | AnkiConnect `apiKey` (overrides `ankiconnect.json`). |
 | `ANKIWEB_IMPORT_TMP_DIR` | `<collection dir>/import-tmp` | Where uploaded import/image files are staged before the backend reads them. |
 | `ANKIWEB_LANG` | *(empty → English)* | UI language, an Anki locale code (e.g. `zh-CN`, `ja`, `de`, `fr`). Chosen at startup — there is no in-app switcher; changing it means changing this var and restarting. See **Language** below. |
-| `ANKIWEB_PASSWORD` | *(empty → no password)* | If set, the web UI requires this password (a `/login` page sets a session cookie). Empty = open, the default. The AnkiConnect API keeps its own `ANKIWEB_AC_KEY`. |
+| `ANKIWEB_PASSWORD` | *(empty → no password)* | If set, the web UI requires this password (`/login` for the existing client, `/app/login` for the mobile app). Empty = open, the default. The AnkiConnect API keeps its own `ANKIWEB_AC_KEY`. |
 | `ANKIWEB_SOURCE_URL` | *(empty)* | AGPL §13 Corresponding-Source location for this deployment, shown on the `/about` page (only relevant if you run it as a public network service). |
 
 **`ankiconnect.json`** (optional) lives next to the collection file and uses AnkiConnect's
@@ -210,10 +222,23 @@ password, set `ANKIWEB_PASSWORD`:
 ANKIWEB_PASSWORD=mysecret uv run python -m ankiweb
 ```
 
-Visitors then get a `/login` page; the correct password sets an httponly session cookie and
-unlocks the UI (and the `/ws` bridge). `/logout` clears it. This gates the **web app only**;
-the AnkiConnect HTTP API (port 8765) is controlled separately by `ANKIWEB_AC_KEY`. It's a
-light gate for LAN use, not a hardened auth system — serve over HTTPS if it matters.
+With a password configured, protected routes in the existing client lead to `/login`;
+protected `/app` and `/app/…` routes lead to `/app/login`. Both logins set the same
+`ankiweb_auth` cookie, unlocking both clients and the `/ws` bridge. The cookie is
+HTTP-only, SameSite=Lax, and Secure when the request uses HTTPS. `/logout` clears it
+and returns to `/login`. App login always opens `/app/`, not the original URL.
+The app login distinguishes an empty password from an incorrect one, without trimming
+the password. A show/hide control and mascot animation are available with JavaScript.
+
+If authentication expires during an app Datastar request, the browser navigates to
+`/app/login`. A rejected POST does not run or retry after login, and unsaved drafts
+may be lost. The app manifest, service worker and offline page
+(`/app/manifest.webmanifest`, `/app/service-worker.js`, `/app/offline`) and
+`/shell/static/*` remain public without a cookie.
+
+This gates the **web app only**; the AnkiConnect HTTP API (port 8765) is controlled
+separately by `ANKIWEB_AC_KEY`. It's a light gate for LAN use, not a hardened auth
+system — serve over HTTPS if it matters.
 
 ### API docs (Swagger)
 
@@ -299,9 +324,10 @@ reverts to its last acknowledged counts sends nothing. Deleted/renamed decks dro
 
 ### Night mode
 
-Toggle with the 🌙 button in the top toolbar (persisted in `localStorage`); it switches the
-daisyUI theme (`data-theme="light"` / `"dark"`) and themes the server-rendered pages and threads `#night` into links to the SvelteKit pages so those
-render dark too.
+In the existing client, toggle with the 🌙 button in the top toolbar (persisted in
+`localStorage`); it switches the daisyUI theme (`data-theme="light"` / `"dark"`) and
+threads `#night` into links to the SvelteKit pages. The toggle does not affect `/app/`,
+which follows the operating system's light/dark preference.
 
 ### Navigation & Transport Boundaries
 
@@ -474,6 +500,10 @@ for the migration that built it.
     adapter calls into.
   - **`ankiconnect_actions/`** — the ≈120 AnkiConnect action handlers (`actions/`,
     `extra_actions/`), the `ACTIONS`/`ACTION_SPECS` registry, and `Runtime`.
+  - **`app_client/`** — mobile app use cases; `deck_notes.py` selects editable deck
+    notes and `note_editing.py` applies edits and journals pending progress resets.
+    Editor writes broadcast collection changes; completed note writes are also
+    broadcast when a subsequent progress reset fails.
   - **`rpc/`** — `dispatch_backend_rpc`: the passthrough/custom/concurrent routing decision
     for `/_anki/{method}`, plus the passthrough method lists and custom handlers.
   - **`notify/engine.py`**, **`auth.py`**, **`i18n.py`**, **`config.py`**,

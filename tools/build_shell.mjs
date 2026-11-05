@@ -23,6 +23,18 @@ if (!cssOnly) {
 
   copyFileSync("shell_src/dialogs.js", `${staticDir}/dialogs.js`);
   console.log(`copied dialogs.js -> ${staticDir}/dialogs.js`);
+
+  // Independent app scripts are served unbundled, including in the Docker image.
+  if (existsSync("shell_src/app")) {
+    const files = readdirSync("shell_src/app").filter(f => f.endsWith(".js")).sort();
+    if (files.length) {
+      mkdirSync(`${staticDir}/app`, { recursive: true });
+      for (const f of files) {
+        copyFileSync(`shell_src/app/${f}`, `${staticDir}/app/${f}`);
+        console.log(`copied ${f} -> ${staticDir}/app/${f}`);
+      }
+    }
+  }
 }
 
 // Compile each public stylesheet separately. @reference shares the app's Tailwind
@@ -33,6 +45,7 @@ const compileCss = (input, output) =>
   execFileSync(process.execPath, [tailwindCli, "-i", input, "-o", output, "--minify"], { stdio: "inherit" });
 
 compileCss("shell_src/app.css", `${staticDir}/app.css`);
+compileCss("shell_src/app-client.css", `${staticDir}/app-client.css`);
 // theme.css imports the unlayered Anki compatibility shim before owned styles.
 compileCss("shell_src/theme.css", `${staticDir}/theme.css`);
 

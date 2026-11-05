@@ -1,0 +1,175 @@
+{% macro preview_card() %}
+<div id="preview" class="add-preview">
+  <div class="add-label-row mb-0">
+    <h2 class="add-label">{{ s('app_add_card_preview') }}</h2>
+    <span class="add-help" data-ready-add="{{ s('app_add_ready_to_add') }}" data-ready-save="{{ s('app_edit_ready_to_save') }}" data-text="$nid !== 0 ? el.dataset.readySave : el.dataset.readyAdd">{{ s('app_add_ready_to_add') }}</span>
+  </div>
+  <div class="add-preview-section">
+    <span class="add-preview-tag">{{ s('app_add_front_preview') }}</span>
+    <p class="av-front-text whitespace-pre-wrap">{{ preview.front|default('') }}</p>
+  </div>
+  {% if preview.hint|default('') %}
+  <div class="add-preview-section">
+    <span class="add-preview-tag">{{ s('app_add_hint') }}</span>
+    <p class="av-hint whitespace-pre-wrap">{{ preview.hint }}</p>
+  </div>
+  {% endif %}
+  <hr class="add-preview-divider">
+  <div class="add-preview-section">
+    <span class="add-preview-tag">{{ s('app_add_back_preview') }}</span>
+    <p class="av-back-text whitespace-pre-wrap">{{ preview.back|default('') }}</p>
+  </div>
+  {% if preview.example|default('') %}
+  <div class="add-preview-section">
+    <span class="add-preview-tag">{{ s('app_add_example') }}</span>
+    <p class="av-example">{{ example_html|safe }}</p>
+  </div>
+  {% endif %}
+  <button type="button" class="add-preview-edit" data-edit-add="{{ s('app_add_edit_preview') }}" data-edit-save="{{ s('app_edit_preview_edit') }}" data-text="$nid !== 0 ? el.dataset.editSave : el.dataset.editAdd" data-on:click="$step = 1; $error = ''; window.avFocus('input-front')">{{ s('app_add_edit_preview') }}</button>
+</div>
+{% endmacro %}
+{% macro chip(label, target, space=false) %}
+<button type="button" class="add-chip" data-target="{{ target }}" data-value="{{ label }}{% if space %} {% endif %}" data-on:click="window.avInsert(el)">{{ label }}</button>
+{% endmacro %}
+
+{% macro field_label(for_id, label, help) %}
+<div class="add-label-row">
+  <label for="{{ for_id }}" class="add-label">{{ label }}</label>
+  {% if help %}<span id="{{ for_id }}-help" class="add-help">{{ help }}</span>{% endif %}
+</div>
+{% endmacro %}
+{% if preview_only|default(false) %}
+{{ preview_card() }}
+{% else %}
+{% set card = initial_card or {'nid': 0, 'front': '', 'back': '', 'hint': '', 'example': '', 'learned': false} %}
+{% set original = {'front': card.front, 'back': card.back, 'hint': card.hint, 'example': card.example} %}
+<main id="add-wizard" class="review-app"
+      data-deck-id="{{ deck_id }}" data-initial-view="{{ initial_view }}" data-initial-card="{{ card.nid }}" data-initial-fields="{{ original|tojson|forceescape }}"
+      data-signals="{step: 1, ...JSON.parse(el.dataset.initialFields), nid: {{ card.nid }}, count: {{ count }}, deckCount: {{ deck_cards|length }}, error: '', saving: false, summaryOpen: false, learned: {{ card.learned|tojson }}, progressReset: false, editOriginal: JSON.parse(el.dataset.initialFields), editLoaded: 0, _editSaved: false, _browsing: {{ (initial_view == 'cards')|tojson }}, _browsePhase: '{{ 'open' if initial_view == 'cards' else 'closed' }}'}"
+      data-discard="{{ s('app_edit_discard') }}" data-load-failed="{{ s('app_add_edit_unavailable') }}"
+      data-attr:data-browse-phase="$_browsePhase"
+      data-effect="$editLoaded ? ($editLoaded = 0, window.avEditCardLoaded($nid), window.avCloseBrowse(true, $_browsePhase)) : null; $_editSaved &amp;&amp; !$saving ? ($_editSaved = false, $_browsing = true, $_browsePhase = 'opening', window.avOpenBrowseAfterSave()) : null"
+      data-on:av-browse-ready="$_browsePhase = 'open'; window.avBrowseReadyFocus()"
+      data-on:av-browse-closing="$_browsePhase = 'closing'"
+      data-on:av-browse-returning="$_browsing = false; $_browsePhase = 'returning'; window.avBrowseFocus(evt.detail.editing)"
+      data-on:av-browse-settled="$_browsePhase = 'closed'"
+      data-indicator:saving
+      data-on:av-history="evt.detail.view === 'card' ? ($error = '', @post('/app/edit/card/' + encodeURIComponent(evt.detail.card) + '?deck={{ deck_id }}')) : ($nid !== 0 ? ($front = '', $back = '', $hint = '', $example = '', $nid = 0, $learned = false, $progressReset = false, $step = 1, $error = '') : null, evt.detail.view === 'cards' ? ($_browsing &amp;&amp; ($_browsePhase === 'opening' || $_browsePhase === 'open') ? null : ($_browsing = true, $_browsePhase = 'opening', window.avOpenBrowse(document.getElementById('pile'), false))) : window.avCloseBrowse(false, $_browsePhase))"
+      data-on:av-history-failed="$error = el.dataset.loadFailed"
+      data-on:popstate__window="$summaryOpen ? ($summaryOpen = false, window.avCloseSummary()) : null; window.avEditPop(evt, $front, $back, $hint, $example, $saving, el.dataset.discard, $nid, $editOriginal, $_browsing, $_browsePhase)"
+      data-on:datastar-fetch__document="evt.detail.type === 'finished' &amp;&amp; !$error &amp;&amp; evt.detail.el.id === 'btn-add' ? window.avAnimateCommit() : (evt.detail.el.id === 'add-wizard' &amp;&amp; (evt.detail.type === 'error' || evt.detail.type === 'retries-failed' || (evt.detail.type === 'finished' &amp;&amp; $error)) ? window.avEditHistoryFailed() : null)"
+      data-on:keydown__window="evt.key === 'Escape' &amp;&amp; $summaryOpen ? ($summaryOpen = false, window.avCloseSummary()) : (window.avAddKey(evt), evt.key === 'Escape' &amp;&amp; !evt.repeat &amp;&amp; !$saving &amp;&amp; ($_browsing || $nid !== 0) ? document.getElementById('edit-back').click() : null)">
+  <header class="review-hud">
+    <div class="navbar review-hud-nav min-h-0 p-0">
+      <a id="edit-back" href="/app/" tabindex="0" class="btn btn-square neo-press size-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 p-0 shadow-neo active:shadow-none" aria-label="{{ s('app_add_exit') }}"
+         data-exit="{{ s('app_add_exit') }}" data-browse-back="{{ s('app_edit_back_to_editor') }}"
+         data-list-back="{{ s('app_edit_back_to_cards') }}"
+         data-attr:aria-label="$_browsing ? el.dataset.browseBack : ($nid !== 0 ? el.dataset.listBack : el.dataset.exit)"
+         data-attr:href="$nid === 0 &amp;&amp; !$_browsing &amp;&amp; $_browsePhase === 'closed' &amp;&amp; !$saving &amp;&amp; !$front &amp;&amp; !$back &amp;&amp; !$hint &amp;&amp; !$example ? '/app/' : null"
+         data-attr:role="$nid === 0 &amp;&amp; !$_browsing &amp;&amp; $_browsePhase === 'closed' &amp;&amp; !$saving &amp;&amp; !$front &amp;&amp; !$back &amp;&amp; !$hint &amp;&amp; !$example ? null : 'button'"
+         data-attr:aria-disabled="$saving || $_browsePhase === 'closing' || $_browsePhase === 'returning' ? 'true' : 'false'"
+         data-discard="{{ s('app_add_discard_leave') }}"
+         data-on:keydown="window.avBackKey(evt, el)"
+         data-on:click="window.avEditBack(evt, $front, $back, $hint, $example, $saving, $_browsing || $nid !== 0 ? document.getElementById('add-wizard').dataset.discard : el.dataset.discard, $nid, $editOriginal, $_browsing, $_browsePhase)">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </a>
+      <a id="deck-chip" href="/app/" class="flex h-review-hud-control min-w-0 flex-1 items-center gap-2 px-2 text-left" data-discard="{{ s('app_add_discard_leave') }}"
+         data-on:click="window.avGuardNav(evt, $front, $back, $hint, $example, $saving, el.dataset.discard, $nid, $editOriginal)"><span class="shrink-0">{{ deck_emoji }}</span> <span class="min-w-0 truncate text-xl font-black" dir="auto">{{ deck_name }}</span></a>
+      <button type="button" class="btn btn-accent neo-press h-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge px-3.5 text-sm font-black uppercase shadow-neo active:shadow-none" data-attr:disabled="$saving"
+              data-discard="{{ s('app_add_discard_finish') }}"
+              data-on:click="$summaryOpen || $_browsePhase === 'opening' || $_browsePhase === 'closing' || $_browsePhase === 'returning' ? null : (window.avConfirmDiscard($front, $back, $hint, $example, $saving, el.dataset.discard, $nid, $editOriginal) ? ($front = '', $back = '', $hint = '', $example = '', $nid = 0, $learned = false, $progressReset = false, $step = 1, $error = '', $summaryOpen = true, window.avOpenSummary(el)) : null)">{{ s('app_add_done') }}</button>
+    </div>
+
+    <div class="browse-fade mt-2.5 flex items-center justify-between gap-2"
+         data-show="$_browsePhase !== 'open' &amp;&amp; $_browsePhase !== 'closing'" data-attr:inert="$_browsing">
+      <button type="button" class="add-step" data-class:add-step-active="$step === 1" data-class:add-step-done="$step > 1"
+              data-on:click="$step = 1; $error = ''; window.avFocus('input-front')"><span class="add-step-num" aria-hidden="true">1</span><span>{{ tr.notetypes_front_field() }}</span></button>
+      <button type="button" class="add-step" data-class:add-step-active="$step === 2" data-class:add-step-done="$step > 2"
+              data-required="{{ s('app_add_front_required') }}" data-on:click="$front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.required)"><span class="add-step-num" aria-hidden="true">2</span><span>{{ tr.notetypes_back_field() }}</span></button>
+      <button type="button" class="add-step" data-class:add-step-active="$step === 3"
+              data-required="{{ s('app_add_both_required') }}" data-on:click="$front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/edit/preview')) : ($error = el.dataset.required)"><span class="add-step-num" aria-hidden="true">3</span><span>{{ tr.actions_preview() }}</span></button>
+    </div>
+  </header>
+
+  <div id="add-stage" class="review-stage">
+    <div id="add-editor" class="add-card motion-reduce:animate-none"
+         data-show="$_browsePhase !== 'open' &amp;&amp; $_browsePhase !== 'closing'"
+         data-class:editor-leaving="$_browsePhase === 'opening'"
+         data-class:editor-returning="$_browsePhase === 'returning'"
+         data-attr:inert="$_browsing">
+      <div id="edit-warning" class="alert alert-warning mb-3 text-sm font-bold" role="note" data-show="$nid !== 0 &amp;&amp; $learned" style="display:none">{{ s('app_edit_warning') }}</div>
+      <div id="progress-reset-notice" class="alert alert-success mb-3 text-sm font-bold" role="status" data-show="$progressReset" style="display:none">{{ s('app_edit_progress_reset') }}</div>
+      <section data-show="$step === 1" style="display:none">
+        {{ field_label('input-front', s('app_add_front_prompt'), s('app_add_front_help')) }}
+        <textarea id="input-front" class="add-input" rows="4" data-bind:front aria-describedby="input-front-help" data-attr:aria-describedby="$nid !== 0 &amp;&amp; $learned ? 'input-front-help edit-warning' : 'input-front-help'" placeholder="{{ s('app_add_front_placeholder') }}" required></textarea>
+        <p class="add-counter"><span data-text="$front.length">0</span> {{ s('app_add_characters') }}</p>
+        <div class="add-chips">
+          {{ chip(s('app_add_chip_der'), 'input-front', true) }}
+          {{ chip(s('app_add_chip_die'), 'input-front', true) }}
+          {{ chip(s('app_add_chip_das'), 'input-front', true) }}
+          {{ chip(s('app_add_chip_a_umlaut'), 'input-front') }}
+          {{ chip(s('app_add_chip_o_umlaut'), 'input-front') }}
+          {{ chip(s('app_add_chip_u_umlaut'), 'input-front') }}
+          {{ chip(s('app_add_chip_sharp_s'), 'input-front') }}
+        </div>
+      </section>
+
+      <section data-show="$step === 2" style="display:none">
+        {{ field_label('input-back', s('app_add_back_prompt'), s('app_add_back_help')) }}
+        <textarea id="input-back" class="add-input" rows="4" data-bind:back aria-describedby="input-back-help" placeholder="{{ s('app_add_back_placeholder') }}" required></textarea>
+        <p class="add-counter"><span data-text="$back.length">0</span> {{ s('app_add_characters') }}</p>
+        <details class="collapse collapse-arrow add-optional">
+          <summary class="collapse-title font-extrabold">{{ s('app_add_hint') }} · {{ s('app_add_optional') }}</summary>
+          <div class="collapse-content">
+            {{ field_label('input-hint', s('app_add_hint'), '') }}
+            <textarea id="input-hint" class="add-input add-input-sm" rows="2" data-bind:hint placeholder="{{ s('app_add_hint_placeholder') }}"></textarea>
+            <p class="add-counter"><span data-text="$hint.length">0</span> {{ s('app_add_characters') }}</p>
+            <div class="add-chips">
+              {{ chip(s('app_add_chip_noun'), 'input-hint', true) }}
+              {{ chip(s('app_add_chip_verb'), 'input-hint', true) }}
+              {{ chip(s('app_add_chip_adjective'), 'input-hint', true) }}
+              {{ chip(s('app_add_chip_plural'), 'input-hint', true) }}
+            </div>
+          </div>
+        </details>
+        <details class="collapse collapse-arrow add-optional">
+          <summary class="collapse-title font-extrabold">{{ s('app_add_example') }} · {{ s('app_add_optional') }}</summary>
+          <div class="collapse-content">
+            {{ field_label('input-example', s('app_add_example'), s('app_add_example_help')) }}
+            <textarea id="input-example" class="add-input add-input-sm" rows="2" data-bind:example aria-describedby="input-example-help" placeholder="{{ s('app_add_example_placeholder') }}"></textarea>
+            <p class="add-counter"><span data-text="$example.length">0</span> {{ s('app_add_characters') }}</p>
+          </div>
+        </details>
+      </section>
+
+      <section data-show="$step === 3" style="display:none">
+        {{ preview_card() }}
+      </section>
+    </div>
+    {% include "app/_edit_deck_pile.html.jinja" %}
+  </div>
+  {% include "app/_edit_deck_cards.html.jinja" %}
+
+  <footer class="browse-fade review-bar" data-show="$_browsePhase !== 'open' &amp;&amp; $_browsePhase !== 'closing'" data-attr:inert="$_browsing">
+    <div class="flex gap-2.5">
+      <button type="button" class="btn btn-square neo-press h-16 min-h-0 w-14.5 shrink-0 rounded-2xl border-3 border-neo-edge bg-base-200 p-0 shadow-neo active:shadow-none" data-show="$step > 1" style="display:none"
+              aria-label="{{ s('app_add_previous_step') }}" data-on:click="$step = $step - 1; $error = ''; window.avFocus($step === 1 ? 'input-front' : 'input-back')">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5.5 w-5.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button id="btn-next" type="button" class="btn btn-accent neo-press h-16 min-h-0 min-w-0 flex-1 whitespace-nowrap rounded-2xl border-3 border-neo-edge px-2 text-[clamp(1rem,calc(6vw_-_2px),1.35rem)] leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none" data-show="$step < 3" style="display:none"
+              data-front-required="{{ s('app_add_front_required') }}" data-back-required="{{ s('app_add_back_required') }}"
+              data-next-back="{{ s('app_add_next_back') }}" data-next-preview="{{ s('app_add_next_preview') }}"
+              data-text="$step === 1 ? el.dataset.nextBack : el.dataset.nextPreview"
+              data-on:click="$step === 1 ? ($front.trim() ? ($step = 2, $error = '', window.avFocus('input-back')) : ($error = el.dataset.frontRequired)) : ($front.trim() &amp;&amp; $back.trim() ? ($step = 3, $error = '', @post('/app/edit/preview')) : ($error = $front.trim() ? el.dataset.backRequired : el.dataset.frontRequired))">{{ s('app_add_next_back') }}</button>
+      <button id="btn-add" type="button" class="btn btn-success neo-press h-16 min-h-0 min-w-0 flex-1 whitespace-normal rounded-2xl border-3 border-neo-edge text-review-reveal-label leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none" data-show="$step === 3" style="display:none"
+              data-save-failed="{{ s('app_add_save_failed') }}"
+              data-error-duplicate="{{ s('app_add_duplicate') }}"
+              data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.saveFailed) : null"
+              data-on:click="$saving ? null : @post('/app/edit/commit?deck={{ deck_id }}')"
+              data-save-label="{{ s('app_edit_save') }}" data-add-label="{{ tr.actions_add() | tr_clean }}" data-text="$nid !== 0 ? el.dataset.saveLabel : el.dataset.addLabel"
+              data-indicator:saving data-attr:disabled="$saving">{{ tr.actions_add() }}</button>
+    </div>
+  </footer>
+  {% include "app/_edit_summary.html.jinja" %}
+</main>
+{% endif %}

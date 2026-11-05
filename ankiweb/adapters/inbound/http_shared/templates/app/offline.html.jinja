@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="{{ app_lang.html_lang }}" dir="{{ app_lang.html_dir }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{{ s('app_offline_title') }}</title>
+    <link rel="icon" href="/shell/static/icons/favicon.ico" sizes="32x32">
+    <link rel="icon" href="/shell/static/icons/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/shell/static/icons/apple-touch-icon.png">
+    <link rel="stylesheet" href="/shell/static/app-client.css?v={{ app_asset_version }}">
+  </head>
+  <body>
+    <main class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pb-30 pl-4">
+      <section class="deck-card rounded-box bg-base-200 px-5 py-7 text-center" aria-labelledby="offline-title">
+        <h1 id="offline-title" class="text-3xl font-black tracking-tight sm:text-4xl">{{ s('app_offline_title') }}</h1>
+        <p class="mx-auto mt-2 max-w-sm text-sm text-muted-fg">{{ s('app_offline_body') }}</p>
+        <a class="btn btn-accent neo-press mt-4" href="/app/">{{ s('app_offline_retry') }}</a>
+      </section>
+    </main>
+  </body>
+</html>

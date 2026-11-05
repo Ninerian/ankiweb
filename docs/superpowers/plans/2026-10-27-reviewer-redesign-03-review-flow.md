@@ -1,0 +1,190 @@
+# Plan 3: Review-Ansicht und Flow (`/app/review`)
+
+> Teil von [00-overview](2026-10-27-reviewer-redesign-00-overview.md). Voraussetzung: [Plan 1](2026-10-27-reviewer-redesign-01-independent-client.md) (Study-Kern, Session, Layout). Unabhängig von Plan 2 und 4.
+
+**Ziel:** Reviewer nach `mockup.html`: HUD (Zurück, Streak, More), Fortschrittsbalken, Karten-Bühne, "Show Answer", vier Ease-Kacheln mit Intervall, Actions-Bottom-Sheet, Tastatur (Space, 1 bis 4). Karten kommen aus der echten v3-Queue; Rating läuft über den Study-Kern.
+
+## Flow
+
+```mermaid
+sequenceDiagram
+  participant B as Browser (Datastar)
+  participant S as /app/review
+  participant C as core.study
+  B->>S: GET /app/review?deck=ID
+  S->>C: start(deck) + fetch_next
+  S-->>B: Seite mit Frage, Antwort (verborgen), Labels
+  B->>B: Reveal (lokal, kein Request)
+  B->>S: POST /app/review/answer {cardId, ease}
+  S->>C: answer + fetch_next
+  S-->>B: SSE patch-elements (#stage, #bar, #hud-progress) + patch-signals
+```
+
+**Reveal bleibt lokal:** Frage und Antwort stehen beim Laden schon im HTML (Antwort `hidden`); "Show Answer" schaltet per Datastar-Signal `revealed` um. Kein Round Trip, kein Latenzproblem auf Mobil (RESEARCH §6 nennt Latenz als Hauptnachteil). Das entspricht dem Mockup und `describe_next_states` liefert die Labels ohnehin schon mit der Karte.
+
+## Entscheidungen
+
+| Thema | Wahl | Begründung |
+|---|---|---|
+| Karten-HTML | `question_html`/`answer_html` aus dem Kern (sanitized) in `.flashcard` einsetzen | RESEARCH §3a Entscheidung |
+| Stilisierung | Server-HTML trägt Klassen `.av-front-text`, `.av-hint`, `.av-back-text`, `.av-example` (DESIGN §5.F); sie werden in `app-client.css` per `@apply` mit Tailwind-Utilities gestylt, weil das Karten-HTML nicht im Template steuerbar ist. Alles andere: daisyUI/Tailwind im Template | DESIGN §5.F Stable Class Names |
+| `*word*` → `<mark>` | Kleines Client-Skript `card-render.js`: arbeitet **nur** auf `.av-example` nach Einfügen. Text ist schon HTML-escaped, nur `<mark>` kommt hinzu | DESIGN §5.F ("Anki hat keinen Template-Filter") |
+| Streak | **Aus dem Revlog abgeleitet (Entscheidung)**: Anzahl der letzten aufeinanderfolgenden Reviews mit Ease 2, 3 oder 4 seit Tagesbeginn (`day_cutoff - 86400`), **alle Decks**; Ease 1 beendet die Reihe. Nur Lesezugriff auf `revlog`, kein Schreiben, Server liefert den Wert in jedem Antwort-Fragment. Kein Signal, kein Client-Zustand | Überlebt Reload, Neustart und Gerätewechsel. Ändert DESIGN §2.A (dort: nur im Speicher), siehe Commit `Update DESIGN.md`. **Belegt (Probe):** `revlog.id` ist ms-Zeitstempel, eine Zeile pro Antwort; Reihe `[3,4,1,3,2,3]` → 3 (Mockup-Regel 2/3/4) |
+| Fortschritt | Serverseitig aus Queue-Zählern: `done = start_total - (new+learning+review)` | Echte Zahlen statt Mockup-Konstanten `14/20`; `start_total` bei Session-Start gespeichert |
+| Erfolgsscreen: Tally | `StudySession.tally: dict[Literal[1,2,3,4], int]` (Again/Hard/Good/Easy) und `reviewed: int`, **nur im Speicher je Session**, bei `start` auf 0. Quelle ist die gerade bewertete Karte, **nicht** der Revlog: Die Verteilung gilt für **diese Sitzung**, der Streak (Revlog) für den **Tag** | Mockup-Semantik (`tally`, `cardsReviewed`); Revlog enthält Tagesreviews anderer Sitzungen und Decks |
+| Erfolgsscreen: Auslöser | Wenn `fetch_next` nach einer Bewertung **keine Karte** liefert **und** `reviewed > 0`. Leere Queue ohne Reviews (GET) = "No cards due" ohne Tally, kein Erfolgsscreen | DESIGN §7: nach dem letzten Rating; keine erfundene Historie |
+| Erfolgsscreen: Tally fehlt | Die Tally ist flüchtig (LRU 8, Serverneustart, Cookie-Verlust, Reload nach dem Ende). Fehlt sie (`reviewed == 0`) bei leerer Queue, rendert die Seite **nie** den Erfolgsscreen, sondern "No cards due" mit Link `/app/` (Plan 2: Zähler 0). Es gibt keine Variante mit "Reviewed 0", leerer Verteilung oder Tier. Der Tages-Streak wird dort nicht gezeigt; er steht im HUD | Verhindert falsche Nullen neben einem Streak, der Neustart überlebt |
+| Erfolgsscreen: Tiers | Reine Funktion `mood(tally) -> Literal["perfect","great","good","tough"]` mit **unabgerundeten** Verhältnissen: Perfect = kein Again und Easy ≥ 40 %; sonst Great bei Recall ≥ 85 %; sonst Good bei Recall ≥ 60 %; sonst Tough. Recall = (Hard + Good + Easy) / alle Ratings, bei 0 Ratings 0 und Tough | DESIGN §7, Mockup `getMood` |
+| Zeitmessung | `fetch_next` startet Timer, `answer` liest ihn (Plan 1) | Korrekte Antwortzeit (RESEARCH §11) |
+| Zweite Tab / Reload | Reload ruft `POST`-artiges Start-Verhalten: `GET /app/review` **ist** ein Start, startet Timer neu (dokumentiert). Folgeaufrufe nur per POST | RESEARCH §11: Timer-Reset bei Reload ist bekannt |
+| Seiteneffekte per GET | `GET /app/review` mutiert nur die Session (aktuelle Karte). Prefetch/Reload-Reset der Lesezeit akzeptiert; `Cache-Control: no-store` setzen | RESEARCH §11 Limit |
+
+> **Hinweis zur Spike-Lehre:** `next` war im Spike ein GET mit Seiteneffekt. Hier ist die Seite selbst ein GET (Browser-Navigation, unvermeidbar bei Links aus Plan 2), jedes **Folge-Kommando** (answer, Aktionen) ist POST. `no-store` verhindert Prefetch-Cache. Kein separater JSON-`/next`.
+
+## Task 0: Queue-Filter (Ergebnis, Entscheidung getroffen)
+
+**Entscheidung:** Karten anderer Notiztypen werden im Review **angezeigt wie sie sind** (server-gerendertes HTML ohne Design-Klassen) mit Hinweis-Badge "Other note type". Nicht überspringen, nicht aus Zählern nehmen.
+
+**Gemessen (Wegwerf-Collection, anki 25.9.4):**
+- `get_queued_cards(*, fetch_limit, intraday_learning_only)` hat **keinen** Such- oder Notiztyp-Parameter. Die Queue mischt Typen (`B0,B1,B2,V0,V1`).
+- `deck_due_tree` zählt alle Typen (5) und ist nicht nach Typ filterbar.
+- Einzig `custom_study` (gefiltertes Deck) filtert nach Suche, **ändert aber Collection-Zustand**.
+- **Überspringen scheitert am Tageslimit:** 200 Basic- plus 1 Vocab-Karte im Deck → Queue enthält 20 Karten (Limit), die Vocab-Karte ist **nicht erreichbar**, der Zähler zeigt 20. "Queue lesen, Fremde verwerfen" lässt Vocab-Karten unlernbar und den Zähler lügen.
+
+**Folgen:** Zähler und Queue bleiben identisch zu Anki. Test (`tests/test_app_review_mixed.py`): Deck mit 200 Basic + 1 Vocab bei Limit 20 → Queue enthält Basic, Badge erscheint, Zähler = Anki. **Pflicht-Fall: Tageslimit erreicht.** Ein reines 3+3-Deck hätte den Fehler nicht gezeigt. Fremdes HTML (Bilder, Cloze, Math) kann das Layout sprengen: dokumentierte Einschränkung, kein Filter.
+
+
+## Dateien
+
+| Datei | Zweck |
+|---|---|
+| `core/app_client/study.py` | **erweitert:** `start(col, session, deck_id) -> StudyState` (mit `start_total`), Aktionen `toggle_mark`, `set_flag`, `bury`, `suspend`, `undo`, `set_due`, `delete_note`, `card_info_url` |
+| `http_app/review.py` | Routen |
+| `templates/app/review.html.jinja` | Seite |
+| `templates/app/_review_stage.html.jinja` | `#stage`: Karte + Antwort + Badges |
+| `templates/app/_review_bar.html.jinja` | `#bar`: Show-Answer oder Ease-Kacheln |
+| `templates/app/_review_sheet.html.jinja` | Actions-Sheet |
+| `templates/app/_review_complete.html.jinja` | `#session-complete`: Erfolgsscreen (DESIGN §7) |
+| `core/app_client/completion.py` | reine Funktionen `rating_tally`-Auswertung: `mood(tally)`, `recall(tally)`, `CompletionSummary` |
+| `static/app/card-render.js` | `*word*`-Highlight (nur `.av-example`) + Tastatur |
+| `shell_src/app-client.css` | nur Eigenes: `.neo-press`, Keyframes (`streakPop`, `streakReset`, `revealAnswer`), Meter-Stripes, `.av-*`-Karten-Klassen |
+| `tests/app_client/test_review_core.py`, `test_review_completion.py`, `test_review_routes.py`, `test_review_browser.py` | |
+
+## Routen
+
+| Methode, Pfad | Zweck | Antwort |
+|---|---|---|
+| `GET /app/review?deck=<id>` | Start; Unbekannte oder fehlende ID → 303 `/app/`; Queue leer → Fertig-Zustand | HTML |
+| `POST /app/review/answer` | Body (Datastar-Signale): `cardId`, `ease` | SSE: Stage, Bar, Progress **oder** `#session-complete` (Stage und Bar werden entfernt/geleert, HUD bleibt) |
+| `POST /app/review/action/{name}` | `mark`, `flag`, `bury`, `suspend`, `undo`, `forget`, `delete` | SSE |
+| `POST /app/review/due` | `cardId`, `spec` (z. B. `3`, `1-7`) | SSE; Fehler per `error_response` |
+| `GET /app/review/info/{cardId}` | Card Info | 303 auf bestehende Card-Info-Seite (`/card-info/{ids}`, belegt `http_pages/card_info.py:935`) |
+
+Alle POST: `cardId`-Check → `StaleCard` → 409 und Client lädt per `@get` die Seite neu. Für `answer` gilt dies auch, wenn die Karte in der Collection zwischenzeitlich beantwortet, umgeplant oder gelöscht wurde. `ease` ∉ 1..4 → 422.
+
+## Aufgaben
+
+### 3.1 Kern-Aktionen (TDD, `temp_collection`)
+Spiegeln `_ReviewerHandler` (belegt, `reviewer.py:330-440`), aber **ohne** Hub/WS und ohne Import aus `http_screens`:
+- [ ] `toggle_mark` (Tag `marked`), `set_flag` (0..4), `bury` (Karte), `suspend` (Karte), `forget`, `set_due` (`col.sched.set_due_date([cid], spec)`), `delete_note`, `undo` (`col.undo()`, `UndoEmpty` → eigener `NothingToUndo`).
+- [ ] Jede Aktion läuft über `service.run_op(..., initiator="app")` damit `OpChanges` an Subscriber gehen (wie alter Client; belegt `reviewer.py`). `initiator` wird nur durchgereicht; `BridgeHub.broadcast_opchanges` sendet an offene `/ws`-Kontexte (belegt `core/bridge/hub.py:41`), der neue Client öffnet keine, also wirkungslos. `/app/*` empfängt keine Hub-Events (`_send_all` sendet nur an registrierte `/ws`-Verbindungen, `hub.py:31`) und rendert daher nie auf eigene Schreibvorgänge neu; ein Initiator-Filter ist nicht nötig. Alte Tabs bekommen die Änderung (gewollt).
+- [ ] Nach Bury/Suspend/Delete/Undo: `fetch_next` (wie alt: `_show_next`).
+- Tests: je Aktion Zustand der Collection prüfen (Tag gesetzt, `queue == -1` bei suspend, usw.); `NothingToUndo` bei leerem Undo-Stack; ungültige `set_due`-Spec → `ValueError` mit Meldung.
+- [ ] **Undo-Verhalten ungeprüft** (RESEARCH §8): Test, dass Undo nach Rating die Karte zurückbringt und Zähler wieder steigen. Schlägt er fehl → Aktion im Sheet ausblenden und im Plan vermerken, nicht stillschweigend lassen.
+
+### 3.2 Seite und Fragmente
+- [ ] `review.html.jinja`: `<body data-signals="{revealed: false, error: ''}">` (Gotcha #23). Alle Austausch-Ziele mit `id`: `#hud-progress`, `#stage`, `#bar`, `#sheet`.
+- [ ] Antwort-Bereich `#answer-box` mit `data-show="$revealed"` und `style="display:none"` (Gotcha #4). Beim Kartenwechsel patcht der Server `revealed: false` per `patch-signals`.
+- [ ] Show-Answer-Button: `data-on:click="$revealed = true"`. Ease-Kacheln: `data-on:click="@post('/app/review/answer')"` mit Signalen `cardId`/`ease` gesetzt vor dem Post (Gotcha #18: Geschwister-Signale): `data-on:click="$ease = 3; @post('/app/review/answer')"`. `;`-Ketten sind erlaubt, kein Block-Syntax (Gotcha #24).
+- [ ] Tastatur: `data-on:keydown__window="..."` mit Ausdruck ohne Block: `evt.key === ' ' && !$revealed ? ($revealed = true) : ...`. Fokus-Guard wie Mockup (`closest('a, button, input, textarea, select, [contenteditable]')`) liegt zu lang für Inline-Ausdruck → **kleine Funktion** in `card-render.js` (`window.avKeydown(evt)`), vom Attribut aufgerufen (Gotcha #24: "delegate to window.fn()"). Datastar-Sandbox erreicht `window`-Funktionen über Delegation, das ist der dokumentierte Weg.
+- [ ] Streak: reine Funktion `streak_from_revlog(rows) -> int` in `core/app_client/streak.py` (zählt rückwärts, solange `ease in {2,3,4}`), gespeist von `revlog.recent_eases(col, limit)` (Plan 1, 1.1b; Tagesgrenze nur dort). Die Funktion liest in Blöcken und bricht beim ersten Ease 1 ab. Die Rating-Antwort enthält `streak` (neu) und `streak_before`; der Client setzt Pop-Klasse bei Anstieg und Reset-Klasse bei Fall auf 0 (vollständige Klassennamen, `data-ts`-Neustart, Gotcha #19). Texte "Streak Reset! Don’t give up 💪" aus Mockup (über `s()`, Plan 6). **Undo:** `undo` löscht den Revlog-Eintrag, der Streak fällt damit automatisch zurück (Test).
+- [ ] Progress: `#hud-progress` zeigt `done / total CARDS` und Balken `style="width: N%"`; Server liefert N.
+- [ ] **Erfolgsscreen** (DESIGN §7, Vorlage `mockup.html` `#session-complete`), Fragment `_review_complete.html.jinja`:
+  - Inhalt: Eyebrow "Session complete", Sticker-Emoji und Titel nach Tier, Untertitel, drei Stats **Reviewed**, **Recall** (gerundet, `0 %` bei 0), **Current streak** (Tages-Streak aus dem Revlog, wie im HUD), Verteilungsbalken und Zähler Again/Hard/Good/Easy, Hinweis "Recall = Hard, Good, or Easy ratings; not measured accuracy.", zwei CTAs.
+  - Tiers und Texte (je ein `s()`-Schlüssel, Plan 6): Perfect 🏆 "Flawless!" / "What a run! You made those cards look easy."; Great 🌟 "Great run!" / "Look at that momentum. Keep it rolling!"; Good 🌱 "Solid progress." / "Every review helps those ideas take root."; Tough 💪 "You showed up." / "You gave your memory a workout today. That counts." Zusatz bei Hard ≥ 40 % aller Ratings: " Plenty of those cards took extra effort."
+  - Ablauf: `answer` aktualisiert `tally`/`reviewed`; liefert `fetch_next` keine Karte, rendert der Server `#session-complete` (Zahlen aus `CompletionSummary`), ersetzt `#stage`/`#bar` und blendet den Actions-Button aus. Offenes Sheet und Toast werden geschlossen (Signal `sheetOpen: false`). HUD und Fortschritt (`done/total`) bleiben und zeigen 100 %.
+  - **Back to decks** = `<a href="/app/">` (Plan 2), kein Redirect auf alten `/overview`.
+  - **Study again**: **nicht** aus dem Mockup übernehmen. Das Mockup setzt `0/20` und eine leere Tally zurück; das ist eine Demo. Echt gäbe es nur eine neue Queue des Schedulers (`GET /app/review?deck=<id>`, startet Tally und `start_total` neu). Sie ist leer, wenn nichts mehr fällig ist. Darum: CTA nur zeigen, wenn nach dem Ende **sofort weitere Karten fällig** sind (`counts()` > 0 nach der letzten Bewertung, z. B. Lern-Schritte); sonst ausblenden. Als `<a href="/app/review?deck=<id>">`, kein JS-Reset.
+  - A11y: `<section aria-labelledby="sc-title">`; nach dem Patch erhält `#sc-title` (`tabindex="-1"`) den Fokus (kleine Funktion `window.avFocusComplete()` aus `card-render.js`, vom `data-effect`/`data-on` mit `window.fn()` aufgerufen, Gotcha #24); dekorative Grafik (Konfetti, Sticker) `aria-hidden="true"`; Rating-Zähler als **Text**, nicht nur als Balkenbreite; Balken `aria-hidden`.
+  - Theme: folgt `prefers-color-scheme`; Animationen (Ankunft, Sticker, Konfetti) unter `motion-reduce:` abgeschaltet, Endzustand ohne Animation sichtbar.
+  - Kein Streak-/Tally-Zustand im Signal-Store: der Server rendert den Block fertig.
+- [ ] **Tally und Undo** (Kern, Teil von 3.1): `answer` erhöht `tally[ease]` und `reviewed`. `undo` direkt nach einer Bewertung nimmt sie zurück (`tally[ease] -= 1`, `reviewed -= 1`), wenn die rückgängig gemachte Operation die letzte Bewertung **dieser** Sitzung war (`session.last_rated: (cid, ease) | None`); jede andere Aktion (Mark, Flag, Bury, Suspend) setzt `last_rated = None`. Undo aus dem Erfolgsscreen ist **nicht** vorgesehen (Sheet ist dort ausgeblendet). Verhalten der Revlog-Zeile bei Undo bleibt der Spike aus 3.1 (Undo-Vorbehalt).
+- [ ] Sheet: kein Mode-Switch; 8 Aktionskacheln; **Card Info** als `<a>`; Rest als `@post`. Von Review zu Add führt der Weg über die Deck-Liste. Schließen: Backdrop-Klick, Dismiss, `Escape`. Fokus-Falle und `aria-modal="true"`, `role="dialog"` (im Mockup nicht belegt; **prüfen und ergänzen**).
+- [ ] Mark/Flag-Zustand im Sheet-Label ("Unmark Card", "Remove Flag") kommt vom Server (Fragment `#sheet`).
+- [ ] Fehler (`set_due` ungültig, Undo leer): `error_response` → Toast `#app-error` (Plan 1).
+
+### 3.3 Styling mit daisyUI und Tailwind (Vorlage `mockup.html`)
+- [ ] HUD: daisyUI `navbar` (Back = `btn btn-square`, Streak = `badge badge-lg` mit `data-class` für Pop/Reset, More = `btn btn-square`); Fortschritt = `progress` mit Stripes. Safe-Area oben per `pt-[env(safe-area-inset-top)]`.
+- [ ] Karte: daisyUI `card` mit `rounded-box` und `neo-press`-Schatten; Deck-Tag und Mark/Flag als `badge`. Antwort-Block mit `revealAnswer`-Keyframe, `motion-reduce:animate-none`.
+- [ ] Ease-Grid: `grid grid-cols-4 gap-2`, vier `btn` (`btn-error`, `btn-warning`, `btn-success`, `btn-info`) mit `neo-press`; Titel und Intervall (`font-mono`). Show-Answer = `btn btn-accent btn-block btn-lg`. Keine Tastatur-Badges oder Shortcut-Hinweise anzeigen; Tastaturbedienung bleibt erhalten. Unten `pb-[env(safe-area-inset-bottom)]`.
+- [ ] Sheet: daisyUI `modal modal-bottom` mit `modal-box`; Öffnen/Schließen über Datastar-Signal `sheetOpen` und `data-class:modal-open="$sheetOpen"` (vollständiger Klassenname). Tiles = `btn` im `grid grid-cols-2`, Delete = `btn-error btn-outline`. Backdrop-Klick: `modal-backdrop` als `<form method="dialog">`-freies Element mit `data-on:click="$sheetOpen = false"`. Hinweis: native `<dialog>`/`showModal` ist **nicht** nötig; `modal-open` genügt und vermeidet Block-JS (Gotcha #24).
+- [ ] Toast = daisyUI `toast toast-top toast-center` mit `alert`, **nur** für Fehler (`#app-error`: ungültige Fälligkeit, leeres Undo). Es gibt **keinen** Streak-Toast (Entscheidung des Nutzers vom 2026-10-28, DESIGN §2.A).
+- [ ] Ease-Kontrast gemessen (Plan 1, 1.0) in beiden Themes; Streak-Text (`--color-streak-text` im Mockup) als `text-warning-content` oder eigener Theme-Wert, Messung entscheidet.
+- [ ] `motion-reduce:` für Streak, Reveal, Meter **und Erfolgsscreen** (Panel-Ankunft, Sticker, Konfetti).
+- [ ] Erfolgsscreen: daisyUI `card` mit `neo-press`-Schatten, `stats` für die drei Werte, vier `badge`-Zähler mit Ease-Farben (`--ease-*-border` aus Plan 1.0), Balken als `flex`-Segmente mit `style="width: N%"` (Server-Werte), CTAs `btn` und `btn btn-accent`. Eigenes CSS nur für Sticker-/Konfetti-Keyframes (`app-client.css`, Abschnitt `/* plan 3 */`). Hell/dunkel gemessen wie die Ease-Kacheln.
+
+### 3.4 Tests
+Routen (`TestClient`, Collection mit 3 Karten):
+- [ ] `GET` setzt Timer; Seite enthält Frage, Antwort (in `#answer-box`), vier Labels ohne U+2068/2069.
+- [ ] `POST answer` ease 3: SSE enthält `datastar-patch-elements` für `#stage`; Zähler sinkt; Review-Log hat Eintrag (`col.db.scalar("select count() from revlog")`).
+- [ ] Falsche `cardId` → 409; ease 0/5 → 422; unbekannte Aktion → 404.
+- [ ] Leere Queue **ohne** Reviews → "No cards due", **kein** Erfolgsscreen, keine Tally-Zahlen.
+- [ ] Reload nach dem letzten Rating (neue `StudySession`, Cookie gelöscht oder Store geleert) → "No cards due", **kein** "Reviewed 0", keine leere Verteilung, kein Tier; der Streak im HUD bleibt der Revlog-Wert.
+- [ ] Letzte Bewertung → SSE enthält `#session-complete` mit korrekten Zählern; `#stage` und `#bar` sind nicht mehr als Karte/Leiste vorhanden; Revlog-Anzahl stimmt.
+- [ ] `test_review_completion.py` (reine Funktionen): Tier-Grenzen mit unabgerundeten Verhältnissen: Easy 40 % ohne Again = Perfect, knapp darunter = Great; Recall 85 % = Great, darunter Good; 60 % = Good, darunter Tough; 0 Ratings = Tough/0 %; Again > 0 schließt Perfect aus. Hard-Zusatzsatz ab 40 %.
+- [ ] Tally-Undo: bewerten, undo → Tally und `reviewed` zurück; Mark zwischen Bewertung und Undo setzt `last_rated` zurück (kein falsches Abziehen).
+- [ ] "Study again" nur sichtbar, wenn weitere Karten fällig sind (Fixture mit Lern-Schritt) und fehlt sonst.
+- [ ] Verteilung gilt für die Sitzung: zweite Sitzung am selben Tag zeigt nur ihre eigenen Ratings, der Streak dagegen den Tageswert.
+- [ ] Hostile Eingabe: kein Feldinhalt gelangt in den Erfolgsscreen (nur Zahlen und feste `s()`-Texte).
+- [ ] XSS: Feldwert `<script>alert(1)</script>` erscheint nicht als ausführbares Tag (sanitize); Markup-Payloads in Raw-Text- und RCDATA-Elementen bleiben inert. `*x*` im Example wird `<mark>`, `<b>` bleibt escaped.
+- [ ] Passwort-Gate: 303.
+- [ ] Zeitmessung über HTTP: `sleep(0.05)` zwischen GET und POST, Revlog-`time` ≥ 40.
+- [ ] `Cache-Control: no-store` auf `GET /app/review`.
+
+Browser (Playwright, `importorskip`):
+- [ ] Space deckt auf, `1`..`4` bewertet, Streak steigt/fällt (Pill-Animation und Zähler, **kein** Toast: Entscheidung des Nutzers vom 2026-10-28, siehe DESIGN §2.A), **Reload behält den Streak**, Undo senkt ihn.
+- [ ] Space/Ziffern im Fokus eines Buttons ignoriert (Guard).
+- [ ] Sheet öffnen, Backdrop schließt, Escape schließt.
+- [ ] Bury/Suspend entfernt Karte; Undo bringt Rating zurück.
+- [ ] Erfolgsscreen: `#sc-title` hat den Fokus, Back to decks führt auf `/app/`, `prefers-reduced-motion: reduce` (Playwright `emulate_media`) ergibt keine laufenden Animationen, alle vier Tiers per Fixture-Collection hell/dunkel als Screenshot, 375 px ohne Scroll-Abschneiden.
+- [ ] Kein horizontaler Scroll bei 375 px; keine Konsolenfehler; hell/dunkel Screenshot.
+
+## Akzeptanz
+- Vollständiger Lernlauf über die echte Queue bis zum Erfolgsscreen (DESIGN §7): Tally, Recall, Tier und Streak stimmen mit den tatsächlichen Bewertungen und dem Revlog überein; ohne Reviews erscheint er nicht.
+- Alle 8 Sheet-Aktionen funktionieren oder sind begründet ausgeblendet (Undo-Vorbehalt).
+- Reveal ohne Netzwerk-Request (DevTools/Playwright `request`-Listener: 0 Requests zwischen Laden und Rating).
+- Kein Verweis auf `reviewer.js`, `/ws`, `/_anki/` (Isolations-Test).
+
+## Risiken
+| Risiko | Gegenmaßnahme |
+|---|---|
+| `data-class` mit dynamisch gebautem Klassennamen wird von Tailwind nicht erkannt | nur vollständige Namen (`modal-open`, `animate-streak-pop`) |
+| daisyUI-`modal` ohne `<dialog>` hat keine Fokus-Falle | Fokus-Falle und Escape in `window.avSheetKey` (Delegation), `aria-modal`/`role="dialog"` setzen, im Browser-Test prüfen |
+| Streak-Abfrage bei sehr langen Reihen (hunderte Reviews) | Abfrage bricht beim ersten Ease 1 ab; Test mit 500 Einträgen und Zeitmessung |
+| Antwort steht im HTML vor Reveal (Spoiler im Quelltext) | Akzeptiert (Single-User-Lernapp, kein Wettbewerb); in Doku vermerken |
+| Tally weicht vom Revlog ab (Undo, zweiter Tab) | Tally nur im Speicher je Sitzung, Undo nimmt nur die eigene letzte Bewertung zurück; Test; Abweichung dokumentiert |
+| Fremde Note-Types brechen Layout | Task 0 Default (Anzeige "wie sie sind" + Badge) |
+| `run_op` broadcastet an offene alte Tabs | gewollt (hält alten Client aktuell), kein Handler nötig |
+| MathJax in Karten | **Out of Scope** (dedizierter Typ ohne Math, RESEARCH §3a); Doku-Hinweis |
+
+## Commits
+1. `Add study core actions: mark, flag, bury, suspend, due, delete, undo`
+2. `Add /app/review page and answer route`
+3. `Add review fragments: stage, bar, progress`
+3b. `Add session completion: tally, mood tiers, success screen`
+4. `Add card-render.js: example highlight and keyboard guard`
+5. `Add actions sheet and action routes`
+6. `Style review with daisyUI and tailwind incl. reduced motion and safe areas`
+7. `Add review route and browser tests`
+8. `Record queue filter spike result in DESIGN.md`
+
+## Datastar-Syntax: belegt vs. im Smoke zu prüfen
+
+| Verwendung | Status | Quelle (Skill-Referenzen) |
+|---|---|---|
+| `data-on:keydown__window`, `evt`, `el` in Ausdrücken | belegt | `references/guide-core.md:33,185`, `attributes.md:117` |
+| Signale mit `_`-Präfix werden nicht gesendet | belegt | `references/guide-core.md:137`, `gotchas.md` #1 |
+| `@post` ohne Block, `;`-Ketten | belegt | `gotchas.md` #24 |
+| `if(...)`-Einzeiler wie in `guide-core.md:33` | **widersprüchlich** zu Gotcha #24 | nicht verwenden; Ternär oder `window.fn()` |
+| Streak aus Revlog (Regel 2/3/4, Tagesgrenze, Undo) | Probe belegt für Reihenfolge und Zeitstempel; **Undo-Verhalten und 500-Einträge-Laufzeit ungeprüft** | Tests in Plan 3 |
+| Animation-Neustart via `data-ts` | belegt (Gotcha #19), Details im Smoke prüfen | `gotchas.md` #19 |

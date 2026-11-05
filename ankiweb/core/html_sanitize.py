@@ -62,6 +62,11 @@ VOID_TAGS = frozenset(
 DROP_CONTENT_TAGS = frozenset(
     {"script", "style", "iframe", "noscript", "template", "object", "embed"}
 )
+# Disallowed elements whose contents must be treated as text, not markup.
+RAW_TEXT_TAGS = frozenset({"xmp", "noembed", "noframes", "plaintext"})
+RCDATA_TAGS = frozenset({"title", "textarea"})
+TEXT_ONLY_TAGS = RAW_TEXT_TAGS | RCDATA_TAGS
+
 
 # Allowed URL schemes for links and images
 ALLOWED_LINK_SCHEMES = frozenset({"http", "https", "mailto"})
@@ -128,8 +133,31 @@ class _HTMLSanitizer(HTMLParser):
         self.drop_stack: list[str] = []
         self.tag_stack: list[str] = []
 
+    def set_cdata_mode(self, elem: str, *, escapable: bool = False):
+        if elem not in TEXT_ONLY_TAGS:
+            super().set_cdata_mode(elem)
+            return
+        # Use the same text-only rules across Python versions, including when
+        # the source uses a self-closing slash on a non-void HTML element.
+        self.cdata_elem = elem
+        if elem == "plaintext":
+            self.interesting = re.compile(r"\Z")
+        else:
+            self.interesting = re.compile(
+                rf"</{elem}(?=[\t\n\r\f />])", re.IGNORECASE | re.ASCII
+            )
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]):
+        if tag in TEXT_ONLY_TAGS:
+            self.handle_starttag(tag, attrs)
+        else:
+            super().handle_startendtag(tag, attrs)
+
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
         tag_lower = tag.lower()
+        if tag_lower in TEXT_ONLY_TAGS:
+            self.set_cdata_mode(tag_lower)
+
         if tag_lower in DROP_CONTENT_TAGS:
             self.drop_stack.append(tag_lower)
             return
@@ -175,7 +203,10 @@ class _HTMLSanitizer(HTMLParser):
 
     def handle_data(self, data: str):
         if not self.drop_stack:
-            self.result.append(data)
+            # RCDATA decodes references; raw-text elements display them literally.
+            if self.cdata_elem in RCDATA_TAGS:
+                data = html.unescape(data)
+            self.result.append(html.escape(data, quote=False))
 
     def handle_entityref(self, name: str):
         if not self.drop_stack:
@@ -191,13 +222,20 @@ class _HTMLSanitizer(HTMLParser):
 
     def close(self):
         super().close()
+        # Older Python parsers leave unterminated raw-text content buffered.
+        if self.cdata_elem in TEXT_ONLY_TAGS and self.rawdata:
+            self.handle_data(self.rawdata)
+            self.rawdata = ""
         while self.tag_stack:
             popped = self.tag_stack.pop()
             self.result.append(f"</{popped}>")
 
 
 def sanitize_html(content: str) -> str:
-    """Sanitize HTML string to allow only safe tags and attributes."""
+    """Keep allowed HTML; escape retained text, including raw-text contents.
+
+    Unsafe tags are removed, and dangerous elements and their contents dropped.
+    """
     if not content:
         return ""
     parser = _HTMLSanitizer()

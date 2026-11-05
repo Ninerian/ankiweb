@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>AnkiWeb Reviewer — Playful Neo-Pop Edition</title>
+  <script>
+    const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyColorScheme = () => {
+      document.documentElement.dataset.theme = colorScheme.matches ? 'dark' : 'light';
+    };
+    applyColorScheme();
+    colorScheme.addEventListener('change', applyColorScheme);
+  </script>
   <style>
     /* ==========================================================================
        NEO-POP HIGH SCHOOL REVIEWER DESIGN SYSTEM
@@ -35,6 +43,7 @@
 
       /* Accent & Gamification Colors */
       --color-streak: #ff4d00;
+      --color-streak-text: #a83200;
       --color-streak-bg: #fff0eb;
       --color-streak-glow: rgba(255, 77, 0, 0.35);
       --color-meter-track: #e5e3d8;
@@ -45,22 +54,22 @@
       /* Ease Button Colors (Neo-Pop Vibrant) */
       --ease-again-bg: #ffe3e3;
       --ease-again-border: #fa5252;
-      --ease-again-text: #c92a2a;
+      --ease-again-text: #a62222;
       --ease-again-shadow: #c92a2a;
 
       --ease-hard-bg: #fff3bf;
       --ease-hard-border: #fab005;
-      --ease-hard-text: #d9480f;
+      --ease-hard-text: #8f300b;
       --ease-hard-shadow: #e67700;
 
       --ease-good-bg: #d3f9d8;
       --ease-good-border: #40c057;
-      --ease-good-text: #2b8a3e;
+      --ease-good-text: #145b24;
       --ease-good-shadow: #2b8a3e;
 
       --ease-easy-bg: #d0ebff;
       --ease-easy-border: #228be6;
-      --ease-easy-text: #1864ab;
+      --ease-easy-text: #135087;
       --ease-easy-shadow: #1864ab;
 
       --badge-bg: #e9ecef;
@@ -82,6 +91,7 @@
       --shadow-button: 3px 3px 0px #000000;
 
       --color-streak: #ff6b35;
+      --color-streak-text: #ff6b35;
       --color-streak-bg: #2b170c;
       --color-streak-glow: rgba(255, 107, 53, 0.45);
       --color-meter-track: #2a2c33;
@@ -89,7 +99,7 @@
 
       --ease-again-bg: #381519;
       --ease-again-border: #ff6b6b;
-      --ease-again-text: #ffa8a8;
+      --ease-again-text: #ffbdbd;
       --ease-again-shadow: #1a080a;
 
       --ease-hard-bg: #382c0b;
@@ -104,7 +114,7 @@
 
       --ease-easy-bg: #0c2b45;
       --ease-easy-border: #4dabf7;
-      --ease-easy-text: #74c0fc;
+      --ease-easy-text: #a4d5ff;
       --ease-easy-shadow: #04121e;
 
       --badge-bg: #2d3038;
@@ -148,7 +158,7 @@
     }
 
     /* ==========================================================================
-       TOP HUD (Header, Progress Meter, Streak, Theme Toggle, Actions)
+       TOP HUD (Header, Progress Meter, Streak, Actions)
        ========================================================================== */
     .top-hud {
       padding: 12px 16px 8px 16px;
@@ -212,7 +222,7 @@
       box-shadow: 2px 2px 0px var(--color-streak);
       padding: 6px 14px;
       border-radius: var(--radius-pill);
-      color: var(--color-streak);
+      color: var(--color-streak-text);
       user-select: none;
       transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
@@ -319,7 +329,7 @@
       padding: 8px 16px 12px 16px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      min-height: 0;
       overflow-y: auto;
       perspective: 1000px;
     }
@@ -333,7 +343,8 @@
       display: flex;
       flex-direction: column;
       min-height: 280px;
-      max-height: 100%;
+      flex-shrink: 0;
+      margin: auto 0;
       position: relative;
       transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.25s ease;
     }
@@ -508,7 +519,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
       user-select: none;
       transition: transform 0.08s ease, box-shadow 0.08s ease;
     }
@@ -516,16 +526,6 @@
     .btn-show-answer:active {
       transform: translate(3px, 3px);
       box-shadow: 0px 0px 0px var(--border-color);
-    }
-
-    .btn-show-answer .space-shortcut {
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      padding: 3px 7px;
-      background: rgba(0, 0, 0, 0.12);
-      border: 1.5px solid rgba(0, 0, 0, 0.3);
-      border-radius: 6px;
-      font-weight: 700;
     }
 
     /* Ease Buttons 4-Tile Grid */
@@ -549,7 +549,6 @@
       box-shadow: var(--shadow-button);
       transition: transform 0.08s ease, box-shadow 0.08s ease;
       padding: 4px 2px;
-      position: relative;
     }
 
     .btn-ease-tile:active {
@@ -586,23 +585,6 @@
       box-shadow: 3px 3px 0px var(--ease-easy-shadow);
     }
 
-    .ease-tile-key {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      font-size: 0.65rem;
-      font-family: var(--font-mono);
-      font-weight: 800;
-      opacity: 0.75;
-      padding: 1px 4px;
-      border-radius: 4px;
-      background: rgba(0, 0, 0, 0.08);
-    }
-
-    [data-theme="dark"] .ease-tile-key {
-      background: rgba(255, 255, 255, 0.12);
-    }
-
     .ease-tile-title {
       font-family: var(--font-display);
       font-weight: 900;
@@ -616,10 +598,265 @@
       font-size: 0.72rem;
       font-weight: 800;
       font-family: var(--font-mono);
-      opacity: 0.85;
       margin-top: 2px;
     }
 
+
+    /* Session finish: a collectible achievement sticker, with a quiet replay path. */
+    [hidden] { display: none !important; }
+
+    .session-complete {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 8px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .sc-panel {
+      position: relative;
+      max-width: 390px;
+      margin: 0 auto;
+      padding: 16px;
+      border: 3px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-card);
+      text-align: center;
+      font-family: var(--font-display);
+      animation: sc-arrive 0.45s both;
+    }
+
+    .sc-eyebrow {
+      display: inline-block;
+      padding: 3px 10px;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-pill);
+      background: var(--color-meter-fill);
+      color: #18191f;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transform: rotate(-2deg);
+    }
+
+    .sc-celebration {
+      position: relative;
+      width: 124px;
+      height: 110px;
+      margin: 5px auto 0;
+      display: grid;
+      place-items: center;
+    }
+
+    .sc-sticker {
+      width: 92px;
+      height: 92px;
+      display: grid;
+      place-items: center;
+      border: 3px solid var(--border-color);
+      border-radius: 35% 45% 38% 46%;
+      background: var(--color-meter-fill);
+      box-shadow: var(--shadow-card);
+      transform: rotate(-7deg);
+      animation: sc-sticker-pop 0.6s 0.1s both;
+    }
+
+    #sc-emoji {
+      font-size: 3.5rem;
+      line-height: 1;
+      transform: rotate(7deg);
+    }
+
+    .sc-confetti {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .sc-confetti i {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 9px;
+      height: 13px;
+      border: 1.5px solid var(--border-color);
+      background: var(--ease-again-border);
+      animation: sc-burst 0.65s 0.1s both;
+    }
+    .sc-confetti i:nth-child(1) { --x: -61px; --y: -43px; --r: -35deg; }
+    .sc-confetti i:nth-child(2) { --x: 55px; --y: -46px; --r: 40deg; background: var(--ease-easy-border); }
+    .sc-confetti i:nth-child(3) { --x: -68px; --y: 18px; --r: 55deg; background: var(--ease-good-border); }
+    .sc-confetti i:nth-child(4) { --x: 63px; --y: 20px; --r: -55deg; background: var(--ease-hard-border); }
+    .sc-confetti i:nth-child(5) { --x: -40px; --y: 45px; --r: 25deg; background: var(--ease-easy-border); }
+    .sc-confetti i:nth-child(6) { --x: 38px; --y: 47px; --r: -25deg; background: var(--ease-good-border); }
+
+    #sc-title {
+      margin: 2px 0 0;
+      font-family: "Trebuchet MS", "Arial Rounded MT Bold", var(--font-display);
+      font-size: clamp(1.8rem, 8vw, 2.45rem);
+      font-weight: 900;
+      letter-spacing: -0.06em;
+      line-height: 1.05;
+    }
+
+    #sc-sub {
+      max-width: 31ch;
+      margin: 7px auto 14px;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .sc-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .sc-stat {
+      padding: 7px 3px;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--bg-base);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .sc-stat strong {
+      display: block;
+      font-size: 1.35rem;
+      font-weight: 900;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sc-stat span {
+      display: block;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .sc-distribution {
+      padding: 10px;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      text-align: left;
+    }
+
+    .sc-distribution-heading {
+      margin-bottom: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .sc-bar {
+      display: flex;
+      height: 14px;
+      overflow: hidden;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-pill);
+    }
+
+    .sc-bar span { min-width: 0; }
+    .sc-again { background: var(--ease-again-border); }
+    .sc-hard { background: var(--ease-hard-border); }
+    .sc-good { background: var(--ease-good-border); }
+    .sc-easy { background: var(--ease-easy-border); }
+
+    .sc-counts {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 3px 8px;
+      margin-top: 6px;
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+    .sc-counts span::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 4px;
+      border: 1px solid var(--border-color);
+      border-radius: 2px;
+      background: var(--swatch);
+    }
+
+    .sc-recall-note {
+      margin: 8px 0 12px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 0.68rem;
+      line-height: 1.3;
+    }
+
+    .sc-ctas { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .sc-cta {
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      border: 2.5px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      box-shadow: var(--shadow-button);
+      font: 900 0.85rem var(--font-display);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .sc-cta-primary { background: var(--color-meter-fill); color: #18191f; }
+    .sc-cta:active { transform: translate(2px, 2px); box-shadow: var(--shadow-sm); }
+    .sc-cta:focus-visible, #sc-title:focus-visible { outline: 3px solid var(--ease-easy-border); outline-offset: 3px; }
+
+    @keyframes sc-arrive {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes sc-sticker-pop {
+      from { opacity: 0; transform: rotate(-20deg) scale(0.55); }
+      70% { opacity: 1; transform: rotate(4deg) scale(1.08); }
+      to { opacity: 1; transform: rotate(-7deg) scale(1); }
+    }
+    @keyframes sc-burst {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+      to { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+    }
+    @keyframes sc-sticker-swing {
+      from { opacity: 0; transform: translateX(-24px) rotate(-25deg); }
+      70% { opacity: 1; transform: translateX(3px) rotate(3deg); }
+      to { opacity: 1; transform: translateX(0) rotate(-7deg); }
+    }
+    @keyframes sc-sticker-rise {
+      from { opacity: 0; transform: translateY(18px) rotate(-7deg) scale(0.9); }
+      to { opacity: 1; transform: translateY(0) rotate(-7deg) scale(1); }
+    }
+    @keyframes sc-sticker-settle {
+      from { opacity: 0; transform: scale(0.94) rotate(3deg); }
+      to { opacity: 1; transform: scale(1) rotate(-7deg); }
+    }
+    [data-mood="great"] .sc-sticker { animation: sc-sticker-swing 0.65s 0.1s both; }
+    [data-mood="good"] .sc-sticker { animation: sc-sticker-rise 0.6s 0.1s both; }
+    [data-mood="tough"] .sc-sticker { animation: sc-sticker-settle 0.85s 0.1s both; }
+    [data-mood="tough"] .sc-confetti i { animation-duration: 0.9s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sc-panel, .sc-sticker, .sc-confetti i,
+      .animate-streak-pop, .animate-streak-reset { animation: none !important; }
+      .meter-fill, .streak-container { transition: none; }
+      .sc-confetti i { transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+    }
     /* ==========================================================================
        BOTTOM SHEET MODAL (Card Actions & Info)
        ========================================================================== */
@@ -718,7 +955,7 @@
 
     .btn-action-tile.danger {
       border-color: #fa5252;
-      color: #fa5252;
+      color: var(--ease-again-text);
       box-shadow: 2px 2px 0px #fa5252;
     }
 
@@ -782,7 +1019,7 @@
     <header class="top-hud">
       <div class="hud-controls-row">
         <!-- Back to Decks Button -->
-        <a href="#decks" class="btn-icon-neo" id="btn-back" title="Decks" onclick="showToast('Navigating to Decks...'); return false;">
+        <a href="decks-mockup.html" class="btn-icon-neo" id="btn-back" title="Decks" aria-label="Back to decks">
           <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
         </a>
 
@@ -795,16 +1032,12 @@
           </div>
         </div>
 
-        <!-- Right Quick Controls: Theme Toggle + Action Menu Trigger -->
-        <div style="display: flex; gap: 8px;">
-          <button type="button" class="btn-icon-neo" id="btn-theme" title="Toggle Dark/Light Mode" onclick="toggleTheme()">
-            <span id="theme-icon">🌙</span>
-          </button>
-          <button type="button" class="btn-icon-neo" id="btn-actions-sheet" title="More Actions" onclick="openActionsSheet()">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
-          </button>
-        </div>
+        <!-- Action Menu Trigger -->
+        <button type="button" class="btn-icon-neo" id="btn-actions-sheet" title="More Actions" aria-label="More actions" onclick="openActionsSheet()">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+        </button>
       </div>
+
 
       <!-- Session Progress Bar -->
       <div class="hud-progress-row">
@@ -824,7 +1057,7 @@
         <!-- Deck Badge & Status Indicators -->
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <div class="deck-badge">
-            <span>🇩🇪 German B1 Vocab</span>
+            <span id="card-deck">🇩🇪 German B1 Vocab</span>
           </div>
           <div class="card-status-tags">
             <span id="mark-icon" class="tag-icon" title="Marked">⭐</span>
@@ -852,35 +1085,70 @@
       </article>
     </main>
 
+    <!-- A real completion state, not another card. -->
+    <section id="session-complete" class="session-complete" aria-labelledby="sc-title" hidden>
+      <div class="sc-panel">
+        <span class="sc-eyebrow">Session complete</span>
+        <div class="sc-celebration" aria-hidden="true">
+          <div class="sc-confetti"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="sc-sticker"><span id="sc-emoji">🏆</span></div>
+        </div>
+        <h1 id="sc-title" tabindex="-1">Flawless!</h1>
+        <p id="sc-sub"></p>
+
+        <div class="sc-stats" aria-label="Session statistics">
+          <div class="sc-stat"><strong id="sc-reviewed">0</strong><span>Reviewed</span></div>
+          <div class="sc-stat"><strong id="sc-recall">0%</strong><span>Recall</span></div>
+          <div class="sc-stat"><strong id="sc-streak">0</strong><span>Current streak</span></div>
+        </div>
+
+        <div class="sc-distribution">
+          <div class="sc-distribution-heading">Your ratings</div>
+          <div class="sc-bar" aria-hidden="true">
+            <span id="sc-bar-again" class="sc-again"></span>
+            <span id="sc-bar-hard" class="sc-hard"></span>
+            <span id="sc-bar-good" class="sc-good"></span>
+            <span id="sc-bar-easy" class="sc-easy"></span>
+          </div>
+          <div class="sc-counts">
+            <span id="sc-count-again" style="--swatch: var(--ease-again-border)">Again 0</span>
+            <span id="sc-count-hard" style="--swatch: var(--ease-hard-border)">Hard 0</span>
+            <span id="sc-count-good" style="--swatch: var(--ease-good-border)">Good 0</span>
+            <span id="sc-count-easy" style="--swatch: var(--ease-easy-border)">Easy 0</span>
+          </div>
+        </div>
+        <p class="sc-recall-note">Recall = Hard, Good, or Easy ratings; not measured accuracy.</p>
+        <div class="sc-ctas">
+          <a class="sc-cta" href="decks-mockup.html">Back to decks</a>
+          <button type="button" class="sc-cta sc-cta-primary" id="sc-restart" onclick="restartSession()">Study again ↗</button>
+        </div>
+      </div>
+    </section>
+
     <!-- BOTTOM CONTROL BAR -->
     <footer class="reviewer-bottom-bar">
       <!-- State A: Show Answer Button -->
       <div id="bar-show-answer" style="display: block;">
-        <button type="button" class="btn-show-answer" id="btn-show-ans" onclick="revealAnswer()">
+        <button type="button" class="btn-show-answer" id="btn-show-ans" onclick="revealAnswer()" aria-label="Show Answer SPACE">
           <span>Show Answer</span>
-          <span class="space-shortcut">SPACE</span>
         </button>
       </div>
 
       <!-- State B: 4 Ease Rating Tiles -->
       <div id="bar-ease-buttons" class="ease-grid" style="display: none;">
-        <button type="button" class="btn-ease-tile btn-ease-again" onclick="rateCard('again')">
-          <span class="ease-tile-key">1</span>
+        <button type="button" class="btn-ease-tile btn-ease-again" onclick="rateCard('again')" aria-label="1 Again &lt; 10m">
           <span class="ease-tile-title">Again</span>
           <span class="ease-tile-interval">&lt; 10m</span>
         </button>
-        <button type="button" class="btn-ease-tile btn-ease-hard" onclick="rateCard('hard')">
-          <span class="ease-tile-key">2</span>
+        <button type="button" class="btn-ease-tile btn-ease-hard" onclick="rateCard('hard')" aria-label="2 Hard 2 d">
           <span class="ease-tile-title">Hard</span>
           <span class="ease-tile-interval">2 d</span>
         </button>
-        <button type="button" class="btn-ease-tile btn-ease-good" onclick="rateCard('good')">
-          <span class="ease-tile-key">3</span>
+        <button type="button" class="btn-ease-tile btn-ease-good" onclick="rateCard('good')" aria-label="3 Good 5 d">
           <span class="ease-tile-title">Good</span>
           <span class="ease-tile-interval">5 d</span>
         </button>
-        <button type="button" class="btn-ease-tile btn-ease-easy" onclick="rateCard('easy')">
-          <span class="ease-tile-key">4</span>
+        <button type="button" class="btn-ease-tile btn-ease-easy" onclick="rateCard('easy')" aria-label="4 Easy 9 d">
           <span class="ease-tile-title">Easy</span>
           <span class="ease-tile-interval">9 d</span>
         </button>
@@ -888,7 +1156,7 @@
     </footer>
 
     <!-- ACTIONS BOTTOM SHEET -->
-    <div class="sheet-overlay" id="actions-sheet-overlay" onclick="closeSheetOnBackdrop(event)">
+    <div class="sheet-overlay" id="actions-sheet-overlay" onclick="closeSheetOnBackdrop(event)" inert>
       <div class="bottom-sheet" id="actions-bottom-sheet">
         <div class="sheet-handle-bar"></div>
         <div class="sheet-header">
@@ -943,33 +1211,50 @@
     </div>
   </div>
 
+  <script src="card-render.js"></script>
   <!-- SCRIPT SIMULATING INTERACTION, GAMIFICATION & STATE -->
   <script>
+    const decks = new Map([
+      ['german-b1', '🇩🇪 German B1 Vocab'],
+      ['spanish-a2', '🇪🇸 Spanish A2'],
+      ['biology', '🧬 Biology Cells'],
+      ['history', '🏛️ History 1900s'],
+      ['chemistry', '⚗️ Chemistry Basics']
+    ]);
+    const requestedDeck = new URLSearchParams(window.location.search).get('deck');
+    const deckId = decks.has(requestedDeck) ? requestedDeck : 'german-b1';
+    const deckName = decks.get(deckId);
+    document.getElementById('card-deck').textContent = deckName;
+
     // Sample flashcard deck data
     const sampleCards = [
       {
         front: "die Sehnsucht",
         hint: "Noun, feminine (Plural: die Sehnsüchte)",
         back: "yearning, longing, nostalgia",
-        example: "„Er verspürte eine tiefe <mark>Sehnsucht</mark> nach seiner Heimat.“"
+        example: "„Er verspürte eine tiefe *Sehnsucht* nach seiner Heimat.“"
       },
       {
         front: "das Fingerspitzengefühl",
         hint: "Noun, neuter (Literally: finger-tip feeling)",
         back: "tact, finesse, intuition",
-        example: "„Für diese Verhandlung braucht man viel <mark>Fingerspitzengefühl</mark>.“"
+        example: "„Für diese Verhandlung braucht man viel *Fingerspitzengefühl*.“"
       },
       {
         front: "die Schadenfreude",
         hint: "Noun, feminine (Schaden + Freude)",
         back: "pleasure derived from another's misfortune",
-        example: "„Ein Anflug von <mark>Schadenfreude</mark> war nicht zu leugnen.“"
+        example: "„Ein Anflug von *Schadenfreude* war nicht zu leugnen.“"
       },
       {
         front: "das Fernweh",
         hint: "Noun, neuter (Opposite of Heimweh)",
         back: "wanderlust, ache for distant places",
-        example: "„Im grauen Winter packt mich immer das <mark>Fernweh</mark>.“"
+        example: "„Im grauen Winter packt mich immer das *Fernweh*.“"
+      },
+      {
+        front: "die Zeit",
+        back: "time"
       }
     ];
 
@@ -980,29 +1265,40 @@
     const totalSessionCards = 20;
     let isMarked = false;
     let isFlagged = false;
+    let isSessionComplete = false;
+    // Demo history for the initial 14/20 progress and seven-card current streak.
+    let tally = { again: 2, hard: 3, good: 7, easy: 2 };
+    let toastTimer;
+
+    function renderCurrentCard() {
+      const card = CardRender.renderCard(sampleCards[currentCardIndex]);
+      const hint = document.querySelector('.card-hint-text');
+      const example = document.querySelector('.card-example-sentence');
+      document.getElementById('card-q').innerHTML = card.front;
+      hint.innerHTML = card.hint;
+      hint.hidden = !card.hint;
+      document.getElementById('card-a').innerHTML = card.back;
+      example.innerHTML = card.example;
+      example.hidden = !card.example;
+    }
+
+    renderCurrentCard();
 
     // Toast helper
     function showToast(msg) {
       const toast = document.getElementById('toast');
       toast.textContent = msg;
       toast.classList.add('show');
-      setTimeout(() => {
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
         toast.classList.remove('show');
       }, 1800);
     }
 
-    // Toggle Theme (Dark / Light)
-    function toggleTheme() {
-      const html = document.documentElement;
-      const currentTheme = html.getAttribute('data-theme');
-      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      html.setAttribute('data-theme', nextTheme);
-      document.getElementById('theme-icon').textContent = nextTheme === 'dark' ? '☀️' : '🌙';
-      showToast(nextTheme === 'dark' ? 'Dark Mode Activated' : 'Light Mode Activated');
-    }
 
     // Reveal Answer
     function revealAnswer() {
+      if (isSessionComplete || isAnswerRevealed || isSheetOpen()) return;
       isAnswerRevealed = true;
       const answerBox = document.getElementById('answer-box');
       answerBox.classList.remove('hidden');
@@ -1014,6 +1310,11 @@
 
     // Rate Card (Ease Buttons)
     function rateCard(rating) {
+      if (isSessionComplete || isSheetOpen() || !isAnswerRevealed ||
+          cardsReviewed >= totalSessionCards || !Object.hasOwn(tally, rating)) return;
+      // Consume the reveal before doing any work, so a second rating cannot count.
+      isAnswerRevealed = false;
+      tally[rating]++;
       const streakPill = document.getElementById('streak-pill');
       const streakEl = document.getElementById('streak-count');
       const streakIcon = document.getElementById('streak-icon');
@@ -1038,14 +1339,13 @@
         showToast(`Streak +1! (${streakCount} in a row 🎯)`);
       }
 
-      // Update progress meter
-      if (cardsReviewed < totalSessionCards) {
-        cardsReviewed++;
-        updateProgressBar();
+      cardsReviewed++;
+      updateProgressBar();
+      if (cardsReviewed === totalSessionCards) {
+        finishSession();
+      } else {
+        loadNextCard();
       }
-
-      // Load next sample card
-      loadNextCard();
     }
 
     function updateProgressBar() {
@@ -1054,31 +1354,132 @@
       document.getElementById('progress-text').textContent = `${cardsReviewed} / ${totalSessionCards} CARDS`;
     }
 
-    function loadNextCard() {
-      currentCardIndex = (currentCardIndex + 1) % sampleCards.length;
-      const card = sampleCards[currentCardIndex];
+    // Classification uses unrounded ratios; an empty session has no recall.
+    function getMood(ratings) {
+      const total = ratings.again + ratings.hard + ratings.good + ratings.easy;
+      if (!total) return 'tough';
+      const recall = (total - ratings.again) / total;
+      if (ratings.again === 0 && ratings.easy / total >= 0.4) return 'perfect';
+      if (recall >= 0.85) return 'great';
+      if (recall >= 0.6) return 'good';
+      return 'tough';
+    }
 
+    function finishSession() {
+      if (isSessionComplete) return;
+      isSessionComplete = true;
+      isAnswerRevealed = false;
+      closeActionsSheet();
+      clearTimeout(toastTimer);
+      document.getElementById('toast').classList.remove('show');
+      document.getElementById('answer-box').classList.remove('revealed');
+      document.getElementById('answer-box').classList.add('hidden');
+      document.querySelector('.reviewer-stage').hidden = true;
+      document.querySelector('.reviewer-bottom-bar').hidden = true;
+      document.getElementById('btn-actions-sheet').hidden = true;
+
+      const total = tally.again + tally.hard + tally.good + tally.easy;
+      const mood = getMood(tally);
+      const moods = {
+        perfect: { emoji: '🏆', title: 'Flawless!', sub: 'What a run! You made those cards look easy.' },
+        great: { emoji: '🌟', title: 'Great run!', sub: 'Look at that momentum. Keep it rolling!' },
+        good: { emoji: '🌱', title: 'Solid progress.', sub: 'Every review helps those ideas take root.' },
+        tough: { emoji: '💪', title: 'You showed up.', sub: 'You gave your memory a workout today. That counts.' }
+      };
+      const result = moods[mood];
+      const section = document.getElementById('session-complete');
+      section.dataset.mood = mood;
+      document.getElementById('sc-emoji').textContent = result.emoji;
+      document.getElementById('sc-title').textContent = result.title;
+      document.getElementById('sc-sub').textContent = result.sub +
+        (total && tally.hard / total >= 0.4 ? ' Plenty of those cards took extra effort.' : '');
+      document.getElementById('sc-reviewed').textContent = cardsReviewed;
+      document.getElementById('sc-recall').textContent = `${total ? Math.round((total - tally.again) / total * 100) : 0}%`;
+      document.getElementById('sc-streak').textContent = streakCount;
+      for (const rating of ['again', 'hard', 'good', 'easy']) {
+        document.getElementById(`sc-bar-${rating}`).style.width = `${total ? tally[rating] / total * 100 : 0}%`;
+        document.getElementById(`sc-count-${rating}`).textContent =
+          `${rating[0].toUpperCase() + rating.slice(1)} ${tally[rating]}`;
+      }
+      updateProgressBar();
+      section.hidden = false;
+      section.scrollTop = 0;
+      document.getElementById('sc-title').focus({ preventScroll: true });
+    }
+
+    function restartSession() {
+      if (!isSessionComplete) return;
+      isSessionComplete = false;
+      currentCardIndex = 0;
+      cardsReviewed = 0;
+      tally = { again: 0, hard: 0, good: 0, easy: 0 };
+      streakCount = 0;
+      isAnswerRevealed = false;
+      isMarked = false;
+      isFlagged = false;
+      document.getElementById('mark-icon').classList.remove('active');
+      document.getElementById('flag-icon').classList.remove('active');
+      document.getElementById('label-mark').textContent = 'Mark Card';
+      document.getElementById('label-flag').textContent = 'Flag (Red)';
+      document.getElementById('streak-count').textContent = '0';
+      document.getElementById('streak-icon').textContent = '🔥';
+      document.getElementById('streak-pill').classList.remove('animate-streak-pop', 'animate-streak-reset');
+      document.getElementById('session-complete').hidden = true;
+      document.querySelector('.reviewer-stage').hidden = false;
+      document.querySelector('.reviewer-bottom-bar').hidden = false;
+      document.getElementById('btn-actions-sheet').hidden = false;
+      document.getElementById('bar-show-answer').style.display = 'block';
+      document.getElementById('bar-ease-buttons').style.display = 'none';
+      renderCurrentCard();
+      updateProgressBar();
+      // file: URLs may reject history changes; the in-page restart still works.
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('complete');
+        history.replaceState(history.state, '', url.href);
+      } catch (error) {
+        if (!(error instanceof DOMException)) throw error;
+      }
+      document.getElementById('btn-show-ans').focus();
+    }
+
+    function loadNextCard() {
+      if (isSessionComplete || isSheetOpen()) return;
+      currentCardIndex = (currentCardIndex + 1) % sampleCards.length;
       isAnswerRevealed = false;
       const answerBox = document.getElementById('answer-box');
       answerBox.classList.remove('revealed');
       answerBox.classList.add('hidden');
 
-      document.getElementById('card-q').textContent = card.front;
-      document.querySelector('.card-hint-text').textContent = card.hint;
-      document.getElementById('card-a').textContent = card.back;
-      document.querySelector('.card-example-sentence').innerHTML = card.example;
+      renderCurrentCard();
 
       document.getElementById('bar-show-answer').style.display = 'block';
       document.getElementById('bar-ease-buttons').style.display = 'none';
     }
 
     // Bottom Sheet Actions
+    function isSheetOpen() {
+      return document.getElementById('actions-sheet-overlay').classList.contains('open');
+    }
+
     function openActionsSheet() {
-      document.getElementById('actions-sheet-overlay').classList.add('open');
+      if (isSessionComplete || isSheetOpen()) return;
+      const sheet = document.getElementById('actions-sheet-overlay');
+      sheet.inert = false;
+      sheet.classList.add('open');
+      sheet.querySelector('.btn-action-tile').focus();
     }
 
     function closeActionsSheet() {
-      document.getElementById('actions-sheet-overlay').classList.remove('open');
+      const restoreFocus = sheetContainsFocus();
+      const sheet = document.getElementById('actions-sheet-overlay');
+      sheet.classList.remove('open');
+      sheet.inert = true;
+      if (restoreFocus && !isSessionComplete) document.getElementById('btn-actions-sheet').focus();
+    }
+
+    function sheetContainsFocus() {
+      return document.getElementById('actions-sheet-overlay').contains(document.activeElement);
     }
 
     function closeSheetOnBackdrop(e) {
@@ -1088,6 +1489,7 @@
     }
 
     function triggerCardAction(action) {
+      if (isSessionComplete) return;
       closeActionsSheet();
       if (action === 'toggleMark') {
         isMarked = !isMarked;
@@ -1117,19 +1519,48 @@
       }
     }
 
-    // Keyboard Shortcuts (Space for Show Answer, 1-4 for Ease)
+    // Keyboard shortcuts never leak through the sheet or the finished state.
     window.addEventListener('keydown', (e) => {
-      if (e.key === ' ' || e.code === 'Space') {
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const space = e.key === ' ' || e.code === 'Space';
+      const ratingKey = ['1', '2', '3', '4'].includes(e.key);
+      if ((space || ratingKey) && e.repeat) {
         e.preventDefault();
-        if (!isAnswerRevealed) {
-          revealAnswer();
-        }
-      } else if (isAnswerRevealed && ['1', '2', '3', '4'].includes(e.key)) {
+        return;
+      }
+      const interactive = target?.closest('a, button');
+      if (isSessionComplete || isSheetOpen()) {
+        // Keep ordinary Space activation available to the visible buttons and links.
+        if (ratingKey || (space && !interactive)) e.preventDefault();
+        return;
+      }
+      if (interactive) return;
+      if (space) {
+        e.preventDefault();
+        if (!isAnswerRevealed) revealAnswer();
+      } else if (isAnswerRevealed && ratingKey) {
         e.preventDefault();
         const map = { '1': 'again', '2': 'hard', '3': 'good', '4': 'easy' };
         rateCard(map[e.key]);
       }
     });
+
+    // Design-only previews; each is a coherent, completed 20-rating history.
+    const completionPreviews = {
+      perfect: { ratings: { again: 0, hard: 2, good: 8, easy: 10 }, streak: 20 },
+      great: { ratings: { again: 2, hard: 3, good: 10, easy: 5 }, streak: 8 },
+      good: { ratings: { again: 6, hard: 5, good: 7, easy: 2 }, streak: 4 },
+      tough: { ratings: { again: 12, hard: 4, good: 3, easy: 1 }, streak: 2 }
+    };
+    const preview = new URLSearchParams(window.location.search).get('complete');
+    if (Object.hasOwn(completionPreviews, preview)) {
+      tally = { ...completionPreviews[preview].ratings };
+      cardsReviewed = totalSessionCards;
+      streakCount = completionPreviews[preview].streak;
+      document.getElementById('streak-count').textContent = streakCount;
+      finishSession();
+    }
   </script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -18,11 +19,11 @@ def test_datastar_bundle_fetched():
 
 
 @pytest.mark.parametrize(
-    ("dev_script", "prod_script"),
-    [("build:dev", "build"), ("build:css:dev", "build:css")],
+    ("dev_script", "prod_script", "full_build"),
+    [("build:dev", "build", True), ("build:css:dev", "build:css", False)],
 )
 def test_dev_css_is_isolated_and_removed_by_production_build(
-    tmp_path: Path, dev_script: str, prod_script: str
+    tmp_path: Path, dev_script: str, prod_script: str, full_build: bool
 ) -> None:
     root = Path(__file__).resolve().parent.parent
     npm = shutil.which("npm")
@@ -71,6 +72,28 @@ def test_dev_css_is_isolated_and_removed_by_production_build(
     common_css = b"".join(common.values())
     gallery_css = (dev_static / "gallery.css").read_bytes()
 
+    def assert_mobile_assets() -> None:
+        css = (static / "app-client.css").read_bytes()
+        assert b"[data-theme=aw-light]" in css
+        assert b"[data-theme=aw-dark]" in css
+        flashcard_rule = re.search(rb"\.flashcard\s*\{([^{}]*)\}", css)
+        assert flashcard_rule is not None
+        assert re.search(
+            rb"(?:^|;)\s*background-color\s*:\s*var\(\s*--color-base-200\s*\)\s*(?:;|$)",
+            flashcard_rule.group(1),
+        )
+        if full_build:
+            for name, marker in {
+                "decks.js": b"window.avDeckFocus",
+                "install.js": b"beforeinstallprompt",
+                "edit.js": b"window.avInsert",
+                "login.js": b"login-mascot-emoji",
+                "card-render.js": b"window.avKeydown",
+            }.items():
+                assert marker in (static / "app" / name).read_bytes()
+
+    assert_mobile_assets()
+
     def selector(number: int) -> bytes:
         return rf".w-\[{number}px\]".encode()
 
@@ -86,6 +109,12 @@ def test_dev_css_is_isolated_and_removed_by_production_build(
         assert selector(number) not in gallery_css
     assert not (static / "dev-static").exists()
 
+    # Production must recreate the mobile assets, not inherit the dev build's files.
+    (static / "app-client.css").unlink()
+    if full_build:
+        shutil.rmtree(static / "app")
+
     subprocess.run([npm, "run", prod_script], cwd=tmp_path, check=True)
     assert not dev_static.exists()
     assert common == {name: (static / name).read_bytes() for name in common}
+    assert_mobile_assets()

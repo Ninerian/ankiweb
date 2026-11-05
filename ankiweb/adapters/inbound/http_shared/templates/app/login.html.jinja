@@ -1,0 +1,51 @@
+<main id="login-page" class="login-page" data-signals='{{ {"password": "", "error": error_text, "errorKind": error_kind, "reveal": false} | tojson }}'>
+  <div class="login-viewport">
+    <div aria-hidden="true">
+      <div class="login-sticker login-sticker-star">⭐</div>
+      <div class="login-sticker login-sticker-book">📚</div>
+      <div class="login-sticker login-sticker-fire">🔥</div>
+      <div class="login-sticker login-sticker-brain">🧠</div>
+    </div>
+
+    <header class="login-hero">
+      <h1>{{ s('app_login_greeting') }} <span class="login-wave" aria-hidden="true">👋</span></h1>
+    </header>
+
+    <section class="login-stage" aria-labelledby="login-title">
+      <div class="login-ghost login-ghost-blue" aria-hidden="true"></div>
+      <div class="login-ghost login-ghost-yellow" aria-hidden="true"></div>
+      <form id="login" class="card login-card" method="post" action="/app/login" novalidate
+            data-error-kind="{{ error_kind }}" data-attr:data-error-kind="$errorKind"
+            data-on:submit__prevent="$error = ''; $errorKind = ''; @post('/app/login')">
+        <div class="login-mascot" aria-hidden="true"><span class="login-mascot-emoji">{% if error_kind == 'empty' %}🙈{% elif error_kind == 'wrong' %}🙅{% else %}🔐{% endif %}</span></div>
+        <h2 id="login-title">{{ tr.sync_log_in_button() | tr_clean }}</h2>
+        <p class="login-hint">{{ s('app_login_hint') }}</p>
+
+        <label class="login-label" for="password">{{ tr.sync_password_label() | tr_clean }}</label>
+        <div class="input login-field">
+          <span class="text-[1.15rem] leading-none" aria-hidden="true">🔑</span>
+          <input id="password" name="password" type="password" autocomplete="current-password"
+                 autocapitalize="none" spellcheck="false" enterkeyhint="go" autofocus
+                 placeholder="{{ tr.sync_password_label() | tr_clean }}" aria-describedby="login-error"
+                 aria-invalid="{{ 'true' if error_text else 'false' }}" data-attr:aria-invalid="$error ? 'true' : 'false'"
+                 data-attr:type="$reveal ? 'text' : 'password'" data-bind:password data-on:input="$error = ''; $errorKind = ''">
+          <button type="button" class="btn neo-press login-peek" aria-controls="password" aria-pressed="false"
+                  data-attr:aria-pressed="$reveal ? 'true' : 'false'" data-on:click="$reveal = !$reveal"
+                  data-attr:hidden="false" hidden>
+            <span aria-hidden="true" data-text="$reveal ? '🙈' : '👁️'">👁️</span>
+            <span data-show-label="{{ s('app_login_show') }}" data-hide-label="{{ s('app_login_hide') }}"
+                  data-text="$reveal ? el.dataset.hideLabel : el.dataset.showLabel">{{ s('app_login_show') }}</span>
+          </button>
+        </div>
+
+        <div id="login-error" class="alert alert-error login-error" role="alert" data-attr:hidden="!$error"{% if not error_text %} hidden{% endif %}>
+          <span aria-hidden="true" data-text="$errorKind === 'empty' ? '🙈' : '😬'">{{ '🙈' if error_kind == 'empty' else '😬' }}</span><span data-text="$error">{{ error_text }}</span>
+        </div>
+
+        <button type="submit" class="btn btn-accent btn-block neo-press mt-5 h-16 min-h-0 rounded-2xl border-3 border-neo-edge text-review-reveal-label leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-primary focus-visible:outline-offset-3">
+          {{ tr.sync_log_in_button() | tr_clean }} <span aria-hidden="true">🚀</span>
+        </button>
+      </form>
+    </section>
+  </div>
+</main>
