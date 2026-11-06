@@ -20,6 +20,7 @@ from anki.scheduler.v3 import Scheduler
 from fastapi import FastAPI
 
 from ankiweb.app import create_app
+from ankiweb.core.app_client.deck_languages import LanguagePair, apply_marker
 from ankiweb.core.app_client.vocab import add_vocab_note
 from ankiweb.core.config import Settings
 
@@ -4067,4 +4068,144 @@ def test_mobile_layout_and_browser_errors(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )
     assert page.screenshot().startswith(b"\x89PNG\r\n\x1a\n")
+    assert errors == []
+
+
+def _seed_language_deck(col: Collection, name: str, pair: LanguagePair) -> DeckId:
+    deck_id = DeckId(col.decks.add_normal_deck_with_name(name).id)
+    deck = col.decks.get(deck_id, default=False)
+    assert deck is not None
+    deck["desc"] = apply_marker(deck["desc"], pair)
+    col.decks.update_dict(deck)
+    return deck_id
+
+
+def _browser_errors(page: Page) -> list[str]:
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+
+    def record_console(message: ConsoleMessage) -> None:
+        if message.type == "error":
+            errors.append(message.text)
+
+    page.on("console", record_console)
+    return errors
+
+
+def test_language_chips_edit_selection_and_save(page: Page, live_app: LiveApp) -> None:
+    deck_id = _run(
+        live_app,
+        lambda col: _seed_language_deck(
+            col, "Spanish German", LanguagePair("es", "de")
+        ),
+    )
+    errors = _browser_errors(page)
+    page.goto(f"{live_app}/app/edit?deck={deck_id}")
+    front = page.locator("#input-front")
+    chips = page.locator("#add-chips-front")
+    counter = page.locator("[data-text='$front.length']")
+    expect(page.locator("label[for='input-front']")).to_have_text(
+        "Front (Question / Prompt) · 🇩🇪 German"
+    )
+    expect(front).to_have_attribute("lang", "de")
+    expect(chips).to_have_attribute("lang", "de")
+
+    front.fill("Stra")
+    front.press("ArrowLeft")
+    front.press("ArrowLeft")
+    chips.get_by_role("button", name="ß", exact=True).click()
+    expect(front).to_have_value("Stßra")
+    expect(front).to_be_focused()
+    assert front.evaluate("el => [el.selectionStart, el.selectionEnd]") == [3, 3]
+    expect(counter).to_have_text("5")
+
+    front.press("Shift+ArrowLeft")
+    front.press("Shift+ArrowLeft")
+    chips.get_by_role("button", name="ä", exact=True).click()
+    expect(front).to_have_value("Sära")
+    expect(front).to_be_focused()
+    assert front.evaluate("el => [el.selectionStart, el.selectionEnd]") == [2, 2]
+    expect(counter).to_have_text("4")
+
+    front.press("Home")
+    chips.get_by_role("button", name="der", exact=True).click()
+    expect(front).to_have_value("der Sära")
+    expect(front).to_be_focused()
+    assert front.evaluate("el => [el.selectionStart, el.selectionEnd]") == [4, 4]
+    expect(counter).to_have_text("8")
+
+    page.locator("#btn-next").click()
+    back = page.locator("#input-back")
+    expect(back).to_be_visible()
+    expect(page.locator("label[for='input-back']")).to_have_text(
+        "Back (Answer / Meaning) · 🇪🇸 Spanish"
+    )
+    expect(back).to_have_attribute("lang", "es")
+    back.fill("answer")
+    back.press("Enter")
+    expect(page.locator("#preview")).to_contain_text("der Sära")
+    page.locator("#btn-add").click()
+    expect(front).to_have_value("")
+    saved = live_app.persisted_notes()
+    assert len(saved) == 1
+    assert saved[0][1] == ["der Sära", "answer", "", ""]
+    assert saved[0][2] == deck_id
+    assert errors == []
+
+
+def test_editor_without_language_pair_keeps_legacy_chips(
+    page: Page, live_app: LiveApp
+) -> None:
+    errors = _browser_errors(page)
+    page.goto(f"{live_app}/app/edit?deck=1")
+    expect(page.locator("label[for='input-front']")).to_have_text(
+        "Front (Question / Prompt)"
+    )
+    front = page.locator("#input-front")
+    expect(front).not_to_have_attribute("lang", re.compile(".+"))
+    chips = page.locator(".add-chips").filter(
+        has=page.locator("button[data-target='input-front']")
+    )
+    expect(chips.locator("button")).to_have_text(
+        ["der", "die", "das", "ä", "ö", "ü", "ß"]
+    )
+    expect(page.locator("#add-chips-front")).to_have_count(0)
+    front.fill("word")
+    page.locator("#btn-next").click()
+    expect(page.locator("label[for='input-back']")).to_have_text(
+        "Back (Answer / Meaning)"
+    )
+    assert errors == []
+
+
+def test_arabic_attached_chip_and_french_mobile_layout(
+    page: Page, live_app: LiveApp
+) -> None:
+    arabic, french = _run(
+        live_app,
+        lambda col: (
+            _seed_language_deck(col, "German Arabic", LanguagePair("de", "ar")),
+            _seed_language_deck(col, "German French", LanguagePair("de", "fr")),
+        ),
+    )
+    errors = _browser_errors(page)
+    page.goto(f"{live_app}/app/edit?deck={arabic}")
+    front = page.locator("#input-front")
+    chips = page.locator("#add-chips-front")
+    expect(chips).to_have_attribute("lang", "ar")
+    front.fill("كتاب")
+    front.press("Home")
+    chips.get_by_role("button", name="ال", exact=True).click()
+    expect(front).to_have_value("الكتاب")
+    expect(front).to_be_focused()
+    assert front.evaluate("el => [el.selectionStart, el.selectionEnd]") == [2, 2]
+
+    front.fill("")
+    page.goto(f"{live_app}/app/edit?deck={french}")
+    french_chips = page.locator("#add-chips-front")
+    expect(french_chips).to_have_attribute("lang", "fr")
+    expect(french_chips.get_by_role("button", name="Ÿ", exact=True)).to_be_visible()
+    assert page.evaluate(
+        "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
+    )
     assert errors == []

@@ -28,19 +28,21 @@
   <button type="button" class="add-preview-edit" data-edit-add="{{ s('app_add_edit_preview') }}" data-edit-save="{{ s('app_edit_preview_edit') }}" data-text="$nid !== 0 ? el.dataset.editSave : el.dataset.editAdd" data-on:click="$step = 1; $error = ''; window.avFocus('input-front')">{{ s('app_add_edit_preview') }}</button>
 </div>
 {% endmacro %}
-{% macro chip(label, target, space=false) %}
-<button type="button" class="add-chip" data-target="{{ target }}" data-value="{{ label }}{% if space %} {% endif %}" data-on:click="window.avInsert(el)">{{ label }}</button>
+{% macro chip(label, target, space=false, value=none) %}
+<button type="button" class="add-chip" data-target="{{ target }}" data-value="{{ value if value is not none else label ~ (' ' if space else '') }}" data-on:click="window.avInsert(el)">{{ label }}</button>
 {% endmacro %}
 
-{% macro field_label(for_id, label, help) %}
+{% macro field_label(for_id, label, help, language='') %}
 <div class="add-label-row">
-  <label for="{{ for_id }}" class="add-label">{{ label }}</label>
+  <label for="{{ for_id }}" class="add-label">{{ label }}{% if language %} · {{ language }}{% endif %}</label>
   {% if help %}<span id="{{ for_id }}-help" class="add-help">{{ help }}</span>{% endif %}
 </div>
 {% endmacro %}
 {% if preview_only|default(false) %}
 {{ preview_card() }}
 {% else %}
+{% import 'app/_deck_language_strings.html.jinja' as language_strings with context %}
+{% macro language_name(code) %}{% set flag = (LANGUAGES | selectattr('code', 'equalto', code) | first).flag %}{{ flag }} {{ language_strings.deck_language_names[code] }}{% endmacro %}
 {% set card = initial_card or {'nid': 0, 'front': '', 'back': '', 'hint': '', 'example': '', 'learned': false} %}
 {% set original = {'front': card.front, 'back': card.back, 'hint': card.hint, 'example': card.example} %}
 <main id="add-wizard" class="review-app"
@@ -100,9 +102,10 @@
       <div id="edit-warning" class="alert alert-warning mb-3 text-sm font-bold" role="note" data-show="$nid !== 0 &amp;&amp; $learned" style="display:none">{{ s('app_edit_warning') }}</div>
       <div id="progress-reset-notice" class="alert alert-success mb-3 text-sm font-bold" role="status" data-show="$progressReset" style="display:none">{{ s('app_edit_progress_reset') }}</div>
       <section data-show="$step === 1" style="display:none">
-        {{ field_label('input-front', s('app_add_front_prompt'), s('app_add_front_help')) }}
-        <textarea id="input-front" class="add-input" rows="4" data-bind:front aria-describedby="input-front-help" data-attr:aria-describedby="$nid !== 0 &amp;&amp; $learned ? 'input-front-help edit-warning' : 'input-front-help'" placeholder="{{ s('app_add_front_placeholder') }}" required></textarea>
+        {{ field_label('input-front', s('app_add_front_prompt'), s('app_add_front_help'), language_name(languages.dst) if languages else '') }}
+        <textarea id="input-front" class="add-input" rows="4" data-bind:front{% if languages %} lang="{{ languages.dst }}"{% endif %} aria-describedby="input-front-help" data-attr:aria-describedby="$nid !== 0 &amp;&amp; $learned ? 'input-front-help edit-warning' : 'input-front-help'" placeholder="{{ s('app_add_front_placeholder_languages') if languages else s('app_add_front_placeholder') }}" required></textarea>
         <p class="add-counter"><span data-text="$front.length">0</span> {{ s('app_add_characters') }}</p>
+        {% if not languages %}
         <div class="add-chips">
           {{ chip(s('app_add_chip_der'), 'input-front', true) }}
           {{ chip(s('app_add_chip_die'), 'input-front', true) }}
@@ -112,11 +115,18 @@
           {{ chip(s('app_add_chip_u_umlaut'), 'input-front') }}
           {{ chip(s('app_add_chip_sharp_s'), 'input-front') }}
         </div>
+        {% elif target_chips %}
+        <div id="add-chips-front" class="add-chips" lang="{{ languages.dst }}">
+          {% for item in target_chips %}
+          {{ chip(item.label, 'input-front', value=item.value) }}
+          {% endfor %}
+        </div>
+        {% endif %}
       </section>
 
       <section data-show="$step === 2" style="display:none">
-        {{ field_label('input-back', s('app_add_back_prompt'), s('app_add_back_help')) }}
-        <textarea id="input-back" class="add-input" rows="4" data-bind:back aria-describedby="input-back-help" placeholder="{{ s('app_add_back_placeholder') }}" required></textarea>
+        {{ field_label('input-back', s('app_add_back_prompt'), s('app_add_back_help'), language_name(languages.src) if languages else '') }}
+        <textarea id="input-back" class="add-input" rows="4" data-bind:back{% if languages %} lang="{{ languages.src }}"{% endif %} aria-describedby="input-back-help" placeholder="{{ s('app_add_back_placeholder_languages') if languages else s('app_add_back_placeholder') }}" required></textarea>
         <p class="add-counter"><span data-text="$back.length">0</span> {{ s('app_add_characters') }}</p>
         <details class="collapse collapse-arrow add-optional">
           <summary class="collapse-title font-extrabold">{{ s('app_add_hint') }} · {{ s('app_add_optional') }}</summary>
@@ -136,7 +146,7 @@
           <summary class="collapse-title font-extrabold">{{ s('app_add_example') }} · {{ s('app_add_optional') }}</summary>
           <div class="collapse-content">
             {{ field_label('input-example', s('app_add_example'), s('app_add_example_help')) }}
-            <textarea id="input-example" class="add-input add-input-sm" rows="2" data-bind:example aria-describedby="input-example-help" placeholder="{{ s('app_add_example_placeholder') }}"></textarea>
+            <textarea id="input-example" class="add-input add-input-sm" rows="2" data-bind:example aria-describedby="input-example-help" placeholder="{{ s('app_add_example_placeholder_languages') if languages else s('app_add_example_placeholder') }}"></textarea>
             <p class="add-counter"><span data-text="$example.length">0</span> {{ s('app_add_characters') }}</p>
           </div>
         </details>

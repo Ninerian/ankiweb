@@ -24,6 +24,7 @@ from ankiweb.adapters.inbound.http_datastar.common import (
     signals_response,
 )
 from ankiweb.adapters.inbound.http_shared.templating import render
+from ankiweb.core.app_client.deck_languages import LANGUAGES, LanguagePair, read_marker
 from ankiweb.core.app_client.deck_notes import (
     DeckNote,
     NoteNotEditable,
@@ -33,6 +34,7 @@ from ankiweb.core.app_client.deck_notes import (
 )
 from ankiweb.core.app_client.decks import split_emoji
 from ankiweb.core.app_client.lang import resolve_lang
+from ankiweb.core.app_client.language_chips import language_chips
 from ankiweb.core.app_client.note_editing import (
     InvalidFields,
     ProgressResetFailed,
@@ -82,12 +84,15 @@ def _commit_values(payload: dict) -> dict[str, str] | None:
     return values
 
 
-def _deck_name(col: anki.collection.Collection, deck_id: int) -> tuple[str, str] | None:
+def _deck_view(
+    col: anki.collection.Collection, deck_id: int
+) -> tuple[str, str, LanguagePair | None] | None:
     deck = col.decks.get(DeckId(deck_id), default=False)
     if deck is None:
         return None
     ensure_vocab_model(col)
-    return split_emoji(deck["name"])
+    emoji, name = split_emoji(deck["name"])
+    return emoji, name, read_marker(deck.get("desc", ""))
 
 
 def _note_fields(note: DeckNote) -> dict[str, str]:
@@ -151,12 +156,10 @@ class _EditRoutes:
         deck_id = _parse_deck(request)
         if deck_id is None:
             return RedirectResponse("/app/", status_code=303)
-        deck_display = await self.get_service().run(
-            lambda col: _deck_name(col, deck_id)
-        )
-        if deck_display is None:
+        deck_view = await self.get_service().run(lambda col: _deck_view(col, deck_id))
+        if deck_view is None:
             return RedirectResponse("/app/", status_code=303)
-        deck_emoji, deck_name = deck_display
+        deck_emoji, deck_name, languages = deck_view
         session, new_session_id = get_session(request)
         requested_card = request.query_params.get("card")
         count, deck_cards, initial_card = await self.get_service().run(
@@ -179,6 +182,9 @@ class _EditRoutes:
             deck_id=deck_id,
             deck_emoji=deck_emoji,
             deck_name=deck_name,
+            languages=languages,
+            LANGUAGES=LANGUAGES,
+            target_chips=language_chips(languages.dst) if languages else (),
             count=count,
             deck_cards=deck_cards,
             initial_view=initial_view,

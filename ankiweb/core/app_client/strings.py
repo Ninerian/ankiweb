@@ -166,6 +166,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_back_placeholder": "e.g. the challenge",
         "app_add_hint_placeholder": "e.g. noun, feminine",
         "app_add_example_placeholder": "e.g. Das ist eine *Herausforderung*.",
+        "app_add_front_placeholder_languages": "e.g. a word or phrase",
+        "app_add_back_placeholder_languages": "e.g. its meaning",
+        "app_add_example_placeholder_languages": (
+            "e.g. a sentence with the *key word*"
+        ),
         "app_add_card_preview": "Card Preview",
         "app_add_ready_to_add": "Ready to add?",
         "app_add_front_preview": "Front Prompt",
@@ -394,6 +399,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "app_add_back_placeholder": "z. B. the challenge",
         "app_add_hint_placeholder": "z. B. Substantiv, feminin",
         "app_add_example_placeholder": "z. B. Das ist eine *Herausforderung*.",
+        "app_add_front_placeholder_languages": "z. B. ein Wort oder Ausdruck",
+        "app_add_back_placeholder_languages": "z. B. die Bedeutung",
+        "app_add_example_placeholder_languages": (
+            "z. B. ein Satz mit dem *Schlüsselwort*"
+        ),
         "app_add_card_preview": "Kartenvorschau",
         "app_add_ready_to_add": "Bereit zum Hinzufügen?",
         "app_add_front_preview": "Vorderseite: Frage",

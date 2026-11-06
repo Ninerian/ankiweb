@@ -105,10 +105,12 @@ highlights `*word*` in the rendered example. See the note-type contract below.
 The editor presents a focused single-purpose card interface divided into three distinct steps:
 1. **Step 1: Front (Prompt / Question)**:
    - Oversized, high-contrast `<textarea>` styled with chunky 2.5px borders and tactile focus depression.
-   - Real-time character count and high-school helper chips (e.g. German articles `der`, `die`, `das` and umlauts `ä`, `ö`, `ü`, `ß`).
+   - Real-time character count and front-field helper chips based on the deck's target language (articles and special characters). Without a valid language pair, the original German chips `der`, `die`, `das`, `ä`, `ö`, `ü`, `ß` remain. Subdecks do not inherit a pair; Korean has no chips, and the catalog returns none for unknown codes. These are not full keyboards for other scripts.
+   - With a valid pair, the front label shows the target language's flag and localized name; the textarea uses its language code.
    - Primary CTA: **Next: Back →**. The `Enter` shortcut works without an on-screen keyboard hint.
 2. **Step 2: Back (Answer / Definition)**:
    - Focus transitions directly to the definition/answer field.
+   - With a valid pair, the back label shows the source language's flag and localized name; the textarea uses its language code. This field mapping is a UI convention, not a check or reordering of stored content.
    - Two optional, collapsed-by-default fields below it: **Hint** (part of speech, plural; the quick chips `Noun`, `Verb`, `Adj`, `(Plural:)` insert here) and **Example sentence** (wrap the key word in `*asterisks*` to highlight it).
    - Leaving both empty keeps the fast two-field path unchanged.
    - Primary CTA: **Preview Card →**.

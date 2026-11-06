@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Iterator
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Protocol, cast
 
@@ -1617,3 +1618,228 @@ def test_edit_rejects_invalid_deck(client: TestClient, query: str) -> None:
     assert response.status_code == 303
     assert response.headers["location"] == "/app/"
     assert "app_sid" not in response.cookies
+
+
+class _EditorElements(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.ids: dict[str, dict[str, str | None]] = {}
+        self.labels: dict[str, str] = {}
+        self.chips: list[tuple[dict[str, str | None], dict[str, str | None]]] = []
+        self._divs: list[dict[str, str | None]] = []
+        self._label: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        if element_id := values.get("id"):
+            self.ids[element_id] = values
+        if tag == "div":
+            self._divs.append(values)
+        elif tag == "label" and (target := values.get("for")):
+            self._label = target
+            self.labels[target] = ""
+        elif tag == "button" and "add-chip" in (values.get("class") or "").split():
+            assert self._divs
+            self.chips.append((self._divs[-1], values))
+
+    def handle_data(self, data: str) -> None:
+        if self._label is not None:
+            self.labels[self._label] += data
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "div":
+            self._divs.pop()
+        elif tag == "label":
+            self._label = None
+
+
+def _edit_language_deck(
+    client: TestClient, name: str, description: str, parent_description: str = ""
+) -> int:
+    assert client.portal is not None
+
+    def seed(col: Collection) -> int:
+        if "::" in name:
+            parent_name = name.split("::", maxsplit=1)[0]
+            parent_id = DeckId(col.decks.add_normal_deck_with_name(parent_name).id)
+            parent = col.decks.get(parent_id, default=False)
+            assert parent is not None
+            parent["desc"] = parent_description
+            col.decks.update_dict(parent)
+        deck_id = DeckId(col.decks.add_normal_deck_with_name(name).id)
+        deck = col.decks.get(deck_id, default=False)
+        assert deck is not None
+        deck["desc"] = description
+        col.decks.update_dict(deck)
+        return deck_id
+
+    return client.portal.call(cast(FastAPI, client.app).state.service.run, seed)
+
+
+def _edit_elements(html: str) -> _EditorElements:
+    elements = _EditorElements()
+    elements.feed(html)
+    return elements
+
+
+def _chips_for(
+    elements: _EditorElements, target: str
+) -> list[tuple[dict[str, str | None], dict[str, str | None]]]:
+    return [
+        (row, chip) for row, chip in elements.chips if chip["data-target"] == target
+    ]
+
+
+def test_edit_language_pair_renders_target_chips_and_neutral_fields(
+    client: TestClient,
+) -> None:
+    deck_id = _edit_language_deck(client, "Spanish", "<!--ankiweb:lang=de>es-->")
+    response = client.get(f"/app/edit?deck={deck_id}")
+    assert response.status_code == 200
+    elements = _edit_elements(response.text)
+    assert elements.labels["input-front"] == "Front (Question / Prompt) · 🇪🇸 Spanish"
+    assert elements.labels["input-back"] == "Back (Answer / Meaning) · 🇩🇪 German"
+    assert elements.ids["input-front"]["lang"] == "es"
+    assert elements.ids["input-back"]["lang"] == "de"
+    assert elements.ids["add-chips-front"]["lang"] == "es"
+    assert elements.ids["input-front"]["placeholder"] == "e.g. a word or phrase"
+    assert elements.ids["input-back"]["placeholder"] == "e.g. its meaning"
+    assert (
+        elements.ids["input-example"]["placeholder"]
+        == "e.g. a sentence with the *key word*"
+    )
+    front_chips = _chips_for(elements, "input-front")
+    assert front_chips
+    assert all(row.get("id") == "add-chips-front" for row, _ in front_chips)
+    values = [chip["data-value"] for _, chip in front_chips]
+    assert "ñ" in values
+    assert "der " not in values
+    assert not _chips_for(elements, "input-back")
+    assert {chip["data-target"] for _, chip in elements.chips} == {
+        "input-front",
+        "input-hint",
+    }
+    assert [chip["data-value"] for _, chip in _chips_for(elements, "input-hint")] == [
+        "Noun ",
+        "Verb ",
+        "Adj ",
+        "(Plural:) ",
+    ]
+
+
+def test_edit_german_target_has_articles_with_spaces_and_sharp_s(
+    client: TestClient,
+) -> None:
+    deck_id = _edit_language_deck(client, "German", "<!--ankiweb:lang=es>de-->")
+    response = client.get(f"/app/edit?deck={deck_id}")
+    assert response.status_code == 200
+    elements = _edit_elements(response.text)
+    assert elements.labels["input-front"] == "Front (Question / Prompt) · 🇩🇪 German"
+    assert elements.labels["input-back"] == "Back (Answer / Meaning) · 🇪🇸 Spanish"
+    assert elements.ids["input-front"]["lang"] == "de"
+    assert elements.ids["input-back"]["lang"] == "es"
+    assert elements.ids["add-chips-front"]["lang"] == "de"
+    values = [chip["data-value"] for _, chip in _chips_for(elements, "input-front")]
+    assert values[:3] == ["der ", "die ", "das "]
+    assert "ß" in values
+    assert "ẞ" in values
+
+
+def test_edit_korean_target_has_no_front_chip_row(client: TestClient) -> None:
+    deck_id = _edit_language_deck(client, "Korean", "<!--ankiweb:lang=en>ko-->")
+    response = client.get(f"/app/edit?deck={deck_id}")
+    assert response.status_code == 200
+    elements = _edit_elements(response.text)
+    assert elements.labels["input-front"] == "Front (Question / Prompt) · 🇰🇷 Korean"
+    assert elements.labels["input-back"] == "Back (Answer / Meaning) · 🇬🇧 English"
+    assert elements.ids["input-front"]["lang"] == "ko"
+    assert elements.ids["input-back"]["lang"] == "en"
+    assert "add-chips-front" not in elements.ids
+    assert not _chips_for(elements, "input-front")
+    assert len(_chips_for(elements, "input-hint")) == 4
+
+
+@pytest.mark.parametrize(
+    ("name", "description", "parent_description"),
+    [
+        ("No marker", "", ""),
+        ("Invalid marker", "<!--ankiweb:lang=de>de-->", ""),
+        ("Parent::Child", "", "<!--ankiweb:lang=de>es-->"),
+    ],
+)
+def test_edit_without_own_valid_pair_preserves_original_editor(
+    client: TestClient, name: str, description: str, parent_description: str
+) -> None:
+    deck_id = _edit_language_deck(client, name, description, parent_description)
+    response = client.get(f"/app/edit?deck={deck_id}")
+    assert response.status_code == 200
+    elements = _edit_elements(response.text)
+    assert elements.labels["input-front"] == "Front (Question / Prompt)"
+    assert elements.labels["input-back"] == "Back (Answer / Meaning)"
+    assert "lang" not in elements.ids["input-front"]
+    assert "lang" not in elements.ids["input-back"]
+    assert elements.ids["input-front"]["placeholder"] == "e.g. die Herausforderung"
+    assert elements.ids["input-back"]["placeholder"] == "e.g. the challenge"
+    assert (
+        elements.ids["input-example"]["placeholder"]
+        == "e.g. Das ist eine *Herausforderung*."
+    )
+    assert "add-chips-front" not in elements.ids
+    front_chips = _chips_for(elements, "input-front")
+    assert all(
+        row.get("class") == "add-chips" and "id" not in row for row, _ in front_chips
+    )
+    assert [chip["data-value"] for _, chip in front_chips] == [
+        "der ",
+        "die ",
+        "das ",
+        "ä",
+        "ö",
+        "ü",
+        "ß",
+    ]
+    assert not _chips_for(elements, "input-back")
+    assert [chip["data-value"] for _, chip in _chips_for(elements, "input-hint")] == [
+        "Noun ",
+        "Verb ",
+        "Adj ",
+        "(Plural:) ",
+    ]
+
+
+def test_edit_apostrophe_chip_is_escaped_and_preserves_its_value(
+    client: TestClient,
+) -> None:
+    deck_id = _edit_language_deck(client, "French", "<!--ankiweb:lang=en>fr-->")
+    response = client.get(f"/app/edit?deck={deck_id}")
+    assert response.status_code == 200
+    assert 'data-value="l&#39;"' in response.text
+    elements = _edit_elements(response.text)
+    assert "l'" in [
+        chip["data-value"] for _, chip in _chips_for(elements, "input-front")
+    ]
+
+
+def test_edit_language_names_follow_german_ui_language(tmp_path: Path) -> None:
+    settings = Settings(
+        collection_path=tmp_path / "de-language-edit.anki2", lang="de_DE"
+    )
+    try:
+        with TestClient(create_app(settings)) as client:
+            deck_id = _edit_language_deck(
+                client, "Spanish", "<!--ankiweb:lang=de>es-->"
+            )
+            response = client.get(f"/app/edit?deck={deck_id}")
+    finally:
+        anki.lang.set_lang("en")
+    assert response.status_code == 200
+    elements = _edit_elements(response.text)
+    assert (
+        elements.labels["input-front"]
+        == "Vorderseite (Frage / Stichwort) · 🇪🇸 Spanisch"
+    )
+    assert (
+        elements.labels["input-back"] == "Rückseite (Antwort / Bedeutung) · 🇩🇪 Deutsch"
+    )
+    assert elements.ids["input-front"]["lang"] == "es"
+    assert elements.ids["input-back"]["lang"] == "de"

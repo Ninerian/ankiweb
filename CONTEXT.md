@@ -12,12 +12,15 @@ _Avoid_: Stack, Ordner
 Ein geordnetes Paar aus Ursprungssprache und Zielsprache fuer genau ein Deck. Beide Sprachen muessen verschieden sein und zum Katalog `de`, `en`, `es`, `fr`, `it`, `pt`, `nl`, `pl`, `tr`, `ru`, `ja`, `zh`, `ko`, `ar`, `sv`, `la` gehoeren. Ein Deck ohne gueltigen Sprach-Marker hat kein Sprachpaar; Unterdecks erben kein Sprachpaar.
 
 **Ursprungssprache**:
-Die Sprache des Sprachpaars, die die lernende Person bereits kann; sie steht vor dem Pfeil.
+Die Sprache des Sprachpaars, die die lernende Person bereits kann; sie steht vor dem Pfeil und entspricht im Karteneditor der Rueckseite.
 _Avoid_: Muttersprache
 
 **Zielsprache**:
-Die Sprache des Sprachpaars, die die lernende Person lernt; sie steht nach dem Pfeil.
+Die Sprache des Sprachpaars, die die lernende Person lernt; sie steht nach dem Pfeil und entspricht im Karteneditor der Vorderseite. Dies ist eine UI-Konvention: Gespeicherte Feldinhalte werden nicht auf ihre Sprache geprueft oder umsortiert.
 _Avoid_: Lernsprache
+
+**Eingabehilfen**:
+Artikel- und Sonderzeichen-Buttons am Vorderseiten-Feld, abgeleitet aus der Zielsprache des Decks. Ohne gueltiges Sprachpaar gelten die bisherigen deutschen Buttons; Unterdecks erben kein Sprachpaar. Fuer `ko` und unbekannte Sprachcodes liefert der Katalog keine Buttons (ein ungueltiger Marker bedeutet jedoch kein Sprachpaar). Fuer andere Schriften werden keine vollstaendigen Tastaturen angeboten.
 
 **Sprach-Marker**:
 Der maschinenlesbare HTML-Kommentar in der Deck-Beschreibung, etwa `<!--ankiweb:lang=es>de-->` fuer Ursprungssprache `es` und Zielsprache `de`. Ein fehlender oder ungueltiger Marker bedeutet keine Sprachen.
