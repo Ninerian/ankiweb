@@ -4,7 +4,7 @@ Status: akzeptiert
 
 ## Entscheidung
 
-Das Sprachpaar eines Stapels steht als HTML-Kommentar am Anfang seiner Beschreibung `desc`, z. B. `<!--ankiweb:lang=es>de-->` (Ursprungs- vor Zielsprache). Ohne gueltigen Marker gilt „Keine Sprachen“; Unterstapel erben kein Paar. Beim Aendern des Paars entfernt die App vorhandene Marker und setzt hoechstens einen neuen vor den uebrigen Beschreibungstext. Bleibt das Paar unveraendert, bleibt `desc` bytegleich.
+Das Sprachpaar eines Stapels steht als HTML-Kommentar am Anfang seiner Beschreibung `desc`, z. B. `<!--ankiweb:lang=es>de-->` (Ursprungs- vor Zielsprache). Neu geschriebene Marker tragen unmittelbar danach `<!--ankiweb:lang-separator-->\n\n`: Die eigene Kennung unterscheidet den eingefuegten Markdown-Abstand von echten Zeilenumbruechen des Beschreibungstexts. Aeltere Marker ohne Kennung bleiben lesbar und werden ohne anschliessende Textbytes entfernt. Ohne gueltigen Marker gilt „Keine Sprachen“; Unterstapel erben kein Paar. Beim Aendern des Paars entfernt die App vorhandene Marker und setzt hoechstens einen neuen vor den uebrigen Beschreibungstext. Ohne Aenderung bleiben die Stapel-Einstellungen bytegleich; bei einer Namens- oder Emoji-Aenderung wird ein gueltiger alter Marker in Markdown-Beschreibungen migriert.
 
 ## Kontext
 
@@ -15,8 +15,8 @@ Das Paar muss pro Stapel gelten und mit Anki-Exporten transportiert werden. Der 
 - Ein leerer Stapel fehlte nach dem untersuchten `.apkg`-Export und -Import ganz. Ein Sprach-Marker kann ihn nicht erhalten.
 - Beim Import in einen bestehenden gleichnamigen Stapel wurde dessen Beschreibung ueberschrieben. Dabei kann auch dessen bisheriger Marker verloren gehen.
 - Ersetzt jemand die Beschreibung in Anki Desktop, kann der Marker verloren gehen. Die App kann dann kein Sprachpaar mehr lesen. Ueber die Darstellung des Kommentars in Anki Desktop wurde keine Aussage gemessen.
-- Die Beschreibungsbearbeitung in der bestehenden App-Overview blendet den Marker im Eingabefeld aus und fuegt das zuvor gelesene gueltige Paar beim Speichern wieder ein. Diese Erhaltung schuetzt nicht vor Aenderungen in Anki Desktop oder beim Import.
-- Die App entfernt Marker vor der Markdown-Verarbeitung und sanitisiert die gerenderte Beschreibung. Das ist noetig: In Messung M5 verhinderte der fuehrende Kommentar die erwartete Markdown-Formatierung. Bei markierter Beschreibung verwendet die Congrats-Ansicht dafuer den rohen Decktext statt der bereits gerenderten Scheduler-Ausgabe.
+- Die Beschreibungsbearbeitung in der bestehenden App-Overview blendet Marker im Eingabefeld aus. Bei unveraendertem Nicht-Markdown-Text bleibt die gespeicherte Beschreibung bytegleich. Beim Bearbeiten oder Migrieren bleiben ungueltige Marker auch nach einem gueltigen ersten Marker erhalten; gueltige Duplikate werden entfernt. Diese Erhaltung schuetzt nicht vor Aenderungen in Anki Desktop oder beim Import.
+- Die App entfernt Marker vor der Markdown-Verarbeitung und sanitisiert die gerenderte Beschreibung. Neu geschriebene Marker stehen durch den gekennzeichneten Abstand in einem eigenen HTML-Block, sodass auch Ankis Markdown-Renderer den Beschreibungstext danach verarbeiten kann. Beim Speichern einer Markdown-Beschreibung wird ein gueltiger alter Marker auch ohne Textaenderung migriert; bis zum Speichern kann die Darstellung in Anki fehlerhaft bleiben. Bei markierter Beschreibung verwendet die Congrats-Ansicht dafuer den rohen Decktext statt der bereits gerenderten Scheduler-Ausgabe.
 
 ## Verworfen
 

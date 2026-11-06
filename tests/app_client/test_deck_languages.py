@@ -88,16 +88,18 @@ def test_marker_changes_preserve_description_bytes(marked: str, plain: str) -> N
     pair = LanguagePair("fr", "ja")
     assert strip_marker(marked).encode("utf-8") == plain.encode("utf-8")
     assert apply_marker(marked, None).encode("utf-8") == plain.encode("utf-8")
-    assert apply_marker(marked, pair).encode("utf-8") == (
-        "<!--ankiweb:lang=fr>ja-->" + plain
-    ).encode("utf-8")
+    applied = apply_marker(marked, pair)
+    assert read_marker(applied) == pair
+    assert strip_marker(applied).encode("utf-8") == plain.encode("utf-8")
 
 
 def test_reads_first_marker_and_relocates_it_to_front() -> None:
     description = "  Intro\n<!--ankiweb:lang=de>en-->body"
     pair = read_marker(description)
     assert pair == LanguagePair("de", "en")
-    assert apply_marker(description, pair) == "<!--ankiweb:lang=de>en-->  Intro\nbody"
+    applied = apply_marker(description, pair)
+    assert read_marker(applied) == pair
+    assert strip_marker(applied) == "  Intro\nbody"
 
 
 def test_multiple_markers_read_first_and_are_canonicalized() -> None:
@@ -107,9 +109,10 @@ def test_multiple_markers_read_first_and_are_canonicalized() -> None:
     )
     assert read_marker(description) == LanguagePair("de", "en")
     assert strip_marker(description) == "ABCD"
-    assert apply_marker(description, LanguagePair("ja", "ko")) == (
-        "<!--ankiweb:lang=ja>ko-->ABCD"
-    )
+    applied = apply_marker(description, LanguagePair("ja", "ko"))
+    assert read_marker(applied) == LanguagePair("ja", "ko")
+    assert applied.count("<!--ankiweb:lang=") == 1
+    assert strip_marker(applied) == "ABCD"
 
 
 def test_unknown_first_marker_does_not_fall_through_to_valid_marker() -> None:
@@ -135,20 +138,32 @@ def test_removing_only_marker_leaves_empty_description() -> None:
     assert apply_marker(description, None) == ""
 
 
-@pytest.mark.parametrize(
-    ("pair", "expected"),
-    [
-        (LanguagePair("de", "en"), "<!--ankiweb:lang=de>en-->  Hello\nworld"),
-        (None, "  Hello\nworld"),
-    ],
-)
-def test_applying_marker_is_idempotent(
-    pair: LanguagePair | None, expected: str
-) -> None:
+@pytest.mark.parametrize("pair", [LanguagePair("de", "en"), None])
+def test_applying_marker_is_idempotent(pair: LanguagePair | None) -> None:
     description = "  Hello<!--ankiweb:lang=fr>es-->\nworld"
     once = apply_marker(description, pair)
-    assert once == expected
-    assert apply_marker(once, pair) == expected
+    assert strip_marker(once) == "  Hello\nworld"
+    assert read_marker(once) == pair
+    assert apply_marker(once, pair) == once
+
+
+@pytest.mark.parametrize(
+    "description",
+    ["", "\nFirst", "\n\nFirst", "\r\nFirst\r\n", "# Title\n\n**bold**", "  Indented"],
+)
+def test_new_marker_round_trips_exact_description(description: str) -> None:
+    pair = LanguagePair("de", "en")
+    marked = apply_marker(description, pair)
+    assert read_marker(marked) == pair
+    assert strip_marker(marked) == description
+    assert apply_marker(marked, None) == description
+
+
+def test_legacy_marker_followed_by_newline_keeps_description_newline() -> None:
+    marked = "<!--ankiweb:lang=de>en-->\nUser text"
+    assert read_marker(marked) == LanguagePair("de", "en")
+    assert strip_marker(marked) == "\nUser text"
+    assert strip_marker(apply_marker(marked, LanguagePair("fr", "it"))) == "\nUser text"
 
 
 def test_choose_valid_languages() -> None:

@@ -13,6 +13,8 @@ from ankiweb.core.app_client.deck_languages import (
     LanguagePair,
     apply_marker,
     read_marker,
+    replace_description,
+    strip_marker,
 )
 from ankiweb.core.app_client.deck_progress import progress_by_deck
 from ankiweb.core.app_client.emoji_picker import ALL_EMOJI
@@ -213,20 +215,36 @@ def update_deck_settings(
 ) -> OpChanges:
     """Update a root and its descendants in a single undoable operation."""
     deck = _root_deck(col, deck_id)
+    old_stored_name = deck["name"]
     old_emoji, old_name = split_emoji(deck["name"])
-    name = _validate_name(col, name, exclude_id=deck_id)
+    name_changed = name != old_name
+    if name_changed:
+        name = _validate_name(col, name, exclude_id=deck_id)
     _validate_emoji(emoji, previous=old_emoji)
     if languages is not None and not isinstance(languages, LanguagePair):
         raise TypeError("languages must be a LanguagePair or None")
 
     if name != old_name or emoji != old_emoji:
-        if emoji == old_emoji and old_name == deck["name"]:
-            deck["name"] = name
+        if (
+            emoji == old_emoji
+            and old_name == deck["name"]
+            and split_emoji(name)[1] == name
+        ):
+            stored_name = name
         else:
-            deck["name"] = join_emoji(name, emoji)
+            stored_name = join_emoji(name, emoji)
+        if not name_changed and any(
+            _comparison_name(other.name) == _comparison_name(stored_name)
+            for other in col.decks.all_names_and_ids()
+            if other.id != deck_id
+        ):
+            raise DeckNameError("taken")
+        deck["name"] = stored_name
     desc = deck.get("desc", "")
     if languages != read_marker(desc):
         deck["desc"] = apply_marker(desc, languages)
+    elif deck.get("md") and deck["name"] != old_stored_name:
+        deck["desc"] = replace_description(strip_marker(desc), desc, markdown=True)
     return col.decks.update_dict(deck)
 
 

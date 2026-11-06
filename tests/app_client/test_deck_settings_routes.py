@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterator
 from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Literal, Protocol, cast
 
 import anki.lang
 import pytest
@@ -13,6 +13,11 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from ankiweb.app import create_app
+from ankiweb.core.app_client.deck_languages import (
+    LanguagePair,
+    read_marker,
+    strip_marker,
+)
 from ankiweb.core.app_client.strings import s
 from ankiweb.core.auth import COOKIE, auth_token
 from ankiweb.core.config import Settings
@@ -212,14 +217,14 @@ def _snapshot(client: TestClient) -> tuple:
 
 
 @pytest.mark.parametrize(
-    ("mode", "src", "dst", "marker"),
+    ("mode", "src", "dst", "pair"),
     [
-        ("langs", "de", "es", "<!--ankiweb:lang=de>es-->"),
-        ("none", "", "", ""),
+        ("langs", "de", "es", LanguagePair("de", "es")),
+        ("none", "", "", None),
     ],
 )
 def test_creation_persists_language_selection(
-    client: TestClient, mode: str, src: str, dst: str, marker: str
+    client: TestClient, mode: str, src: str, dst: str, pair: LanguagePair | None
 ) -> None:
     client.headers["Datastar-Request"] = "true"
     before = _decks(client)
@@ -230,7 +235,9 @@ def test_creation_persists_language_selection(
     assert response.headers["content-type"].startswith("text/event-stream")
     (deck_id,) = set(_decks(client)) - set(before)
     stored = _stored(client, deck_id)
-    assert stored is not None and stored["desc"] == marker
+    assert stored is not None
+    assert read_marker(stored["desc"]) == pair
+    assert strip_marker(stored["desc"]) == ""
     assert 'id="deck-' + str(deck_id) + '"' in _fragment(response, "#decks-content")
     assert _signals(response) == {
         "q": "",
@@ -290,7 +297,8 @@ def test_settings_reads_and_atomically_updates_deck_and_search(
     deck = _stored(client, deck_id)
     child = _stored(client, child_id)
     assert deck is not None and deck["name"] == "Aardvark · 🧬"
-    assert deck["desc"] == "<!--ankiweb:lang=fr>it-->Keep <b>description</b>"
+    assert read_marker(deck["desc"]) == LanguagePair("fr", "it")
+    assert strip_marker(deck["desc"]) == "Keep <b>description</b>"
     assert child is not None and child["name"] == "Aardvark · 🧬::Child"
     content = _fragment(saved, "#decks-content")
     parsed = _parse(content)
@@ -642,3 +650,117 @@ def test_mutations_broadcast_as_app_operations(client: TestClient) -> None:
     response = client.post(f"/app/decks/{deck_id}/delete")
     assert _signals(response)["delOpen"] is False
     assert any(initiator == "app" and flags["deck"] for flags, initiator in broadcasts)
+
+
+@pytest.mark.parametrize("motion", ["reduce", "no-preference"])
+def test_repeated_deck_toasts_remain_visible(
+    live_app: str, motion: Literal["reduce", "no-preference"]
+) -> None:
+    playwright = pytest.importorskip("playwright.sync_api")
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            context = browser.new_context(
+                locale="en-US",
+                reduced_motion=motion,
+                viewport={"width": 375, "height": 812},
+            )
+            page = context.new_page()
+            page.goto(f"{live_app}/app/")
+            page.wait_for_load_state("networkidle")
+            active_page = page
+
+            def open_menu(name: str, action: str) -> None:
+                active_page.get_by_role(
+                    "button", name=s("app_decks_menu_open", lang="en", deck=name)
+                ).click()
+                active_page.get_by_role(
+                    "menuitem", name=s(action, lang="en"), exact=True
+                ).click()
+
+            def consume_toast(key: str) -> None:
+                region = active_page.locator("#toast")
+                toast = region.get_by_text(s(key, lang="en"), exact=True)
+                playwright.expect(region).to_have_attribute("role", "status")
+                playwright.expect(region).to_have_attribute("aria-live", "polite")
+                playwright.expect(toast).to_be_visible()
+                # Advance the real toast's animation before the next operation.
+                toast.evaluate(
+                    "(el) => el.getAnimations().forEach((animation) => animation.finish())"
+                )
+                if motion == "reduce":
+                    playwright.expect(toast).to_be_hidden()
+                else:
+                    playwright.expect(toast).to_be_visible()
+
+            create_sheet = page.locator("#deck-sheet")
+            create_name = page.locator("#deck-name")
+            for deck_name in ("Toast deck", "Toast extra"):
+                page.locator("#btn-new-deck").click()
+                playwright.expect(create_sheet).to_have_attribute(
+                    "aria-hidden", "false"
+                )
+                playwright.expect(create_name).to_be_focused()
+                create_name.fill(deck_name)
+                create_sheet.get_by_role("radio", name="No languages").check()
+                playwright.expect(page.locator("#btn-create-deck")).to_be_enabled()
+                page.locator("#btn-create-deck").click()
+                playwright.expect(create_sheet).to_have_attribute("aria-hidden", "true")
+                playwright.expect(
+                    page.get_by_role("heading", name=deck_name, level=3)
+                ).to_be_visible()
+                consume_toast("app_decks_created")
+
+            for old_name, new_name in (
+                ("Toast deck", "Toast one"),
+                ("Toast one", "Toast two"),
+            ):
+                open_menu(old_name, "app_decks_settings")
+                sheet = page.locator("#deck-settings-sheet")
+                name = sheet.locator("#set-name")
+                save = sheet.locator("#deck-settings-save")
+                playwright.expect(sheet).to_have_attribute("aria-hidden", "false")
+                playwright.expect(name).to_have_value(old_name)
+                playwright.expect(name).to_be_focused()
+                name.fill(new_name)
+                playwright.expect(save).to_be_enabled()
+                save.click()
+                playwright.expect(sheet).to_have_attribute("aria-hidden", "true")
+                playwright.expect(
+                    page.get_by_role("heading", name=new_name, level=3)
+                ).to_be_visible()
+                consume_toast("app_decks_saved")
+
+            stale_page = context.new_page()
+            stale_page.goto(f"{live_app}/app/")
+            stale_page.wait_for_load_state("networkidle")
+
+            for deck_name in ("Toast two", "Toast extra"):
+                open_menu(deck_name, "app_decks_delete")
+                delete_sheet = page.locator("#deck-delete-sheet")
+                playwright.expect(delete_sheet).to_have_attribute(
+                    "aria-hidden", "false"
+                )
+                delete_sheet.locator("#deck-delete-confirm").click()
+                playwright.expect(delete_sheet).to_have_attribute("aria-hidden", "true")
+                playwright.expect(
+                    page.get_by_role("heading", name=deck_name, level=3)
+                ).to_have_count(0)
+                consume_toast("app_decks_deleted")
+
+            active_page = stale_page
+            for action, endpoint in (
+                ("app_decks_settings", "settings"),
+                ("app_decks_delete", "delete"),
+            ):
+                with active_page.expect_response(
+                    lambda response, endpoint=endpoint: (
+                        response.request.method == "GET"
+                        and response.url.split("?", 1)[0].endswith(f"/{endpoint}")
+                    )
+                ) as response:
+                    open_menu("Toast two", action)
+                response.value.finished()
+                consume_toast("app_decks_not_found")
+        finally:
+            browser.close()

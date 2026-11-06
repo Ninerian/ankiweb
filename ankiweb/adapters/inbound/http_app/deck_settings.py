@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from html import escape
+from uuid import uuid4
 
 from datastar_py.fastapi import DatastarResponse
 from datastar_py.fastapi import ServerSentEventGenerator as SSE
@@ -30,9 +31,11 @@ from ankiweb.core.ports import CollectionPort
 
 
 def _toast(message: str):
+    # A fresh keyed child restarts the toast animation when Datastar morphs.
     html = (
         '<div id="toast" class="toast toast-top toast-center pointer-events-none z-50" '
-        'role="status" aria-live="polite"><div class="alert deck-toast">'
+        'role="status" aria-live="polite">'
+        f'<div id="deck-toast-{uuid4().hex}" class="alert deck-toast">'
         f"{escape(message)}</div></div>"
     )
     return SSE.patch_elements(html, selector="#toast")

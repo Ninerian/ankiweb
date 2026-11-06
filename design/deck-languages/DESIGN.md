@@ -21,12 +21,13 @@ Bedienung: obere Demo-Leiste (nur Mock-Chrome, nicht Produkt) wechselt Hell/Dunk
 - **Tauschen**: Pillen-Button zwischen den Selects (gestrichelte Verbindungslinie), Icon dreht sich. Disabled, wenn beide leer oder „Keine Sprachen“. In beiden Dialogen steht der Button auf einer Zeile mit dem Label „Zielsprache“ und hat zu beiden Selects denselben Abstand.
 - **„Keine Sprachen“**: zwei getrennte, gerahmte Radio-Buttons „Sprachstapel | Keine Sprachen“ mit Abstand statt daisyUI-Join. In beiden Dialogen werden Sprachauswahl und Erklärung ausgeblendet; beim Zurückwechseln bleiben zuvor gewählte Sprachen erhalten. In den Stapel-Einstellungen warnt ein Hinweis vor dem Entfernen bestehender Sprachangaben beim Speichern. Beide Sprachen leer = noch nicht entschieden, Erstellen gesperrt.
 - **Validierung** (Meldung direkt unter dem Segment, nicht unter den Selects, damit sie bei 375×667 ohne Scrollen sichtbar ist): gleiche Sprache = Fehler (roter Rand + Schatten an beiden Selects, `role=alert`, `aria-invalid`), nur eine Sprache = Warnung, nichts gewählt = keine Meldung. Erstellen/Speichern gesperrt, solange ungültig.
-- **Flaggen-Vorschlag**: Chip „Flagge von Spanisch als Emoji nutzen“, wenn Zielsprache gewählt und Emoji abweicht (Neuer Stapel).
+- **Flaggen-Vorschlag**: Chip „Flagge von Spanisch als Emoji nutzen“, wenn Zielsprache gewählt und Emoji abweicht (Neuer Stapel). Nach Auswahl liegt der Fokus auf der Emoji-Kategorie, auch wenn der Chip verschwindet.
 - **Sprach-Chip** `🇩🇪 DE → 🇪🇸 ES` in Preview und Stapelliste: themenabhängiger Text auf versenkter Fläche, Neo-Rahmen; gestrichelt, transparent und gedämpfte Schrift bei „Keine Sprachen“/offen. Theme-Tokens sorgen für Kontrast in Hell und Dunkel.
 - **Einstiegspunkt**: Mobile `/app/decks` (`app/_deck_row.html.jinja`) hat ein gerahmtes, schattiertes ⋯-Kebab im Kopf der Stapelkachel; es öffnet das Menü mit „Stapel-Einstellungen“ und „Stapel löschen“. Das bestehende Desktop-Dropdown (`deckbrowser_list.html.jinja`) enthält dagegen Optionen, Umbenennen und Löschen.
 - **Stapel-Einstellungen**: Zustand „geändert“: blaue Pille „N ungespeicherte Änderungen“ mit blauem Punkt und blaue „geändert“-Tags an betroffenen Feldern, Speichern erst dann aktiv. Die Markierungen unterscheiden sich farblich von den gelben Buttons. Reihenfolge Name → Sprachen → Emoji (Emoji-Picker ist hoch und ändert sich selten). Eine gesonderte Export-Hinweiskarte wird nicht angezeigt.
 - **Dark Mode**: systemgesteuert (`prefers-color-scheme`), Demo-Toggle überschreibt; gleiche Tokens wie Referenz (`#121316`/`#1e2025`, Schatten schwarz, Border hell).
 - **A11y**: Dialog `aria-modal` + `inert` im geschlossenen Zustand, Labels/`aria-describedby`, `aria-live` für Meldungen, Fokusring 3px, `prefers-reduced-motion` beachtet.
+- **Statusmeldungen**: Jede Speicher- oder Löschmeldung wird neu angezeigt, auch wenn reduzierte Bewegung aktiviert ist.
 
 ## Screenshots
 

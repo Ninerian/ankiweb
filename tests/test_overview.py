@@ -12,6 +12,13 @@ from fastapi.testclient import TestClient
 from ankiweb.adapters.inbound.http_datastar.overview import render_overview_html
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 from ankiweb.app import create_app
+from ankiweb.core.app_client.deck_languages import (
+    LanguagePair,
+    apply_marker,
+    read_marker,
+    strip_marker,
+)
+from ankiweb.core.app_client.decks import update_deck_settings
 from ankiweb.core.config import Settings
 
 
@@ -110,12 +117,13 @@ def test_congrats_states_and_upstream_parity(col):
 
 
 @pytest.mark.parametrize(
-    ("existing", "incoming", "expected"),
+    ("existing", "incoming", "expected_text", "expected_pair"),
     [
         (
             "<!--ankiweb:lang=en>fr-->Original",
             "Edited **text** and more",
-            "<!--ankiweb:lang=en>fr-->Edited **text** and more",
+            "Edited **text** and more",
+            LanguagePair("en", "fr"),
         ),
         (
             "<!--ankiweb:lang=en>fr-->Original",
@@ -123,17 +131,27 @@ def test_congrats_states_and_upstream_parity(col):
                 "<!--ankiweb:lang=de>es-->Before<!--ankiweb:lang=en>fr-->"
                 "After<!--ankiweb:lang=xx>yy-->!"
             ),
-            "<!--ankiweb:lang=en>fr-->BeforeAfter!",
+            "BeforeAfter!",
+            LanguagePair("en", "fr"),
+        ),
+        (
+            "A<!--ankiweb:lang=en>fr-->B<!--ankiweb:lang=de>es-->C",
+            "Edited",
+            "Edited",
+            LanguagePair("en", "fr"),
         ),
         (
             "Unmarked",
             "Before<!--ankiweb:lang=de>es-->After",
             "BeforeAfter",
+            None,
         ),
-        ("Unmarked", "Unchanged **content**", "Unchanged **content**"),
+        ("Unmarked", "Unchanged **content**", "Unchanged **content**", None),
     ],
 )
-def test_setdesc_preserves_only_existing_marker(client, existing, incoming, expected):
+def test_setdesc_preserves_only_existing_marker(
+    client, existing, incoming, expected_text, expected_pair
+):
     did = _run(client, lambda col: _set_description(col, existing, False))
     response = client.post(
         "/overview/setdesc",
@@ -143,8 +161,178 @@ def test_setdesc_preserves_only_existing_marker(client, existing, incoming, expe
     assert response.status_code == 200
     assert "window.location.reload()" in response.text
     deck = _run(client, lambda col: col.decks.get(did))
-    assert deck["desc"] == expected
+    assert strip_marker(deck["desc"]) == expected_text
+    assert read_marker(deck["desc"]) == expected_pair
+    assert deck["desc"].count("<!--ankiweb:lang=") == (
+        1 if expected_pair is not None else 0
+    )
     assert deck["md"] is True
+
+
+@pytest.mark.parametrize(
+    ("existing", "markdown"),
+    [
+        ("<!--ankiweb:lang=xx>yy-->\nOriginal", True),
+        ("A<!--ankiweb:lang=en>en-->B", True),
+        ("A<!--ankiweb:lang=xx>yy-->B<!--ankiweb:lang=de>en-->C", True),
+        ("<!--ankiweb:lang=en>fr-->\nOriginal", False),
+        (apply_marker("\nOriginal", LanguagePair("en", "fr")), True),
+    ],
+)
+def test_setdesc_unchanged_text_preserves_all_existing_bytes(
+    client, existing, markdown
+):
+    did = _run(client, lambda col: _set_description(col, existing, markdown))
+    response = client.post(
+        "/overview/setdesc",
+        json={"desc": strip_marker(existing), "md": markdown},
+        headers={"Datastar-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert _run(client, lambda col: col.decks.get(did))["desc"] == existing
+
+
+def test_setdesc_unchanged_markdown_migrates_legacy_marker(client):
+    text = "\nOriginal **bold**\n"
+    existing = "<!--ankiweb:lang=en>fr-->" + text
+    did = _run(client, lambda col: _set_description(col, existing, True))
+    response = client.post(
+        "/overview/setdesc",
+        json={"desc": text, "md": True},
+        headers={"Datastar-Request": "true"},
+    )
+    assert response.status_code == 200
+    saved = _run(client, lambda col: col.decks.get(did))["desc"]
+    assert saved != existing
+    assert read_marker(saved) == LanguagePair("en", "fr")
+    assert strip_marker(saved) == text
+    rendered = _run(client, lambda col: col.render_markdown(saved))
+    assert "<strong>bold</strong>" in rendered
+
+
+@pytest.mark.parametrize("change_text", [False, True])
+def test_setdesc_preserves_later_unsupported_marker_with_valid_first(
+    client, change_text
+):
+    existing = (
+        "<!--ankiweb:lang=en>fr-->Original"
+        "<!--ankiweb:lang=xx>yy-->"
+        "<!--ankiweb:lang=de>es-->"
+        "<!--ankiweb:lang=en>en-->"
+    )
+    did = _run(client, lambda col: _set_description(col, existing, True))
+    text = "Edited **text**" if change_text else "Original"
+    response = client.post(
+        "/overview/setdesc",
+        json={"desc": text, "md": True},
+        headers={"Datastar-Request": "true"},
+    )
+    assert response.status_code == 200
+    saved = _run(client, lambda col: col.decks.get(did))["desc"]
+    assert strip_marker(saved) == text
+    assert read_marker(saved) == LanguagePair("en", "fr")
+    pattern = r"<!--ankiweb:lang=[a-z]{2,3}>[a-z]{2,3}-->"
+    assert re.findall(pattern, saved) == [
+        "<!--ankiweb:lang=en>fr-->",
+        "<!--ankiweb:lang=xx>yy-->",
+        "<!--ankiweb:lang=en>en-->",
+    ]
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_overview_editor_preserves_leading_description_newline(client, legacy):
+    text = "\n\nFirst **line**\n"
+    stored = (
+        "<!--ankiweb:lang=de>en-->" + text
+        if legacy
+        else apply_marker(text, LanguagePair("de", "en"))
+    )
+    did = _run(client, lambda col: _set_description(col, stored, True))
+    _run(client, _add_card)
+    response = client.get("/overview")
+    assert response.status_code == 200
+    signals = re.search(
+        r"id=\"descedit\".*?data-signals='([^']*)'", response.text, re.DOTALL
+    )
+    assert signals is not None
+    assert json.loads(html.unescape(signals.group(1)))["desc"] == text
+    assert "ankiweb:lang" not in response.text
+    assert _run(client, lambda col: col.decks.get(did))["desc"] == stored
+
+
+@pytest.mark.parametrize(
+    "existing",
+    [
+        "<!--ankiweb:lang=xx>yy-->\nOriginal",
+        "Original<!--ankiweb:lang=en>en-->",
+        "A<!--ankiweb:lang=xx>yy-->B<!--ankiweb:lang=de>en-->C",
+    ],
+)
+def test_setdesc_edits_visible_text_without_losing_unsupported_markers(
+    client, existing
+):
+    did = _run(client, lambda col: _set_description(col, existing, True))
+    edited = "\nEdited **text** and <!--foreign:metadata--> details"
+    response = client.post(
+        "/overview/setdesc",
+        json={"desc": edited, "md": True},
+        headers={"Datastar-Request": "true"},
+    )
+    assert response.status_code == 200
+    saved = _run(client, lambda col: col.decks.get(did))["desc"]
+    assert strip_marker(saved) == edited
+    assert read_marker(saved) is None
+    pattern = r"<!--ankiweb:lang=[a-z]{2,3}>[a-z]{2,3}-->"
+    assert re.findall(pattern, saved) == re.findall(pattern, existing)
+    rendered = _run(client, lambda col: col.render_markdown(saved))
+    assert "<strong>text</strong>" in rendered
+    response = client.post(
+        "/overview/setdesc",
+        json={"desc": edited, "md": True},
+        headers={"Datastar-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert _run(client, lambda col: col.decks.get(did))["desc"] == saved
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Hello **world**", "<strong>world</strong>"),
+        ("# Heading\n\n- item", "<h1"),
+        ("\nHello **world**", "<strong>world</strong>"),
+    ],
+)
+def test_adding_language_pair_keeps_anki_markdown_first_line(col, text, expected):
+    from ankiweb.core.app_client.decks import create_deck
+
+    row = create_deck(col, "Study", "📚", None)
+    deck = col.decks.get(row.deck_id)
+    deck["desc"] = text
+    deck["md"] = True
+    col.decks.update_dict(deck)
+    update_deck_settings(col, row.deck_id, "Study", "📚", LanguagePair("de", "en"))
+    saved = col.decks.get(row.deck_id)["desc"]
+    assert strip_marker(saved) == text
+    assert expected in col.render_markdown(saved)
+
+
+def test_setdesc_keeps_anki_markdown_first_line_after_edit(client):
+    existing = "<!--ankiweb:lang=de>en-->Old text"
+    did = _run(client, lambda col: _set_description(col, existing, True))
+    text = "New **first line**\n\n# Heading"
+    response = client.post(
+        "/overview/setdesc",
+        json={"desc": text, "md": True},
+        headers={"Datastar-Request": "true"},
+    )
+    assert response.status_code == 200
+    saved = _run(client, lambda col: col.decks.get(did))["desc"]
+    assert strip_marker(saved) == text
+    assert read_marker(saved) == LanguagePair("de", "en")
+    rendered = _run(client, lambda col: col.render_markdown(saved))
+    assert "<strong>first line</strong>" in rendered
+    assert "<h1" in rendered and "Heading</h1>" in rendered
 
 
 @pytest.mark.parametrize("invalid", [None, [], {"text": "injected"}, 1])
@@ -174,7 +362,8 @@ def test_setdesc_missing_description_preserves_marker_and_md_request(client):
     )
     assert response.status_code == 200
     deck = _run(client, lambda col: col.decks.get(did))
-    assert deck["desc"] == "<!--ankiweb:lang=en>fr-->"
+    assert strip_marker(deck["desc"]) == ""
+    assert read_marker(deck["desc"]) == LanguagePair("en", "fr")
     assert deck.get("md", False) is False
 
 

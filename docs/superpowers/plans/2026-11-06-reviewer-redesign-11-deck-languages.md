@@ -22,15 +22,15 @@
 | Frage | Entscheidung | Beleg |
 |---|---|---|
 | Speicherort | **Marker in der Stapelbeschreibung `desc`**: `<!--ankiweb:lang=es>de-->` (`src>dst`, ISO-639-1-Kürzel klein) | `RESEARCH.md`: einziger Kandidat, der pro Stapel gilt und `.apkg` (mit/ohne Configs, `legacy`) und `.colpkg` byte-genau übersteht (E11) |
-| Position | Marker **am Anfang** von `desc`, Rest unverändert dahinter | so gemessen (`<!--…-->Mein Text`) |
+| Position | Neuer Marker **am Anfang** von `desc`, mit `<!--ankiweb:lang-separator-->\n\n` als erkennbarem Markdown-Abstand, Rest bytegleich dahinter | alter Marker direkt vor Text wird weiterhin gelesen |
 | Lesen | Erster passender Marker im ganzen `desc` gewinnt; Kürzel außerhalb des Katalogs = **kein Sprachpaar** (nicht kaputt, nicht angezeigt) | tolerant gegenüber Fremdwerkzeugen |
-| Schreiben | Alle Marker entfernen, genau einen voranstellen (oder keinen). **Nur wenn sich das Paar ändert**; sonst bleibt `desc` byte-identisch | kein Datenverlust beim Umbenennen oder Emoji-Wechsel |
+| Schreiben | Bei Paaränderung alle Marker entfernen und genau einen voranstellen (oder keinen). Sonst bleiben sie erhalten; Ausnahme: bei Namens- oder Emoji-Änderung wird ein gültiger alter Marker in Markdown-Beschreibungen migriert | kein Datenverlust beim Umbenennen oder Emoji-Wechsel |
 | "Keine Sprachen" | = kein Marker. Zurückwechseln zum Paar im selben Dialog stellt die zuvor gewählten Sprachen wieder her (nur Client-Zustand) | `DESIGN.md` |
 | Beide Selects leer, Modus Sprachstapel | "noch nicht entschieden": Erstellen/Speichern gesperrt; Server lehnt mit `incomplete` ab | `DESIGN.md` |
 | Gleiche Sprache | Fehler (Server `same`, Client roter Rand an beiden Selects) | `DESIGN.md` |
 | Sprachkatalog | 16 Sprachen aus dem Mock (de en es fr it pt nl pl tr ru ja zh ko ar sv la), Flagge je Sprache, `la` = 🏛️. Namen lokalisiert über `s()`, Kürzel im Optionstext (`Spanisch · ES`) | `DESIGN.md` Sprachwahl |
 | Flaggen als Deck-Emoji | Erlaubte Menge = `ALL_EMOJI` ∪ Katalog-Flaggen. Das Raster bleibt unverändert; eine Flagge außerhalb des Rasters zeigt Vorschau, aber keine gewählte Kachel; Tab `world` | Flaggen-Vorschlag aus dem Mock braucht das, ohne die 18er-Gruppen umzubauen |
-| Marker bei Desktop-Bearbeitung | `overview.py` blendet den Marker im Textarea aus und setzt ihn beim Speichern wieder ein | sonst löscht jedes Speichern der Beschreibung im Desktop-Client das Sprachpaar (E6) |
+| Marker bei Desktop-Bearbeitung | `overview.py` blendet Marker aus und erhält unbekannte Marker auch nach einem gültigen ersten Marker; alte gültige Marker werden beim Speichern von Markdown-Beschreibungen migriert | sonst gehen Sprachmetadaten verloren oder Ankis Markdown bleibt beschädigt |
 | Stapel löschen | Im Menü, mit **Bestätigungsdialog** (daisyUI `modal`) mit Kartenanzahl. Nur Wurzelstapel; Standardstapel (ID 1) nicht löschbar. Mock zeigt nur den Menüpunkt; der Dialog ist neu und zu bestätigen | destruktive Aktion |
 | Menü-Technik | daisyUI `dropdown` per **Popover-API** (`popovertarget`, `anchor-name`), `menu` als Inhalt | Escape, Außenklick, Fokus ohne eigenes JS |
 | Untergeordnete Stapel | Einstellungen gelten nur für **Wurzelstapel** (Liste zeigt nur Wurzeln). Umbenennen eines Wurzelstapels benennt Unterstapel mit (Anki) | `deck_rows` |
@@ -88,7 +88,7 @@ Mein Text<!--ankiweb:lang=es>de-->      -> gelesen (Marker irgendwo), beim Schre
 <!--ankiweb:lang=es>es-->               -> kein Paar (gleich)
 ```
 
-Regex: `<!--ankiweb:lang=([a-z]{2,3})>([a-z]{2,3})-->`. `apply_marker(desc, None)` liefert `""`, wenn nach dem Entfernen nichts bleibt. Das Markdown-Flag (`md`) wird nie angefasst.
+Regex für alte und neue Marker: `<!--ankiweb:lang=([a-z]{2,3})>([a-z]{2,3})-->`, optional gefolgt von `<!--ankiweb:lang-separator-->\n\n`. Nur der gekennzeichnete Abstand wird beim Entfernen mit entfernt; bei älteren Markern bleiben alle folgenden Bytes erhalten. Neue Marker stehen damit vor einem leeren Absatz und stören Ankis Markdown-Verarbeitung nicht. Alte gültige Marker werden beim Speichern einer Markdown-Beschreibung auch ohne Textänderung sowie bei geänderten Namen oder Emoji in Markdown-Beschreibungen in das neue Format übertragen; sonst bleiben unveränderte Daten bytegleich. Bis zur Migration kann Ankis Darstellung des ersten Markdown-Absatzes fehlerhaft bleiben. `apply_marker(desc, None)` liefert `""`, wenn nach dem Entfernen nichts bleibt. Das Markdown-Flag (`md`) wird nie angefasst.
 
 ## Dateien
 
@@ -205,7 +205,7 @@ Reihenfolge: 11.0 → 11.1 → 11.2; danach **parallel** 11.3 (Strings), 11.4–
 - [x] Nur das Nötige in `shell_src/app-client.css`, mit Theme-Token; `npm run build:css:app`; Klassen-Test (`test_app_css.py`) grün.
 
 ### 11.7 Desktop-Overview erhält den Marker
-- [x] `render_overview_html`: `raw_desc=strip_marker(raw)`. `setdesc`: `d["desc"] = apply_marker(p.get("desc", ""), read_marker(d.get("desc", "")))`.
+- [x] `render_overview_html`: `raw_desc=strip_marker(raw)`. `setdesc`: `replace_description` erhält bisherige ungültige Marker beim Editieren und migriert gültige alte Marker beim Speichern von Markdown-Beschreibungen.
 - [x] Entscheidung M5: Falls `sanitize_html`/Markdown den Marker sichtbar machen, im Render ebenfalls `strip_marker`.
 - [x] Tests in `tests/test_overview.py`: Beschreibung speichern lässt das Paar bestehen; Textarea enthält den Marker nicht; Stapel ohne Marker unverändert; vom Nutzer eingefügter Marker im Textfeld wird zu genau einem Marker.
 

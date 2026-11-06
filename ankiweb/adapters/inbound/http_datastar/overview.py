@@ -13,8 +13,7 @@ from ankiweb.adapters.inbound.http_datastar.common import (
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
 from ankiweb.core.app_client.deck_languages import (
-    apply_marker,
-    read_marker,
+    replace_description,
     strip_marker,
 )
 from ankiweb.core.html_sanitize import sanitize_html
@@ -87,8 +86,8 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
         def save_desc(col):
             did = col.decks.get_current_id()
             d = col.decks.get(did)
-            d["desc"] = apply_marker(desc, read_marker(d.get("desc", "")))
             d["md"] = bool(p.get("md", False))
+            d["desc"] = replace_description(desc, d.get("desc", ""), markdown=d["md"])
             return col.decks.update_dict(d)
 
         await service.run_op(save_desc, initiator="overview")
