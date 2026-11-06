@@ -76,6 +76,8 @@ def test_create_first_deck_from_empty_state(
         expect(sheet).to_have_attribute("aria-hidden", "false")
         expect(name).to_be_focused()
         name.fill("First deck")
+        expect(submit).to_be_disabled()
+        sheet.get_by_role("radio", name="No languages").check()
         expect(submit).to_be_enabled()
         submit.click()
         expect(sheet).to_have_attribute("aria-hidden", "true")
@@ -130,6 +132,7 @@ def test_create_decks_in_browser(
         page.get_by_role("tab", name="Study").click()
         expect(dna).to_be_checked()
         name.fill("Biology")
+        sheet.get_by_role("radio", name="No languages").check()
         if scheme == "light":
             page.screenshot(path=str(tmp_path / "screenshot-decks-new-deck.png"))
         name.press("Enter")
@@ -140,6 +143,7 @@ def test_create_decks_in_browser(
 
         opener.click()
         name.fill("biology")
+        sheet.get_by_role("radio", name="No languages").check()
         submit.click()
         expect(page.locator("#deck-name-error")).to_contain_text("already exists")
         expect(sheet).to_have_attribute("aria-hidden", "false")
