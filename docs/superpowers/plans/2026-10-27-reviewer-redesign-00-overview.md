@@ -13,6 +13,7 @@ Dieses Dokument = Index, Entscheidungen, Abhängigkeiten. Details je Schritt in 
 | 6 | [06-i18n](2026-10-27-reviewer-redesign-06-i18n.md) | Mehrsprachigkeit: Anki-Katalog plus kleiner eigener Katalog, `<html lang/dir>`, RTL, lokalisiertes Manifest |
 | 7 | [07-new-deck](2026-10-29-reviewer-redesign-07-new-deck.md) | Stapel anlegen: Name und Emoji (Suffix ` · 🧬` im Deck-Namen), `POST /app/decks`, Bottom-Sheet mit daisyUI; stellt `split_emoji` aus Plan 2 von Präfix auf Suffix um |
 | 10 | [10-app-login](2026-11-02-reviewer-redesign-10-app-login.md) | Neo-Pop-Login unter `/app/login`, gemeinsames Auth-Cookie mit `/login`, nach Login immer `/app/`; ersetzt abweichende Login-Ziele in Plan 1 und 5 |
+| 11 | [11-deck-languages](2026-11-06-reviewer-redesign-11-deck-languages.md) | Stapel-Sprachen: Sprachpaar als Marker in der Stapelbeschreibung (`<!--ankiweb:lang=es>de-->`), Stapel-Einstellungen (Name, Sprachen, Emoji), Per-Deck-Menü, Sprach-Chip in der Liste; Marker bleibt bei Desktop-Beschreibungsbearbeitung erhalten |
 
 ## Festgelegte Entscheidungen
 

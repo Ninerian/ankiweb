@@ -2,6 +2,8 @@
 
 Mocks (standalone HTML, kein Netzwerk, UI-Sprache Deutsch), Sprache der Doku: Deutsch. Speicherort-Empfehlung siehe `RESEARCH.md` (Marker in Stapelbeschreibung `desc`).
 
+Umsetzung und Messungen: [Plan 11 – Stapel-Sprachen](../../docs/superpowers/plans/2026-11-06-reviewer-redesign-11-deck-languages.md).
+
 | Datei | Inhalt |
 |---|---|
 | `create-deck-mockup.html` | „Neuer Stapel“ + Sprachen. Demo-Chips: Leer, Ausgefüllt, Gleiche Sprache, Nur eine Sprache, Keine Sprachen |
