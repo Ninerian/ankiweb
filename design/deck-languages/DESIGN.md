@@ -27,4 +27,4 @@ Bedienung: obere Demo-Leiste (nur Mock-Chrome, nicht Produkt) wechselt Hell/Dunk
 
 ## Screenshots
 
-`screenshot-<mock>-<zustand>-<light|dark>-<mobile|desktop>.png` (mobile 375×667 @2x, desktop 1280×800). Die vorhandenen Screenshots zeigen den Stand vor den aktuellen Änderungen.
+Die lokal erzeugten, nicht committeten Screenshots folgen dem Schema `screenshot-<mock>-<zustand>-<light|dark>-<mobile|desktop>.png` (mobil 375×667 @2x, Desktop 1280×800; Einstellungen zusätzlich mit `…-scrolled.png`).
