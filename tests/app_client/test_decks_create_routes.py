@@ -39,9 +39,19 @@ def _decks(client: TestClient) -> dict[int, str]:
     )
 
 
+def _payload(name: str, emoji: str) -> dict[str, str]:
+    return {
+        "newName": name,
+        "newEmoji": emoji,
+        "newMode": "none",
+        "newSrc": "",
+        "newDst": "",
+    }
+
+
 def test_create_renders_searchable_list_toast_and_reset(client: TestClient) -> None:
     before = _decks(client)
-    response = client.post("/app/decks", json={"newName": "Biology", "newEmoji": "🧬"})
+    response = client.post("/app/decks", json=_payload("Biology", "🧬"))
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     created = {key: name for key, name in _decks(client).items() if key not in before}
@@ -55,6 +65,9 @@ def test_create_renders_searchable_list_toast_and_reset(client: TestClient) -> N
         "q": "",
         "newName": "",
         "newEmoji": "📚",
+        "newMode": "langs",
+        "newSrc": "",
+        "newDst": "",
         "newError": "",
         "newOpen": False,
     }
@@ -80,7 +93,7 @@ def test_errors_patch_only_error_without_writing(
     client: TestClient, name: str, emoji: str, kind: str
 ) -> None:
     before = _decks(client)
-    response = client.post("/app/decks", json={"newName": name, "newEmoji": emoji})
+    response = client.post("/app/decks", json=_payload(name, emoji))
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert _signals(response) == {"newError": s(f"app_decks_name_{kind}", lang="en")}
@@ -128,7 +141,7 @@ def test_create_requires_password(tmp_path: Path, cookie_state: str) -> None:
         before = _decks(client)
         response = client.post(
             "/app/decks",
-            json={"newName": "Locked", "newEmoji": "📚"},
+            json=_payload("Locked", "📚"),
             follow_redirects=False,
         )
         assert response.status_code == 200
@@ -149,10 +162,7 @@ def test_create_requires_password(tmp_path: Path, cookie_state: str) -> None:
         assert client.get("/app/", follow_redirects=False).status_code == 200
         assert _decks(client) == before
         assert (
-            client.post(
-                "/app/decks", json={"newName": "Locked", "newEmoji": "📚"}
-            ).status_code
-            == 200
+            client.post("/app/decks", json=_payload("Locked", "📚")).status_code == 200
         )
         assert "Locked · 📚" in _decks(client).values()
 
@@ -161,7 +171,7 @@ def test_foreign_origin_cannot_create_deck(client: TestClient) -> None:
     before = _decks(client)
     response = client.post(
         "/app/decks",
-        json={"newName": "Attack", "newEmoji": "📚"},
+        json=_payload("Attack", "📚"),
         headers={"Origin": "https://evil.example"},
     )
     assert response.status_code == 403
@@ -171,7 +181,7 @@ def test_foreign_origin_cannot_create_deck(client: TestClient) -> None:
 def test_special_characters_are_escaped_in_markup_and_js(client: TestClient) -> None:
     name = 'It\'s "Q" \\ <b>x</b> & $x'
     before = _decks(client)
-    response = client.post("/app/decks", json={"newName": name, "newEmoji": "📚"})
+    response = client.post("/app/decks", json=_payload(name, "📚"))
     assert response.status_code == 200
     assert "&lt;b&gt;x&lt;/b&gt;" in response.text
     assert "<b>x</b>" not in response.text
@@ -184,7 +194,7 @@ def test_special_characters_are_escaped_in_markup_and_js(client: TestClient) -> 
 
 def test_list_shows_saved_name_for_anki_normalized_input(client: TestClient) -> None:
     before = _decks(client)
-    response = client.post("/app/decks", json={"newName": ":Bio:", "newEmoji": "🧬"})
+    response = client.post("/app/decks", json=_payload(":Bio:", "🧬"))
     assert response.status_code == 200
     created = [name for key, name in _decks(client).items() if key not in before]
     assert created == ["Bio · 🧬"]
@@ -192,12 +202,9 @@ def test_list_shows_saved_name_for_anki_normalized_input(client: TestClient) -> 
 
 
 def test_colon_prefixed_duplicate_is_rejected_without_row(client: TestClient) -> None:
-    assert (
-        client.post("/app/decks", json={"newName": "Bio", "newEmoji": "📚"}).status_code
-        == 200
-    )
+    assert client.post("/app/decks", json=_payload("Bio", "📚")).status_code == 200
     before = _decks(client)
-    response = client.post("/app/decks", json={"newName": ":Bio", "newEmoji": "📚"})
+    response = client.post("/app/decks", json=_payload(":Bio", "📚"))
     assert response.status_code == 200
     assert _signals(response) == {"newError": s("app_decks_name_taken", lang="en")}
     assert "#decks-content" not in response.text
@@ -205,7 +212,7 @@ def test_colon_prefixed_duplicate_is_rejected_without_row(client: TestClient) ->
 
 
 def test_created_row_has_no_leading_colon(client: TestClient) -> None:
-    response = client.post("/app/decks", json={"newName": ":Bio2", "newEmoji": "📚"})
+    response = client.post("/app/decks", json=_payload(":Bio2", "📚"))
     content = response.text.split("data: selector #decks-content")[1]
     assert "Bio2" in content
     assert ":Bio2" not in html.unescape(content)
