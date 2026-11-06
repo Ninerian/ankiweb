@@ -1,0 +1,60 @@
+{% import 'app/_deck_language_strings.html.jinja' as language_strings with context %}
+{% set deck_language_labels = language_strings.deck_language_labels %}
+{% set deck_language_names = language_strings.deck_language_names %}
+{% set deck_language_flags = {} %}
+{% for language in LANGUAGES %}
+  {% set _ = deck_language_flags.update({language.code: language.flag}) %}
+{% endfor %}
+{% macro with_language(text, signal) %}
+  {% set parts = text.split('\x1f') %}
+  <span>{{ parts[0] }}<strong data-text="{{ js_literal(deck_language_names) }}[{{ signal }}]"></strong>{{ parts[1] }}</span>
+{% endmacro %}
+
+
+{% macro languages(prefix) %}
+<fieldset class="fieldset mb-4" aria-describedby="{{ prefix }}-lang-msg" data-signals:_swap__ifmissing="''" data-on:change="${{ prefix }}Error = ''">
+  <legend class="fieldset-legend">{{ deck_language_labels.languages }}{% if prefix == 'set' %} <span id="set-lang-changed" class="badge badge-info badge-sm" data-show="$setMode !== $baseMode || ($setMode === 'langs' && ($setSrc !== $baseSrc || $setDst !== $baseDst))" style="display:none">{{ deck_language_labels.changed_tag }}</span>{% endif %}</legend>
+  <div class="join w-full" role="radiogroup" aria-label="{{ deck_language_labels.languages }}">
+    <input id="{{ prefix }}-mode-langs" class="join-item btn flex-1 checked:btn-accent" type="radio" name="{{ prefix }}-mode" value="langs" aria-label="{{ deck_language_labels.mode_pair }}" data-bind:{{ prefix }}-mode>
+    <input id="{{ prefix }}-mode-none" class="join-item btn flex-1 checked:btn-accent" type="radio" name="{{ prefix }}-mode" value="none" aria-label="{{ deck_language_labels.mode_none }}" data-bind:{{ prefix }}-mode>
+  </div>
+  <div id="{{ prefix }}-lang-msg" role="alert" aria-live="polite">
+    <div class="alert alert-error mt-2" data-show="${{ prefix }}Mode === 'langs' && !!${{ prefix }}Src && ${{ prefix }}Src === ${{ prefix }}Dst" style="display:none">{{ with_language(deck_language_labels.same, '$' ~ prefix ~ 'Src') }}</div>
+    <div class="alert alert-warning mt-2" data-show="${{ prefix }}Mode === 'langs' && !!${{ prefix }}Src && !${{ prefix }}Dst" style="display:none">{{ deck_language_labels.missing_dst }}</div>
+    <div class="alert alert-warning mt-2" data-show="${{ prefix }}Mode === 'langs' && !${{ prefix }}Src && !!${{ prefix }}Dst" style="display:none">{{ deck_language_labels.missing_src }}</div>
+    {% if prefix == 'set' %}
+    <div class="alert alert-warning mt-2" data-show="$setMode === 'none' && $baseMode === 'langs' && !!$baseSrc && !!$baseDst" style="display:none">{{ deck_language_labels.none_removes }}</div>
+    {% endif %}
+  </div>
+  <div id="{{ prefix }}-language-details" data-show="${{ prefix }}Mode === 'langs'" style="display:none">
+    <label class="fieldset-legend" for="{{ prefix }}-src">{{ deck_language_labels.src }}</label>
+    <div class="relative">
+      <span id="{{ prefix }}-flag-src" class="badge badge-ghost pointer-events-none absolute z-10 left-2 top-1/2 -translate-y-1/2" aria-hidden="true" data-text="{{ js_literal(deck_language_flags) }}[${{ prefix }}Src] || '?'">?</span>
+      <select id="{{ prefix }}-src" class="select block w-full border-neo-edge bg-base-200 pl-12 shadow-neo" aria-describedby="{{ prefix }}-lang-msg {{ prefix }}-lang-note" data-bind:{{ prefix }}-src data-attr:aria-invalid="${{ prefix }}Mode === 'langs' && !!${{ prefix }}Src && ${{ prefix }}Src === ${{ prefix }}Dst ? 'true' : 'false'" data-class:select-error="${{ prefix }}Mode === 'langs' && !!${{ prefix }}Src && ${{ prefix }}Src === ${{ prefix }}Dst">
+        <option value="">{{ deck_language_labels.pick }}</option>
+        {% for language in LANGUAGES %}
+        <option value="{{ language.code }}">{{ deck_language_names[language.code] }} · {{ language.code | upper }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex items-center gap-2.5 py-2">
+      <label class="fieldset-legend" for="{{ prefix }}-dst">{{ deck_language_labels.dst }}</label>
+      <div class="divider my-0 grow" aria-hidden="true"></div>
+      <button id="{{ prefix }}-swap" type="button" class="btn btn-sm rounded-full" aria-label="{{ deck_language_labels.swap }}" title="{{ deck_language_labels.swap }}" data-attr:disabled="${{ prefix }}Mode === 'none' || (!${{ prefix }}Src && !${{ prefix }}Dst)" data-on:click="$_swap = ${{ prefix }}Src; ${{ prefix }}Src = ${{ prefix }}Dst; ${{ prefix }}Dst = $_swap" disabled><span aria-hidden="true">⇅</span> {{ deck_language_labels.swap_short }}</button>
+    </div>
+    <div class="relative">
+      <span id="{{ prefix }}-flag-dst" class="badge badge-ghost pointer-events-none absolute z-10 left-2 top-1/2 -translate-y-1/2" aria-hidden="true" data-text="{{ js_literal(deck_language_flags) }}[${{ prefix }}Dst] || '?'">?</span>
+      <select id="{{ prefix }}-dst" class="select block w-full border-neo-edge bg-base-200 pl-12 shadow-neo" aria-describedby="{{ prefix }}-lang-msg {{ prefix }}-lang-note" data-bind:{{ prefix }}-dst data-attr:aria-invalid="${{ prefix }}Mode === 'langs' && !!${{ prefix }}Src && ${{ prefix }}Src === ${{ prefix }}Dst ? 'true' : 'false'" data-class:select-error="${{ prefix }}Mode === 'langs' && !!${{ prefix }}Src && ${{ prefix }}Src === ${{ prefix }}Dst">
+        <option value="">{{ deck_language_labels.pick }}</option>
+        {% for language in LANGUAGES %}
+        <option value="{{ language.code }}">{{ deck_language_names[language.code] }} · {{ language.code | upper }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <p id="{{ prefix }}-lang-note" class="mt-2 text-sm text-base-content/70"><strong>{{ deck_language_labels.src }}:</strong> {{ deck_language_labels.src_hint }} <strong>{{ deck_language_labels.dst }}:</strong> {{ deck_language_labels.dst_hint }}</p>
+  </div>
+  {% if prefix == 'new' %}
+  <button id="new-flag-suggest" type="button" class="btn btn-sm btn-outline mt-2" data-show="$newMode === 'langs' && !!$newDst && $newSrc !== $newDst && $newEmoji !== {{ js_literal(deck_language_flags) }}[$newDst]" data-on:click="$newError = ''; $newEmoji = {{ js_literal(deck_language_flags) }}[$newDst]" style="display:none">{{ with_language(deck_language_labels.flag_suggest, '$newDst') }}</button>
+  {% endif %}
+</fieldset>
+{% endmacro %}

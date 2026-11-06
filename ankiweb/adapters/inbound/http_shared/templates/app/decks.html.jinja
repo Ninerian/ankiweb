@@ -39,7 +39,7 @@
   <div id="deck-toast-{{ created_id }}" class="alert deck-toast">{{ s("app_decks_created") }}</div>
 </div>
 {% else %}
-<main id="decks-page" class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pb-30 pl-4" data-signals="{q: '', newName: '', newEmoji: '📚', newOpen: false, creating: false, newError: ''}">
+<main id="decks-page" class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pb-30 pl-4" data-signals="{q: '', newName: '', newEmoji: '📚', newMode: 'langs', newSrc: '', newDst: '', newOpen: false, creating: false, newError: '', setOpen: false, setId: 0, setName: '', setEmoji: '', setMode: 'langs', setSrc: '', setDst: '', baseName: '', baseEmoji: '', baseMode: 'langs', baseSrc: '', baseDst: '', saving: false, setError: '', delOpen: false}">
   {{ content() }}
   <button id="install-app" type="button" class="btn neo-press mt-4" hidden>{{ s('app_install_button') }}</button>
   <div id="ios-install-hint" class="mt-4 rounded-box border-2 border-neo-edge bg-base-200 p-4 font-bold shadow-neo" hidden>
@@ -51,5 +51,7 @@
   </div>
   <div id="toast" class="toast toast-top toast-center pointer-events-none z-50" role="status" aria-live="polite"></div>
   {% include "app/_deck_sheet.html.jinja" %}
+  {% include "app/_deck_settings_sheet.html.jinja" %}
+  {% include "app/_deck_delete_sheet.html.jinja" %}
 </main>
 {% endif %}

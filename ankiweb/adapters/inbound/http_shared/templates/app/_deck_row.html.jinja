@@ -1,8 +1,32 @@
+{% import 'app/_deck_language_strings.html.jinja' as language_strings with context %}
+{% set labels = language_strings.deck_language_labels %}
+{% set names = language_strings.deck_language_names %}
 <article id="deck-{{ view.row.deck_id }}" class="card deck-card bg-base-200" data-show="{{ view.show }}"{% if view.row.deck_id == created_id %} data-class:deck-drop="true"{% endif %}>
   <div class="card-body gap-0 p-4">
-    <div class="flex min-w-0 items-center gap-3">
+    <div class="flex min-w-0 items-start gap-3">
       <span class="grid size-12 flex-none place-items-center rounded-deck border-2 border-base-content bg-secondary text-2xl leading-none" aria-hidden="true">{{ view.row.emoji }}</span>
-      <h3 class="min-w-0 text-deck-name leading-deck-name font-black tracking-deck-name wrap-anywhere">{{ view.row.name }}</h3>
+      <div class="min-w-0 flex-1">
+        <h3 class="text-deck-name leading-deck-name font-black tracking-deck-name wrap-anywhere">{{ view.row.name }}</h3>
+        {% if view.row.languages is not none %}
+        {% set src = view.row.languages.src %}
+        {% set dst = view.row.languages.dst %}
+        {% set src_language = LANGUAGES | selectattr('code', 'equalto', src) | first %}
+        {% set dst_language = LANGUAGES | selectattr('code', 'equalto', dst) | first %}
+        <span class="badge badge-outline mt-1">
+          <span aria-hidden="true">{{ src_language.flag }} {{ src | upper }} → {{ dst_language.flag }} {{ dst | upper }}</span>
+          <span class="sr-only">{{ labels.chip_label.format(src=names[src], dst=names[dst]) }}</span>
+        </span>
+        {% else %}
+        <span class="badge badge-outline badge-dash mt-1">{{ labels.none_chip }}</span>
+        {% endif %}
+      </div>
+      <div class="flex-none">
+        <button id="deck-menu-button-{{ view.row.deck_id }}" type="button" class="btn btn-ghost btn-square btn-sm" popovertarget="deck-menu-{{ view.row.deck_id }}" style="anchor-name:--deck-menu-{{ view.row.deck_id }}" aria-haspopup="menu" aria-controls="deck-menu-{{ view.row.deck_id }}" aria-expanded="false" aria-label="{{ labels.menu_open.format(deck=view.row.name) }}" data-on:keydown="window.avDeckMenuButtonKey(evt)"><span aria-hidden="true">⋯</span></button>
+        <ul id="deck-menu-{{ view.row.deck_id }}" class="dropdown dropdown-end menu rounded-box border-2 border-neo-edge bg-base-200 shadow-neo" popover role="menu" aria-labelledby="deck-menu-button-{{ view.row.deck_id }}" style="position-anchor:--deck-menu-{{ view.row.deck_id }}" data-on:toggle="el.previousElementSibling.setAttribute('aria-expanded', evt.newState === 'open' ? 'true' : 'false')" data-on:keydown="window.avDeckMenuKey(evt)">
+          <li role="none"><button type="button" role="menuitem" data-on:click="window.avDeckOpener(el.closest('[popover]').previousElementSibling); el.closest('[popover]').hidePopover(); @get('/app/decks/{{ view.row.deck_id }}/settings')">{{ labels.settings }}</button></li>
+          <li role="none"><button type="button" role="menuitem" class="text-error" {% if view.row.deck_id == 1 %}disabled aria-disabled="true" title="{{ labels.protected }}"{% else %}data-on:click="window.avDeckOpener(el.closest('[popover]').previousElementSibling); el.closest('[popover]').hidePopover(); @get('/app/decks/{{ view.row.deck_id }}/delete')"{% endif %}>{{ labels.delete }}</button></li>
+        </ul>
+      </div>
     </div>
     <div class="my-3 flex flex-wrap gap-1.5">
       <span class="badge badge-warning lowercase h-auto border-deck-pill border-current px-2.25 py-0.75 text-deck-pill leading-deck-pill font-extrabold">{{ view.row.due }} {{ tr.statistics_due_count() }}</span>
