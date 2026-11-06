@@ -2,13 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from datastar_py.fastapi import (
-    DatastarResponse,
-    ReadSignals,
-)
-from datastar_py.fastapi import (
-    ServerSentEventGenerator as SSE,
-)
+from datastar_py.fastapi import DatastarResponse, ReadSignals
+from datastar_py.fastapi import ServerSentEventGenerator as SSE
 from fastapi import APIRouter
 
 from ankiweb.adapters.inbound.http_datastar.common import (
@@ -17,6 +12,11 @@ from ankiweb.adapters.inbound.http_datastar.common import (
 )
 from ankiweb.adapters.inbound.http_shared import templating
 from ankiweb.adapters.inbound.http_shared.congrats import render_congrats_html
+from ankiweb.core.app_client.deck_languages import (
+    apply_marker,
+    read_marker,
+    strip_marker,
+)
 from ankiweb.core.html_sanitize import sanitize_html
 
 
@@ -80,11 +80,14 @@ def make_overview_routes(get_service: Callable) -> APIRouter:
             return DatastarResponse()
 
         p = payload
+        desc = p.get("desc", "")
+        if not isinstance(desc, str):
+            return DatastarResponse()
 
         def save_desc(col):
             did = col.decks.get_current_id()
             d = col.decks.get(did)
-            d["desc"] = p.get("desc", "")
+            d["desc"] = apply_marker(desc, read_marker(d.get("desc", "")))
             d["md"] = bool(p.get("md", False))
             return col.decks.update_dict(d)
 
@@ -102,7 +105,7 @@ def render_overview_html(col) -> str:
         # alternative to the private col.sched._is_finished().
         return f'<div id="overview-page">{render_congrats_html(col)}</div>'
 
-    raw = deck.get("desc", "")
+    raw = strip_marker(deck.get("desc", ""))
     raw_rendered = col.render_markdown(raw) if (raw and deck.get("md")) else raw
     desc = sanitize_html(raw_rendered)
     desc_is_markdown = bool(deck.get("md"))

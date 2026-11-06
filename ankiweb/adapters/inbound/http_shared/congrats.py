@@ -5,6 +5,7 @@ import logging
 from anki.errors import AnkiException
 
 from ankiweb.adapters.inbound.http_shared import templating
+from ankiweb.core.app_client.deck_languages import strip_marker
 from ankiweb.core.html_sanitize import sanitize_html
 from ankiweb.core.i18n import tr
 
@@ -97,23 +98,24 @@ def render_congrats_html(col) -> str:
         custom_study_msg = tr.scheduling_how_to_custom_study(custom_study=custom_study)
 
     raw_desc = info.deck_description
-    if not raw_desc:
-        try:
-            deck = col.decks.current()
-            raw_desc = deck.get("desc", "")
-            if raw_desc and deck.get("md"):
-                raw_desc = col.render_markdown(raw_desc)
-        except (
-            AnkiException,
-            AttributeError,
-            KeyError,
-            OSError,
-            RuntimeError,
-            TypeError,
-            ValueError,
-        ):
-            logger.exception("Failed to render congratulations deck description")
-            raw_desc = ""
+    try:
+        deck = col.decks.current()
+        deck_desc = deck.get("desc", "")
+        stripped_desc = strip_marker(deck_desc)
+        if stripped_desc != deck_desc or not raw_desc:
+            if stripped_desc and deck.get("md"):
+                stripped_desc = col.render_markdown(stripped_desc)
+            raw_desc = stripped_desc
+    except (
+        AnkiException,
+        AttributeError,
+        KeyError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ):
+        logger.exception("Failed to render congratulations deck description")
     sanitized_desc = sanitize_html(raw_desc) if raw_desc else ""
 
     return templating.render(
