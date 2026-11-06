@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from anki.collection import DeckIdLimit
+
 from ankiweb.ankiconnect.schemas.import_export import (
     ExportPackageParams,
     ImportPackageParams,
@@ -25,8 +27,7 @@ async def export_package(rt, deck=None, path=None, includeSched=False):
         d = col.decks.by_name(deck)
         if d is None:
             return False
-        lim = ie.ExportLimit()
-        lim.deck_id = d["id"]
+        lim = DeckIdLimit(d["id"])
         opts = ie.ExportAnkiPackageOptions(
             with_scheduling=bool(includeSched),
             with_media=True,

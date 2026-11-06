@@ -5,6 +5,8 @@ import os
 import tempfile
 from typing import Annotated
 
+from anki.collection import DeckIdLimit
+from anki.decks import DeckId
 from anki.errors import AnkiException
 from fastapi import APIRouter, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -286,13 +288,8 @@ def _register_preview_and_media_routes(router, get_service) -> None:
         return {"filename": fname}
 
 
-def _make_export_limit(ie, target: str):
-    lim = ie.ExportLimit()
-    if target == "all":
-        lim.whole_collection.SetInParent()
-    else:
-        lim.deck_id = int(target)
-    return lim
+def _make_export_limit(target: str) -> DeckIdLimit | None:
+    return None if target == "all" else DeckIdLimit(DeckId(int(target)))
 
 
 async def _export_anki_package(
@@ -304,7 +301,7 @@ async def _export_anki_package(
         with_deck_configs=with_deck_configs,
         legacy=legacy,
     )
-    lim = _make_export_limit(ie, target)
+    lim = _make_export_limit(target)
     await service.run(
         lambda col: col.export_anki_package(out_path=out, options=opts, limit=lim)
     )
@@ -318,9 +315,9 @@ async def _export_collection_package(service, out, with_media, legacy) -> None:
 
 
 async def _export_notes_csv(
-    service, ie, out, target, with_html, with_tags, with_deck, with_notetype, with_guid
+    service, out, target, with_html, with_tags, with_deck, with_notetype, with_guid
 ) -> None:
-    lim = _make_export_limit(ie, target)
+    lim = _make_export_limit(target)
     await service.run(
         lambda col: col.export_note_csv(
             out_path=out,
@@ -334,8 +331,8 @@ async def _export_notes_csv(
     )
 
 
-async def _export_cards_csv(service, ie, out, target, with_html) -> None:
-    lim = _make_export_limit(ie, target)
+async def _export_cards_csv(service, out, target, with_html) -> None:
+    lim = _make_export_limit(target)
     await service.run(
         lambda col: col.export_card_csv(out_path=out, limit=lim, with_html=with_html)
     )
@@ -409,7 +406,6 @@ def _register_export_routes(router, get_service) -> None:
             elif fmt == "notes_csv":
                 await _export_notes_csv(
                     service,
-                    ie,
                     out,
                     target,
                     with_html,
@@ -420,7 +416,7 @@ def _register_export_routes(router, get_service) -> None:
                 )
                 filename, media = "notes.csv", "text/csv"
             elif fmt == "cards_csv":
-                await _export_cards_csv(service, ie, out, target, with_html)
+                await _export_cards_csv(service, out, target, with_html)
                 filename, media = "cards.csv", "text/csv"
             else:
                 os.remove(out)

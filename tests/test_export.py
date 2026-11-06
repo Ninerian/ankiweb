@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from anki.collection import Collection
 from fastapi.testclient import TestClient
 
 from ankiweb.app import create_app
@@ -105,3 +106,62 @@ def test_deckbrowser_has_export_link(client):
     _seed(client)
     r = client.get("/deckbrowser")
     assert "/export" in r.text
+
+
+def _seed_two_decks(client):
+    def seed(col):
+        ids = {}
+        for name in ("DeckA", "DeckB"):
+            did = col.decks.id(name)
+            note = col.new_note(col.models.by_name("Basic"))
+            note["Front"] = f"front-{name}"
+            note["Back"] = f"back-{name}"
+            col.add_note(note, did)
+            ids[name] = did
+        return ids
+
+    return client.portal.call(client.app.state.service.run, seed)
+
+
+def _imported_fronts(apkg: bytes, tmp_path: Path) -> set[str]:
+    import anki.import_export_pb2 as ie
+
+    pkg = tmp_path / "in.apkg"
+    pkg.write_bytes(apkg)
+    col = Collection(str(tmp_path / "fresh.anki2"))
+    try:
+        col.import_anki_package(ie.ImportAnkiPackageRequest(package_path=str(pkg)))
+        return {col.get_note(nid)["Front"] for nid in col.find_notes("")}
+    finally:
+        col.close()
+
+
+def test_export_apkg_single_deck_only_contains_that_deck(client, tmp_path):
+    ids = _seed_two_decks(client)
+    r = client.post("/export", data={"fmt": "apkg", "target": str(ids["DeckA"])})
+    assert r.status_code == 200
+    assert _imported_fronts(r.content, tmp_path) == {"front-DeckA"}
+
+
+def test_export_apkg_all_contains_every_deck(client, tmp_path):
+    _seed_two_decks(client)
+    r = client.post("/export", data={"fmt": "apkg", "target": "all"})
+    assert r.status_code == 200
+    assert _imported_fronts(r.content, tmp_path) == {"front-DeckA", "front-DeckB"}
+
+
+@pytest.mark.parametrize("fmt", ["notes_csv", "cards_csv"])
+def test_export_csv_single_deck_only_contains_that_deck(client, fmt):
+    ids = _seed_two_decks(client)
+    r = client.post("/export", data={"fmt": fmt, "target": str(ids["DeckB"])})
+    assert r.status_code == 200
+    assert "front-DeckB" in r.text
+    assert "front-DeckA" not in r.text
+
+
+@pytest.mark.parametrize("fmt", ["notes_csv", "cards_csv"])
+def test_export_csv_all_contains_every_deck(client, fmt):
+    _seed_two_decks(client)
+    r = client.post("/export", data={"fmt": fmt, "target": "all"})
+    assert r.status_code == 200
+    assert "front-DeckA" in r.text and "front-DeckB" in r.text

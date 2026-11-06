@@ -135,6 +135,10 @@ This starts **two servers in one process**:
 Open <http://127.0.0.1:8000> in a browser. The AnkiConnect port defaults to **8765** on
 purpose — existing AnkiConnect clients/scripts work unchanged.
 
+The web UI's `/export` supports a selected deck or the whole collection for
+`.apkg` and CSV exports; `.colpkg` always exports the whole collection.
+AnkiConnect's `exportPackage` exports the named deck.
+
 ## Mobile PWA (`/app/`)
 
 Open `/app/` for the mobile deck list, reviewer, and quick-add flow. It is a
