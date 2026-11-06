@@ -1,5 +1,7 @@
 # ankiweb Sub-project E6 — Import / Export Design
 
+> **Historical correction:** For the `limit` argument of `Collection.export_anki_package`, `export_note_csv`, and `export_card_csv`, pass `None` for the whole collection or `anki.collection.DeckIdLimit(DeckId(deck_id))` for a deck (`DeckId` comes from `anki.decks`). The Collection API also supports note and card limits. `anki.import_export_pb2.ExportLimit` is for the low-level backend interface; passing a raw protobuf to the Collection API causes it to export the whole collection.
+
 **Status:** design (2026-06-02). Decomposed into E6a (GUI import), E6b (GUI export), E6c (AnkiConnect import/export). Each its own plan → implement cycle.
 
 ## Goal

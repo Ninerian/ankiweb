@@ -1,5 +1,7 @@
 # ankiweb Plan E6b — GUI Export Implementation Plan
 
+> **Historical correction:** For the `limit` argument of `Collection.export_anki_package`, `export_note_csv`, and `export_card_csv`, pass `None` for the whole collection or `anki.collection.DeckIdLimit(DeckId(deck_id))` for a deck (`DeckId` comes from `anki.decks`). The Collection API also supports note and card limits. `anki.import_export_pb2.ExportLimit` is for the low-level backend interface; passing a raw protobuf to the Collection API causes it to export the whole collection.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Export to `.apkg` / `.colpkg` / notes-CSV / cards-CSV via a rebuilt server-rendered form (export is Qt-only — no SvelteKit page); the form POSTs to `/export`, the backend writes a temp file, and the server streams it back as a browser download. Launched from a deck-browser "Export" link.

@@ -1,5 +1,7 @@
 # ankiweb Plan E6c — AnkiConnect Import/Export Implementation Plan
 
+> **Historical correction:** For the `limit` argument of `Collection.export_anki_package`, `export_note_csv`, and `export_card_csv`, pass `None` for the whole collection or `anki.collection.DeckIdLimit(DeckId(deck_id))` for a deck (`DeckId` comes from `anki.decks`). The Collection API also supports note and card limits. `anki.import_export_pb2.ExportLimit` is for the low-level backend interface; passing a raw protobuf to the Collection API causes it to export the whole collection.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add the AnkiConnect HTTP actions `importPackage(path)` and `exportPackage(deck, path, includeSched=False)` — replicating AnkiConnect's contract (server-side filesystem paths; `True`/`False` returns) while running on the collection executor.

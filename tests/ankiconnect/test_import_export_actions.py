@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
 
+import anki.import_export_pb2 as ie
 import pytest
+from anki.collection import Collection
 from fastapi.testclient import TestClient
 
 from ankiweb.ankiconnect.app import create_ankiconnect_app
@@ -69,3 +71,27 @@ def test_export_then_reimport_restores_notes(client, tmp_path):
     assert _call(client, "findNotes", query="front:f0") == []
     assert _call(client, "importPackage", path=out) is True
     assert len(_call(client, "findNotes", query="front:f0")) == 1
+
+
+def test_export_package_only_contains_selected_deck(client, tmp_path):
+    for deck in ("DeckA", "DeckB"):
+        _call(client, "createDeck", deck=deck)
+        _call(
+            client,
+            "addNote",
+            note={
+                "deckName": deck,
+                "modelName": "Basic",
+                "fields": {"Front": f"front-{deck}", "Back": f"back-{deck}"},
+            },
+        )
+    out = str(tmp_path / "deck.apkg")
+    assert _call(client, "exportPackage", deck="DeckA", path=out) is True
+    col = Collection(str(tmp_path / "fresh.anki2"))
+    try:
+        col.import_anki_package(ie.ImportAnkiPackageRequest(package_path=out))
+        assert {col.get_note(nid)["Front"] for nid in col.find_notes("")} == {
+            "front-DeckA"
+        }
+    finally:
+        col.close()
