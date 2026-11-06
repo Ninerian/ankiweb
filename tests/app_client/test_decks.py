@@ -113,7 +113,7 @@ def test_join_emoji_rejects_invalid_graphemes(emoji: str) -> None:
 
 def test_create_deck_returns_row_and_stores_name(temp_collection: Collection) -> None:
     name = '  It\'s "Bio" \\ <b>x</b> & $  '
-    row = create_deck(temp_collection, name, "🧬")
+    row = create_deck(temp_collection, name, "🧬", None)
 
     assert row == DeckRow(
         deck_id=row.deck_id,
@@ -129,7 +129,7 @@ def test_create_deck_returns_row_and_stores_name(temp_collection: Collection) ->
 
 
 def test_created_row_carries_operation_changes(temp_collection: Collection) -> None:
-    row = create_deck(temp_collection, "Biology", "🧬")
+    row = create_deck(temp_collection, "Biology", "🧬", None)
     assert row.changes is not None
     flags = op_changes_to_flags(row.changes)
     assert flags["deck"] is True
@@ -162,7 +162,7 @@ def test_create_deck_rejects_invalid_input_without_writing(
         (deck.id, deck.name) for deck in temp_collection.decks.all_names_and_ids()
     ]
     with pytest.raises(DeckNameError) as error:
-        create_deck(temp_collection, name, emoji)
+        create_deck(temp_collection, name, emoji, None)
     assert error.value.kind == kind
     assert [
         (deck.id, deck.name) for deck in temp_collection.decks.all_names_and_ids()
@@ -171,7 +171,7 @@ def test_create_deck_rejects_invalid_input_without_writing(
 
 def test_create_deck_accepts_40_characters(temp_collection: Collection) -> None:
     name = "x" * 40
-    row = create_deck(temp_collection, name, "📚")
+    row = create_deck(temp_collection, name, "📚", None)
     assert row.name == name
     assert temp_collection.decks.name(DeckId(row.deck_id)) == join_emoji(name, "📚")
 
@@ -199,7 +199,7 @@ def test_create_deck_rejects_existing_root_display_name(
         (deck.id, deck.name) for deck in temp_collection.decks.all_names_and_ids()
     ]
     with pytest.raises(DeckNameError) as error:
-        create_deck(temp_collection, name, emoji)
+        create_deck(temp_collection, name, emoji, None)
     assert error.value.kind == "taken"
     assert [
         (deck.id, deck.name) for deck in temp_collection.decks.all_names_and_ids()
@@ -208,14 +208,14 @@ def test_create_deck_rejects_existing_root_display_name(
 
 def test_create_deck_ignores_child_names(temp_collection: Collection) -> None:
     temp_collection.decks.add_normal_deck_with_name("Other::Bio")
-    row = create_deck(temp_collection, "Bio", "🧬")
+    row = create_deck(temp_collection, "Bio", "🧬", None)
     assert temp_collection.decks.name(DeckId(row.deck_id)) == "Bio · 🧬"
 
 
 def test_create_deck_normalizes_stored_and_display_name(
     temp_collection: Collection,
 ) -> None:
-    row = create_deck(temp_collection, "Cafe\u0301", "🧬")
+    row = create_deck(temp_collection, "Cafe\u0301", "🧬", None)
     assert row.name == "Café"
     assert temp_collection.decks.name(DeckId(row.deck_id)) == "Café · 🧬"
     assert row in deck_rows(temp_collection)
@@ -224,7 +224,7 @@ def test_create_deck_normalizes_stored_and_display_name(
 def test_created_deck_follows_anki_tree_order(temp_collection: Collection) -> None:
     temp_collection.decks.add_normal_deck_with_name("Alpha")
     temp_collection.decks.add_normal_deck_with_name("🧬 Prefix")
-    row = create_deck(temp_collection, "Zebra", "🧬")
+    row = create_deck(temp_collection, "Zebra", "🧬", None)
 
     rows = deck_rows(temp_collection)
     tree = temp_collection.sched.deck_due_tree()
