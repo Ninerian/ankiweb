@@ -36,12 +36,12 @@
 | Untergeordnete Stapel | Einstellungen gelten nur für **Wurzelstapel** (Liste zeigt nur Wurzeln). Umbenennen eines Wurzelstapels benennt Unterstapel mit (Anki) | `deck_rows` |
 | Gemeinsame Sprachfelder | **Ein** Jinja-Makro `_deck_languages.html.jinja` für Neu-Dialog (`new…`) und Einstellungen (`set…`) | ein Quelltext, kein Drift |
 
-## Abweichungen vom Mockup (bewusst)
+## Umsetzung gegenüber dem Mockup
 
 | Mockup | Umsetzung | Grund |
 |---|---|---|
-| Gestrichelte Verbindungslinie, Eigenbau | daisyUI `divider` mit Button als Inhalt, Label "Zielsprache" davor auf derselben Zeile; Abstand zu beiden Selects per Messung gleich | daisyUI zuerst; `divider` ist solid, Eigenbau nur wenn die Messung es verlangt |
-| Segment als eigene Komponente | daisyUI `join` mit `join-item btn` als Radio-Inputs (`aria-label` als Beschriftung), Auswahl über `checked:`-Stil (`btn-accent`) | daisyUI zuerst |
+| Gestrichelte Verbindungslinie | `border-t-2 border-dashed border-neo-edge` zwischen Label und Tausch-Button | Mock und vorhandene Neo-Tokens; kein daisyUI-`divider` |
+| Zwei getrennte Segment-Optionen | `grid grid-cols-2 gap-2` mit jeweils eigenem Neo-Button und echtem Radio | Mockgetreue Abstände und Rahmen; kein daisyUI-`join` |
 | Flagge im `<select>` als Badge | `select` mit Flagge als `badge` links davor (`pointer-events-none`), nativer Picker bleibt | Mock-Verhalten, daisyUI-Komponenten |
 | Alles clientseitig im Mock | Server prüft **alles** erneut; Client nur für Sofort-Feedback (`data-show`, `data-attr:disabled`) | Datastar: Server ist Wahrheit |
 
@@ -77,7 +77,7 @@ Wegwerfskript gegen `temp_collection`, Ergebnisse **in diese Tabelle eintragen**
 | M4 | `col.decks.all()` (ein Aufruf) gegen N-mal `col.decks.get`: reicht für `deck_rows`, Zeitmessung bei 500 Stapeln | Gemessen: gleiche IDs, Namen und Beschreibungen; Median aus neun warmen Messungen bei 500 Stapeln: `all()` 0,854 ms, 500× `get()` 1,943 ms. Für die Liste einmal `all()` und ID-Lookup verwenden. |
 | M5 | `sanitize_html` und `col.render_markdown` mit führendem `<!--ankiweb:lang=…-->`: Ausgabe in Overview und Congrats | Gemessen: `render_markdown('<!--ankiweb:lang=es>de-->Hello **world**')` liefert unformatiertes `Hello **world**`, nach Entfernen des Markers dagegen `<p>Hello <strong>world</strong></p>`. Der Congrats-Scheduler liefert bei leerem Stapel bereits unformatierten Text. Daher Marker **vor** Markdown entfernen; Congrats muss bei markierter Beschreibung den rohen Decktext statt der bereits gerenderten Scheduler-Ausgabe nutzen. |
 | M6 | Datastar: private Signale, Tausch, berechneter Änderungszähler, `@get` und Popover sowie Namens-Map in `data-text` | Gemessen in Chromium 150 mit Datastar 1.0.4: Tausch `de/en` → `en/de`; `_dirty` 0 → 2 → 0; private Signale einschließlich verschachtelter privater Werte fehlen in GET und POST. `@get` schließt das Popover; lokalisierter Name aktualisiert sich. Keine Browserfehler. |
-| M7 | daisyUI-Divider, Join-Radios, Tastatur/Fokus sowie Jinja-Sentinel | Gemessen mit vollständigem installiertem daisyUI 5.7.47: gleiche Abstände 9/9 px bei 800 px und 3/3 px bei 375 px; Tab und Pfeiltasten bedienen die Radiogruppe, Fokus-Outline 2 px. Aktuell gebautes CSS enthält diese bisher ungenutzten Klassen nicht; `checked:btn-accent` wurde im Messaufbau nachgebildet und muss nach dem Build geprüft werden. Jinja 3.1.6 übersetzt `\x1f` in Codepoint 31 und trennt repräsentative deutsche und englische Texte in zwei Teile; endgültige Katalogtexte müssen noch geprüft werden. |
+| M7 | daisyUI-Divider, Join-Radios, Tastatur/Fokus sowie Jinja-Sentinel | Historische Messung des verworfenen Divider-/Join-Ansatzes: gleiche Abstände 9/9 px bei 800 px und 3/3 px bei 375 px; Tab und Pfeiltasten bedienten die Radiogruppe, Fokus-Outline 2 px. Die endgültige UI verwendet getrennte Radio-Buttons und eine gestrichelte Linie; diese Messung belegt nicht deren Layout. Jinja 3.1.6 übersetzt `\x1f` in Codepoint 31 und trennt repräsentative deutsche und englische Texte in zwei Teile; endgültige Katalogtexte müssen noch geprüft werden. |
 
 ## Format und Regeln des Markers
 
@@ -139,16 +139,17 @@ Geprüft in `references/attributes.md`, `references/sse-events.md`, `modules/got
 | Baustein | Klassen |
 |---|---|
 | Menü | `dropdown dropdown-end` (Popover-API: `popovertarget`, `anchor-name`/`position-anchor` inline), Inhalt `menu rounded-box border-2 border-neo-edge bg-base-200 shadow-neo`, Eintrag `<button>` in `<li>`; Löschen mit `text-error` |
-| Kebab-Knopf | `btn btn-ghost btn-square btn-sm`, `aria-haspopup="menu"`, `aria-label` mit Stapelname |
+| Kebab-Knopf | `btn btn-square neo-press size-10 rounded-deck bg-base-200`, bei geöffnetem Menü Akzentfarbe; `aria-haspopup="menu"`, `aria-label` mit Stapelname |
 | Dialoge | `modal modal-bottom sm:modal-middle`, `modal-box`, `modal-backdrop`; Öffnen per `data-class:modal-open`, `data-attr:inert`, `data-attr:aria-hidden` (exakt das Muster von `_deck_sheet`) |
-| Segment | `join` mit `input.join-item.btn[type=radio][aria-label]` (je Option), gewählt: `checked:btn-accent`; eine `name`-Gruppe je Dialog (`new-mode`/`set-mode`) |
+| Segment | `grid grid-cols-2 gap-2` mit getrennten gerahmten, schattierten Labels und `sr-only`-Radio-Inputs; ausgewählt mit `has-checked:`; eine `name`-Gruppe je Dialog (`new-mode`/`set-mode`) |
 | Felder | `fieldset`, `fieldset-legend`, `select w-full border-neo-edge bg-base-200 shadow-neo`; Fehler `select-error` |
 | Flagge | `badge badge-ghost` absolut links im `relative`-Wrapper |
-| Tausch-Zeile | `flex items-center gap-2.5` mit `label.fieldset-legend` + `divider grow my-0` + `btn btn-sm rounded-full` |
+| Tausch-Zeile | `flex items-center gap-2.5` mit `label.fieldset-legend`, gestrichelter `border-t-2 border-dashed border-neo-edge` und `btn neo-press rounded-full` |
 | Meldungen | `alert alert-error` / `alert alert-warning` mit `role="alert"`, `aria-live="polite"` im umgebenden Container |
-| Chip | `badge badge-outline`; offen/"Keine Sprachen": `badge-dash` |
-| Änderungs-Pille / Tag | `badge badge-info` (blau, unterscheidet sich von den gelben Buttons laut `DESIGN.md`) |
-| Speichern/Anlegen | `btn btn-accent neo-press` (Repo-Muster); Abbrechen `btn` |
+| Chip | `badge` mit `border-deck-pill border-neo-edge`, Paar auf `bg-base-100`; offen/"Keine Sprachen": gestrichelt, transparent und `text-muted-fg` |
+| Änderungs-Pille / Tag | `badge badge-info` mit Neo-Rahmen und kräftiger Schrift (blau, unterscheidet sich von den gelben Buttons laut `DESIGN.md`) |
+| Dialogfooter | fixierter Footer mit `border-t-2 border-neo-edge`; Aktionen mindestens `min-h-14`, Abbrechen und Speichern/Löschen im Verhältnis 5:7 |
+| Speichern/Anlegen | `btn btn-accent neo-press` (Repo-Muster); Abbrechen `btn neo-press bg-base-300` |
 | Löschen-Bestätigung | `btn btn-error neo-press` |
 | Schriftzüge Katalog | Namen als **Literale** in einem Jinja-Dict im Makro (Muster `group_labels` in `_deck_sheet.html.jinja:1`) |
 
@@ -189,7 +190,7 @@ Reihenfolge: 11.0 → 11.1 → 11.2; danach **parallel** 11.3 (Strings), 11.4–
 - [x] `_deck_sheet.html.jinja`: Segment, Selects, Flaggen-Vorschlag, Sprach-Chip in der Vorschau; Anlegen gesperrt, solange ungültig.
 - [x] `_deck_settings_sheet.html.jinja`: Reihenfolge Name → Sprachen → Emoji; Hinweis "Beim Speichern wird der Sprach-Marker aus der Beschreibung entfernt" nur bei Wechsel Paar → "Keine Sprachen"; **keine** Export-Hinweiskarte (`DESIGN.md`).
 - [x] `_deck_delete_sheet.html.jinja`: Name, Kartenanzahl, `btn-error`.
-- [x] `_deck_row.html.jinja`: Kebab im Kopf der Kachel (Popover-Menü), Sprach-Chip unter dem Namen (`🇩🇪 DE → 🇪🇸 ES`, `sr-only` Klartext; ohne Paar `badge-dash` "Keine Sprachen"; `view.row.languages is none` ist der Normalfall für Bestandsdecks).
+- [x] `_deck_row.html.jinja`: Kebab im Kopf der Kachel (Popover-Menü), Sprach-Chip unter dem Namen (`🇩🇪 DE → 🇪🇸 ES`, `sr-only` Klartext; ohne Paar gestrichelter Rahmen "Keine Sprachen"; `view.row.languages is none` ist der Normalfall für Bestandsdecks).
 - [x] Fokus: `decks.js` auf mehrere Dialoge verallgemeinern (Zielfeld und Rückkehr zum Auslöser je Dialog), Tab-Falle wiederverwenden; **keine** Block-Statements in Ausdrücken.
 
 ### 11.5 Routen `http_app/deck_settings.py`
