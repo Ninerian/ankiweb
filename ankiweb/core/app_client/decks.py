@@ -5,14 +5,23 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Literal
 
-from anki.collection import Collection
-from anki.decks import DEFAULT_DECK_ID
+from anki.collection import Collection, OpChanges, OpChangesWithCount
+from anki.decks import DEFAULT_DECK_ID, DeckDict, DeckId
 
+from ankiweb.core.app_client.deck_languages import (
+    LANGUAGES,
+    LanguagePair,
+    apply_marker,
+    read_marker,
+    replace_description,
+    strip_marker,
+)
 from ankiweb.core.app_client.deck_progress import progress_by_deck
 from ankiweb.core.app_client.emoji_picker import ALL_EMOJI
 from ankiweb.core.app_client.revlog import studied_by_deck
 
 DEFAULT_EMOJI = "🗂️"
+_ALLOWED_EMOJI = frozenset(ALL_EMOJI) | frozenset(lang.flag for lang in LANGUAGES)
 _ZWJ = "\u200d"
 _KEYCAP = "\u20e3"
 _VARIATION_SELECTOR = "\ufe0f"
@@ -29,11 +38,26 @@ class DeckRow:
     due: int
     new: int
     progress_pct: int
+    languages: LanguagePair | None = None
     changes: object | None = field(default=None, compare=False, repr=False)
 
 
+@dataclass(frozen=True)
+class DeckSettings:
+    deck_id: int
+    name: str
+    emoji: str
+    languages: LanguagePair | None
+    card_count: int
+
+
 class DeckNameError(Exception):
-    def __init__(self, kind: Literal["empty", "too_long", "invalid", "taken"]) -> None:
+    def __init__(
+        self,
+        kind: Literal[
+            "empty", "too_long", "invalid", "taken", "not_found", "protected"
+        ],
+    ) -> None:
         self.kind = kind
         super().__init__(kind)
 
@@ -108,8 +132,17 @@ def _comparison_name(name: str) -> str:
     return unicodedata.normalize("NFC", name.casefold())
 
 
-def create_deck(col: Collection, name: str, emoji: str) -> DeckRow:
-    """Create a root deck; names consisting only of emoji are invalid."""
+def _validate_emoji(emoji: str, previous: str | None = None) -> None:
+    """Allow picker choices, language flags, or an unchanged legacy emoji."""
+    if emoji in _ALLOWED_EMOJI:
+        return
+    if emoji and emoji == previous and _emoji_end(emoji) == len(emoji):
+        return
+    raise DeckNameError("invalid")
+
+
+def _validate_name(col: Collection, name: str, exclude_id: int | None = None) -> str:
+    """Normalize a root name and reject collisions with other roots."""
     name = unicodedata.normalize("NFC", name)
     name = "".join(c for c in name if not (c.isascii() and not c.isprintable()))
     name = re.sub(r"^[\s:]+|[\s:]+$", "", name)
@@ -117,16 +150,30 @@ def create_deck(col: Collection, name: str, emoji: str) -> DeckRow:
         raise DeckNameError("empty")
     if len(name) > 40:
         raise DeckNameError("too_long")
-    if "::" in name or emoji not in ALL_EMOJI or _emoji_only(name):
+    if "::" in name or _emoji_only(name):
         raise DeckNameError("invalid")
     comparison_name = _comparison_name(name)
     if any(
         _comparison_name(split_emoji(deck.name)[1]) == comparison_name
         for deck in col.decks.all_names_and_ids()
-        if "::" not in deck.name
+        if "::" not in deck.name and deck.id != exclude_id
     ):
         raise DeckNameError("taken")
-    result = col.decks.add_normal_deck_with_name(join_emoji(name, emoji))
+    return name
+
+
+def create_deck(
+    col: Collection, name: str, emoji: str, languages: LanguagePair | None
+) -> DeckRow:
+    """Create a root deck with its language marker in one operation."""
+    name = _validate_name(col, name)
+    _validate_emoji(emoji)
+    if languages is not None and not isinstance(languages, LanguagePair):
+        raise TypeError("languages must be a LanguagePair or None")
+    deck = col.decks.new_deck()
+    deck.name = join_emoji(name, emoji)
+    deck.normal.description = apply_marker(deck.normal.description, languages)
+    result = col.decks.add_deck(deck)
     return DeckRow(
         deck_id=result.id,
         name=name,
@@ -134,8 +181,79 @@ def create_deck(col: Collection, name: str, emoji: str) -> DeckRow:
         due=0,
         new=0,
         progress_pct=0,
+        languages=languages,
         changes=result.changes,
     )
+
+
+def _root_deck(col: Collection, deck_id: int) -> DeckDict:
+    deck = col.decks.get(DeckId(deck_id), default=False)
+    if deck is None or deck.get("dyn") or "::" in deck["name"]:
+        raise DeckNameError("not_found")
+    return deck
+
+
+def deck_settings(col: Collection, deck_id: int) -> DeckSettings:
+    """Return editable root settings and the inclusive card count."""
+    deck = _root_deck(col, deck_id)
+    emoji, name = split_emoji(deck["name"])
+    return DeckSettings(
+        deck_id=deck_id,
+        name=name,
+        emoji=emoji,
+        languages=read_marker(deck.get("desc", "")),
+        card_count=col.decks.card_count(DeckId(deck_id), True),
+    )
+
+
+def update_deck_settings(
+    col: Collection,
+    deck_id: int,
+    name: str,
+    emoji: str,
+    languages: LanguagePair | None,
+) -> OpChanges:
+    """Update a root and its descendants in a single undoable operation."""
+    deck = _root_deck(col, deck_id)
+    old_stored_name = deck["name"]
+    old_emoji, old_name = split_emoji(deck["name"])
+    name_changed = name != old_name
+    if name_changed:
+        name = _validate_name(col, name, exclude_id=deck_id)
+    _validate_emoji(emoji, previous=old_emoji)
+    if languages is not None and not isinstance(languages, LanguagePair):
+        raise TypeError("languages must be a LanguagePair or None")
+
+    if name != old_name or emoji != old_emoji:
+        if (
+            emoji == old_emoji
+            and old_name == deck["name"]
+            and split_emoji(name)[1] == name
+        ):
+            stored_name = name
+        else:
+            stored_name = join_emoji(name, emoji)
+        if not name_changed and any(
+            _comparison_name(other.name) == _comparison_name(stored_name)
+            for other in col.decks.all_names_and_ids()
+            if other.id != deck_id
+        ):
+            raise DeckNameError("taken")
+        deck["name"] = stored_name
+    desc = deck.get("desc", "")
+    if languages != read_marker(desc):
+        deck["desc"] = apply_marker(desc, languages)
+    elif deck.get("md") and deck["name"] != old_stored_name:
+        deck["desc"] = replace_description(strip_marker(desc), desc, markdown=True)
+    return col.decks.update_dict(deck)
+
+
+def delete_deck(col: Collection, deck_id: int) -> OpChangesWithCount:
+    """Delete a root deck and its descendants, except the default deck."""
+    _root_deck(col, deck_id)
+    if deck_id == DEFAULT_DECK_ID:
+        raise DeckNameError("protected")
+    return col.decks.remove([DeckId(deck_id)])
 
 
 def deck_rows(col: Collection) -> list[DeckRow]:
@@ -147,6 +265,7 @@ def deck_rows(col: Collection) -> list[DeckRow]:
         and not (node.deck_id == DEFAULT_DECK_ID and node.total_including_children == 0)
     ]
     progress = progress_by_deck(studied_by_deck(col), roots)
+    decks_by_id = {deck["id"]: deck for deck in col.decks.all()}
     rows = []
     for node in roots:
         emoji, name = split_emoji(node.name)
@@ -158,6 +277,7 @@ def deck_rows(col: Collection) -> list[DeckRow]:
                 due=node.review_count + node.learn_count,
                 new=node.new_count,
                 progress_pct=progress[node.deck_id],
+                languages=read_marker(decks_by_id[node.deck_id].get("desc", "")),
             )
         )
     return rows

@@ -8,6 +8,23 @@ Eigenstaendiger, mobiler Lern-Client unter `/app/*` neben dem bestehenden Web-Cl
 Ein Anki-Stapel, der Karten gruppiert und zum Lernen gewaehlt wird. UI-Name auf Deutsch: "Stapel".
 _Avoid_: Stack, Ordner
 
+**Sprachpaar**:
+Ein geordnetes Paar aus Ursprungssprache und Zielsprache fuer genau ein Deck. Beide Sprachen muessen verschieden sein und zum Katalog `de`, `en`, `es`, `fr`, `it`, `pt`, `nl`, `pl`, `tr`, `ru`, `ja`, `zh`, `ko`, `ar`, `sv`, `la` gehoeren. Ein Deck ohne gueltigen Sprach-Marker hat kein Sprachpaar; Unterdecks erben kein Sprachpaar.
+
+**Ursprungssprache**:
+Die Sprache des Sprachpaars, die die lernende Person bereits kann; sie steht vor dem Pfeil.
+_Avoid_: Muttersprache
+
+**Zielsprache**:
+Die Sprache des Sprachpaars, die die lernende Person lernt; sie steht nach dem Pfeil.
+_Avoid_: Lernsprache
+
+**Sprach-Marker**:
+Der maschinenlesbare HTML-Kommentar in der Deck-Beschreibung, etwa `<!--ankiweb:lang=es>de-->` fuer Ursprungssprache `es` und Zielsprache `de`. Ein fehlender oder ungueltiger Marker bedeutet keine Sprachen.
+
+**Sprachstapel**:
+Ein Deck mit einem gueltigen Sprachpaar. Ein Deck ohne Sprachen ist kein Sprachstapel.
+
 **Deck-Liste**:
 Die Startseite des mobilen Clients mit allen Decks, Suche und Zaehlern.
 _Avoid_: Stapelansicht, Home

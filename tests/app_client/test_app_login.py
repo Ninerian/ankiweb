@@ -318,7 +318,13 @@ def test_rejected_write_is_not_replayed_after_login(tmp_path: Path) -> None:
         before = decks()
         rejected = client.post(
             "/app/decks",
-            json={"newName": "Not replayed", "newEmoji": "📚"},
+            json={
+                "newName": "Not replayed",
+                "newEmoji": "📚",
+                "newMode": "none",
+                "newSrc": "",
+                "newDst": "",
+            },
             headers={"Datastar-Request": "true"},
             follow_redirects=False,
         )

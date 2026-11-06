@@ -76,6 +76,8 @@ def test_create_first_deck_from_empty_state(
         expect(sheet).to_have_attribute("aria-hidden", "false")
         expect(name).to_be_focused()
         name.fill("First deck")
+        expect(submit).to_be_disabled()
+        sheet.get_by_role("radio", name="No languages").check()
         expect(submit).to_be_enabled()
         submit.click()
         expect(sheet).to_have_attribute("aria-hidden", "true")
@@ -88,6 +90,60 @@ def test_create_first_deck_from_empty_state(
         service.run(lambda col: [deck.name for deck in col.decks.all_names_and_ids()])
     )
     assert "First deck · 📚" in saved
+
+
+@pytest.mark.parametrize("activation", ["Enter", "Space", "mouse", "touch"])
+def test_suggested_flag_can_be_selected_without_losing_keyboard_focus(
+    create_server: tuple[str, CollectionPort], tmp_path: Path, activation: str
+) -> None:
+    base, service = create_server
+    with sync_playwright() as playwright:
+        context = playwright.chromium.launch_persistent_context(
+            str(tmp_path / f"profile-flag-{activation}"),
+            headless=True,
+            viewport={"width": 375, "height": 812},
+            has_touch=activation == "touch",
+        )
+        page = context.pages[0]
+        page.goto(f"{base}/app/")
+        page.wait_for_load_state("networkidle")
+        page.locator("#btn-new-deck").click()
+        sheet = page.locator("#deck-sheet")
+        page.locator("#deck-name").fill("French")
+        page.locator("#new-src").select_option("de")
+        destination = page.locator("#new-dst")
+        destination.select_option("fr")
+        suggestion = page.locator("#new-flag-suggest")
+        expect(suggestion).to_be_visible()
+        expect(page.locator("#preview-emoji")).to_have_text("📚")
+
+        if activation in ("Enter", "Space"):
+            if activation == "Space":
+                sheet.get_by_role("tab", name="Nature").click()
+            destination.focus()
+            page.keyboard.press("Tab")
+            expect(suggestion).to_be_focused()
+            page.keyboard.press(activation)
+            selected = "Nature" if activation == "Space" else "Study"
+            following = "Fun" if activation == "Space" else "Nature"
+            expect(sheet.get_by_role("tab", name=selected)).to_be_focused()
+            page.keyboard.press("Tab")
+            expect(sheet.get_by_role("tab", name=following)).to_be_focused()
+        elif activation == "mouse":
+            suggestion.click()
+        else:
+            suggestion.tap()
+
+        expect(suggestion).to_be_hidden()
+        expect(page.locator("#preview-emoji")).to_have_text("🇫🇷")
+        page.locator("#btn-create-deck").click()
+        expect(sheet).to_have_attribute("aria-hidden", "true")
+        context.close()
+
+    saved = asyncio.run(
+        service.run(lambda col: [deck.name for deck in col.decks.all_names_and_ids()])
+    )
+    assert "French · 🇫🇷" in saved
 
 
 @pytest.mark.parametrize("scheme", ["light", "dark"])
@@ -130,6 +186,7 @@ def test_create_decks_in_browser(
         page.get_by_role("tab", name="Study").click()
         expect(dna).to_be_checked()
         name.fill("Biology")
+        sheet.get_by_role("radio", name="No languages").check()
         if scheme == "light":
             page.screenshot(path=str(tmp_path / "screenshot-decks-new-deck.png"))
         name.press("Enter")
@@ -140,6 +197,7 @@ def test_create_decks_in_browser(
 
         opener.click()
         name.fill("biology")
+        sheet.get_by_role("radio", name="No languages").check()
         submit.click()
         expect(page.locator("#deck-name-error")).to_contain_text("already exists")
         expect(sheet).to_have_attribute("aria-hidden", "false")

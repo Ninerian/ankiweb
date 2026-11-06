@@ -30,3 +30,15 @@ def test_core_never_imports_adapters():
                     f"{py_file.relative_to(CORE.parent.parent)} imports {mod}"
                 )
     assert not violations, "core -> adapters import(s) found:\n" + "\n".join(violations)
+
+
+def test_deck_languages_is_independent_of_frameworks():
+    path = CORE / "app_client" / "deck_languages.py"
+    forbidden = ("anki", "fastapi", "starlette", "ankiweb.adapters")
+    imports = _imported_top_level_modules(path)
+    violations = sorted(
+        module
+        for module in imports
+        if any(module == root or module.startswith(root + ".") for root in forbidden)
+    )
+    assert not violations, f"deck_languages imports forbidden modules: {violations}"

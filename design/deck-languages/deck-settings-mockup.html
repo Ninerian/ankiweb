@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:,">
+<title>Stapel-Einstellungen — AnkiWeb (Mock)</title>
+<style>
+:root {
+  --font-display: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Impact", "Segoe UI", system-ui, sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+  --bg-base: #f4f3ed;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #ffffff;
+  --bg-sunken: #efeee6;
+  --text-main: #18191f;
+  --text-muted: #5f6368;
+  --border-color: #18191f;
+  --border-width: 2.5px;
+  --shadow-sm: 2px 2px 0 var(--border-color);
+  --shadow-card: 4px 4px 0 var(--border-color);
+  --shadow-button: 3px 3px 0 var(--border-color);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+  --color-primary: #1971c2;
+  --color-accent: #ffd13b;
+  --on-accent: #18191f;
+  --err-bg: #ffe3e3; --err-border: #fa5252; --err-text: #c92a2a;
+  --warn-bg: #fff3bf; --warn-border: #fab005; --warn-text: #a5320c;
+  --ok-bg: #d3f9d8; --ok-border: #40c057; --ok-text: #2b8a3e;
+  --info-bg: #d0ebff; --info-text: #1864ab;
+  --badge-bg: #e9ecef;
+  --sheet-backdrop: rgba(24, 25, 31, 0.65);
+  --demo-h: 52px;
+}
+[data-theme="dark"] {
+  --bg-base: #121316;
+  --bg-surface: #1e2025;
+  --bg-surface-elevated: #282a30;
+  --bg-sunken: #17181c;
+  --text-main: #f8f9fa;
+  --text-muted: #a1a6b0;
+  --border-color: #f8f9fa;
+  --shadow-sm: 2px 2px 0 #000;
+  --shadow-card: 4px 4px 0 #000;
+  --shadow-button: 3px 3px 0 #000;
+  --err-bg: #381519; --err-border: #ff6b6b; --err-text: #ffa8a8;
+  --warn-bg: #382c0b; --warn-border: #fcc419; --warn-text: #ffe066;
+  --ok-bg: #0f361a; --ok-border: #51cf66; --ok-text: #8ce99a;
+  --info-bg: #0c2b45; --info-text: #74c0fc;
+  --badge-bg: #2d3038;
+  --sheet-backdrop: rgba(0, 0, 0, 0.8);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; padding-top: var(--demo-h);
+  background: var(--bg-base); color: var(--text-main);
+  font-family: var(--font-ui); line-height: 1.4;
+  overflow-x: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+
+/* ---------- demo bar (mock-only chrome) ---------- */
+.demo-bar {
+  position: fixed; inset: 0 0 auto 0; z-index: 300; height: var(--demo-h);
+  display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  background: var(--bg-surface-elevated); border-bottom: var(--border-width) solid var(--border-color);
+  overflow-x: auto; scrollbar-width: none;
+}
+.demo-bar::-webkit-scrollbar { display: none; }
+.demo-tag {
+  flex: none; padding: 3px 8px; border: 2px solid var(--border-color); border-radius: var(--radius-pill);
+  background: var(--color-accent); color: var(--on-accent);
+  font-family: var(--font-display); font-size: .66rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+}
+.demo-chip {
+  flex: none; min-height: 34px; padding: 0 12px; background: var(--bg-surface); color: var(--text-main);
+  border: 2px solid var(--border-color); border-radius: var(--radius-pill);
+  font-family: var(--font-display); font-size: .8rem; font-weight: 900; white-space: nowrap;
+}
+.demo-chip[aria-pressed="true"] { background: var(--color-accent); color: var(--on-accent); box-shadow: var(--shadow-sm); }
+.demo-sep { flex: none; width: 2px; align-self: stretch; margin: 10px 2px; background: var(--border-color); opacity: .25; }
+
+/* ---------- page behind the sheet ---------- */
+.app { width: 100%; max-width: 760px; margin: 0 auto; padding: 24px 16px 120px; }
+.eyebrow, .section-label {
+  margin: 0 0 6px; font-family: var(--font-display); font-size: .72rem; font-weight: 900;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted);
+}
+h1 { margin: 0 0 20px; font-family: var(--font-display); font-size: 2.2rem; line-height: 1; letter-spacing: -.04em; font-weight: 900; }
+.deck-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.deck-card {
+  position: relative; min-width: 0; padding: 16px; background: var(--bg-surface);
+  border: var(--border-width) solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+}
+.deck-heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.deck-heading-text { min-width: 0; flex: 1; }
+.deck-heading h2 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; font-weight: 900; letter-spacing: -.03em; line-height: 1.15; overflow-wrap: anywhere; }
+.deck-emoji {
+  display: grid; place-items: center; width: 48px; height: 48px; flex: none;
+  border: 2px solid var(--border-color); border-radius: var(--radius-sm); background: var(--badge-bg);
+  font-size: 1.5rem; line-height: 1;
+}
+.deck-counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+.count { padding: 3px 9px; border: 1.5px solid currentColor; border-radius: var(--radius-pill); font-size: .73rem; font-weight: 800; line-height: 1.3; }
+.count-due { color: var(--warn-text); background: var(--warn-bg); }
+.count-new { color: var(--info-text); background: var(--info-bg); }
+.deck-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; padding: 0 3px 3px 0; }
+.deck-action {
+  display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px;
+  border: var(--border-width) solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-button);
+  background: var(--bg-surface-elevated); color: var(--text-main);
+  font-family: var(--font-display); font-size: .9rem; font-weight: 900;
+}
+.deck-action-primary { background: var(--color-accent); color: var(--on-accent); }
+
+/* language chip: "🇪🇸 ES → 🇩🇪 DE" */
+.lang-chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin-top: 4px; padding: 2px 9px 2px 7px;
+  border: 1.5px solid var(--border-color); border-radius: var(--radius-pill); background: var(--bg-sunken);
+  font-family: var(--font-display); font-size: .72rem; font-weight: 900; letter-spacing: .03em; white-space: nowrap;
+}
+.lang-chip .arrow { opacity: .55; }
+.lang-chip.is-none { border-style: dashed; color: var(--text-muted); background: transparent; letter-spacing: 0; font-weight: 800; }
+.lang-chip.is-pending { border-style: dashed; color: var(--text-muted); background: transparent; letter-spacing: 0; font-weight: 800; }
+
+.fab-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: center; padding: 28px 16px 18px; pointer-events: none; background: linear-gradient(to top, var(--bg-base) 55%, transparent); }
+.btn-open {
+  pointer-events: auto; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 394px; min-height: 56px; padding: 0 20px;
+  background: var(--color-accent); color: var(--on-accent); border: 3px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 4px 4px 0 var(--border-color);
+  font-family: var(--font-display); font-size: 1.08rem; font-weight: 900;
+}
+
+/* ---------- overflow menu ---------- */
+.menu-btn {
+  display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex: none; padding: 0;
+  background: var(--bg-surface); border: var(--border-width) solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm);
+  font-size: 1.3rem; font-weight: 900; line-height: 1; letter-spacing: 1px;
+}
+.menu-btn[aria-expanded="true"] { background: var(--color-accent); color: var(--on-accent); transform: translate(2px, 2px); box-shadow: none; }
+.deck-menu {
+  position: absolute; z-index: 20; top: 62px; right: 12px; width: min(260px, calc(100% - 24px)); margin: 0; padding: 6px; list-style: none;
+  background: var(--bg-surface-elevated); border: var(--border-width) solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+}
+.deck-menu button {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 0 12px; text-align: left;
+  background: transparent; border: 2px solid transparent; border-radius: var(--radius-sm);
+  font-family: var(--font-display); font-size: .95rem; font-weight: 900;
+}
+.deck-menu button:hover, .deck-menu button:focus-visible { background: var(--color-accent); color: var(--on-accent); border-color: var(--border-color); outline-offset: 0; }
+.deck-menu .ico { width: 22px; text-align: center; flex: none; }
+.deck-menu .danger { color: var(--err-text); }
+.deck-menu hr { margin: 4px 6px; border: 0; border-top: 2px dashed var(--border-color); opacity: .3; }
+
+/* ---------- sheet ---------- */
+.sheet-overlay {
+  position: fixed; inset: var(--demo-h) 0 0 0; z-index: 100; display: flex; align-items: flex-end; justify-content: center;
+  background: var(--sheet-backdrop); opacity: 0; pointer-events: none; transition: opacity .25s ease;
+}
+.sheet-overlay.open { opacity: 1; pointer-events: auto; }
+.bottom-sheet {
+  display: flex; flex-direction: column; width: 100%; max-width: 560px; max-height: 100%; overflow: hidden;
+  background: var(--bg-surface); border: 3px solid var(--border-color); border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  transform: translateY(100%); transition: transform .28s cubic-bezier(.175, .885, .32, 1.15);
+}
+.sheet-overlay.open .bottom-sheet { transform: translateY(0); }
+.sheet-head { flex: none; padding: 12px 20px 0; }
+.sheet-handle { width: 44px; height: 5px; margin: 0 auto 12px; background: var(--text-muted); opacity: .3; border-radius: 999px; }
+.sheet-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.sheet-title { margin: 0; min-width: 0; font-family: var(--font-display); font-size: 1.25rem; font-weight: 900; letter-spacing: -.02em; }
+.sheet-sub { margin: 2px 0 0; font-size: .8rem; font-weight: 700; color: var(--text-muted); overflow-wrap: anywhere; }
+.sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 20px 20px; overscroll-behavior: contain; }
+.sheet-foot {
+  flex: none; display: grid; gap: 10px; padding: 12px 20px max(16px, env(safe-area-inset-bottom));
+  background: var(--bg-surface); border-top: var(--border-width) solid var(--border-color);
+}
+.sheet-foot.two { grid-template-columns: 1fr 1.4fr; }
+.btn-icon {
+  display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: none; padding: 0;
+  background: var(--bg-surface); border: var(--border-width) solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm);
+  font-size: 1rem; font-weight: 900;
+}
+.btn-icon:active { transform: translate(2px, 2px); box-shadow: none; }
+.btn-primary, .btn-secondary {
+  min-height: 54px; padding: 0 16px; border: 3px solid var(--border-color); border-radius: var(--radius-md);
+  font-family: var(--font-display); font-size: 1.05rem; font-weight: 900; transition: transform .08s ease, box-shadow .08s ease;
+}
+.btn-primary { background: var(--color-accent); color: var(--on-accent); box-shadow: 4px 4px 0 var(--border-color); }
+.btn-secondary { background: var(--bg-surface-elevated); color: var(--text-main); box-shadow: var(--shadow-button); }
+.btn-primary:not(:disabled):active, .btn-secondary:active { transform: translate(3px, 3px); box-shadow: none; }
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; box-shadow: 2px 2px 0 var(--border-color); }
+
+.preview-row {
+  display: flex; align-items: center; gap: 12px; min-width: 0; margin: 0 0 14px; padding: 12px;
+  background: var(--bg-sunken); border: 2px dashed var(--border-color); border-radius: var(--radius-md);
+}
+.preview-row .deck-emoji { width: 58px; height: 58px; font-size: 1.9rem; background: var(--bg-surface); box-shadow: var(--shadow-sm); }
+.preview-text { min-width: 0; flex: 1; }
+.preview-name { display: block; font-family: var(--font-display); font-size: 1.1rem; font-weight: 900; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.preview-name.is-placeholder { color: var(--text-muted); }
+
+/* ---------- form ---------- */
+.field { margin: 0 0 14px; padding: 0; border: 0; min-width: 0; }
+.field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.field-label, legend.field-label { padding: 0; font-family: var(--font-display); font-size: .86rem; font-weight: 900; }
+.field-meta { font-size: .75rem; font-weight: 800; color: var(--text-muted); }
+.changed-tag {
+  display: none; margin-left: 8px; padding: 1px 7px; border: 1.5px solid var(--border-color); border-radius: var(--radius-pill);
+  background: var(--info-bg); color: var(--info-text); font-family: var(--font-display); font-size: .62rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px;
+}
+.is-changed .changed-tag { display: inline-block; }
+.input-neo {
+  display: block; width: 100%; height: 50px; padding: 0 14px; background: var(--bg-surface); color: var(--text-main);
+  border: var(--border-width) solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm);
+  font-size: 1rem; font-weight: 800;
+}
+.input-neo::placeholder { color: var(--text-muted); opacity: 1; }
+.input-neo:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+
+/* segmented: Sprachstapel / Keine Sprachen */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.seg label {
+  display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 8px; text-align: center;
+  background: var(--bg-surface); border: var(--border-width) solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm);
+  font-family: var(--font-display); font-size: .88rem; font-weight: 900; cursor: pointer;
+}
+.seg input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+.seg label:has(input:checked) { background: var(--color-accent); color: var(--on-accent); transform: translate(2px, 2px); box-shadow: none; }
+.seg label:has(input:focus-visible) { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+
+/* language pair */
+.lang-stack { display: grid; gap: 0; }
+.lang-field { position: relative; min-width: 0; }
+.lang-field-label { display: block; margin: 0 0 5px 2px; font-size: .72rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.select-wrap { position: relative; }
+.select-flag {
+  position: absolute; left: 7px; top: 50%; z-index: 1; display: grid; place-items: center; width: 38px; height: 34px; transform: translateY(-50%);
+  background: var(--bg-sunken); border: 2px solid var(--border-color); border-radius: 8px; font-size: 1.2rem; line-height: 1; pointer-events: none;
+}
+.select-flag.is-empty { font-size: .9rem; font-weight: 900; color: var(--text-muted); border-style: dashed; background: transparent; }
+.select-neo {
+  appearance: none; -webkit-appearance: none; display: block; width: 100%; height: 50px; padding: 0 44px 0 54px; text-overflow: ellipsis;
+  background: var(--bg-surface); color: var(--text-main); border: var(--border-width) solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm);
+  font-size: 1rem; font-weight: 800;
+}
+.select-neo:disabled { cursor: not-allowed; box-shadow: none; }
+.select-wrap::after {
+  content: ""; position: absolute; right: 16px; top: 50%; width: 9px; height: 9px; margin-top: -7px;
+  border-right: 3px solid currentColor; border-bottom: 3px solid currentColor; transform: rotate(45deg); pointer-events: none;
+}
+.lang-field.has-error .select-neo { border-color: var(--err-border); box-shadow: 2px 2px 0 var(--err-border); background: var(--err-bg); }
+.lang-field.has-error .select-flag { border-color: var(--err-border); }
+/* Zielsprache label + swap share one connector row: equal gap to both selects */
+.swap-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+.swap-row .lang-field-label { order: -1; margin: 0 0 0 2px; }
+.swap-row::before { content: ""; flex: 1; border-top: 2.5px dashed var(--border-color); opacity: .3; }
+.swap-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px 0 10px;
+  background: var(--bg-surface-elevated); border: var(--border-width) solid var(--border-color); border-radius: var(--radius-pill); box-shadow: var(--shadow-sm);
+  font-family: var(--font-display); font-size: .82rem; font-weight: 900;
+}
+.swap-btn .swap-ico { display: inline-block; font-size: 1.15rem; line-height: 1; transition: transform .3s cubic-bezier(.175, .885, .32, 1.275); }
+.swap-btn.spun .swap-ico { transform: rotate(180deg); }
+.swap-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+.swap-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+.msg {
+  display: flex; gap: 8px; align-items: flex-start; margin: 0 0 14px; padding: 10px 12px;
+  border: 2px solid var(--border-color); border-radius: var(--radius-sm); font-size: .85rem; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere;
+}
+.msg .ico { flex: none; }
+.msg-error { background: var(--err-bg); border-color: var(--err-border); color: var(--err-text); box-shadow: 2px 2px 0 var(--err-border); }
+.msg-warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+
+.suggest {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%; margin: 0 0 14px; padding: 6px 12px 6px 8px; text-align: left;
+  background: var(--info-bg); color: var(--info-text); border: 2px solid var(--info-text); border-radius: var(--radius-pill);
+  font-size: .8rem; font-weight: 900;
+}
+.suggest:active { transform: translate(1px, 1px); }
+
+/* emoji picker */
+.emoji-groups { display: flex; gap: 8px; margin: 0 0 10px; padding: 2px 3px 6px 2px; overflow-x: auto; scrollbar-width: none; }
+.emoji-groups::-webkit-scrollbar { display: none; }
+.emoji-group {
+  flex: none; min-height: 34px; padding: 0 14px; background: var(--bg-surface); color: var(--text-main);
+  border: 2px solid var(--border-color); border-radius: var(--radius-pill);
+  font-family: var(--font-display); font-size: .74rem; font-weight: 900; letter-spacing: .05em; text-transform: uppercase;
+}
+.emoji-group[aria-selected="true"] { background: var(--color-accent); color: var(--on-accent); box-shadow: var(--shadow-sm); }
+.emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 18px; }
+.emoji-tile {
+  display: grid; place-items: center; aspect-ratio: 1; min-width: 0; width: 100%; max-width: 54px; justify-self: center; padding: 0;
+  background: var(--bg-surface); border: 2px solid var(--border-color); border-radius: 10px; box-shadow: var(--shadow-sm); font-size: 1.5rem; line-height: 1;
+}
+.emoji-tile[aria-checked="true"] { background: var(--color-accent); transform: translate(2px, 2px); box-shadow: none; }
+
+.dirty-pill {
+  display: none; align-items: center; gap: 6px; margin: 0 0 12px; padding: 5px 12px 5px 9px; border: 2px solid var(--border-color); border-radius: var(--radius-pill);
+  background: var(--info-bg); color: var(--info-text); font-family: var(--font-display); font-size: .78rem; font-weight: 900;
+}
+.dirty-pill.show { display: inline-flex; }
+.dirty-pill .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--info-text); border: 1.5px solid var(--border-color); }
+
+@media (min-width: 640px) {
+  .sheet-overlay { align-items: center; padding: 16px; }
+  .bottom-sheet { max-height: min(100%, 860px); border-bottom: 3px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: 8px 8px 0 #000; transform: translateY(24px) scale(.98); }
+  .sheet-overlay.open .bottom-sheet { transform: none; }
+  .sheet-handle { display: none; }
+  .app { padding-top: 40px; }
+  .btn-open { max-width: 360px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-overlay, .bottom-sheet, .swap-btn .swap-ico { transition: none; }
+}
+.field-note { margin: 8px 2px 0; font-size: .76rem; font-weight: 700; color: var(--text-muted); line-height: 1.35; }
+.field-note strong { color: var(--text-main); font-weight: 900; }
+.toast {
+  position: fixed; left: 50%; bottom: 96px; z-index: 400; max-width: calc(100% - 32px); padding: 10px 16px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  background: var(--color-accent); color: var(--on-accent); border: var(--border-width) solid var(--border-color); border-radius: var(--radius-pill); box-shadow: var(--shadow-button);
+  font-family: var(--font-display); font-size: .9rem; font-weight: 900; transition: opacity .2s ease, transform .2s ease; text-align: center;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.deck-card.is-new { animation: deck-drop .5s cubic-bezier(.175, .885, .32, 1.275); }
+@keyframes deck-drop { 0% { transform: translateY(-16px) scale(.96); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .deck-card.is-new { animation: none; } .toast { transition: none; } }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+</style>
+</head>
+<body>
+<div class="demo-bar" role="toolbar" aria-label="Demo-Steuerung">
+  <span class="demo-tag">Mock 2</span>
+  <button type="button" class="demo-chip" data-theme-btn="light" aria-pressed="true">☀ Hell</button>
+  <button type="button" class="demo-chip" data-theme-btn="dark" aria-pressed="false">☾ Dunkel</button>
+  <span class="demo-sep" aria-hidden="true"></span>
+  <button type="button" class="demo-chip" data-state="menu" aria-pressed="false">Deck-Menü</button>
+  <button type="button" class="demo-chip" data-state="unchanged" aria-pressed="false">Unverändert</button>
+  <button type="button" class="demo-chip" data-state="changed" aria-pressed="false">Geändert</button>
+  <button type="button" class="demo-chip" data-state="same" aria-pressed="false">Gleiche Sprache</button>
+</div>
+
+<main class="app">
+  <p class="eyebrow">AnkiWeb</p>
+  <h1>Meine Stapel</h1>
+  <div class="deck-list">
+    <article class="deck-card" id="card-1">
+      <div class="deck-heading">
+        <span class="deck-emoji" id="d1-emoji" aria-hidden="true">🇪🇸</span>
+        <div class="deck-heading-text"><h2 id="d1-name">Spanisch A2</h2><span id="d1-chip"></span></div>
+        <button type="button" class="menu-btn" id="menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="deck-menu" aria-label="Stapel-Menü öffnen: Spanisch A2">⋯</button>
+      </div>
+      <ul class="deck-menu" id="deck-menu" role="menu" hidden>
+        <li role="none"><button type="button" role="menuitem" id="mi-settings"><span class="ico" aria-hidden="true">⚙️</span>Stapel-Einstellungen</button></li>
+        <li role="none"><hr></li>
+        <li role="none"><button type="button" role="menuitem" class="danger"><span class="ico" aria-hidden="true">🗑️</span>Stapel löschen</button></li>
+      </ul>
+      <div class="deck-counts"><span class="count count-due">12 fällig</span><span class="count count-new">5 neu</span></div>
+      <div class="deck-actions"><a class="deck-action deck-action-primary">Lernen</a><a class="deck-action">Bearbeiten</a></div>
+    </article>
+    <article class="deck-card">
+      <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🇩🇪</span><div class="deck-heading-text"><h2>Deutsch B1 Vokabeln</h2><span class="lang-chip"><span aria-hidden="true">🇬🇧</span>EN<span class="arrow" aria-hidden="true">→</span><span aria-hidden="true">🇩🇪</span>DE</span></div><button type="button" class="menu-btn" aria-label="Stapel-Menü: Deutsch B1 Vokabeln">⋯</button></div>
+      <div class="deck-counts"><span class="count count-due">7 fällig</span><span class="count count-new">10 neu</span></div>
+    </article>
+    <article class="deck-card">
+      <div class="deck-heading"><span class="deck-emoji" aria-hidden="true">🧬</span><div class="deck-heading-text"><h2>Biologie Zellen</h2></div><button type="button" class="menu-btn" aria-label="Stapel-Menü: Biologie Zellen">⋯</button></div>
+      <div class="deck-counts"><span class="count count-due">3 fällig</span><span class="count count-new">8 neu</span></div>
+    </article>
+  </div>
+</main>
+
+<div class="sheet-overlay" id="overlay" inert>
+  <div class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-head">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <div style="min-width:0"><h2 class="sheet-title" id="sheet-title">Stapel-Einstellungen</h2><p class="sheet-sub" id="sheet-sub">Spanisch A2</p></div>
+        <button type="button" class="btn-icon" id="btn-close" aria-label="Schließen">✕</button>
+      </div>
+    </div>
+    <form class="sheet-body" id="form" novalidate>
+      <div class="dirty-pill" id="dirty" role="status"><span class="dot" aria-hidden="true"></span><span id="dirty-text"></span></div>
+
+      <div class="preview-row" aria-hidden="true">
+        <span class="deck-emoji" id="pv-emoji">📚</span>
+        <div class="preview-text"><span class="preview-name" id="pv-name"></span><span id="pv-chip"></span></div>
+      </div>
+
+      <div class="field" id="fld-name">
+        <div class="field-head"><label class="field-label" for="name">Name<span class="changed-tag">geändert</span></label><span class="field-meta" id="count">0 / 40</span></div>
+        <input class="input-neo" id="name" type="text" maxlength="40" autocomplete="off" enterkeyhint="done">
+      </div>
+
+      <fieldset class="field" id="fld-lang" aria-describedby="lang-note">
+        <div class="field-head"><legend class="field-label">Sprachen<span class="changed-tag">geändert</span></legend></div>
+        <div class="seg" role="radiogroup" aria-label="Sprachzuordnung">
+          <label><input type="radio" name="mode" value="langs" checked><span aria-hidden="true">🌍</span> Sprachstapel</label>
+          <label><input type="radio" name="mode" value="none"><span aria-hidden="true">🚫</span> Keine Sprachen</label>
+        </div>
+        <div id="lang-msg" role="alert" aria-live="polite"></div>
+        <div id="language-details">
+          <div class="lang-stack" id="lang-stack">
+            <div class="lang-field" id="f-src">
+              <label class="lang-field-label" for="src">Ursprungssprache</label>
+              <div class="select-wrap"><span class="select-flag is-empty" id="flag-src" aria-hidden="true">?</span><select class="select-neo" id="src"></select></div>
+            </div>
+            <div class="swap-row">
+              <label class="lang-field-label" for="dst">Zielsprache</label>
+              <button type="button" class="swap-btn" id="swap" aria-label="Ursprungs- und Zielsprache tauschen"><span class="swap-ico" aria-hidden="true">⇅</span> Tauschen</button>
+            </div>
+            <div class="lang-field" id="f-dst">
+              <div class="select-wrap"><span class="select-flag is-empty" id="flag-dst" aria-hidden="true">?</span><select class="select-neo" id="dst"></select></div>
+            </div>
+          </div>
+          <p class="field-note" id="lang-note"><strong>Ursprungssprache:</strong> die Sprache, die du schon kannst. <strong>Zielsprache:</strong> die Sprache, die du lernst.</p>
+        </div>
+      </fieldset>
+
+      <div class="field" id="fld-emoji">
+        <div class="field-head"><span class="field-label" id="emoji-label">Emoji<span class="changed-tag">geändert</span></span></div>
+        <div class="emoji-groups" role="tablist" aria-label="Emoji-Kategorien" id="emoji-tabs"></div>
+        <div class="emoji-grid" role="radiogroup" aria-labelledby="emoji-label" id="emoji-grid" style="margin-bottom:0"></div>
+      </div>
+    </form>
+    <div class="sheet-foot two">
+      <button type="button" class="btn-secondary" id="btn-cancel">Abbrechen</button>
+      <button type="submit" form="form" class="btn-primary" id="btn-save" disabled>Speichern</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ---- shared mock helpers (no network, no deps) ---- */
+const LANGS = [
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' }, { code: 'en', name: 'Englisch', flag: '🇬🇧' },
+  { code: 'es', name: 'Spanisch', flag: '🇪🇸' }, { code: 'fr', name: 'Französisch', flag: '🇫🇷' },
+  { code: 'it', name: 'Italienisch', flag: '🇮🇹' }, { code: 'pt', name: 'Portugiesisch', flag: '🇵🇹' },
+  { code: 'nl', name: 'Niederländisch', flag: '🇳🇱' }, { code: 'pl', name: 'Polnisch', flag: '🇵🇱' },
+  { code: 'tr', name: 'Türkisch', flag: '🇹🇷' }, { code: 'ru', name: 'Russisch', flag: '🇷🇺' },
+  { code: 'ja', name: 'Japanisch', flag: '🇯🇵' }, { code: 'zh', name: 'Chinesisch', flag: '🇨🇳' },
+  { code: 'ko', name: 'Koreanisch', flag: '🇰🇷' }, { code: 'ar', name: 'Arabisch', flag: '🇸🇦' },
+  { code: 'sv', name: 'Schwedisch', flag: '🇸🇪' }, { code: 'la', name: 'Latein', flag: '🏛️' },
+];
+const lang = (c) => LANGS.find((l) => l.code === c);
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const EMOJI_GROUPS = [
+  { key: 'study', label: 'Lernen', emojis: ['📚', '📝', '🎓', '✏️', '🧠', '📖'] },
+  { key: 'nature', label: 'Natur', emojis: ['🌱', '🐶', '🌍', '🦋', '🌊', '🧬'] },
+  { key: 'fun', label: 'Spaß', emojis: ['🎮', '🎨', '🎵', '⚽', '🍕', '🚀'] },
+  { key: 'world', label: 'Welt', emojis: ['🇩🇪', '🇬🇧', '🇪🇸', '🇫🇷', '🇮🇹', '🇯🇵'] },
+];
+const groupOf = (e) => (EMOJI_GROUPS.find((g) => g.emojis.includes(e)) || EMOJI_GROUPS[0]).key;
+
+function chipHTML(mode, src, dst) {
+  if (mode === 'none') return '<span class="lang-chip is-none">Keine Sprachen</span>';
+  const s = lang(src), d = lang(dst);
+  if (!s || !d) return '<span class="lang-chip is-pending">Sprachen wählen …</span>';
+  return `<span class="lang-chip" title="${esc(s.name)} → ${esc(d.name)}"><span aria-hidden="true">${s.flag}</span>${s.code.toUpperCase()}<span class="arrow" aria-hidden="true">→</span><span aria-hidden="true">${d.flag}</span>${d.code.toUpperCase()}<span class="sr-only">${esc(s.name)} nach ${esc(d.name)}</span></span>`;
+}
+
+function fillSelect(sel) {
+  sel.innerHTML = '<option value="">Sprache wählen …</option>' +
+    LANGS.map((l) => `<option value="${l.code}">${l.name} · ${l.code.toUpperCase()}</option>`).join('');
+}
+
+/* theme: system default, demo toggle overrides; ?theme=dark for deterministic screenshots */
+const themeButtons = () => document.querySelectorAll('[data-theme-btn]');
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeButtons().forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeBtn === t)));
+}
+(function initTheme() {
+  const q = new URLSearchParams(location.search).get('theme');
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  let manual = q === 'dark' || q === 'light';
+  setTheme(manual ? q : mq.matches ? 'dark' : 'light');
+  mq.addEventListener('change', () => { if (!manual) setTheme(mq.matches ? 'dark' : 'light'); });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-theme-btn]');
+    if (b) { manual = true; setTheme(b.dataset.themeBtn); }
+  });
+})();
+
+function renderEmojiPicker(tabsEl, gridEl, getEmoji, onPick, onGroup) {
+  let group = groupOf(getEmoji());
+  const draw = () => {
+    const cur = getEmoji();
+    tabsEl.innerHTML = EMOJI_GROUPS.map((g) => `<button type="button" role="tab" class="emoji-group" data-g="${g.key}" aria-selected="${g.key === group}">${g.label}</button>`).join('');
+    const g = EMOJI_GROUPS.find((x) => x.key === group);
+    gridEl.innerHTML = g.emojis.map((e) => `<button type="button" role="radio" class="emoji-tile" data-e="${e}" aria-checked="${e === cur}" aria-label="Emoji ${e}">${e}</button>`).join('');
+  };
+  tabsEl.addEventListener('click', (e) => { const b = e.target.closest('[data-g]'); if (b) { group = b.dataset.g; draw(); } });
+  gridEl.addEventListener('click', (e) => { const b = e.target.closest('[data-e]'); if (b) onPick(b.dataset.e); });
+  return { draw, setGroupFor(emoji) { group = groupOf(emoji); } };
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+</script>
+<script>
+const BASE = { name: 'Spanisch A2', emoji: '🇪🇸', mode: 'langs', src: 'de', dst: 'es' };
+const STATES = {
+  unchanged: { ...BASE },
+  changed:   { ...BASE, name: 'Spanisch A2 Reisen', src: 'en' },
+  same:      { ...BASE, src: 'es' },
+};
+let baseline = { ...BASE };
+let s = { ...BASE };
+let current = '';
+fillSelect($('src')); fillSelect($('dst'));
+const picker = renderEmojiPicker($('emoji-tabs'), $('emoji-grid'), () => s.emoji, (e) => { s.emoji = e; render(); });
+
+const isNone = () => s.mode === 'none';
+const same = () => !isNone() && s.src && s.src === s.dst;
+const partial = () => !isNone() && !!s.src !== !!s.dst;
+const valid = () => isNone() || (s.src && s.dst && s.src !== s.dst);
+const langChanged = () => s.mode !== baseline.mode || (!isNone() && (s.src !== baseline.src || s.dst !== baseline.dst));
+const changes = () => ({ name: s.name !== baseline.name, emoji: s.emoji !== baseline.emoji, lang: langChanged() });
+
+function render() {
+  const nameEl = $('name'); if (nameEl.value !== s.name) nameEl.value = s.name;
+  $('count').textContent = s.name.length + ' / 40';
+  $('pv-emoji').textContent = s.emoji;
+  const pn = $('pv-name'); pn.textContent = s.name.trim() || 'Stapelname'; pn.classList.toggle('is-placeholder', !s.name.trim());
+  $('pv-chip').innerHTML = chipHTML(s.mode, s.src, s.dst);
+
+  document.querySelectorAll('input[name=mode]').forEach((r) => { r.checked = r.value === s.mode; });
+  $('language-details').hidden = isNone();
+  if (isNone()) $('fld-lang').removeAttribute('aria-describedby');
+  else $('fld-lang').setAttribute('aria-describedby', 'lang-note');
+  for (const k of ['src', 'dst']) {
+    const sel = $(k); sel.value = s[k]; sel.disabled = isNone();
+    const l = lang(s[k]); const f = $('flag-' + k);
+    f.textContent = l ? l.flag : '?'; f.classList.toggle('is-empty', !l);
+    $('f-' + k).classList.toggle('has-error', !!same());
+    sel.setAttribute('aria-invalid', String(!!same()));
+  }
+  $('swap').disabled = isNone() || (!s.src && !s.dst);
+
+  const msg = $('lang-msg');
+  if (same()) msg.innerHTML = `<p class="msg msg-error"><span class="ico" aria-hidden="true">⚠️</span><span>Ursprungs- und Zielsprache sind beide ${esc(lang(s.src).name)}. Wähle zwei verschiedene Sprachen.</span></p>`;
+  else if (partial()) msg.innerHTML = `<p class="msg msg-warn"><span class="ico" aria-hidden="true">☝️</span><span>Es fehlt noch die ${s.src ? 'Zielsprache' : 'Ursprungssprache'}. Beide Sprachen wählen – oder „Keine Sprachen“.</span></p>`;
+  else if (isNone() && baseline.mode === 'langs') msg.innerHTML = `<p class="msg msg-warn"><span class="ico" aria-hidden="true">🧹</span><span>Beim Speichern wird der Sprach-Marker aus der Beschreibung entfernt.</span></p>`;
+  else msg.innerHTML = '';
+
+  const c = changes(); const n = Object.values(c).filter(Boolean).length;
+  $('fld-name').classList.toggle('is-changed', c.name);
+  $('fld-emoji').classList.toggle('is-changed', c.emoji);
+  $('fld-lang').classList.toggle('is-changed', c.lang);
+  $('dirty').classList.toggle('show', n > 0);
+  $('dirty-text').textContent = n === 1 ? '1 ungespeicherte Änderung' : n + ' ungespeicherte Änderungen';
+  $('btn-save').disabled = n === 0 || !s.name.trim() || !valid();
+  picker.draw();
+  document.querySelectorAll('[data-state]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === current)));
+}
+
+function openMenu(o) { const m = $('deck-menu'); m.hidden = !o; $('menu-btn').setAttribute('aria-expanded', String(o)); if (o) $('mi-settings').focus({ preventScroll: true }); }
+function openSheet() { openMenu(false); $('overlay').classList.add('open'); $('overlay').inert = false; }
+function closeSheet() { $('overlay').classList.remove('open'); $('overlay').inert = true; }
+function setState(k) {
+  current = k;
+  if (k === 'menu') { closeSheet(); s = { ...baseline }; render(); openMenu(true); return; }
+  s = { ...STATES[k] }; picker.setGroupFor(s.emoji); render(); openSheet();
+}
+
+$('menu-btn').addEventListener('click', () => { current = 'menu'; openMenu($('deck-menu').hidden); render(); });
+$('mi-settings').addEventListener('click', () => { s = { ...baseline }; current = 'unchanged'; picker.setGroupFor(s.emoji); render(); openSheet(); });
+document.addEventListener('click', (e) => { if (!e.target.closest('#card-1') && !e.target.closest('.demo-bar')) openMenu(false); });
+$('btn-close').addEventListener('click', closeSheet);
+$('btn-cancel').addEventListener('click', () => { s = { ...baseline }; closeSheet(); });
+$('overlay').addEventListener('click', (e) => { if (e.target === $('overlay')) closeSheet(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); openMenu(false); } });
+$('name').addEventListener('input', (e) => { s.name = e.target.value; current = ''; render(); });
+$('src').addEventListener('change', (e) => { s.src = e.target.value; current = ''; render(); });
+$('dst').addEventListener('change', (e) => { s.dst = e.target.value; current = ''; render(); });
+document.querySelectorAll('input[name=mode]').forEach((r) => r.addEventListener('change', () => {
+  s.mode = r.value; if (r.value === 'langs' && !s.src && !s.dst) { s.src = baseline.src; s.dst = baseline.dst; } current = ''; render();
+}));
+$('swap').addEventListener('click', () => { [s.src, s.dst] = [s.dst, s.src]; $('swap').classList.toggle('spun'); current = ''; render(); });
+document.querySelectorAll('[data-state]').forEach((b) => b.addEventListener('click', () => setState(b.dataset.state)));
+$('form').addEventListener('submit', (e) => {
+  e.preventDefault(); if ($('btn-save').disabled) return;
+  baseline = { ...s };
+  $('d1-name').textContent = s.name.trim(); $('d1-emoji').textContent = s.emoji; $('sheet-sub').textContent = s.name.trim();
+  $('d1-chip').innerHTML = isNone() ? '' : chipHTML('langs', s.src, s.dst);
+  current = ''; render(); closeSheet(); toast('Einstellungen gespeichert');
+});
+
+$('d1-chip').innerHTML = chipHTML('langs', BASE.src, BASE.dst);
+const q = new URLSearchParams(location.search);
+const st = q.get('state');
+if (st && (STATES[st] || st === 'menu')) setState(st); else { render(); }
+</script>
+</body>
+</html>
