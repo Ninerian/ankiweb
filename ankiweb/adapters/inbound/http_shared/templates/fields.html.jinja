@@ -1,159 +1,179 @@
 {% macro field_row(field) %}
-  <tr class="field-row row-hover" data-field-key="{{ field.key }}">
-    <td data-label="{{ tr.actions_name() }}">
-      <label class="block mb-0">
-        <span class="sr-only">{{ tr.actions_name() }}</span>
-        <input type="text" class="fld-name input input-sm text-base md:text-sm min-h-11 md:min-h-8 w-full md:w-36" data-bind="fieldDraft.rows.{{ field.key }}.name" size="16" placeholder="{{ tr.actions_name() }}">
-      </label>
-    </td>
-    <td data-label="{{ tr.fields_editing_font() }}">
-      <label class="block mb-0">
-        <span class="sr-only">{{ tr.fields_editing_font() }}</span>
-        <input type="text" class="fld-font input input-sm text-base md:text-sm min-h-11 md:min-h-8 w-full md:w-28" data-bind="fieldDraft.rows.{{ field.key }}.font" size="10" placeholder="{{ tr.fields_editing_font() }}">
-      </label>
-    </td>
-    <td data-label="{{ tr.fields_size() }}">
-      <label class="block mb-0">
-        <span class="sr-only">{{ tr.fields_size() }}</span>
-        <input
-          type="number"
-          class="fld-size input input-sm text-base md:text-sm min-h-11 md:min-h-8 w-full md:w-20"
-          data-bind="fieldDraft.rows.{{ field.key }}.size"
-          min="1"
-          placeholder="{{ tr.fields_size() }}"
-        >
-      </label>
-    </td>
-    <td data-label="{{ tr.fields_reverse_text_direction_rtl() }}">
-      <label class="label cursor-pointer justify-start gap-2 py-0">
-        <input
-          type="checkbox"
-          class="fld-rtl checkbox checkbox-sm checkbox-primary"
-          id="rtl_{{ field.key }}"
-          data-bind="fieldDraft.rows.{{ field.key }}.rtl"
-        >
-        <span class="sr-only md:not-sr-only text-xs whitespace-nowrap">{{ tr.fields_reverse_text_direction_rtl() }}</span>
-      </label>
-    </td>
-    <td data-label="{{ tr.fields_description() }}">
-      <label class="block mb-0">
-        <span class="sr-only">{{ tr.fields_description() }}</span>
-        <input
-          type="text"
-          class="fld-desc input input-sm text-base md:text-sm min-h-11 md:min-h-8 w-full md:w-36"
-          data-bind="fieldDraft.rows.{{ field.key }}.description"
-          size="16"
-          placeholder="{{ tr.fields_description() }}"
-        >
-      </label>
-    </td>
-    <td data-label="{{ tr.browsing_sort_field() }}">
-      <label class="label cursor-pointer justify-start gap-2 py-0">
-        <input
-          type="radio"
-          name="sortf"
-          id="sortf_{{ field.key }}"
-          class="fld-sort radio radio-sm radio-primary"
-          value="{{ field.key }}"
-          data-bind="fieldDraft.sortKey"
-        >
-        <span class="sr-only md:not-sr-only text-xs whitespace-nowrap">{{ tr.browsing_sort_field() }}</span>
-      </label>
-    </td>
-    <td data-label="{{ tr.actions_options() }}">
-      <div class="flex items-center flex-wrap md:flex-nowrap gap-2 md:gap-1">
-        <div class="join">
-          <button class="btn btn-sm btn-outline join-item min-h-11 md:min-h-8 min-w-11 md:min-w-8" type="button" data-on:click__prevent="moveFieldRow(el, $fieldDraft, '{{ field.key }}', -1)">↑</button>
-          <button class="btn btn-sm btn-outline join-item min-h-11 md:min-h-8 min-w-11 md:min-w-8" type="button" data-on:click__prevent="moveFieldRow(el, $fieldDraft, '{{ field.key }}', 1)">↓</button>
-        </div>
-        <button class="btn btn-sm btn-outline btn-error min-h-11 md:min-h-8" type="button" data-on:click__prevent="deleteFieldRow(el, $fieldDraft, '{{ field.key }}')">
-          {{ tr.actions_delete() }}
-        </button>
-      </div>
-    </td>
-  </tr>
+    <tr class="field-row row-hover" data-field-key="{{ field.key }}">
+        <td data-label="{{ tr.actions_name() }}">
+            <label class="block mb-0">
+                <span class="sr-only">{{ tr.actions_name() }}</span>
+                <input type="text"
+                       class="fld-name input input-sm text-base md:text-sm min-h-11 md:min-h-8 w-full md:w-36"
+                       data-bind="fieldDraft.rows.{{ field.key }}.name"
+                       size="16"
+                       placeholder="{{ tr.actions_name() }}">
+            </label>
+        </td>
+        <td data-label="{{ tr.fields_editing_font() }}">
+            <label class="block mb-0">
+                <span class="sr-only">{{ tr.fields_editing_font() }}</span>
+                <input type="text"
+                       class="fld-font input input-sm text-base md:text-sm min-h-11 md:min-h-8 w-full md:w-28"
+                       data-bind="fieldDraft.rows.{{ field.key }}.font"
+                       size="10"
+                       placeholder="{{ tr.fields_editing_font() }}">
+            </label>
+        </td>
+        <td data-label="{{ tr.fields_size() }}">
+            <label class="block mb-0">
+                <span class="sr-only">{{ tr.fields_size() }}</span>
+                <input type="number"
+                       class="fld-size input input-sm text-base md:text-sm min-h-11 md:min-h-8 w-full md:w-20"
+                       data-bind="fieldDraft.rows.{{ field.key }}.size"
+                       min="1"
+                       placeholder="{{ tr.fields_size() }}">
+            </label>
+        </td>
+        <td data-label="{{ tr.fields_reverse_text_direction_rtl() }}">
+            <label class="label cursor-pointer justify-start gap-2 py-0">
+                <input type="checkbox"
+                       class="fld-rtl checkbox checkbox-sm checkbox-primary"
+                       id="rtl_{{ field.key }}"
+                       data-bind="fieldDraft.rows.{{ field.key }}.rtl">
+                <span class="sr-only md:not-sr-only text-xs whitespace-nowrap">{{ tr.fields_reverse_text_direction_rtl() }}</span>
+            </label>
+        </td>
+        <td data-label="{{ tr.fields_description() }}">
+            <label class="block mb-0">
+                <span class="sr-only">{{ tr.fields_description() }}</span>
+                <input type="text"
+                       class="fld-desc input input-sm text-base md:text-sm min-h-11 md:min-h-8 w-full md:w-36"
+                       data-bind="fieldDraft.rows.{{ field.key }}.description"
+                       size="16"
+                       placeholder="{{ tr.fields_description() }}">
+            </label>
+        </td>
+        <td data-label="{{ tr.browsing_sort_field() }}">
+            <label class="label cursor-pointer justify-start gap-2 py-0">
+                <input type="radio"
+                       name="sortf"
+                       id="sortf_{{ field.key }}"
+                       class="fld-sort radio radio-sm radio-primary"
+                       value="{{ field.key }}"
+                       data-bind="fieldDraft.sortKey">
+                <span class="sr-only md:not-sr-only text-xs whitespace-nowrap">{{ tr.browsing_sort_field() }}</span>
+            </label>
+        </td>
+        <td data-label="{{ tr.actions_options() }}">
+            <div class="flex items-center flex-wrap md:flex-nowrap gap-2 md:gap-1">
+                <div class="join">
+                    <button class="btn btn-sm btn-outline join-item min-h-11 md:min-h-8 min-w-11 md:min-w-8"
+                            type="button"
+                            data-on:click__prevent="moveFieldRow(el, $fieldDraft, '{{ field.key }}', -1)">↑</button>
+                    <button class="btn btn-sm btn-outline join-item min-h-11 md:min-h-8 min-w-11 md:min-w-8"
+                            type="button"
+                            data-on:click__prevent="moveFieldRow(el, $fieldDraft, '{{ field.key }}', 1)">↓</button>
+                </div>
+                <button class="btn btn-sm btn-outline btn-error min-h-11 md:min-h-8"
+                        type="button"
+                        data-on:click__prevent="deleteFieldRow(el, $fieldDraft, '{{ field.key }}')">
+                    {{ tr.actions_delete() }}
+                </button>
+            </div>
+        </td>
+    </tr>
 {% endmacro %}
 <div class="fields max-w-5xl mx-auto px-4 py-3">
-  <h3 class="text-xl font-bold mb-3">Fields</h3>
-  <form id="ff" onsubmit="return false" data-signals='{{ {"notetypeId": ntid, "error": "", "fieldDraft": field_draft, "returnUrl": return_url} | tojson }}'>
-    <div class="fields-table-wrap mb-3">
-      <table id="fieldtbl" class="table table-sm">
-        <tbody id="fieldrows">
-          {% for f in fields %}{{ field_row(f) }}{% endfor %}
-        </tbody>
-      </table>
-    </div>
-    <div class="mt-2">
-      <button class="btn btn-outline" type="button" id="addfield" data-on:click__prevent="addFieldRow($fieldDraft)">
-        {{ add_label }}
-      </button>
-    </div>
-    <div class="mt-4 flex flex-wrap gap-2">
-      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="$error = ''; @post('/fields/savefields')">
-        {{ save_label }}
-      </button>
-      <a class="btn btn-neutral" id="fields-cancel-btn" href="{{ return_url }}">
-        {{ cancel_label }}
-      </a>
-    </div>
-    <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
-  </form>
+    <h3 class="text-xl font-bold mb-3">Fields</h3>
+    <form id="ff"
+          onsubmit="return false"
+          data-signals='{{ {"notetypeId": ntid, "error": "", "fieldDraft": field_draft, "returnUrl": return_url} | tojson }}'>
+        <div class="fields-table-wrap mb-3">
+            <table id="fieldtbl" class="table table-sm">
+                <tbody id="fieldrows">
+                    {% for f in fields %}{{ field_row(f) }}{% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-2">
+            <button class="btn btn-outline"
+                    type="button"
+                    id="addfield"
+                    data-on:click__prevent="addFieldRow($fieldDraft)">{{ add_label }}</button>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2">
+            <button class="btn btn-primary"
+                    type="button"
+                    id="save"
+                    data-on:click__prevent="$error = ''; @post('/fields/savefields')">{{ save_label }}</button>
+            <a class="btn btn-neutral"
+               id="fields-cancel-btn"
+               href="{{ return_url }}">{{ cancel_label }}</a>
+        </div>
+        <div id="err"
+             class="text-error text-sm font-semibold mt-2"
+             data-text="$error"></div>
+    </form>
 </div>
-<template id="blankrow">{{ field_row({'key': '__FIELD_KEY__'}) }}</template>
+<template id="blankrow">{{ field_row({"key": "__FIELD_KEY__"}) }}</template>
 <script>
-  function replaceFieldRowKey(row, key) {
-    for (const element of [row, ...row.querySelectorAll('*')]) {
-      for (const attribute of Array.from(element.attributes)) {
-        if (attribute.value.includes('__FIELD_KEY__')) {
-          element.setAttribute(attribute.name, attribute.value.split('__FIELD_KEY__').join(key));
+    function replaceFieldRowKey(row, key) {
+        for (const element of [row, ...row.querySelectorAll('*')]) {
+            for (const attribute of Array.from(element.attributes)) {
+                if (attribute.value.includes('__FIELD_KEY__')) {
+                    element.setAttribute(attribute.name, attribute.value.split('__FIELD_KEY__').join(key));
+                }
+            }
         }
-      }
-    }
-  }
-
-  function addFieldRow(fieldDraft) {
-    const key = `f${fieldDraft.nextId}`;
-    fieldDraft.nextId += 1;
-    fieldDraft.rows[key] = {name: '', font: 'Arial', size: 20, rtl: false, description: ''};
-    fieldDraft.order = [...fieldDraft.order, key];
-    if (!fieldDraft.sortKey) {
-      fieldDraft.sortKey = key;
     }
 
-    const template = document.getElementById('blankrow');
-    const row = template.content.firstElementChild.cloneNode(true);
-    replaceFieldRowKey(row, key);
-    document.getElementById('fieldrows').appendChild(row);
-  }
+    function addFieldRow(fieldDraft) {
+        const key = `f${fieldDraft.nextId}`;
+        fieldDraft.nextId += 1;
+        fieldDraft.rows[key] = {
+            name: '',
+            font: 'Arial',
+            size: 20,
+            rtl: false,
+            description: ''
+        };
+        fieldDraft.order = [...fieldDraft.order, key];
+        if (!fieldDraft.sortKey) {
+            fieldDraft.sortKey = key;
+        }
 
-  function deleteFieldRow(button, fieldDraft, key) {
-    fieldDraft.order = fieldDraft.order.filter(function(k) { return k !== key; });
-    delete fieldDraft.rows[key];
-    if (fieldDraft.sortKey === key) {
-      fieldDraft.sortKey = fieldDraft.order[0] || '';
+        const template = document.getElementById('blankrow');
+        const row = template.content.firstElementChild.cloneNode(true);
+        replaceFieldRowKey(row, key);
+        document.getElementById('fieldrows').appendChild(row);
     }
-    const tr = button.closest('tr');
-    if (tr) tr.remove();
-  }
 
-  function moveFieldRow(button, fieldDraft, key, direction) {
-    const order = [...fieldDraft.order];
-    const index = order.indexOf(key);
-    const targetIndex = index + direction;
-    if (index < 0 || targetIndex < 0 || targetIndex >= order.length) return;
-
-    const [moved] = order.splice(index, 1);
-    order.splice(targetIndex, 0, moved);
-    fieldDraft.order = order;
-
-    const row = button.closest('tr');
-    const tbody = row.parentElement;
-    const children = Array.from(tbody.children);
-    const target = children[targetIndex];
-    if (direction < 0) {
-      tbody.insertBefore(row, target);
-    } else {
-      tbody.insertBefore(row, target.nextSibling);
+    function deleteFieldRow(button, fieldDraft, key) {
+        fieldDraft.order = fieldDraft.order.filter(function(k) {
+            return k !== key;
+        });
+        delete fieldDraft.rows[key];
+        if (fieldDraft.sortKey === key) {
+            fieldDraft.sortKey = fieldDraft.order[0] || '';
+        }
+        const tr = button.closest('tr');
+        if (tr) tr.remove();
     }
-  }
+
+    function moveFieldRow(button, fieldDraft, key, direction) {
+        const order = [...fieldDraft.order];
+        const index = order.indexOf(key);
+        const targetIndex = index + direction;
+        if (index < 0 || targetIndex < 0 || targetIndex >= order.length) return;
+
+        const [moved] = order.splice(index, 1);
+        order.splice(targetIndex, 0, moved);
+        fieldDraft.order = order;
+
+        const row = button.closest('tr');
+        const tbody = row.parentElement;
+        const children = Array.from(tbody.children);
+        const target = children[targetIndex];
+        if (direction < 0) {
+            tbody.insertBefore(row, target);
+        } else {
+            tbody.insertBefore(row, target.nextSibling);
+        }
+    }
 </script>

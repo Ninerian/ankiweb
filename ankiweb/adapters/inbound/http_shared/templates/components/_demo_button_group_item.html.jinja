@@ -1,6 +1,5 @@
 {% from "components/button_group.html.jinja" import button_group %}
 {% from "components/button_group_item.html.jinja" import button_group_item %}
-
 <div class="border border-base-300 p-3 mb-3 rounded-box">
     <h6 class="text-base-content/60 mb-2">ButtonGroup with explicit ButtonGroupItem positions:</h6>
     {% call button_group() %}
@@ -15,7 +14,6 @@
         {% endcall %}
     {% endcall %}
 </div>
-
 <div class="border border-base-300 p-3 rounded-box">
     <h6 class="text-base-content/60 mb-2">Standalone vs Detached:</h6>
     <div class="flex gap-2">

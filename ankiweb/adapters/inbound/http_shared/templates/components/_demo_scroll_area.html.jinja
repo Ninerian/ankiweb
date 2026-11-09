@@ -1,5 +1,4 @@
 {% from "components/scroll_area.html.jinja" import scroll_area %}
-
 <div class="flex flex-col gap-4" id="demo-scroll-area">
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">1. Vertical ScrollArea with Custom Scrollbar & Shadows</h5>
@@ -7,13 +6,11 @@
             Features upstream overflow edge-detection shadows (top/bottom), custom scrollbar with exact thumb ratio,
             smooth track click-to-jump, wheel event forwarding, and keyboard navigation.
         </p>
-
         <div class="flex gap-2 mb-2">
             <button type="button" class="btn btn-sm btn-outline" id="sa-scroll-top">Scroll to Top</button>
             <button type="button" class="btn btn-sm btn-outline" id="sa-scroll-mid">Scroll to Middle</button>
             <button type="button" class="btn btn-sm btn-outline" id="sa-scroll-bot">Scroll to Bottom</button>
         </div>
-
         <div class="relative h-[220px] rounded-[4px] border border-solid border-base-300">
             {% call scroll_area(id="demo-sa-vert", height="220px", scroll_y=true, scroll_x=false) %}
                 <div class="p-3" style="line-height: 1.8;">
@@ -33,7 +30,6 @@
             {% endcall %}
         </div>
     </div>
-
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">2. Horizontal & RTL ScrollArea</h5>
         <p class="text-base-content/60 text-sm mb-3">
@@ -54,34 +50,42 @@
         </div>
     </div>
 </div>
-
 <script>
-(() => {
-    function setupDemoSA() {
-        const vertEl = document.getElementById('demo-sa-vert');
-        if (!vertEl || !window.AnkiwebTables) {
-            setTimeout(setupDemoSA, 50);
-            return;
+    (() => {
+        function setupDemoSA() {
+            const vertEl = document.getElementById('demo-sa-vert');
+            if (!vertEl || !window.AnkiwebTables) {
+                setTimeout(setupDemoSA, 50);
+                return;
+            }
+
+            const vertSA = vertEl._scrollAreaInstance;
+            if (vertSA) {
+                document.getElementById('sa-scroll-top')?.addEventListener('click', () => {
+                    vertSA.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                });
+                document.getElementById('sa-scroll-mid')?.addEventListener('click', () => {
+                    vertSA.scrollTo({
+                        top: 150,
+                        behavior: 'smooth'
+                    });
+                });
+                document.getElementById('sa-scroll-bot')?.addEventListener('click', () => {
+                    vertSA.scrollTo({
+                        top: 1000,
+                        behavior: 'smooth'
+                    });
+                });
+            }
         }
 
-        const vertSA = vertEl._scrollAreaInstance;
-        if (vertSA) {
-            document.getElementById('sa-scroll-top')?.addEventListener('click', () => {
-                vertSA.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-            document.getElementById('sa-scroll-mid')?.addEventListener('click', () => {
-                vertSA.scrollTo({ top: 150, behavior: 'smooth' });
-            });
-            document.getElementById('sa-scroll-bot')?.addEventListener('click', () => {
-                vertSA.scrollTo({ top: 1000, behavior: 'smooth' });
-            });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupDemoSA);
+        } else {
+            setupDemoSA();
         }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupDemoSA);
-    } else {
-        setupDemoSA();
-    }
-})();
+    })();
 </script>

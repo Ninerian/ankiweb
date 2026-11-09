@@ -22,23 +22,19 @@
     keyboard=false,
     id=""
 ) -%}
-{% set mid = id or modal_key or ("modal_" ~ range(1000, 999999)|random) %}
-<dialog
-    class="modal{% if class_ %} {{ class_ }}{% endif %}"
-    id="{{ mid }}"
-    aria-labelledby="{{ mid }}Label"
-    {% if not keyboard %}
-    oncancel="event.preventDefault()"
-    {% endif %}
-    {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
->
-    <div class="modal-box bg-base-100 text-base-content border border-base-300{% if dialog_class %} {{ dialog_class }}{% endif %}">
-        {{ caller() if caller else '' }}
-    </div>
-    {% if backdrop and backdrop != 'static' %}
-    <form method="dialog" class="modal-backdrop">
-        <button type="submit" aria-label="Close">close</button>
-    </form>
-    {% endif %}
-</dialog>
+    {% set mid = id or modal_key or ("modal_" ~ range(1000, 999999)|random) %}
+    <dialog class="modal{% if class_ %} {{ class_ }}{% endif %}"
+            id="{{ mid }}"
+            aria-labelledby="{{ mid }}Label"
+            {% if not keyboard %} oncancel="event.preventDefault()" {% endif %}
+            {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}>
+        <div class="modal-box bg-base-100 text-base-content border border-base-300{% if dialog_class %} {{ dialog_class }}{% endif %}">
+            {{ caller() if caller else '' }}
+        </div>
+        {% if backdrop and backdrop != "static" %}
+            <form method="dialog" class="modal-backdrop">
+                <button type="submit" aria-label="Close">close</button>
+            </form>
+        {% endif %}
+    </dialog>
 {%- endmacro %}

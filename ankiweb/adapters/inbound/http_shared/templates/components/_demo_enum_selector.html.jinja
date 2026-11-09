@@ -1,6 +1,6 @@
 {% from "components/enum_selector.html.jinja" import enum_selector %}
-
-<div class="flex flex-col gap-3 max-w-xs" data-signals="{ selectedDeck: 'deck2' }">
+<div class="flex flex-col gap-3 max-w-xs"
+     data-signals="{ selectedDeck: 'deck2' }">
     <div>
         <label class="label font-medium mb-1">Deck Selection (signal bound)</label>
         {{ enum_selector(
@@ -14,7 +14,6 @@
         ) }}
         <span class="text-base-content/60 text-xs block mt-1">Current signal value: <code data-text="$selectedDeck">deck2</code></span>
     </div>
-
     <div>
         <label class="label font-medium mb-1">Static Pre-selected (deck1)</label>
         {{ enum_selector(
@@ -25,7 +24,6 @@
             ]
         ) }}
     </div>
-
     <div>
         <label class="label font-medium mb-1">Entirely Disabled Selector</label>
         {{ enum_selector(

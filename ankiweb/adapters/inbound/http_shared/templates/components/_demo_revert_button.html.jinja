@@ -1,17 +1,17 @@
 {% from "components/revert_button.html.jinja" import revert_button %}
-
-<div class="flex flex-col gap-3" data-signals="{ myVal: 'custom', myDef: 'original' }">
+<div class="flex flex-col gap-3"
+     data-signals="{ myVal: 'custom', myDef: 'original' }">
     <div class="flex items-center gap-2">
         <span>Current value: <code data-text="$myVal">custom</code> (default: <code>original</code>)</span>
-        <button type="button" class="btn btn-sm btn-outline btn-primary" data-on:click="$myVal = 'modified_' + Date.now()">Change Value</button>
+        <button type="button"
+                class="btn btn-sm btn-outline btn-primary"
+                data-on:click="$myVal = 'modified_' + Date.now()">Change Value</button>
         {{ revert_button(signal_value="$myVal", signal_default="$myDef", tooltip="Restore default value") }}
     </div>
-
     <div class="flex items-center gap-2">
         <span>Static modified example (visible):</span>
         {{ revert_button(value="changed", default_value="initial") }}
     </div>
-
     <div class="flex items-center gap-2">
         <span>Static unmodified example (hidden):</span>
         {{ revert_button(value="same", default_value="same") }}

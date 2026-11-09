@@ -572,8 +572,10 @@ uv run --locked --extra dev pre-commit install
 The installed hook is shared by worktrees using the same common Git directory. Before each
 commit, it runs Ruff lint, Ruff format check, ty, and Complexipy against the whole repository.
 It also reformats and then lints staged `.html.jinja` templates with djLint; if formatting changes
-a file, review and stage it again before retrying the commit. Failures block the commit. To run
-all hooks on every tracked file (including reformatting all matching templates), or uninstall:
+a file, review and stage it again before retrying the commit. In particular, check Jinja
+expressions inside JavaScript event attributes: djLint can rewrite them and change behavior.
+Failures block the commit. To run all hooks on every tracked file (including reformatting all
+matching templates), or uninstall:
 
 ```bash
 uv run --locked --extra dev pre-commit run --all-files

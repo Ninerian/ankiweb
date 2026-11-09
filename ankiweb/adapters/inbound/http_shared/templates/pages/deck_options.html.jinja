@@ -4,13 +4,17 @@
 {% from "components/switch.html.jinja" import switch %}
 {% from "components/enum_selector.html.jinja" import enum_selector %}
 {% from "components/spin_box.html.jinja" import spin_box %}
-<div class="route-deck-options max-w-7xl mx-auto px-4" data-signals="{{ signals | tojson | forceescape }}">
+<div class="route-deck-options max-w-7xl mx-auto px-4"
+     data-signals="{{ signals | tojson | forceescape }}">
     <!-- Sticky Header -->
     <div class="deck-options-header flex justify-between items-center mb-3">
         <div class="preset-selector-row flex items-center gap-2">
             <span class="font-bold">{{ tr.card_stats_preset() }}:</span>
             <div id="presetSelectorWrap">
-                <select id="presetSelector" class="select select-sm w-auto" data-bind="presetId" data-on:change="@post('/deck-options/change-preset')">
+                <select id="presetSelector"
+                        class="select select-sm w-auto"
+                        data-bind="presetId"
+                        data-on:change="@post('/deck-options/change-preset')">
                     {% for p in all_configs %}
                         <option value="{{ p.id }}" {% if p.id == preset_id %}selected{% endif %}>
                             {{ p.name }}{% if p.use_count %} ({{ p.use_count }}){% endif %}
@@ -18,34 +22,62 @@
                     {% endfor %}
                 </select>
             </div>
-
             <!-- Preset Action Dropdown -->
             <details class="dropdown">
-                <summary class="btn btn-sm btn-outline">
-                    ⚙️
-                </summary>
+                <summary class="btn btn-sm btn-outline">⚙️</summary>
                 <ul class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow border border-base-300">
-                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('addPresetModal').showModal()">{{ tr.deck_config_add_group() }}</button></li>
-                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('clonePresetModal').showModal()">{{ tr.deck_config_clone_group() }}</button></li>
-                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('renamePresetModal').showModal()">{{ tr.deck_config_rename_group() }}</button></li>
-                    <li><button class="btn btn-ghost btn-sm justify-start font-normal text-error" type="button" data-attr:disabled="$presetId == 1" onclick="this.closest('details')?.removeAttribute('open'); document.getElementById('deletePresetModal').showModal()">{{ tr.deck_config_remove_group() }}</button></li>
-                    <li><hr class="border-base-300 my-1"></li>
-                    <li><button type="button" class="btn btn-ghost btn-sm justify-start font-normal" onclick="this.closest('details')?.removeAttribute('open')" data-on:click="$applyToSubdecks = true; @post('/deck-options/save'); $applyToSubdecks = false;">{{ tr.deck_config_save_to_all_subdecks() }}</button></li>
+                    <li>
+                        <button type="button"
+                                class="btn btn-ghost btn-sm justify-start font-normal"
+                                onclick="this.closest('details')?.removeAttribute('open');
+                                         document.getElementById('addPresetModal').showModal()">{{ tr.deck_config_add_group() }}</button>
+                    </li>
+                    <li>
+                        <button type="button"
+                                class="btn btn-ghost btn-sm justify-start font-normal"
+                                onclick="this.closest('details')?.removeAttribute('open');
+                                         document.getElementById('clonePresetModal').showModal()">{{ tr.deck_config_clone_group() }}</button>
+                    </li>
+                    <li>
+                        <button type="button"
+                                class="btn btn-ghost btn-sm justify-start font-normal"
+                                onclick="this.closest('details')?.removeAttribute('open');
+                                         document.getElementById('renamePresetModal').showModal()">{{ tr.deck_config_rename_group() }}</button>
+                    </li>
+                    <li>
+                        <button class="btn btn-ghost btn-sm justify-start font-normal text-error"
+                                type="button"
+                                data-attr:disabled="$presetId == 1"
+                                onclick="this.closest('details')?.removeAttribute('open');
+                                         document.getElementById('deletePresetModal').showModal()">{{ tr.deck_config_remove_group() }}</button>
+                    </li>
+                    <li>
+                        <hr class="border-base-300 my-1">
+                    </li>
+                    <li>
+                        <button type="button"
+                                class="btn btn-ghost btn-sm justify-start font-normal"
+                                onclick="this.closest('details')?.removeAttribute('open')"
+                                data-on:click="$applyToSubdecks = true; @post('/deck-options/save'); $applyToSubdecks = false;">{{ tr.deck_config_save_to_all_subdecks() }}</button>
+                    </li>
                 </ul>
             </details>
-
             <span class="badge badge-warning ms-2" data-show="$dirty">Unsaved changes</span>
         </div>
-
         <!-- Action Buttons -->
         <div class="flex items-center gap-2">
-            <button class="btn btn-sm btn-outline" type="button" data-show="$dirty" data-on:click="@post('/deck-options/revert')">
-                Revert
-            </button>
-            <button class="btn btn-sm btn-primary" type="button" data-on:click="$applyToSubdecks = false; @post('/deck-options/save')">
+            <button class="btn btn-sm btn-outline"
+                    type="button"
+                    data-show="$dirty"
+                    data-on:click="@post('/deck-options/revert')">Revert</button>
+            <button class="btn btn-sm btn-primary"
+                    type="button"
+                    data-on:click="$applyToSubdecks = false; @post('/deck-options/save')">
                 {{ tr.deck_config_save_button() }}
             </button>
-            <a class="btn btn-sm btn-outline" href="/deckbrowser" data-on:click="
+            <a class="btn btn-sm btn-outline"
+               href="/deckbrowser"
+               data-on:click="
                 if (
                     $dirty &&
                     evt.button === 0 &&
@@ -57,12 +89,9 @@
                     evt.preventDefault();
                     $_leaveDialog.showModal();
                 }
-            ">
-                Close
-            </a>
+            ">Close</a>
         </div>
     </div>
-
     <!-- Status / Warnings Area -->
     <div class="mb-3" data-show="$statusMessage && $statusMessage !== ''">
         <div class="alert alert-info py-2 px-3 mb-0" data-text="$statusMessage"></div>
@@ -74,41 +103,60 @@
             </template>
         </div>
     </div>
-
     <!-- Navigation Tabs -->
-    <div class="tabs tabs-border deck-options-nav mb-4 overflow-x-auto flex-nowrap" role="tablist">
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'daily-limits'}" data-on:click="$activeTab = 'daily-limits'">
-            {{ tr.deck_config_daily_limits() }}
-        </button>
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'new-cards'}" data-on:click="$activeTab = 'new-cards'">
-            New Cards
-        </button>
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'lapses'}" data-on:click="$activeTab = 'lapses'">
-            Lapses
-        </button>
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'display-order'}" data-on:click="$activeTab = 'display-order'">
-            {{ tr.deck_config_ordering_title() }}
-        </button>
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'burying'}" data-on:click="$activeTab = 'burying'">
-            {{ tr.deck_config_bury_title() }}
-        </button>
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'audio'}" data-on:click="$activeTab = 'audio'">
-            {{ tr.deck_config_audio_title() }}
-        </button>
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'timer'}" data-on:click="$activeTab = 'timer'">
-            {{ tr.deck_config_timer_title() }}
-        </button>
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'auto-advance'}" data-on:click="$activeTab = 'auto-advance'">
-            Auto Advance
-        </button>
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'fsrs'}" data-on:click="$activeTab = 'fsrs'">
-            FSRS
-        </button>
-        <button class="tab whitespace-nowrap" type="button" role="tab" data-class="{'tab-active': $activeTab == 'advanced'}" data-on:click="$activeTab = 'advanced'">
-            {{ tr.deck_config_advanced_title() }}
-        </button>
+    <div class="tabs tabs-border deck-options-nav mb-4 overflow-x-auto flex-nowrap"
+         role="tablist">
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'daily-limits'}"
+                data-on:click="$activeTab = 'daily-limits'">{{ tr.deck_config_daily_limits() }}</button>
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'new-cards'}"
+                data-on:click="$activeTab = 'new-cards'">New Cards</button>
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'lapses'}"
+                data-on:click="$activeTab = 'lapses'">Lapses</button>
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'display-order'}"
+                data-on:click="$activeTab = 'display-order'">{{ tr.deck_config_ordering_title() }}</button>
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'burying'}"
+                data-on:click="$activeTab = 'burying'">{{ tr.deck_config_bury_title() }}</button>
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'audio'}"
+                data-on:click="$activeTab = 'audio'">{{ tr.deck_config_audio_title() }}</button>
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'timer'}"
+                data-on:click="$activeTab = 'timer'">{{ tr.deck_config_timer_title() }}</button>
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'auto-advance'}"
+                data-on:click="$activeTab = 'auto-advance'">Auto Advance</button>
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'fsrs'}"
+                data-on:click="$activeTab = 'fsrs'">FSRS</button>
+        <button class="tab whitespace-nowrap"
+                type="button"
+                role="tab"
+                data-class="{'tab-active': $activeTab == 'advanced'}"
+                data-on:click="$activeTab = 'advanced'">{{ tr.deck_config_advanced_title() }}</button>
     </div>
-
     <!-- 1. Daily Limits Tab -->
     <div class="tab-pane" data-show="$activeTab == 'daily-limits'">
         <div class="section-card">
@@ -123,18 +171,24 @@
                     ) }}
                 </span>
             </div>
-
             <!-- Subtabs: Preset / This Deck / Today Only -->
             <div class="flex gap-2 mb-3">
-                <button class="btn btn-sm" type="button" data-class="{'btn-primary': $activeLimitSubTab == 'preset', 'btn-outline': $activeLimitSubTab != 'preset'}" data-on:click="$activeLimitSubTab = 'preset'; $limitMode = 'preset'; $dirty = true;">
+                <button class="btn btn-sm"
+                        type="button"
+                        data-class="{'btn-primary': $activeLimitSubTab == 'preset', 'btn-outline': $activeLimitSubTab != 'preset'}"
+                        data-on:click="$activeLimitSubTab = 'preset'; $limitMode = 'preset'; $dirty = true;">
                     {{ tr.deck_config_shared_preset() }}
                 </button>
-                <button class="btn btn-sm" type="button" data-class="{'btn-primary': $activeLimitSubTab == 'deck', 'btn-outline': $activeLimitSubTab != 'deck'}" data-on:click="$activeLimitSubTab = 'deck'; $limitMode = 'deck'; $dirty = true;">
+                <button class="btn btn-sm"
+                        type="button"
+                        data-class="{'btn-primary': $activeLimitSubTab == 'deck', 'btn-outline': $activeLimitSubTab != 'deck'}"
+                        data-on:click="$activeLimitSubTab = 'deck'; $limitMode = 'deck'; $dirty = true;">
                     {{ tr.deck_config_deck_only() }}
                 </button>
-                <button class="btn btn-sm" type="button" data-class="{'btn-primary': $activeLimitSubTab == 'today', 'btn-outline': $activeLimitSubTab != 'today'}" data-on:click="$activeLimitSubTab = 'today'">
-                    {{ tr.deck_config_today_only() }}
-                </button>
+                <button class="btn btn-sm"
+                        type="button"
+                        data-class="{'btn-primary': $activeLimitSubTab == 'today', 'btn-outline': $activeLimitSubTab != 'today'}"
+                        data-on:click="$activeLimitSubTab = 'today'">{{ tr.deck_config_today_only() }}</button>
             </div>
             <!-- Preset Limits SubTab -->
             <div data-show="$activeLimitSubTab == 'preset'">
@@ -150,7 +204,12 @@
                         <div class="text-base-content/60 text-xs">Maximum number of new cards to introduce each day.</div>
                     </div>
                     <div class="setting-input-col">
-                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="cfg.new_per_day" data-on:input="$dirty = true">
+                        <input type="number"
+                               min="0"
+                               max="99999"
+                               class="input input-sm text-right w-24"
+                               data-bind="cfg.new_per_day"
+                               data-on:input="$dirty = true">
                     </div>
                 </div>
                 <div class="setting-row">
@@ -165,11 +224,15 @@
                         <div class="text-base-content/60 text-xs">Maximum number of review cards to show each day.</div>
                     </div>
                     <div class="setting-input-col">
-                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="cfg.reviews_per_day" data-on:input="$dirty = true">
+                        <input type="number"
+                               min="0"
+                               max="99999"
+                               class="input input-sm text-right w-24"
+                               data-bind="cfg.reviews_per_day"
+                               data-on:input="$dirty = true">
                     </div>
                 </div>
             </div>
-
             <!-- Per-Deck Limits SubTab -->
             <div data-show="$activeLimitSubTab == 'deck'">
                 <div class="alert alert-info border border-base-300 text-xs py-2 px-3 mb-3">
@@ -180,7 +243,12 @@
                         <div class="font-semibold">Deck new cards/day</div>
                     </div>
                     <div class="setting-input-col">
-                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="deckLimitNew" data-on:input="$dirty = true">
+                        <input type="number"
+                               min="0"
+                               max="99999"
+                               class="input input-sm text-right w-24"
+                               data-bind="deckLimitNew"
+                               data-on:input="$dirty = true">
                     </div>
                 </div>
                 <div class="setting-row">
@@ -188,11 +256,15 @@
                         <div class="font-semibold">Deck maximum reviews/day</div>
                     </div>
                     <div class="setting-input-col">
-                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="deckLimitRev" data-on:input="$dirty = true">
+                        <input type="number"
+                               min="0"
+                               max="99999"
+                               class="input input-sm text-right w-24"
+                               data-bind="deckLimitRev"
+                               data-on:input="$dirty = true">
                     </div>
                 </div>
             </div>
-
             <!-- Today-Only Limits SubTab -->
             <div data-show="$activeLimitSubTab == 'today'">
                 <div class="alert alert-info border border-base-300 text-xs py-2 px-3 mb-3">
@@ -200,30 +272,48 @@
                 </div>
                 <div class="setting-row">
                     <div class="setting-label-col">
-                        <label class="cursor-pointer flex items-center justify-between gap-2 whitespace-normal" for="todayNewSwitch">
+                        <label class="cursor-pointer flex items-center justify-between gap-2 whitespace-normal"
+                               for="todayNewSwitch">
                             <span class="font-semibold">Enable today's new card limit</span>
-                            <input class="toggle toggle-sm" type="checkbox" id="todayNewSwitch" data-bind="todayLimitNewActive" data-on:change="$dirty = true">
+                            <input class="toggle toggle-sm"
+                                   type="checkbox"
+                                   id="todayNewSwitch"
+                                   data-bind="todayLimitNewActive"
+                                   data-on:change="$dirty = true">
                         </label>
                     </div>
                     <div class="setting-input-col" data-show="$todayLimitNewActive">
-                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="todayLimitNew" data-on:input="$dirty = true">
+                        <input type="number"
+                               min="0"
+                               max="99999"
+                               class="input input-sm text-right w-24"
+                               data-bind="todayLimitNew"
+                               data-on:input="$dirty = true">
                     </div>
                 </div>
                 <div class="setting-row">
                     <div class="setting-label-col">
-                        <label class="cursor-pointer flex items-center justify-between gap-2 whitespace-normal" for="todayRevSwitch">
+                        <label class="cursor-pointer flex items-center justify-between gap-2 whitespace-normal"
+                               for="todayRevSwitch">
                             <span class="font-semibold">Enable today's review card limit</span>
-                            <input class="toggle toggle-sm" type="checkbox" id="todayRevSwitch" data-bind="todayLimitRevActive" data-on:change="$dirty = true">
+                            <input class="toggle toggle-sm"
+                                   type="checkbox"
+                                   id="todayRevSwitch"
+                                   data-bind="todayLimitRevActive"
+                                   data-on:change="$dirty = true">
                         </label>
                     </div>
                     <div class="setting-input-col" data-show="$todayLimitRevActive">
-                        <input type="number" min="0" max="99999" class="input input-sm text-right w-24" data-bind="todayLimitRev" data-on:input="$dirty = true">
+                        <input type="number"
+                               min="0"
+                               max="99999"
+                               class="input input-sm text-right w-24"
+                               data-bind="todayLimitRev"
+                               data-on:input="$dirty = true">
                     </div>
                 </div>
             </div>
-
             <hr class="border-base-300 my-4">
-
             <!-- Global Limit Options -->
             <div class="setting-row">
                 <div class="setting-label-col">
@@ -237,7 +327,10 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_cards_ignore_review_limit_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="newCardsIgnoreReviewLimit" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="newCardsIgnoreReviewLimit"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
             <div class="setting-row">
@@ -252,12 +345,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_apply_all_parent_limits_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="applyAllParentLimits" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="applyAllParentLimits"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
         </div>
     </div>
-
     <!-- 2. New Cards Tab -->
     <div class="tab-pane" data-show="$activeTab == 'new-cards'">
         <div class="section-card">
@@ -272,7 +367,6 @@
                     ) }}
                 </span>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_learning_steps() }}</div>
@@ -285,10 +379,13 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_learning_steps_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="text" class="input input-sm text-right w-36" data-bind="learnStepsStr" data-on:input="$dirty = true" placeholder="1 10">
+                    <input type="text"
+                           class="input input-sm text-right w-36"
+                           data-bind="learnStepsStr"
+                           data-on:input="$dirty = true"
+                           placeholder="1 10">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Graduating interval (days)</div>
@@ -301,10 +398,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_graduating_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="1" max="99999" class="input input-sm text-right w-24" data-bind="cfg.graduating_interval_good" data-on:input="$dirty = true">
+                    <input type="number"
+                           min="1"
+                           max="99999"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.graduating_interval_good"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Easy interval (days)</div>
@@ -317,10 +418,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_easy_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="1" max="99999" class="input input-sm text-right w-24" data-bind="cfg.graduating_interval_easy" data-on:input="$dirty = true">
+                    <input type="number"
+                           min="1"
+                           max="99999"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.graduating_interval_easy"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_new_insertion_order() }}</div>
@@ -333,7 +438,9 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_insertion_order_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="select select-sm w-auto" data-bind="cfg.new_card_insert_order" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto"
+                            data-bind="cfg.new_card_insert_order"
+                            data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_new_insertion_order_sequential() }}</option>
                         <option value="1">{{ tr.deck_config_new_insertion_order_random() }}</option>
                     </select>
@@ -341,7 +448,6 @@
             </div>
         </div>
     </div>
-
     <!-- 3. Lapses Tab -->
     <div class="tab-pane" data-show="$activeTab == 'lapses'">
         <div class="section-card">
@@ -356,7 +462,6 @@
                     ) }}
                 </span>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_relearning_steps() }}</div>
@@ -369,10 +474,13 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_relearning_steps_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="text" class="input input-sm text-right w-36" data-bind="relearnStepsStr" data-on:input="$dirty = true" placeholder="10">
+                    <input type="text"
+                           class="input input-sm text-right w-36"
+                           data-bind="relearnStepsStr"
+                           data-on:input="$dirty = true"
+                           placeholder="10">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Minimum interval (days)</div>
@@ -385,10 +493,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_minimum_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="1" max="99999" class="input input-sm text-right w-24" data-bind="cfg.minimum_lapse_interval" data-on:input="$dirty = true">
+                    <input type="number"
+                           min="1"
+                           max="99999"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.minimum_lapse_interval"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Leech threshold (lapses)</div>
@@ -401,10 +513,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_leech_threshold_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="0" max="999" class="input input-sm text-right w-24" data-bind="cfg.leech_threshold" data-on:input="$dirty = true">
+                    <input type="number"
+                           min="0"
+                           max="999"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.leech_threshold"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Leech action</div>
@@ -417,7 +533,9 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_leech_action_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="select select-sm w-auto" data-bind="cfg.leech_action" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto"
+                            data-bind="cfg.leech_action"
+                            data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_suspend_leeches() }}</option>
                         <option value="1">Tag Only</option>
                     </select>
@@ -425,7 +543,6 @@
             </div>
         </div>
     </div>
-
     <!-- 4. Display Order Tab -->
     <div class="tab-pane" data-show="$activeTab == 'display-order'">
         <div class="section-card">
@@ -440,7 +557,6 @@
                     ) }}
                 </span>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_new_gather_priority() }}</div>
@@ -453,7 +569,9 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_gather_priority_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="select select-sm w-auto" data-bind="cfg.new_card_gather_priority" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto"
+                            data-bind="cfg.new_card_gather_priority"
+                            data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_new_gather_priority_deck() }}</option>
                         <option value="5">{{ tr.deck_config_new_gather_priority_deck_then_random_notes() }}</option>
                         <option value="1">{{ tr.deck_config_new_gather_priority_position_lowest_first() }}</option>
@@ -463,7 +581,6 @@
                     </select>
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_new_card_sort_order() }}</div>
@@ -476,7 +593,9 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_card_sort_order_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="select select-sm w-auto" data-bind="cfg.new_card_sort_order" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto"
+                            data-bind="cfg.new_card_sort_order"
+                            data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_sort_order_template_then_gather() }}</option>
                         <option value="1">{{ tr.deck_config_sort_order_gather() }}</option>
                         <option value="2">{{ tr.deck_config_sort_order_card_template_then_random() }}</option>
@@ -485,7 +604,6 @@
                     </select>
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_new_review_priority() }}</div>
@@ -498,14 +616,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_review_priority_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="select select-sm w-auto" data-bind="cfg.new_mix" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto"
+                            data-bind="cfg.new_mix"
+                            data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_review_mix_mix_with_reviews() }}</option>
                         <option value="1">{{ tr.deck_config_review_mix_show_after_reviews() }}</option>
                         <option value="2">{{ tr.deck_config_review_mix_show_before_reviews() }}</option>
                     </select>
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_interday_step_priority() }}</div>
@@ -518,14 +637,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_interday_step_priority_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="select select-sm w-auto" data-bind="cfg.interday_learning_mix" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto"
+                            data-bind="cfg.interday_learning_mix"
+                            data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_review_mix_mix_with_reviews() }}</option>
                         <option value="1">{{ tr.deck_config_review_mix_show_after_reviews() }}</option>
                         <option value="2">{{ tr.deck_config_review_mix_show_before_reviews() }}</option>
                     </select>
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_review_sort_order() }}</div>
@@ -538,7 +658,9 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_review_sort_order_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="select select-sm w-auto" data-bind="cfg.review_order" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto"
+                            data-bind="cfg.review_order"
+                            data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_sort_order_due_date_then_random() }}</option>
                         <option value="1">{{ tr.deck_config_sort_order_due_date_then_deck() }}</option>
                         <option value="2">{{ tr.deck_config_sort_order_deck_then_due_date() }}</option>
@@ -555,7 +677,6 @@
             </div>
         </div>
     </div>
-
     <!-- 5. Burying Tab -->
     <div class="tab-pane" data-show="$activeTab == 'burying'">
         <div class="section-card">
@@ -570,7 +691,6 @@
                     ) }}
                 </span>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_bury_new_siblings() }}</div>
@@ -583,10 +703,12 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_bury_new_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.bury_new" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="cfg.bury_new"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_bury_review_siblings() }}</div>
@@ -599,10 +721,12 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_bury_review_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.bury_reviews" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="cfg.bury_reviews"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_bury_interday_learning_siblings() }}</div>
@@ -615,12 +739,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_bury_interday_learning_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.bury_interday_learning" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="cfg.bury_interday_learning"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
         </div>
     </div>
-
     <!-- 6. Audio Tab -->
     <div class="tab-pane" data-show="$activeTab == 'audio'">
         <div class="section-card">
@@ -635,7 +761,6 @@
                     ) }}
                 </span>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_disable_autoplay() }}</div>
@@ -648,20 +773,24 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_disable_autoplay_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.disable_autoplay" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="cfg.disable_autoplay"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_wait_for_audio() }}</div>
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_wait_for_audio_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.wait_for_audio" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="cfg.wait_for_audio"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_skip_question_when_replaying() }}</div>
@@ -673,12 +802,14 @@
                     ) }}
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.skip_question_when_replaying_answer" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="cfg.skip_question_when_replaying_answer"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
         </div>
     </div>
-
     <!-- 7. Timer Tab -->
     <div class="tab-pane" data-show="$activeTab == 'timer'">
         <div class="section-card">
@@ -693,7 +824,6 @@
                     ) }}
                 </span>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_maximum_answer_secs() }}</div>
@@ -706,10 +836,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_maximum_answer_secs_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="30" max="3600" class="input input-sm text-right w-24" data-bind="cfg.cap_answer_time_to_secs" data-on:input="$dirty = true">
+                    <input type="number"
+                           min="30"
+                           max="3600"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.cap_answer_time_to_secs"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Show answer timer</div>
@@ -722,10 +856,12 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_show_answer_timer_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.show_timer" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="cfg.show_timer"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_stop_timer_on_answer() }}</div>
@@ -738,12 +874,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_stop_timer_on_answer_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="cfg.stop_timer_on_answer" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="cfg.stop_timer_on_answer"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
         </div>
     </div>
-
     <!-- 8. Auto Advance Tab -->
     <div class="tab-pane" data-show="$activeTab == 'auto-advance'">
         <div class="section-card">
@@ -758,7 +896,6 @@
                     ) }}
                 </span>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_seconds_to_show_question() }}</div>
@@ -771,10 +908,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_seconds_to_show_question_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.5" min="0" max="3600" class="input input-sm text-right w-24" data-bind="cfg.seconds_to_show_question" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.5"
+                           min="0"
+                           max="3600"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.seconds_to_show_question"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_question_action() }}</div>
@@ -787,13 +929,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_question_action_tool_tip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="select select-sm w-auto" data-bind="cfg.question_action" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto"
+                            data-bind="cfg.question_action"
+                            data-on:change="$dirty = true">
                         <option value="0">{{ tr.deck_config_question_action_show_answer() }}</option>
                         <option value="1">{{ tr.deck_config_question_action_show_reminder() }}</option>
                     </select>
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_seconds_to_show_answer() }}</div>
@@ -806,10 +949,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_seconds_to_show_answer_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.5" min="0" max="3600" class="input input-sm text-right w-24" data-bind="cfg.seconds_to_show_answer" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.5"
+                           min="0"
+                           max="3600"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.seconds_to_show_answer"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_answer_action() }}</div>
@@ -822,7 +970,9 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_answer_action_tooltip_2() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <select class="select select-sm w-auto" data-bind="cfg.answer_action" data-on:change="$dirty = true">
+                    <select class="select select-sm w-auto"
+                            data-bind="cfg.answer_action"
+                            data-on:change="$dirty = true">
                         <option value="0">Bury Card</option>
                         <option value="1">{{ tr.deck_config_answer_again() }}</option>
                         <option value="2">{{ tr.deck_config_answer_good() }}</option>
@@ -833,7 +983,6 @@
             </div>
         </div>
     </div>
-
     <!-- 9. FSRS Tab (includes peer template + Simulator) -->
     <div class="tab-pane" data-show="$activeTab == 'fsrs'">
         <div class="section-card">
@@ -848,7 +997,6 @@
                     ) }}
                 </span>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Enable FSRS</div>
@@ -861,10 +1009,12 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_fsrs_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input class="toggle toggle-sm" type="checkbox" data-bind="fsrs" data-on:change="$dirty = true">
+                    <input class="toggle toggle-sm"
+                           type="checkbox"
+                           data-bind="fsrs"
+                           data-on:change="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_desired_retention() }}</div>
@@ -877,18 +1027,21 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_desired_retention_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.01" min="0.70" max="0.99" class="input input-sm text-right w-24" data-bind="cfg.desired_retention" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.01"
+                           min="0.70"
+                           max="0.99"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.desired_retention"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <!-- Include peer FSRS partial if available -->
             {% include "pages/deck_options/_fsrs.html.jinja" ignore missing %}
-
             <!-- Include peer Simulator partial if available -->
             {% include "pages/deck_options/_simulator.html.jinja" ignore missing %}
         </div>
     </div>
-
     <!-- 10. Advanced Tab (Easy days + max interval + SM-2) -->
     <div class="tab-pane" data-show="$activeTab == 'advanced'">
         <!-- Easy Days -->
@@ -896,43 +1049,82 @@
             <div class="flex justify-between items-center mb-3">
                 <h5 class="mb-0 font-bold text-lg">{{ tr.deck_config_easy_days_title() }}</h5>
             </div>
-
             <div class="text-base-content/60 text-xs mb-3">
                 Adjust review workload for each day of the week (1.0 = normal, 0.5 = 50% reviews, 0.0 = minimum).
             </div>
-
             <div class="easy-days-grid">
                 <div class="easy-day-cell">
                     <div class="font-bold text-xs">{{ tr.deck_config_easy_days_monday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[0]" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.1"
+                           min="0"
+                           max="1"
+                           class="input input-sm text-center mt-1 w-full"
+                           data-bind="cfg.easy_days_percentages[0]"
+                           data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
                     <div class="font-bold text-xs">{{ tr.deck_config_easy_days_tuesday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[1]" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.1"
+                           min="0"
+                           max="1"
+                           class="input input-sm text-center mt-1 w-full"
+                           data-bind="cfg.easy_days_percentages[1]"
+                           data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
                     <div class="font-bold text-xs">{{ tr.deck_config_easy_days_wednesday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[2]" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.1"
+                           min="0"
+                           max="1"
+                           class="input input-sm text-center mt-1 w-full"
+                           data-bind="cfg.easy_days_percentages[2]"
+                           data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
                     <div class="font-bold text-xs">{{ tr.deck_config_easy_days_thursday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[3]" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.1"
+                           min="0"
+                           max="1"
+                           class="input input-sm text-center mt-1 w-full"
+                           data-bind="cfg.easy_days_percentages[3]"
+                           data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
                     <div class="font-bold text-xs">{{ tr.deck_config_easy_days_friday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[4]" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.1"
+                           min="0"
+                           max="1"
+                           class="input input-sm text-center mt-1 w-full"
+                           data-bind="cfg.easy_days_percentages[4]"
+                           data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
                     <div class="font-bold text-xs">{{ tr.deck_config_easy_days_saturday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[5]" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.1"
+                           min="0"
+                           max="1"
+                           class="input input-sm text-center mt-1 w-full"
+                           data-bind="cfg.easy_days_percentages[5]"
+                           data-on:input="$dirty = true">
                 </div>
                 <div class="easy-day-cell">
                     <div class="font-bold text-xs">{{ tr.deck_config_easy_days_sunday() }}</div>
-                    <input type="number" step="0.1" min="0" max="1" class="input input-sm text-center mt-1 w-full" data-bind="cfg.easy_days_percentages[6]" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.1"
+                           min="0"
+                           max="1"
+                           class="input input-sm text-center mt-1 w-full"
+                           data-bind="cfg.easy_days_percentages[6]"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
         </div>
-
         <!-- Advanced Limits & SM-2 -->
         <div class="section-card">
             <div class="flex justify-between items-center mb-3">
@@ -946,7 +1138,6 @@
                     ) }}
                 </span>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Maximum interval (days)</div>
@@ -959,10 +1150,14 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_maximum_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" min="1" max="99999" class="input input-sm text-right w-24" data-bind="cfg.maximum_review_interval" data-on:input="$dirty = true">
+                    <input type="number"
+                           min="1"
+                           max="99999"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.maximum_review_interval"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">{{ tr.deck_config_historical_retention() }}</div>
@@ -975,10 +1170,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_historical_retention_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.01" min="0.70" max="0.99" class="input input-sm text-right w-24" data-bind="cfg.historical_retention" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.01"
+                           min="0.70"
+                           max="0.99"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.historical_retention"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <!-- Legacy SM-2 section -->
             <div class="setting-row">
                 <div class="setting-label-col">
@@ -992,10 +1192,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_starting_ease_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="1.3" max="5.0" class="input input-sm text-right w-24" data-bind="cfg.initial_ease" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.05"
+                           min="1.3"
+                           max="5.0"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.initial_ease"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Easy bonus</div>
@@ -1008,10 +1213,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_easy_bonus_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="1.0" max="5.0" class="input input-sm text-right w-24" data-bind="cfg.easy_multiplier" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.05"
+                           min="1.0"
+                           max="5.0"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.easy_multiplier"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Interval modifier</div>
@@ -1024,10 +1234,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_interval_modifier_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="0.5" max="5.0" class="input input-sm text-right w-24" data-bind="cfg.interval_multiplier" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.05"
+                           min="0.5"
+                           max="5.0"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.interval_multiplier"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">Hard interval multiplier</div>
@@ -1040,10 +1255,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_hard_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="0.5" max="5.0" class="input input-sm text-right w-24" data-bind="cfg.hard_multiplier" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.05"
+                           min="0.5"
+                           max="5.0"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.hard_multiplier"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <div class="setting-row">
                 <div class="setting-label-col">
                     <div class="font-semibold">New interval multiplier</div>
@@ -1056,10 +1276,15 @@
                     <div class="text-base-content/60 text-xs">{{ tr.deck_config_new_interval_tooltip() }}</div>
                 </div>
                 <div class="setting-input-col">
-                    <input type="number" step="0.05" min="0.0" max="1.0" class="input input-sm text-right w-24" data-bind="cfg.lapse_multiplier" data-on:input="$dirty = true">
+                    <input type="number"
+                           step="0.05"
+                           min="0.0"
+                           max="1.0"
+                           class="input input-sm text-right w-24"
+                           data-bind="cfg.lapse_multiplier"
+                           data-on:input="$dirty = true">
                 </div>
             </div>
-
             <!-- Custom Card State Customizer -->
             <div class="mt-4">
                 <div class="font-semibold">{{ tr.deck_config_custom_scheduling() }}</div>
@@ -1070,17 +1295,24 @@
                     help_sections=m_adv.sections or []
                 ) }}
                 <div class="text-base-content/60 text-xs mb-2">{{ tr.deck_config_custom_scheduling_tooltip() }}</div>
-                <textarea class="textarea font-mono text-sm w-full" rows="5" data-bind="cardStateCustomizer" data-on:input="$dirty = true"></textarea>
+                <textarea class="textarea font-mono text-sm w-full"
+                          rows="5"
+                          data-bind="cardStateCustomizer"
+                          data-on:input="$dirty = true"></textarea>
             </div>
         </div>
     </div>
-
     <!-- Modals -->
     <!-- Leave Without Saving Modal -->
-    <dialog id="deck-options-close-dialog" class="modal" data-ref="_leaveDialog" aria-labelledby="deck-options-close-dialog-title" aria-describedby="deck-options-close-dialog-description">
+    <dialog id="deck-options-close-dialog"
+            class="modal"
+            data-ref="_leaveDialog"
+            aria-labelledby="deck-options-close-dialog-title"
+            aria-describedby="deck-options-close-dialog-description">
         <div class="modal-box">
             <h2 class="font-bold text-lg" id="deck-options-close-dialog-title">Unsaved changes</h2>
-            <p class="py-4" id="deck-options-close-dialog-description">You have unsaved changes. Are you sure you want to close?</p>
+            <p class="py-4"
+               id="deck-options-close-dialog-description">You have unsaved changes. Are you sure you want to close?</p>
             <div class="modal-action flex-wrap">
                 <form method="dialog">
                     <button type="submit" class="btn btn-sm btn-ghost" autofocus>Keep editing</button>
@@ -1103,20 +1335,24 @@
             </div>
             <div>
                 <label class="block py-1 text-sm font-semibold">{{ tr.deck_config_name_prompt() }}</label>
-                <input type="text" class="input input-sm w-full" data-bind="newPresetName" placeholder="New Preset">
+                <input type="text"
+                       class="input input-sm w-full"
+                       data-bind="newPresetName"
+                       placeholder="New Preset">
             </div>
             <div class="modal-action">
                 <form method="dialog">
                     <button type="submit" class="btn btn-sm btn-ghost">Cancel</button>
                 </form>
-                <button type="button" class="btn btn-sm btn-primary" data-on:click="@post('/deck-options/add-preset')">Add</button>
+                <button type="button"
+                        class="btn btn-sm btn-primary"
+                        data-on:click="@post('/deck-options/add-preset')">Add</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
             <button type="submit">close</button>
         </form>
     </dialog>
-
     <!-- Clone Preset Modal -->
     <dialog class="modal" id="clonePresetModal">
         <div class="modal-box">
@@ -1128,20 +1364,24 @@
             </div>
             <div>
                 <label class="block py-1 text-sm font-semibold">{{ tr.deck_config_name_prompt() }}</label>
-                <input type="text" class="input input-sm w-full" data-bind="clonePresetName" placeholder="Cloned Preset">
+                <input type="text"
+                       class="input input-sm w-full"
+                       data-bind="clonePresetName"
+                       placeholder="Cloned Preset">
             </div>
             <div class="modal-action">
                 <form method="dialog">
                     <button type="submit" class="btn btn-sm btn-ghost">Cancel</button>
                 </form>
-                <button type="button" class="btn btn-sm btn-primary" data-on:click="@post('/deck-options/clone-preset')">Clone</button>
+                <button type="button"
+                        class="btn btn-sm btn-primary"
+                        data-on:click="@post('/deck-options/clone-preset')">Clone</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
             <button type="submit">close</button>
         </form>
     </dialog>
-
     <!-- Rename Preset Modal -->
     <dialog class="modal" id="renamePresetModal">
         <div class="modal-box">
@@ -1153,20 +1393,24 @@
             </div>
             <div>
                 <label class="block py-1 text-sm font-semibold">{{ tr.deck_config_name_prompt() }}</label>
-                <input type="text" class="input input-sm w-full" data-bind="renamePresetName" placeholder="Rename Preset">
+                <input type="text"
+                       class="input input-sm w-full"
+                       data-bind="renamePresetName"
+                       placeholder="Rename Preset">
             </div>
             <div class="modal-action">
                 <form method="dialog">
                     <button type="submit" class="btn btn-sm btn-ghost">Cancel</button>
                 </form>
-                <button type="button" class="btn btn-sm btn-primary" data-on:click="@post('/deck-options/rename-preset')">Rename</button>
+                <button type="button"
+                        class="btn btn-sm btn-primary"
+                        data-on:click="@post('/deck-options/rename-preset')">Rename</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
             <button type="submit">close</button>
         </form>
     </dialog>
-
     <!-- Delete Preset Modal -->
     <dialog class="modal" id="deletePresetModal">
         <div class="modal-box">
@@ -1184,7 +1428,9 @@
                 <form method="dialog">
                     <button type="submit" class="btn btn-sm btn-ghost">Cancel</button>
                 </form>
-                <button type="button" class="btn btn-sm btn-error" data-on:click="@post('/deck-options/delete-preset')">Delete</button>
+                <button type="button"
+                        class="btn btn-sm btn-error"
+                        data-on:click="@post('/deck-options/delete-preset')">Delete</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">

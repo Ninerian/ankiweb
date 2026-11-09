@@ -1,14 +1,10 @@
 {% macro switch(id="", value=false, disabled=false, rtl=false, class_="", signal=none) %}
-<div class="anki-switch inline-flex items-center {{ 'rtl' if rtl else '' }} {{ class_ }}">
-    <input
-        {% if id %}id="{{ id }}"{% endif %}
-        type="checkbox"
-        class="toggle"
-        {% if disabled %}disabled{% endif %}
-        {% if signal %}
-        data-bind="{{ signal | replace('$', '', 1) }}"
-        {% endif %}
-        {% if value %} checked{% endif %}
-    />
-</div>
+    <div class="anki-switch inline-flex items-center {{ 'rtl' if rtl else '' }} {{ class_ }}">
+        <input {% if id %}id="{{ id }}"{% endif %}
+               type="checkbox"
+               class="toggle"
+               {% if disabled %}disabled{% endif %}
+               {% if signal %} data-bind="{{ signal | replace('$', '', 1) }}" {% endif %}
+               {% if value %} checked{% endif %} />
+    </div>
 {% endmacro %}

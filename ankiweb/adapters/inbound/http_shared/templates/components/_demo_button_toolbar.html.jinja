@@ -1,7 +1,6 @@
 {% from "components/button_toolbar.html.jinja" import button_toolbar %}
 {% from "components/button_group.html.jinja" import button_group %}
 {% from "components/button_group_item.html.jinja" import button_group_item %}
-
 <div class="border border-base-300 p-3 mb-3 rounded-box">
     <h6 class="text-base-content/60 mb-2">Toolbar with wrap=true and size=1.5:</h6>
     {% call button_toolbar(wrap=true, size=1.5) %}
@@ -16,7 +15,6 @@
         {% endcall %}
     {% endcall %}
 </div>
-
 <div class="border border-base-300 p-3 rounded-box">
     <h6 class="text-base-content/60 mb-2">Toolbar with dark mode:</h6>
     {% call button_toolbar(is_dark=true) %}

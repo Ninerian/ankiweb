@@ -1,48 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <link rel="stylesheet" href="/shell/static/app.css">
-    <link rel="stylesheet" href="/shell/static/theme.css">
-    <link rel="stylesheet" href="/shell/static/components.css">
-    {% if context == "components" %}<link rel="stylesheet" href="/dev/static/gallery.css">{% endif %}
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="manifest" href="/manifest.webmanifest">
-    <meta name="theme-color" content="#ffd43b">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="icon" href="/shell/static/icons/favicon.ico" sizes="32x32">
-    <link rel="icon" href="/shell/static/icons/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/shell/static/icons/apple-touch-icon.png">
-    <title>{{ title }}</title>
-    <style>
-      /* Anki's vendored SvelteKit editor bundle (editor.css/editor.js, untouched) sizes its
+    <head>
+        <link rel="stylesheet" href="/shell/static/app.css">
+        <link rel="stylesheet" href="/shell/static/theme.css">
+        <link rel="stylesheet" href="/shell/static/components.css">
+        {% if context == "components" %}<link rel="stylesheet" href="/dev/static/gallery.css">{% endif %}
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="manifest" href="/manifest.webmanifest">
+        <meta name="theme-color" content="#ffd43b">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="icon" href="/shell/static/icons/favicon.ico" sizes="32x32">
+        <link rel="icon"
+              href="/shell/static/icons/favicon.svg"
+              type="image/svg+xml">
+        <link rel="apple-touch-icon"
+              href="/shell/static/icons/apple-touch-icon.png">
+        <title>{{ title }}</title>
+        <style>
+            /* Anki's vendored SvelteKit editor bundle (editor.css/editor.js, untouched) sizes its
          internal scroll-area component via a `height: 100%` chain up to `html`/`body`; without
          an explicit height here that chain resolves to 0 (nested height:100% needs every
          ancestor sized), breaking the field scrollbar and rich-text-editable click activation
          on pages that embed the editor (/add, /editor). Harmless on every other page. */
-      html, body {
-        height: 100%;
-      }
-    </style>
-    <script>
-      /* night-mode: theme synchronized via the shell bootstrap.js and the daisyUI data-theme attribute */
-      window.__ankiwebContext = {{ context | tojson }}
-      window.__ankiwebEnableBridge = {{ bridge | tojson }}
-    </script>
-    {% for c in css_files %}<link rel="stylesheet" href="/_anki/{{ c }}">{% endfor %}
-    {% for j in js_files %}<script src="/_anki/{{ j }}"></script>{% endfor %}
-    <script src="/shell/static/bootstrap.js"></script>
-    <script src="/shell/static/dialogs.js"></script>
-    <script type="module" src="/shell/static/datastar.js"></script>
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/service-worker.js", { scope: "/" }).catch(() => {})
-      }
-    </script>
-  </head>
-  <body class="context-{{ context }}">
-    {% if toolbar %}{% include "_toolbar.html.jinja" %}{% endif %}
-    {{ body | safe }}
-  </body>
+            html,
+            body {
+                height: 100%;
+            }
+        </style>
+        <script>
+            /* night-mode: theme synchronized via the shell bootstrap.js and the daisyUI data-theme attribute */
+            window.__ankiwebContext = {{ context | tojson }}
+            window.__ankiwebEnableBridge = {{ bridge | tojson }}
+        </script>
+        {% for c in css_files %}<link rel="stylesheet" href="/_anki/{{ c }}">{% endfor %}
+        {% for j in js_files %}<script src="/_anki/{{ j }}"></script>{% endfor %}
+        <script src="/shell/static/bootstrap.js"></script>
+        <script src="/shell/static/dialogs.js"></script>
+        <script type="module" src="/shell/static/datastar.js"></script>
+        <script>
+            if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.register("/service-worker.js", {
+                    scope: "/"
+                }).catch(() => {})
+            }
+        </script>
+    </head>
+    <body class="context-{{ context }}">
+        {% if toolbar %}
+            {% include "_toolbar.html.jinja" %}
+        {% endif %}
+        {{ body | safe }}
+    </body>
 </html>

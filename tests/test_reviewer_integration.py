@@ -10,7 +10,7 @@ from ankiweb.app import create_app
 from ankiweb.core.config import Settings
 
 pytest.importorskip("playwright.sync_api")
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 
 @pytest.fixture
@@ -77,6 +77,28 @@ def test_study_one_card(live_server):
         assert "Congratulations" in page.inner_text("body")
         assert len(websocket_urls) == 1
         assert websocket_urls[0].endswith("/ws?context=reviewer")
+        browser.close()
+
+
+def test_mark_note_toggles_indicator(live_server):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(f"{live_server}/reviewer")
+        page.wait_for_function(
+            "document.getElementById('qa').textContent.includes('CapitalFrance')",
+            timeout=6000,
+        )
+        mark = page.locator("#_mark")
+        expect(mark).to_be_hidden()
+
+        page.get_by_role("button", name="More Actions", exact=True).click()
+        page.get_by_role("button", name="Mark Note", exact=True).click()
+        expect(mark).to_be_visible(timeout=6000)
+
+        page.get_by_role("button", name="More Actions", exact=True).click()
+        page.get_by_role("button", name="Mark Note", exact=True).click()
+        expect(mark).to_be_hidden(timeout=6000)
         browser.close()
 
 

@@ -1,6 +1,6 @@
 {% from "components/enum_selector_row.html.jinja" import enum_selector_row %}
-
-<div class="flex flex-col gap-3 max-w-xl" data-signals="{ timerMode: 'custom', defaultTimerMode: 'standard' }">
+<div class="flex flex-col gap-3 max-w-xl"
+     data-signals="{ timerMode: 'custom', defaultTimerMode: 'standard' }">
     <div class="border border-base-300 p-3 rounded-box bg-base-100">
         {% call enum_selector_row(
             signal="$timerMode",
@@ -21,7 +21,6 @@
             Selected: <code data-text="$timerMode">custom</code> (revert button visible because it differs from standard)
         </div>
     </div>
-
     <div class="border border-base-300 p-3 rounded-box bg-base-100">
         {% call enum_selector_row(
             value="asc",
@@ -37,7 +36,6 @@
             </div>
         {% endcall %}
     </div>
-
     <div class="border border-base-300 p-3 rounded-box bg-base-100">
         {% call enum_selector_row(
             value="locked",

@@ -1,31 +1,42 @@
 <main id="stage" class="review-stage">
-  {% if view %}
-  <article id="current-card" class="flashcard card deck-card flex flex-col border-3">
-    <div class="flex flex-wrap items-start justify-between gap-2">
-      <span id="card-deck" class="badge review-deck-label h-auto rounded-full border-review-deck-tag-width border-neo-edge bg-secondary px-review-deck-tag-x py-1 text-review-deck-tag text-secondary-content" dir="auto"><span>{{ view.deck_emoji }}</span> <span>{{ view.deck }}</span></span>
-      <div class="flex flex-wrap gap-2">
-        {% if view.other_notetype %}<span class="badge badge-outline h-auto whitespace-normal py-2">{{ s('app_review_other_note_type') }}</span>{% endif %}
-        {% if view.marked %}<span id="mark-icon" title="{{ s('app_review_marked') }}" aria-label="{{ s('app_review_marked') }}">⭐</span>{% endif %}
-        {% if view.flag %}<span id="flag-icon" title="{{ s('app_review_flagged') }}" aria-label="{{ s('app_review_flagged') }}">🚩</span>{% endif %}
-      </div>
-    </div>
-    {% if not view.other_notetype %}
-    <div class="review-card-body text-center" dir="auto">
-      <div class="review-vocab-label">{{ s('app_review_vocab_front') }}</div>
-    {% else %}
-    <div class="review-card-body" dir="auto">
+    {% if view %}
+        <article id="current-card"
+                 class="flashcard card deck-card flex flex-col border-3">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+                <span id="card-deck"
+                      class="badge review-deck-label h-auto rounded-full border-review-deck-tag-width border-neo-edge bg-secondary px-review-deck-tag-x py-1 text-review-deck-tag text-secondary-content"
+                      dir="auto"><span>{{ view.deck_emoji }}</span> <span>{{ view.deck }}</span></span>
+                <div class="flex flex-wrap gap-2">
+                    {% if view.other_notetype %}<span class="badge badge-outline h-auto whitespace-normal py-2">{{ s("app_review_other_note_type") }}</span>{% endif %}
+                    {% if view.marked %}<span id="mark-icon"
+                                              title="{{ s('app_review_marked') }}"
+                                              aria-label="{{ s('app_review_marked') }}">⭐</span>{% endif %}
+                    {% if view.flag %}<span id="flag-icon"
+                                            title="{{ s('app_review_flagged') }}"
+                                            aria-label="{{ s('app_review_flagged') }}">🚩</span>{% endif %}
+                </div>
+            </div>
+            {% if not view.other_notetype %}
+                <div class="review-card-body text-center" dir="auto">
+                    <div class="review-vocab-label">{{ s("app_review_vocab_front") }}</div>
+            {% else %}
+                <div class="review-card-body" dir="auto">
+            {% endif %}
+                <div id="card-q" class="review-card-content">{{ view.question_html | safe }}</div>
+                <div id="answer-box"
+                     class="review-card-content review-answer animate-reveal-answer motion-reduce:animate-none"
+                     data-show="$revealed"
+                     style="display:none">
+                    <div id="card-a">{{ view.answer_html | safe }}</div>
+                </div>
+            </div>
+        </article>
+    {% elif not completed %}
+        <section class="card deck-card my-auto bg-base-200 p-8 text-center">
+            <h1 class="text-2xl font-black">{{ s("app_review_no_cards_due") }}</h1>
+            <a class="btn btn-accent neo-press mt-6 rounded-deck shadow-neo active:shadow-none"
+               href="/app/">{{ s("app_review_complete_back_to_decks") }}</a>
+        </section>
     {% endif %}
-      <div id="card-q" class="review-card-content">{{ view.question_html | safe }}</div>
-      <div id="answer-box" class="review-card-content review-answer animate-reveal-answer motion-reduce:animate-none" data-show="$revealed" style="display:none">
-        <div id="card-a">{{ view.answer_html | safe }}</div>
-      </div>
-    </div>
-  </article>
-  {% elif not completed %}
-  <section class="card deck-card my-auto bg-base-200 p-8 text-center">
-    <h1 class="text-2xl font-black">{{ s('app_review_no_cards_due') }}</h1>
-    <a class="btn btn-accent neo-press mt-6 rounded-deck shadow-neo active:shadow-none" href="/app/">{{ s('app_review_complete_back_to_decks') }}</a>
-  </section>
-  {% endif %}
-  {% include "app/_review_complete.html.jinja" %}
+    {% include "app/_review_complete.html.jinja" %}
 </main>

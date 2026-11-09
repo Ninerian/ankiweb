@@ -2,7 +2,6 @@
 {% from "components/item.html.jinja" import item %}
 {% from "components/button_group_item.html.jinja" import button_group_item %}
 {% from "components/button_group.html.jinja" import button_group %}
-
 <div class="flex flex-col gap-4" id="demo-dynamically-slottable">
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">1. Static & Dynamic Slotted Items with Item Wrapper</h5>
@@ -22,7 +21,6 @@
             {% endcall %}
         </div>
     </div>
-
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">2. Dynamically Slotted Toolbar inside ButtonGroup</h5>
         <p class="text-base-content/60 text-sm mb-3">Mirrors upstream Anki TemplateButtons: ButtonGroup hosting DynamicallySlottable with ButtonGroupItem.</p>
@@ -39,23 +37,26 @@
             {% endcall %}
         {% endcall %}
     </div>
-    <div class="card bg-base-100 border border-base-300 p-4" data-signals="{ dynShowExtra: false, dynCount: 3 }">
+    <div class="card bg-base-100 border border-base-300 p-4"
+         data-signals="{ dynShowExtra: false, dynCount: 3 }">
         <h5 class="card-title text-base-content font-bold mb-1">3. Interactive Add / Remove / Reorder with Datastar</h5>
         <p class="text-base-content/60 text-sm mb-3">Tests dynamic client-side item manipulation (add new item, remove item, reverse ordering, toggle detach) via Datastar reactivity.</p>
-        
         <div class="flex gap-2 mb-3">
-            <button type="button" class="btn btn-sm btn-outline btn-primary" id="btn-dyn-add" data-on:click="$dynCount = Math.min(5, $dynCount + 1)">
-                Add Item
-            </button>
-            <button type="button" class="btn btn-sm btn-outline btn-error" id="btn-dyn-remove" data-on:click="$dynCount = Math.max(0, $dynCount - 1)">
-                Remove Last
-            </button>
-            <button type="button" class="btn btn-sm btn-outline" id="btn-dyn-toggle" data-on:click="$dynShowExtra = !$dynShowExtra">
-                Toggle Extra (Detach)
-            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline btn-primary"
+                    id="btn-dyn-add"
+                    data-on:click="$dynCount = Math.min(5, $dynCount + 1)">Add Item</button>
+            <button type="button"
+                    class="btn btn-sm btn-outline btn-error"
+                    id="btn-dyn-remove"
+                    data-on:click="$dynCount = Math.max(0, $dynCount - 1)">Remove Last</button>
+            <button type="button"
+                    class="btn btn-sm btn-outline"
+                    id="btn-dyn-toggle"
+                    data-on:click="$dynShowExtra = !$dynShowExtra">Toggle Extra (Detach)</button>
         </div>
-
-        <div class="border border-base-300 rounded-box p-3 flex flex-wrap gap-2 items-center" id="dyn-items-container">
+        <div class="border border-base-300 rounded-box p-3 flex flex-wrap gap-2 items-center"
+             id="dyn-items-container">
             {% call dynamically_slottable() %}
                 <div class="item" data-show="$dynCount >= 1" id="dyn-slot-1">
                     <span class="badge badge-info p-2">Item 1 (Alpha)</span>
@@ -66,13 +67,22 @@
                 <div class="item" data-show="$dynCount >= 3" id="dyn-slot-3">
                     <span class="badge badge-info p-2">Item 3 (Gamma)</span>
                 </div>
-                <div class="item" data-show="$dynCount >= 4" style="display: none;" id="dyn-slot-4">
+                <div class="item"
+                     data-show="$dynCount >= 4"
+                     style="display: none"
+                     id="dyn-slot-4">
                     <span class="badge badge-info p-2">Item 4 (Delta)</span>
                 </div>
-                <div class="item" data-show="$dynCount >= 5" style="display: none;" id="dyn-slot-5">
+                <div class="item"
+                     data-show="$dynCount >= 5"
+                     style="display: none"
+                     id="dyn-slot-5">
                     <span class="badge badge-info p-2">Item 5 (Epsilon)</span>
                 </div>
-                <div class="item" data-show="$dynShowExtra" style="display: none;" id="dyn-slot-extra">
+                <div class="item"
+                     data-show="$dynShowExtra"
+                     style="display: none"
+                     id="dyn-slot-extra">
                     <span class="badge badge-warning p-2" id="dyn-extra-badge">Extra Dynamic Slotted Item</span>
                 </div>
             {% endcall %}

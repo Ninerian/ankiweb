@@ -1,39 +1,60 @@
 {% if completed and summary %}
-{% if summary.mood == 'perfect' %}
-  {% set emoji = '🏆' %}{% set title = s('app_review_complete_perfect_title') %}{% set subtitle = s('app_review_complete_perfect_subtitle') %}
-{% elif summary.mood == 'great' %}
-  {% set emoji = '🌟' %}{% set title = s('app_review_complete_great_title') %}{% set subtitle = s('app_review_complete_great_subtitle') %}
-{% elif summary.mood == 'good' %}
-  {% set emoji = '🌱' %}{% set title = s('app_review_complete_good_title') %}{% set subtitle = s('app_review_complete_good_subtitle') %}
+    {% if summary.mood == "perfect" %}
+        {% set emoji = "🏆" %}{% set title = s('app_review_complete_perfect_title') %}{% set subtitle = s('app_review_complete_perfect_subtitle') %}
+    {% elif summary.mood == "great" %}
+        {% set emoji = "🌟" %}{% set title = s('app_review_complete_great_title') %}{% set subtitle = s('app_review_complete_great_subtitle') %}
+    {% elif summary.mood == "good" %}
+        {% set emoji = "🌱" %}{% set title = s('app_review_complete_good_title') %}{% set subtitle = s('app_review_complete_good_subtitle') %}
+    {% else %}
+        {% set emoji = "💪" %}{% set title = s('app_review_complete_tough_title') %}{% set subtitle = s('app_review_complete_tough_subtitle') %}
+    {% endif %}
+    <section id="session-complete"
+             data-mood="{{ summary.mood }}"
+             aria-labelledby="sc-title"
+             class="review-complete card deck-card">
+        <span class="text-xs font-black uppercase tracking-widest text-muted-fg">{{ s("app_review_complete_session") }}</span>
+        <div class="review-celebration" aria-hidden="true">
+            <div class="review-confetti">
+                <i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i>
+            </div>
+            <div class="review-sticker">{{ emoji }}</div>
+        </div>
+        <h1 id="sc-title"
+            tabindex="-1"
+            class="text-3xl font-black tracking-tight sm:text-4xl">{{ title }}</h1>
+        <p id="sc-sub"
+           class="mx-auto mt-2 max-w-sm text-sm text-muted-fg">{{ subtitle }}{% if summary.hard_effort %} {{ s("app_review_complete_hard_extra") }}{% endif %}</p>
+        <div class="stats review-stats grid rounded-deck"
+             aria-label="{{ s('app_review_complete_statistics') }}">
+            <div class="stat px-1 py-3"><strong id="sc-reviewed" class="stat-value text-xl sm:text-2xl">{{ summary.reviewed }}</strong><span class="stat-title whitespace-normal text-xs">{{ s("app_review_complete_reviewed") }}</span></div>
+            <div class="stat px-1 py-3"><strong id="sc-recall" class="stat-value text-xl sm:text-2xl">{{ summary.recall_percent }}%</strong><span class="stat-title whitespace-normal text-xs">{{ s("app_review_complete_recall") }}</span></div>
+            <div class="stat px-1 py-3"><strong id="sc-streak" class="stat-value text-xl sm:text-2xl">{{ streak }}</strong><span class="stat-title whitespace-normal text-xs">{{ s("app_review_complete_streak") }}</span></div>
+        </div>
+        <div class="review-dist">
+            <h2 class="review-dist-heading">{{ s("app_review_complete_ratings") }}</h2>
+            {% set ratings = [(1, 'again', tr.studying_again() | tr_clean), (2, 'hard', tr.studying_hard() | tr_clean), (3, 'good', tr.studying_good() | tr_clean), (4, 'easy', tr.studying_easy() | tr_clean)] %}
+            <div class="review-dist-bar" aria-hidden="true">
+                {% for number, name, label in ratings %}
+                    <span id="sc-bar-{{ name }}"
+                          {% if number == 1 %}class="review-dist-error"{% elif number == 2 %}class="review-dist-warning"{% elif number == 3 %}class="review-dist-success"{% else %}class="review-dist-info"{% endif %}
+                          style="width: {{ summary.percentages[number] }}%"></span>
+                {% endfor %}
+            </div>
+            <div class="review-dist-counts">
+                {% for number, name, label in ratings %}<span id="sc-count-{{ name }}"
+                                                              {% if number == 1 %}class="review-dist-error"{% elif number == 2 %}class="review-dist-warning"{% elif number == 3 %}class="review-dist-success"{% else %}class="review-dist-info"{% endif %}>{{ label }} {{ summary.tally[number] }}</span>{% endfor %}
+            </div>
+        </div>
+        <p class="mt-4 text-start text-xs text-muted-fg">{{ s("app_review_complete_recall_note") }}</p>
+        <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+            <a class="btn neo-press min-h-11 rounded-deck sm:flex-1 shadow-neo active:shadow-none"
+               href="/app/">{{ s("app_review_complete_back_to_decks") }}</a>
+            {% if study_again %}<a id="sc-restart"
+                                   class="btn btn-accent neo-press min-h-11 rounded-deck sm:flex-1 shadow-neo active:shadow-none"
+                                   href="/app/review?deck={{ deck_id }}">{{ s("app_review_complete_study_again") }}</a>{% endif %}
+        </div>
+    </section>
 {% else %}
-  {% set emoji = '💪' %}{% set title = s('app_review_complete_tough_title') %}{% set subtitle = s('app_review_complete_tough_subtitle') %}
-{% endif %}
-<section id="session-complete" data-mood="{{ summary.mood }}" aria-labelledby="sc-title" class="review-complete card deck-card">
-  <span class="text-xs font-black uppercase tracking-widest text-muted-fg">{{ s('app_review_complete_session') }}</span>
-  <div class="review-celebration" aria-hidden="true"><div class="review-confetti"><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i></div><div class="review-sticker">{{ emoji }}</div></div>
-  <h1 id="sc-title" tabindex="-1" class="text-3xl font-black tracking-tight sm:text-4xl">{{ title }}</h1>
-  <p id="sc-sub" class="mx-auto mt-2 max-w-sm text-sm text-muted-fg">{{ subtitle }}{% if summary.hard_effort %} {{ s('app_review_complete_hard_extra') }}{% endif %}</p>
-  <div class="stats review-stats grid rounded-deck" aria-label="{{ s('app_review_complete_statistics') }}">
-    <div class="stat px-1 py-3"><strong id="sc-reviewed" class="stat-value text-xl sm:text-2xl">{{ summary.reviewed }}</strong><span class="stat-title whitespace-normal text-xs">{{ s('app_review_complete_reviewed') }}</span></div>
-    <div class="stat px-1 py-3"><strong id="sc-recall" class="stat-value text-xl sm:text-2xl">{{ summary.recall_percent }}%</strong><span class="stat-title whitespace-normal text-xs">{{ s('app_review_complete_recall') }}</span></div>
-    <div class="stat px-1 py-3"><strong id="sc-streak" class="stat-value text-xl sm:text-2xl">{{ streak }}</strong><span class="stat-title whitespace-normal text-xs">{{ s('app_review_complete_streak') }}</span></div>
-  </div>
-  <div class="review-dist">
-    <h2 class="review-dist-heading">{{ s('app_review_complete_ratings') }}</h2>
-    {% set ratings = [(1, 'again', tr.studying_again() | tr_clean), (2, 'hard', tr.studying_hard() | tr_clean), (3, 'good', tr.studying_good() | tr_clean), (4, 'easy', tr.studying_easy() | tr_clean)] %}
-    <div class="review-dist-bar" aria-hidden="true">
-      {% for number, name, label in ratings %}<span id="sc-bar-{{ name }}" {% if number == 1 %}class="review-dist-error"{% elif number == 2 %}class="review-dist-warning"{% elif number == 3 %}class="review-dist-success"{% else %}class="review-dist-info"{% endif %} style="width: {{ summary.percentages[number] }}%"></span>{% endfor %}
-    </div>
-    <div class="review-dist-counts">
-      {% for number, name, label in ratings %}<span id="sc-count-{{ name }}" {% if number == 1 %}class="review-dist-error"{% elif number == 2 %}class="review-dist-warning"{% elif number == 3 %}class="review-dist-success"{% else %}class="review-dist-info"{% endif %}>{{ label }} {{ summary.tally[number] }}</span>{% endfor %}
-    </div>
-  </div>
-  <p class="mt-4 text-start text-xs text-muted-fg">{{ s('app_review_complete_recall_note') }}</p>
-  <div class="mt-5 flex flex-col gap-3 sm:flex-row">
-    <a class="btn neo-press min-h-11 rounded-deck sm:flex-1 shadow-neo active:shadow-none" href="/app/">{{ s('app_review_complete_back_to_decks') }}</a>
-    {% if study_again %}<a id="sc-restart" class="btn btn-accent neo-press min-h-11 rounded-deck sm:flex-1 shadow-neo active:shadow-none" href="/app/review?deck={{ deck_id }}">{{ s('app_review_complete_study_again') }}</a>{% endif %}
-  </div>
-</section>
-{% else %}
-<section id="session-complete" hidden></section>
+    <section id="session-complete" hidden>
+    </section>
 {% endif %}

@@ -22,7 +22,6 @@
 {% from "components/row.html.jinja" import row %}
 {% from "components/col.html.jinja" import col %}
 {% from "components/help_section.html.jinja" import help_section %}
-
 {% macro help_modal(
     title="",
     url="",
@@ -35,90 +34,83 @@
     class_="",
     button_label=""
 ) -%}
-{% set mid = id or modal_key or ("helpModal_" ~ range(1000, 999999)|random) %}
-{% set sections = help_sections if help_sections is not none else [] %}
-{% set effective_link_label = link_label if link_label is not none else title %}
-
-<span class="help-modal-trigger{% if class_ %} {{ class_ }}{% endif %}">
-    <button
-        type="button"
-        class="badge cursor-pointer"
-        onclick="document.getElementById('{{ mid }}').showModal()"
-        title="{{ button_label or ('Help: ' ~ title) }}"
-    >
-        <span class="icon-constrain" style="--width-multiplier: 1; --icon-size: 125%;">
-            {{ icon(name="infoCircle") }}
-        </span>
-    </button>
-</span>
-
-{% call modal(id=mid, dialog_class="max-w-4xl w-11/12 help-modal", class_="help-modal-dialog", keyboard=true) %}
-    <div class="modal-header help-modal-header mb-3">
-        <div class="flex w-full justify-between items-center">
-            <h1 class="me-3 text-lg font-bold" id="{{ mid }}Label">
-                {{ title }}
-            </h1>
+    {% set mid = id or modal_key or ("helpModal_" ~ range(1000, 999999)|random) %}
+    {% set sections = help_sections if help_sections is not none else [] %}
+    {% set effective_link_label = link_label if link_label is not none else title %}
+    <span class="help-modal-trigger{% if class_ %} {{ class_ }}{% endif %}">
+        <button type="button"
+                class="badge cursor-pointer"
+                onclick="document.getElementById('{{ mid }}').showModal()"
+                title="{{ button_label or ('Help: ' ~ title) }}">
+            <span class="icon-constrain"
+                  style="--width-multiplier: 1;
+                         --icon-size: 125%">{{ icon(name="infoCircle") }}</span>
+        </button>
+    </span>
+    {% call modal(id=mid, dialog_class="max-w-4xl w-11/12 help-modal", class_="help-modal-dialog", keyboard=true) %}
+        <div class="modal-header help-modal-header mb-3">
+            <div class="flex w-full justify-between items-center">
+                <h1 class="me-3 text-lg font-bold" id="{{ mid }}Label">{{ title }}</h1>
+                <form method="dialog">
+                    <button type="submit"
+                            class="btn btn-sm btn-circle btn-ghost"
+                            aria-label="Close">✕</button>
+                </form>
+            </div>
+            {% if url %}
+                <div class="chapter-redirect mt-2">
+                    For more information, see <a href="{{ url }}"
+                                                 class="link link-primary"
+                                                 title="Open {{ effective_link_label }} in the manual"
+                                                 target="_blank"
+                                                 rel="noopener">{{ effective_link_label }}</a> in the manual.
+                </div>
+            {% endif %}
+        </div>
+        <div class="modal-body" style="--gutter-inline: 1rem;">
+            {% call row() %}
+                {% call col(breakpoint="xs") %}
+                    <nav>
+                        <div id="nav" class="help-modal-nav">
+                            <ul>
+                                {% for item in sections %}
+                                    {% set is_hidden = (item.sched == 0 if fsrs else item.sched == 1) if (item.sched is defined and item.sched is not none) else false %}
+                                    <li{% if is_hidden %} class="hidden"{% endif %}>
+                                        <button type="button"
+                                                data-slide-index="{{ loop.index0 }}"
+                                                class="{% if loop.index0 == start_index %}active{% endif %}"
+                                                onclick="const nav = this.closest('.help-modal-nav');
+                                                         nav.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                                                         this.classList.add('active');
+                                                         const carousel = document.getElementById('{{ mid }}Carousel');
+                                                         if (carousel) {
+                                                             carousel.querySelectorAll('.carousel-item').forEach(c => c.classList.add('hidden'));
+                                                             const target = document.getElementById('{{ mid }}Slide_{{ loop.index0 }}');
+                                                             if (target) target.classList.remove('hidden');
+                                                         }">{{ item.title }}</button>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </nav>
+                {% endcall %}
+                {% call col(breakpoint="xs") %}
+                    <div id="{{ mid }}Carousel" class="carousel w-full">
+                        {% for item in sections %}
+                            {% set is_hidden = (item.sched == 0 if fsrs else item.sched == 1) if (item.sched is defined and item.sched is not none) else false %}
+                            <div id="{{ mid }}Slide_{{ loop.index0 }}"
+                                 class="carousel-item w-full flex-col{% if loop.index0 != start_index or is_hidden %} hidden{% endif %}">
+                                {{ help_section(item=item) }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endcall %}
+            {% endcall %}
+        </div>
+        <div class="modal-action mt-4">
             <form method="dialog">
-                <button
-                    type="submit"
-                    class="btn btn-sm btn-circle btn-ghost"
-                    aria-label="Close"
-                >✕</button>
+                <button type="submit" class="btn btn-primary">OK</button>
             </form>
         </div>
-        {% if url %}
-            <div class="chapter-redirect mt-2">
-                For more information, see <a href="{{ url }}" class="link link-primary" title="Open {{ effective_link_label }} in the manual" target="_blank" rel="noopener">{{ effective_link_label }}</a> in the manual.
-            </div>
-        {% endif %}
-    </div>
-    <div class="modal-body" style="--gutter-inline: 1rem;">
-        {% call row() %}
-            {% call col(breakpoint="xs") %}
-                <nav>
-                    <div id="nav" class="help-modal-nav">
-                        <ul>
-                            {% for item in sections %}
-                                {% set is_hidden = (item.sched == 0 if fsrs else item.sched == 1) if (item.sched is defined and item.sched is not none) else false %}
-                                <li{% if is_hidden %} class="hidden"{% endif %}>
-                                    <button
-                                        type="button"
-                                        data-slide-index="{{ loop.index0 }}"
-                                        class="{% if loop.index0 == start_index %}active{% endif %}"
-                                        onclick="const nav = this.closest('.help-modal-nav'); nav.querySelectorAll('button').forEach(b => b.classList.remove('active')); this.classList.add('active'); const carousel = document.getElementById('{{ mid }}Carousel'); if (carousel) { carousel.querySelectorAll('.carousel-item').forEach(c => c.classList.add('hidden')); const target = document.getElementById('{{ mid }}Slide_{{ loop.index0 }}'); if (target) target.classList.remove('hidden'); }"
-                                    >
-                                        {{ item.title }}
-                                    </button>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </nav>
-            {% endcall %}
-            {% call col(breakpoint="xs") %}
-                <div
-                    id="{{ mid }}Carousel"
-                    class="carousel w-full"
-                >
-                    {% for item in sections %}
-                        {% set is_hidden = (item.sched == 0 if fsrs else item.sched == 1) if (item.sched is defined and item.sched is not none) else false %}
-                        <div
-                            id="{{ mid }}Slide_{{ loop.index0 }}"
-                            class="carousel-item w-full flex-col{% if loop.index0 != start_index or is_hidden %} hidden{% endif %}"
-                        >
-                            {{ help_section(item=item) }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endcall %}
-        {% endcall %}
-    </div>
-    <div class="modal-action mt-4">
-        <form method="dialog">
-            <button type="submit" class="btn btn-primary">
-                OK
-            </button>
-        </form>
-    </div>
-{% endcall %}
+    {% endcall %}
 {%- endmacro %}

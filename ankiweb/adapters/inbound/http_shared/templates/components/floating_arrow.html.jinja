@@ -7,9 +7,7 @@
     top/bottom/left/right: <coords> (as computed by WithFloating / Floating UI)
 #}
 {% macro floating_arrow(class_="", style="") %}
-  <div
-    class="arrow{% if class_ %} {{ class_ }}{% endif %}"
-    {% if style %}style="{{ style }}"{% endif %}
-    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
-  ></div>
+    <div class="arrow{% if class_ %} {{ class_ }}{% endif %}"
+         {% if style %}style="{{ style }}"{% endif %}
+         {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}></div>
 {% endmacro %}

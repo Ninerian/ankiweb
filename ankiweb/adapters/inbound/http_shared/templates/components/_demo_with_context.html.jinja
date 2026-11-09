@@ -1,5 +1,4 @@
 {% from "components/with_context.html.jinja" import with_context %}
-
 <div class="flex flex-col gap-4">
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">1. Pure Jinja Context (Zero DOM Wrapper)</h5>
@@ -10,22 +9,19 @@
             </div>
         {% endcall %}
     </div>
-
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">2. Reactive Datastar Signal Context</h5>
         <p class="text-base-content/60 text-sm mb-3">Injects a scoped Datastar signal (e.g. active tab or selection state):</p>
         {% call(ctx, sig) with_context(key="tab-selection", signal_name="demoContextTab", signal_value="summary", as_element="div", class_="border border-base-300 rounded-box p-3") %}
             <div class="flex gap-2 mb-3">
-                <button type="button" class="btn btn-sm btn-outline btn-primary"
+                <button type="button"
+                        class="btn btn-sm btn-outline btn-primary"
                         id="btn-context-tab-summary"
-                        data-on:click="$demoContextTab = 'summary'">
-                    Select Summary
-                </button>
-                <button type="button" class="btn btn-sm btn-outline btn-primary"
+                        data-on:click="$demoContextTab = 'summary'">Select Summary</button>
+                <button type="button"
+                        class="btn btn-sm btn-outline btn-primary"
                         id="btn-context-tab-details"
-                        data-on:click="$demoContextTab = 'details'">
-                    Select Details
-                </button>
+                        data-on:click="$demoContextTab = 'details'">Select Details</button>
             </div>
             <div>
                 Current Context Signal: <code data-text="$demoContextTab">summary</code>

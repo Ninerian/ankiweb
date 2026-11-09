@@ -16,15 +16,13 @@
     flip_x=false,
     type="submit"
 ) %}
-  <button
-    type="{{ type }}"
-    {% if id %}id="{{ id }}"{% endif %}
-    class="btn btn-square btn-{{ size }}{% if primary or active %} btn-primary{% endif %}{% if active %} btn-active{% endif %}{% if flip_x %} [&_svg]:-scale-x-100{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
-    {% if tooltip %}title="{{ tooltip }}"{% endif %}
-    {% if disabled %}disabled{% endif %}
-    tabindex="{% if tabbable %}0{% else %}-1{% endif %}"
-    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
-  >
-    {% if caller %}{{ caller() }}{% endif %}
-  </button>
+    <button type="{{ type }}"
+            {% if id %}id="{{ id }}"{% endif %}
+            class="btn btn-square btn-{{ size }}{% if primary or active %} btn-primary{% endif %}{% if active %} btn-active{% endif %}{% if flip_x %} [&_svg]:-scale-x-100{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
+            {% if tooltip %}title="{{ tooltip }}"{% endif %}
+            {% if disabled %}disabled{% endif %}
+            tabindex="{% if tabbable %}0{% else %}-1{% endif %}"
+            {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}>
+        {% if caller %}{{ caller() }}{% endif %}
+    </button>
 {% endmacro %}

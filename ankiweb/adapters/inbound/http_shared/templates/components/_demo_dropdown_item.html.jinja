@@ -1,49 +1,41 @@
 {# Demo for DropdownItem component #}
 {% from "components/dropdown_item.html.jinja" import dropdown_item %}
-
-<ul
-  class="dropdown-content menu border-base-300 p-3 rounded-box bg-base-100 max-w-xs"
-  data-testid="demo-dropdown-item-container"
-  data-signals="{ ddi_selected_item: 'first' }"
->
-  {% call dropdown_item(
-      id="ddi-item-1",
-      tabbable=true,
-      role="menuitem",
-      onclick="document.getElementById('ddi-selected-text').textContent = 'first'; this.parentElement.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('active')); this.classList.add('active');",
-      **{
-        "data-on:click": "$ddi_selected_item = 'first'",
-        "data-class": "{ 'active': $ddi_selected_item === 'first' }"
-      }
-  ) %}
-    First Action
-  {% endcall %}
-
-  {% call dropdown_item(
-      id="ddi-item-2",
-      role="menuitem",
-      onclick="document.getElementById('ddi-selected-text').textContent = 'second'; this.parentElement.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('active')); this.classList.add('active');",
-      **{
-        "data-on:click": "$ddi_selected_item = 'second'",
-        "data-class": "{ 'active': $ddi_selected_item === 'second' }"
-      }
-  ) %}
-    Second Action
-  {% endcall %}
-
-  {% call dropdown_item(id="ddi-item-active", active=true, role="menuitem") %}
-    Statically Active Item
-  {% endcall %}
-
-  {% call dropdown_item(id="ddi-item-disabled", disabled=true, role="menuitem") %}
-    Disabled Item
-  {% endcall %}
-
-  {% call dropdown_item(id="ddi-item-rtl", rtl=true, active=true, role="menuitem") %}
-    RTL Active Item
-  {% endcall %}
-
-  <div class="mt-2 text-base-content/60 text-sm">
-    Selected: <span id="ddi-selected-text" data-text="$ddi_selected_item">first</span>
-  </div>
+<ul class="dropdown-content menu border-base-300 p-3 rounded-box bg-base-100 max-w-xs"
+    data-testid="demo-dropdown-item-container"
+    data-signals="{ ddi_selected_item: 'first' }">
+    {% call dropdown_item(
+        id="ddi-item-1",
+        tabbable=true,
+        role="menuitem",
+        onclick="document.getElementById('ddi-selected-text').textContent = 'first'; this.parentElement.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('active')); this.classList.add('active');",
+        **{
+            "data-on:click": "$ddi_selected_item = 'first'",
+            "data-class": "{ 'active': $ddi_selected_item === 'first' }"
+        }
+    ) %}
+        First Action
+    {% endcall %}
+    {% call dropdown_item(
+        id="ddi-item-2",
+        role="menuitem",
+        onclick="document.getElementById('ddi-selected-text').textContent = 'second'; this.parentElement.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('active')); this.classList.add('active');",
+        **{
+            "data-on:click": "$ddi_selected_item = 'second'",
+            "data-class": "{ 'active': $ddi_selected_item === 'second' }"
+        }
+    ) %}
+        Second Action
+    {% endcall %}
+    {% call dropdown_item(id="ddi-item-active", active=true, role="menuitem") %}
+        Statically Active Item
+    {% endcall %}
+    {% call dropdown_item(id="ddi-item-disabled", disabled=true, role="menuitem") %}
+        Disabled Item
+    {% endcall %}
+    {% call dropdown_item(id="ddi-item-rtl", rtl=true, active=true, role="menuitem") %}
+        RTL Active Item
+    {% endcall %}
+    <div class="mt-2 text-base-content/60 text-sm">
+        Selected: <span id="ddi-selected-text" data-text="$ddi_selected_item">first</span>
+    </div>
 </ul>

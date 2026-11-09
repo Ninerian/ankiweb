@@ -1,41 +1,52 @@
 <!DOCTYPE html>
 <html lang="{{ app_lang.html_lang }}" dir="{{ app_lang.html_dir }}">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>{{ title }}</title>
-    <link rel="manifest" href="{{ app_manifest_path }}">
-    <meta name="theme-color" content="{{ app_theme_color_light }}" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="{{ app_theme_color_dark }}" media="(prefers-color-scheme: dark)">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Anki">
-    <link rel="icon" href="/shell/static/icons/favicon.ico" sizes="32x32">
-    <link rel="icon" href="/shell/static/icons/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/shell/static/icons/apple-touch-icon.png">
-    <link rel="stylesheet" href="/shell/static/app-client.css?v={{ app_asset_version }}">
-    {# Register page helpers before Datastar evaluates initial effects. #}
-    {% for script in scripts %}<script type="module" src="{{ script }}"></script>{% endfor %}
-    <script type="module" src="/shell/static/datastar.js"></script>
-    <script type="module">
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register({{ app_service_worker_path | tojson }}, {scope: {{ app_scope | tojson }}})
-          .then((registration) => {
-            const update = () => registration.update().catch((e) => console.warn("service worker update failed", e));
-            update();
-            document.addEventListener("visibilitychange", () => {
-              if (document.visibilityState === "visible") update();
-            });
-          })
-          .catch((e) => console.warn("service worker registration failed", e));
-      }
-    </script>
-  </head>
-  <body data-signals="{error: ''}">
-    {{ body | safe }}
-    {% if show_error_toast|default(true) %}
-    <div id="app-error" class="toast" data-show="$error" style="display:none">
-      <div class="alert alert-error" role="alert" data-text="$error"></div>
-    </div>
-    {% endif %}
-  </body>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <title>{{ title }}</title>
+        <link rel="manifest" href="{{ app_manifest_path }}">
+        <meta name="theme-color"
+              content="{{ app_theme_color_light }}"
+              media="(prefers-color-scheme: light)">
+        <meta name="theme-color"
+              content="{{ app_theme_color_dark }}"
+              media="(prefers-color-scheme: dark)">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-title" content="Anki">
+        <link rel="icon" href="/shell/static/icons/favicon.ico" sizes="32x32">
+        <link rel="icon"
+              href="/shell/static/icons/favicon.svg"
+              type="image/svg+xml">
+        <link rel="apple-touch-icon"
+              href="/shell/static/icons/apple-touch-icon.png">
+        <link rel="stylesheet"
+              href="/shell/static/app-client.css?v={{ app_asset_version }}">
+        {# Register page helpers before Datastar evaluates initial effects. #}
+        {% for script in scripts %}<script type="module" src="{{ script }}"></script>{% endfor %}
+        <script type="module" src="/shell/static/datastar.js"></script>
+        <script type="module">
+            if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.register({{ app_service_worker_path | tojson }}, {
+                        scope: {{ app_scope | tojson }}
+                    })
+                    .then((registration) => {
+                        const update = () => registration.update().catch((e) => console.warn("service worker update failed", e));
+                        update();
+                        document.addEventListener("visibilitychange", () => {
+                            if (document.visibilityState === "visible") update();
+                        });
+                    })
+                    .catch((e) => console.warn("service worker registration failed", e));
+            }
+        </script>
+    </head>
+    <body data-signals="{error: ''}">
+        {{ body | safe }}
+        {% if show_error_toast|default(true) %}
+            <div id="app-error" class="toast" data-show="$error" style="display:none">
+                <div class="alert alert-error" role="alert" data-text="$error"></div>
+            </div>
+        {% endif %}
+    </body>
 </html>

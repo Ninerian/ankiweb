@@ -1,4 +1,5 @@
 {# DropdownDivider component ported from ts/lib/components/DropdownDivider.svelte #}
 {% macro dropdown_divider(class_="") %}
-  <hr class="divider border-none my-1{% if class_ %} {{ class_ }}{% endif %}" {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}/>
+    <hr class="divider border-none my-1{% if class_ %} {{ class_ }}{% endif %}"
+        {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %} />
 {% endmacro %}

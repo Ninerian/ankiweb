@@ -1,6 +1,7 @@
 {% from "components/spin_box.html.jinja" import spin_box %}
-
-<div class="flex flex-col gap-4" id="demo-spin-box" data-signals="{ spinVal1: 10, spinValPct: 0.85, spinValFloat: 2.5 }">
+<div class="flex flex-col gap-4"
+     id="demo-spin-box"
+     data-signals="{ spinVal1: 10, spinValPct: 0.85, spinValFloat: 2.5 }">
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">1. Standard SpinBox (Integer Range 1 - 20)</h5>
         <p class="text-base-content/60 text-sm mb-3">Standard numeric stepper with min=1, max=20, step=1. Supports click, keyboard ArrowUp/Down, mouse wheel when focused, and long-press acceleration.</p>
@@ -11,7 +12,6 @@
             Bound signal: <code data-text="$spinVal1">10</code>
         </div>
     </div>
-
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">2. Percentage Mode SpinBox (0.0 to 1.0, saved as proportion)</h5>
         <p class="text-base-content/60 text-sm mb-3">In percentage mode (e.g. deck options desired retention), value is stored as proportion (0.85) but displayed as percentage (85%). Step is 0.01 (1%).</p>
@@ -22,7 +22,6 @@
             Bound signal (proportion): <code data-text="$spinValPct">0.85</code>
         </div>
     </div>
-
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">3. Decimal Step & Clamping on Blur</h5>
         <p class="text-base-content/60 text-sm mb-3">Demonstrates step=0.5 precision formatting (decimalPlaces), and automatic clamping on blur when typing out-of-range values (min=1.0, max=10.0).</p>

@@ -3,5 +3,5 @@
    In Jinja templates, it invokes the caller block directly without wrapping DOM.
 #}
 {% macro render_children() -%}
-{{ caller() if caller else '' }}
+    {{ caller() if caller else '' }}
 {%- endmacro %}

@@ -11,7 +11,6 @@
     class_: Extra class on chooser button
 #}
 {% from "components/item_chooser.html.jinja" import item_chooser %}
-
 {% macro deck_chooser(
     decks=[],
     selected_deck_id=none,
@@ -22,15 +21,15 @@
     key_combination="Control+D",
     class_=""
 ) -%}
-{{ item_chooser(
-    title=title,
-    items=decks,
-    selected_id=selected_deck_id,
-    icon="mdiBookOutline",
-    key_combination=key_combination,
-    tooltip=tooltip,
-    on_change=on_change,
-    id=id,
-    class_=class_
-) }}
+    {{ item_chooser(
+        title=title,
+        items=decks,
+        selected_id=selected_deck_id,
+        icon="mdiBookOutline",
+        key_combination=key_combination,
+        tooltip=tooltip,
+        on_change=on_change,
+        id=id,
+        class_=class_
+    ) }}
 {%- endmacro %}

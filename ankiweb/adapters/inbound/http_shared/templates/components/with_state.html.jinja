@@ -6,11 +6,11 @@
    it can also pass `initial` state into the caller.
 #}
 {% macro with_state(key=none, initial=false, signal_name=none, as_element="div", class_="") -%}
-{%- if signal_name -%}
-<{{ as_element }}{% if class_ %} class="{{ class_ }}"{% endif %} data-signals="{ {{ signal_name }}: {{ 'true' if initial else 'false' }} }"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
-    {{ caller(initial, signal_name) if caller else '' }}
-</{{ as_element }}>
-{%- else -%}
-{{ caller(initial, none) if caller else '' }}
-{%- endif -%}
+    {%- if signal_name -%}
+        <{{ as_element }}{% if class_ %} class="{{ class_ }}"{% endif %} data-signals="{ {{ signal_name }}: {{ 'true' if initial else 'false' }} }"{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+            {{ caller(initial, signal_name) if caller else '' }}
+        </{{ as_element }}>
+    {%- else -%}
+        {{ caller(initial, none) if caller else '' }}
+    {%- endif -%}
 {%- endmacro %}

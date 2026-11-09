@@ -1,133 +1,118 @@
 <div class="add-container w-full max-w-[800px] mx-auto flex flex-col gap-2 py-3 px-3">
-  <div class="flex gap-3 items-center flex-wrap">
-    <label class="flex items-center gap-1 text-sm font-semibold">
-      Type:
-      <select
-        id="add-notetype"
-        class="select select-sm"
-        onchange="window.ankiwebSetNotetype(this.value)"
-      >
-        {% for m in notetypes %}
-          <option value="{{ m.id }}" {% if m.selected %}selected{% endif %}>
-            {{ m.name }}
-          </option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="flex items-center gap-1 text-sm font-semibold">
-      Deck:
-      <select
-        id="add-deck"
-        class="select select-sm"
-        onchange="window.ankiwebSetDeck(this.value)"
-      >
-        {% for d in decks %}
-          <option value="{{ d.id }}" {% if d.selected %}selected{% endif %}>
-            {{ d.name }}
-          </option>
-        {% endfor %}
-      </select>
-    </label>
-    <button
-      id="add-btn"
-      type="button"
-      class="btn btn-primary btn-sm"
-      onclick="window.ankiwebAddNote()"
-    >
-      Add
-    </button>
-    <span
-      id="add-toast"
-      class="text-success font-bold text-sm"
-    ></span>
-  </div>
+    <div class="flex gap-3 items-center flex-wrap">
+        <label class="flex items-center gap-1 text-sm font-semibold">
+            Type:
+            <select id="add-notetype"
+                    class="select select-sm"
+                    onchange="window.ankiwebSetNotetype(this.value)">
+                {% for m in notetypes %}
+                    <option value="{{ m.id }}" {% if m.selected %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="flex items-center gap-1 text-sm font-semibold">
+            Deck:
+            <select id="add-deck"
+                    class="select select-sm"
+                    onchange="window.ankiwebSetDeck(this.value)">
+                {% for d in decks %}
+                    <option value="{{ d.id }}" {% if d.selected %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button id="add-btn"
+                type="button"
+                class="btn btn-primary btn-sm"
+                onclick="window.ankiwebAddNote()">Add</button>
+        <span id="add-toast" class="text-success font-bold text-sm"></span>
+    </div>
 </div>
 <script>
-  (function() {
-      window.__ankiwebContext = "add";
-      window.__ankiwebNotetypeId = "{{ (notetypes | selectattr('selected') | map(attribute='id') | first) | default('') }}";
-      var b = window.__ankiwebBridge;
+    (function() {
+        window.__ankiwebContext = "add";
+        window.__ankiwebNotetypeId = "{{ (notetypes | selectattr('selected') | map(attribute='id') | first) | default('') }}";
+        var b = window.__ankiwebBridge;
 
-      function readAllFields() {
-          var cs = Array.prototype.slice.call(document.querySelectorAll('.field-container'));
-          cs.sort(function(a, b) {
-              return Number(a.dataset.index) - Number(b.dataset.index);
-          });
-          return cs.map(function(fc) {
-              var h = fc.querySelector('.rich-text-editable');
-              if (!h || !h.shadowRoot) return '';
-              var e = h.shadowRoot.querySelector('[contenteditable]');
-              return e ? e.innerHTML : '';
-          });
-      }
-      window.ankiwebAddNote = function() {
-          window.pycmd('addnote:' + JSON.stringify(readAllFields()));
-      };
-      window.ankiwebSetNotetype = function(val) {
-          window.__ankiwebNotetypeId = val;
-          window.pycmd('setnotetype:' + val);
-      };
-      window.ankiwebSetDeck = function(val) {
-          window.pycmd('setdeck:' + val);
-      };
-      window.setupEditor('add', true);
-      b.registerCalls({
-          ankiwebLoadNote: function(d) {
-              require('anki/ui').loaded.then(function() {
-                  if (d.field_names) {
-                      window.saveSession();
-                      window.setFields(d.field_names, d.field_values);
-                      window.setIsImageOcclusion(false);
-                      window.setNotetypeMeta(d.notetype_meta);
-                      window.setCollapsed(d.collapsed);
-                      window.setClozeFields(d.cloze_fields);
-                      window.setPlainTexts(d.plain_texts);
-                      window.setDescriptions(d.descriptions);
-                      window.setFonts(d.fonts);
-                      window.setNoteId(0);
-                      window.setTags(d.tags);
-                      window.triggerChanges();
-                  } else {
-                      window.loadNote(d);
-                  }
-              });
-          },
-          ankiwebPrefillFields: function(p) {
-              var deadline = Date.now() + 8000;
-              (function waitReady() {
-                  var cs = document.querySelectorAll('.field-container');
-                  if (cs.length >= p.fields.length || Date.now() > deadline) {
-                      var sorted = Array.prototype.slice.call(cs).sort(function(a, b) {
-                          return Number(a.dataset.index) - Number(b.dataset.index);
-                      });
-                      p.fields.forEach(function(pair, i) {
-                          var fc = sorted[i];
-                          if (!fc) return;
-                          var h = fc.querySelector('.rich-text-editable');
-                          if (!h || !h.shadowRoot) return;
-                          var e = h.shadowRoot.querySelector('[contenteditable]');
-                          if (e) e.innerHTML = pair[1];
-                      });
-                      window.pycmd('saveTags:' + JSON.stringify(p.tags));
-                      return;
-                  }
-                  setTimeout(waitReady, 50);
-              })();
-          },
-          ankiwebToast: function(m) {
-              var t = document.getElementById('add-toast');
-              if (t) {
-                  t.textContent = String(m);
-                  setTimeout(function() {
-                      t.textContent = '';
-                  }, 2000);
-              }
-          }
-      });
-      require('anki/ui').loaded.then(function() {
-          window.pycmd('addReady');
-      });
-      {{ paste_handler_js | safe }}
-      {{ editor_links_js | safe }}
-  })();
+        function readAllFields() {
+            var cs = Array.prototype.slice.call(document.querySelectorAll('.field-container'));
+            cs.sort(function(a, b) {
+                return Number(a.dataset.index) - Number(b.dataset.index);
+            });
+            return cs.map(function(fc) {
+                var h = fc.querySelector('.rich-text-editable');
+                if (!h || !h.shadowRoot) return '';
+                var e = h.shadowRoot.querySelector('[contenteditable]');
+                return e ? e.innerHTML : '';
+            });
+        }
+        window.ankiwebAddNote = function() {
+            window.pycmd('addnote:' + JSON.stringify(readAllFields()));
+        };
+        window.ankiwebSetNotetype = function(val) {
+            window.__ankiwebNotetypeId = val;
+            window.pycmd('setnotetype:' + val);
+        };
+        window.ankiwebSetDeck = function(val) {
+            window.pycmd('setdeck:' + val);
+        };
+        window.setupEditor('add', true);
+        b.registerCalls({
+            ankiwebLoadNote: function(d) {
+                require('anki/ui').loaded.then(function() {
+                    if (d.field_names) {
+                        window.saveSession();
+                        window.setFields(d.field_names, d.field_values);
+                        window.setIsImageOcclusion(false);
+                        window.setNotetypeMeta(d.notetype_meta);
+                        window.setCollapsed(d.collapsed);
+                        window.setClozeFields(d.cloze_fields);
+                        window.setPlainTexts(d.plain_texts);
+                        window.setDescriptions(d.descriptions);
+                        window.setFonts(d.fonts);
+                        window.setNoteId(0);
+                        window.setTags(d.tags);
+                        window.triggerChanges();
+                    } else {
+                        window.loadNote(d);
+                    }
+                });
+            },
+            ankiwebPrefillFields: function(p) {
+                var deadline = Date.now() + 8000;
+                (function waitReady() {
+                    var cs = document.querySelectorAll('.field-container');
+                    if (cs.length >= p.fields.length || Date.now() > deadline) {
+                        var sorted = Array.prototype.slice.call(cs).sort(function(a, b) {
+                            return Number(a.dataset.index) - Number(b.dataset.index);
+                        });
+                        p.fields.forEach(function(pair, i) {
+                            var fc = sorted[i];
+                            if (!fc) return;
+                            var h = fc.querySelector('.rich-text-editable');
+                            if (!h || !h.shadowRoot) return;
+                            var e = h.shadowRoot.querySelector('[contenteditable]');
+                            if (e) e.innerHTML = pair[1];
+                        });
+                        window.pycmd('saveTags:' + JSON.stringify(p.tags));
+                        return;
+                    }
+                    setTimeout(waitReady, 50);
+                })();
+            },
+            ankiwebToast: function(m) {
+                var t = document.getElementById('add-toast');
+                if (t) {
+                    t.textContent = String(m);
+                    setTimeout(function() {
+                        t.textContent = '';
+                    }, 2000);
+                }
+            }
+        });
+        require('anki/ui').loaded.then(function() {
+            window.pycmd('addReady');
+        });
+        {{ paste_handler_js | safe }}
+        {{ editor_links_js | safe }}
+    })();
 </script>

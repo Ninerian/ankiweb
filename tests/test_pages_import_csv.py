@@ -1,3 +1,4 @@
+from html.parser import HTMLParser
 from pathlib import Path
 
 import anki.import_export_pb2 as ie
@@ -7,6 +8,30 @@ from fastapi.testclient import TestClient
 
 from ankiweb.app import create_app
 from ankiweb.core.config import Settings
+
+
+class _DelimiterSelectParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_delimiter_select = False
+        self.selected_values: list[str | None] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag == "select":
+            self.in_delimiter_select = attributes.get("id") == "csv-delimiter-select"
+        elif tag == "option" and self.in_delimiter_select and "selected" in attributes:
+            self.selected_values.append(attributes.get("value"))
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "select":
+            self.in_delimiter_select = False
+
+
+def _selected_delimiters(html: str) -> list[str | None]:
+    parser = _DelimiterSelectParser()
+    parser.feed(html)
+    return parser.selected_values
 
 
 @pytest.fixture
@@ -59,7 +84,7 @@ def test_next_import_csv_tab_separated(test_setup):
     r = client.get(f"/import-csv/{tsv_file}")
     assert r.status_code == 200
     # Tab delimiter should be selected
-    assert f'value="{ie.CsvMetadata.Delimiter.TAB}" selected' in r.text
+    assert _selected_delimiters(r.text) == [str(ie.CsvMetadata.Delimiter.TAB)]
 
 
 def test_next_import_csv_semicolon_separated(test_setup):
@@ -69,7 +94,7 @@ def test_next_import_csv_semicolon_separated(test_setup):
 
     r = client.get(f"/import-csv/{csv_file}")
     assert r.status_code == 200
-    assert f'value="{ie.CsvMetadata.Delimiter.SEMICOLON}" selected' in r.text
+    assert _selected_delimiters(r.text) == [str(ie.CsvMetadata.Delimiter.SEMICOLON)]
 
 
 def test_next_import_csv_header_directives(test_setup):

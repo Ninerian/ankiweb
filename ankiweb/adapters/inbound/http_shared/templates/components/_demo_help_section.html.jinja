@@ -1,5 +1,4 @@
 {% from "components/help_section.html.jinja" import help_section %}
-
 <div class="p-4 border border-base-300 rounded-box mb-4 bg-base-100">
     <h5 class="font-bold text-lg mb-2">1. Standard HelpSection with explanation and URL</h5>
     {{ help_section(
@@ -8,7 +7,6 @@
         url="https://docs.ankiweb.net/deck-options.html#learning-steps"
     ) }}
 </div>
-
 <div class="p-4 border border-base-300 rounded-box mb-4 bg-base-100">
     <h5 class="font-bold text-lg mb-2">2. Global setting (item.global=true with mdiEarth icon)</h5>
     {{ help_section(
@@ -20,7 +18,6 @@
         }
     ) }}
 </div>
-
 <div class="p-4 border border-base-300 rounded-box mb-4 bg-base-100">
     <h5 class="font-bold text-lg mb-2">3. Missing explanation (triggers upstream fallback message + link to GitHub)</h5>
     {{ help_section(
@@ -28,7 +25,6 @@
         url="https://docs.ankiweb.net"
     ) }}
 </div>
-
 <div class="p-4 border border-base-300 rounded-box mb-4 bg-base-100">
     <h5 class="font-bold text-lg mb-2">4. Collapsible variant (Datastar open/close behaviour)</h5>
     {{ help_section(
@@ -40,7 +36,6 @@
         id="max_reviews"
     ) }}
 </div>
-
 <div class="p-4 border border-base-300 rounded-box bg-base-100">
     <h5 class="font-bold text-lg mb-2">5. Modal / Accordion toggle variant (open/close Datastar signal)</h5>
     {{ help_section(

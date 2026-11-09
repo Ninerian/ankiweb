@@ -1,144 +1,141 @@
 {% macro tmpl_block(tmpl) %}
-  <div
-    class="tmpl-block bg-base-100 border border-base-300 rounded-box p-4 mb-4 shadow-sm"
-    data-layout-key="{{ tmpl.key }}"
-  >
-    <div class="flex items-center flex-wrap gap-2 mb-3">
-      <label class="tmpl-name-label flex items-center gap-2 mb-0">
-        <span class="text-sm font-semibold">{{ tr.actions_name() }}</span>
-        <input
-          type="text"
-          class="tmpl-name input input-sm"
-          data-bind="layoutDraft.rows.{{ tmpl.key }}.name"
-          value="{{ tmpl.name }}"
-          size="24"
-        >
-      </label>
-      <div class="join">
-        <button
-          class="btn btn-sm btn-outline join-item"
-          type="button"
-          data-on:click__prevent="moveLayoutBlock(el, $layoutDraft, '{{ tmpl.key }}', -1)"
-        >↑</button>
-        <button
-          class="btn btn-sm btn-outline join-item"
-          type="button"
-          data-on:click__prevent="moveLayoutBlock(el, $layoutDraft, '{{ tmpl.key }}', 1)"
-        >↓</button>
-      </div>
-      <button
-        class="btn btn-sm btn-outline btn-error ms-auto sm:ms-0"
-        type="button"
-        data-on:click__prevent="deleteLayoutBlock(el, $layoutDraft, '{{ tmpl.key }}')"
-      >
-        {{ tr.actions_delete() }}
-      </button>
+    <div class="tmpl-block bg-base-100 border border-base-300 rounded-box p-4 mb-4 shadow-sm"
+         data-layout-key="{{ tmpl.key }}">
+        <div class="flex items-center flex-wrap gap-2 mb-3">
+            <label class="tmpl-name-label flex items-center gap-2 mb-0">
+                <span class="text-sm font-semibold">{{ tr.actions_name() }}</span>
+                <input type="text"
+                       class="tmpl-name input input-sm"
+                       data-bind="layoutDraft.rows.{{ tmpl.key }}.name"
+                       value="{{ tmpl.name }}"
+                       size="24">
+            </label>
+            <div class="join">
+                <button class="btn btn-sm btn-outline join-item"
+                        type="button"
+                        data-on:click__prevent="moveLayoutBlock(el, $layoutDraft, '{{ tmpl.key }}', -1)">↑</button>
+                <button class="btn btn-sm btn-outline join-item"
+                        type="button"
+                        data-on:click__prevent="moveLayoutBlock(el, $layoutDraft, '{{ tmpl.key }}', 1)">↓</button>
+            </div>
+            <button class="btn btn-sm btn-outline btn-error ms-auto sm:ms-0"
+                    type="button"
+                    data-on:click__prevent="deleteLayoutBlock(el, $layoutDraft, '{{ tmpl.key }}')">
+                {{ tr.actions_delete() }}
+            </button>
+        </div>
+        <div class="tmpl-label text-sm font-semibold mt-2 mb-1">{{ tr.card_templates_front_template() }}</div>
+        <textarea class="tmpl-qfmt textarea font-mono w-full"
+                  rows="6"
+                  data-bind="layoutDraft.rows.{{ tmpl.key }}.qfmt">{{ tmpl.qfmt }}</textarea>
+        <div class="tmpl-label text-sm font-semibold mt-2 mb-1">{{ tr.card_templates_back_template() }}</div>
+        <textarea class="tmpl-afmt textarea font-mono w-full"
+                  rows="6"
+                  data-bind="layoutDraft.rows.{{ tmpl.key }}.afmt">{{ tmpl.afmt }}</textarea>
     </div>
-    <div class="tmpl-label text-sm font-semibold mt-2 mb-1">
-      {{ tr.card_templates_front_template() }}
-    </div>
-    <textarea
-      class="tmpl-qfmt textarea font-mono w-full"
-      rows="6"
-      data-bind="layoutDraft.rows.{{ tmpl.key }}.qfmt"
-    >{{ tmpl.qfmt }}</textarea>
-    <div class="tmpl-label text-sm font-semibold mt-2 mb-1">
-      {{ tr.card_templates_back_template() }}
-    </div>
-    <textarea
-      class="tmpl-afmt textarea font-mono w-full"
-      rows="6"
-      data-bind="layoutDraft.rows.{{ tmpl.key }}.afmt"
-    >{{ tmpl.afmt }}</textarea>
-  </div>
 {% endmacro %}
 <div class="card-layout max-w-4xl mx-auto px-4 py-3">
-  <h3 class="text-xl font-bold mb-3">Card Types</h3>
-  <form id="clf" onsubmit="return false" data-signals='{{ {"notetypeId": ntid, "error": "", "layoutDraft": layout_draft, "returnUrl": return_url} | tojson }}'>
-    <div id="tmplblocks">
-      {% for t in templates %}{{ tmpl_block(t) }}{% endfor %}
-    </div>
-    <div class="mt-2">
-      <button class="btn btn-outline" type="button" id="addtmpl" data-on:click__prevent="addLayoutBlock($layoutDraft)">
-        {{ tr.card_templates_add_card_type() }}
-      </button>
-    </div>
-    <div class="mt-4">
-      <div class="tmpl-label text-sm font-semibold mb-1">{{ tr.card_templates_template_styling() }}</div>
-      <textarea id="css" class="textarea font-mono w-full" rows="8" data-bind="layoutDraft.css">{{ css }}</textarea>
-    </div>
-    <div class="mt-4 flex flex-wrap gap-2">
-      <button class="btn btn-primary" type="button" id="save" data-on:click__prevent="$error = ''; @post('/card-layout/savelayout')">
-        {{ tr.actions_save() }}
-      </button>
-      <a class="btn btn-neutral" id="layout-cancel-btn" href="{{ return_url }}">
-        {{ tr.actions_cancel() }}
-      </a>
-      {% if preview_nid is not none %}
-      <a class="btn btn-outline" id="preview" href="/preview/{{ preview_nid }}">
-        {{ tr.actions_preview() }}
-      </a>
-      {% else %}
-      <span class="btn btn-outline btn-disabled" id="preview" aria-disabled="true">
-        {{ tr.actions_preview() }} unavailable
-      </span>
-      <p class="text-sm text-base-content/70" role="status">
-        Add a note of this type to enable preview.
-      </p>
-      {% endif %}
-    </div>
-    <div id="err" class="text-error text-sm font-semibold mt-2" data-text="$error"></div>
-  </form>
+    <h3 class="text-xl font-bold mb-3">Card Types</h3>
+    <form id="clf"
+          onsubmit="return false"
+          data-signals='{{ {"notetypeId": ntid, "error": "", "layoutDraft": layout_draft, "returnUrl": return_url} | tojson }}'>
+        <div id="tmplblocks">{% for t in templates %}{{ tmpl_block(t) }}{% endfor %}</div>
+        <div class="mt-2">
+            <button class="btn btn-outline"
+                    type="button"
+                    id="addtmpl"
+                    data-on:click__prevent="addLayoutBlock($layoutDraft)">
+                {{ tr.card_templates_add_card_type() }}
+            </button>
+        </div>
+        <div class="mt-4">
+            <div class="tmpl-label text-sm font-semibold mb-1">{{ tr.card_templates_template_styling() }}</div>
+            <textarea id="css"
+                      class="textarea font-mono w-full"
+                      rows="8"
+                      data-bind="layoutDraft.css">{{ css }}</textarea>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2">
+            <button class="btn btn-primary"
+                    type="button"
+                    id="save"
+                    data-on:click__prevent="$error = ''; @post('/card-layout/savelayout')">
+                {{ tr.actions_save() }}
+            </button>
+            <a class="btn btn-neutral"
+               id="layout-cancel-btn"
+               href="{{ return_url }}">{{ tr.actions_cancel() }}</a>
+            {% if preview_nid is not none %}
+                <a class="btn btn-outline"
+                   id="preview"
+                   href="/preview/{{ preview_nid }}">{{ tr.actions_preview() }}</a>
+            {% else %}
+                <span class="btn btn-outline btn-disabled"
+                      id="preview"
+                      aria-disabled="true">{{ tr.actions_preview() }} unavailable</span>
+                <p class="text-sm text-base-content/70" role="status">Add a note of this type to enable preview.</p>
+            {% endif %}
+        </div>
+        <div id="err"
+             class="text-error text-sm font-semibold mt-2"
+             data-text="$error"></div>
+    </form>
 </div>
-<template id="blankblock">{{ tmpl_block({'key': '__LAYOUT_KEY__', 'name': '', 'qfmt': '', 'afmt': ''}) }}</template>
+<template id="blankblock">{{ tmpl_block({"key": "__LAYOUT_KEY__", "name": "", "qfmt": "", "afmt": ""}) }}</template>
 <script>
-  function replaceLayoutKey(block, key) {
-    for (const element of [block, ...block.querySelectorAll('*')]) {
-      for (const attribute of Array.from(element.attributes)) {
-        if (attribute.value.includes('__LAYOUT_KEY__')) {
-          element.setAttribute(attribute.name, attribute.value.split('__LAYOUT_KEY__').join(key));
+    function replaceLayoutKey(block, key) {
+        for (const element of [block, ...block.querySelectorAll('*')]) {
+            for (const attribute of Array.from(element.attributes)) {
+                if (attribute.value.includes('__LAYOUT_KEY__')) {
+                    element.setAttribute(attribute.name, attribute.value.split('__LAYOUT_KEY__').join(key));
+                }
+            }
         }
-      }
     }
-  }
 
-  function addLayoutBlock(layoutDraft) {
-    const key = `t${layoutDraft.nextId}`;
-    layoutDraft.nextId += 1;
-    layoutDraft.rows[key] = {name: '', qfmt: '', afmt: ''};
-    layoutDraft.order = [...layoutDraft.order, key];
+    function addLayoutBlock(layoutDraft) {
+        const key = `t${layoutDraft.nextId}`;
+        layoutDraft.nextId += 1;
+        layoutDraft.rows[key] = {
+            name: '',
+            qfmt: '',
+            afmt: ''
+        };
+        layoutDraft.order = [...layoutDraft.order, key];
 
-    const template = document.getElementById('blankblock');
-    const block = template.content.firstElementChild.cloneNode(true);
-    replaceLayoutKey(block, key);
-    document.getElementById('tmplblocks').appendChild(block);
-  }
-
-  function deleteLayoutBlock(button, layoutDraft, key) {
-    layoutDraft.order = layoutDraft.order.filter(function(k) { return k !== key; });
-    delete layoutDraft.rows[key];
-    const block = button.closest('.tmpl-block');
-    if (block) block.remove();
-  }
-
-  function moveLayoutBlock(button, layoutDraft, key, direction) {
-    const order = [...layoutDraft.order];
-    const index = order.indexOf(key);
-    const targetIndex = index + direction;
-    if (index < 0 || targetIndex < 0 || targetIndex >= order.length) return;
-
-    const [moved] = order.splice(index, 1);
-    order.splice(targetIndex, 0, moved);
-    layoutDraft.order = order;
-
-    const block = button.closest('.tmpl-block');
-    const container = block.parentElement;
-    const children = Array.from(container.children);
-    const target = children[targetIndex];
-    if (direction < 0) {
-      container.insertBefore(block, target);
-    } else {
-      container.insertBefore(block, target.nextSibling);
+        const template = document.getElementById('blankblock');
+        const block = template.content.firstElementChild.cloneNode(true);
+        replaceLayoutKey(block, key);
+        document.getElementById('tmplblocks').appendChild(block);
     }
-  }
+
+    function deleteLayoutBlock(button, layoutDraft, key) {
+        layoutDraft.order = layoutDraft.order.filter(function(k) {
+            return k !== key;
+        });
+        delete layoutDraft.rows[key];
+        const block = button.closest('.tmpl-block');
+        if (block) block.remove();
+    }
+
+    function moveLayoutBlock(button, layoutDraft, key, direction) {
+        const order = [...layoutDraft.order];
+        const index = order.indexOf(key);
+        const targetIndex = index + direction;
+        if (index < 0 || targetIndex < 0 || targetIndex >= order.length) return;
+
+        const [moved] = order.splice(index, 1);
+        order.splice(targetIndex, 0, moved);
+        layoutDraft.order = order;
+
+        const block = button.closest('.tmpl-block');
+        const container = block.parentElement;
+        const children = Array.from(container.children);
+        const target = children[targetIndex];
+        if (direction < 0) {
+            container.insertBefore(block, target);
+        } else {
+            container.insertBefore(block, target.nextSibling);
+        }
+    }
 </script>

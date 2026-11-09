@@ -21,13 +21,10 @@
 #}
 {% macro portal(target="body", as_element="div", id=none, class_="") -%}
 {%- if target -%}
-<{{ as_element }}{% if id %} id="{{ id }}"{% endif %}
-    class="portal-node{% if class_ %} {{ class_ }}{% endif %}"
-    data-init="const dest = '{{ target }}' === 'body' ? document.body : document.querySelector('{{ target }}'); if (dest && el.parentElement !== dest) dest.appendChild(el);"
-    {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
-    {{ caller() if caller else '' }}
+<{{ as_element }}{% if id %} id="{{ id }}"{% endif %} class="portal-node{% if class_ %} {{ class_ }}{% endif %}" data-init="const dest = '{{ target }}' === 'body' ? document.body : document.querySelector('{{ target }}'); if (dest && el.parentElement !== dest) dest.appendChild(el);" {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+{{ caller() if caller else '' }}
 </{{ as_element }}>
 {%- else -%}
-    {{ caller() if caller else '' }}
+{{ caller() if caller else '' }}
 {%- endif -%}
 {%- endmacro %}

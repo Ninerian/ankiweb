@@ -1,6 +1,6 @@
 {% from "components/select.html.jinja" import select %}
-
-<div class="flex flex-col gap-4" data-signals="{ demoSelVal: 'deck2', demoSelDisabled: 'opt1' }">
+<div class="flex flex-col gap-4"
+     data-signals="{ demoSelVal: 'deck2', demoSelDisabled: 'opt1' }">
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">1. Standard Select Component (Datastar Signal Bound)</h5>
         <p class="text-base-content/60 text-sm mb-3">
@@ -28,7 +28,6 @@
             </div>
         </div>
     </div>
-
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">2. Disabled Select</h5>
         <p class="text-base-content/60 text-sm mb-3">Disabled variant matching upstream styling and pointer events suppression.</p>

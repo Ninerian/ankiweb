@@ -1,38 +1,42 @@
 <script>
-  window.__ankiwebEditNid = {{ nid }}
+    window.__ankiwebEditNid = {{ nid }}
 </script>
 <script>
-  (function() {
-      var obs = new MutationObserver(function() {
-          var ne = document.querySelector('.note-editor');
-          var fc = document.querySelector('.field-container');
-          if (ne && !fc) {
-              ne.classList.remove('note-editor');
-              ne.classList.add('note-editor-mounting');
-          } else if (fc) {
-              var nem = document.querySelector('.note-editor-mounting');
-              if (nem) {
-                  nem.classList.remove('note-editor-mounting');
-                  nem.classList.add('note-editor');
-              }
-          }
-      });
-      obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+    (function() {
+        var obs = new MutationObserver(function() {
+            var ne = document.querySelector('.note-editor');
+            var fc = document.querySelector('.field-container');
+            if (ne && !fc) {
+                ne.classList.remove('note-editor');
+                ne.classList.add('note-editor-mounting');
+            } else if (fc) {
+                var nem = document.querySelector('.note-editor-mounting');
+                if (nem) {
+                    nem.classList.remove('note-editor-mounting');
+                    nem.classList.add('note-editor');
+                }
+            }
+        });
+        obs.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true
+        });
 
-      window.setupEditor('browser', true);
-      var b = window.__ankiwebBridge;
-      b.registerCalls({
-          ankiwebLoadNote: function(d) {
-              require('anki/ui').loaded.then(function() {
-                  window.__ankiwebNotetypeId = d.notetypeId;
-                  window.loadNote(d);
-              });
-          }
-      });
-      require('anki/ui').loaded.then(function() {
-          window.pycmd('load:' + window.__ankiwebEditNid);
-      });
-      {{ paste_handler_js | safe }}
-      {{ editor_links_js | safe }}
-  })();
+        window.setupEditor('browser', true);
+        var b = window.__ankiwebBridge;
+        b.registerCalls({
+            ankiwebLoadNote: function(d) {
+                require('anki/ui').loaded.then(function() {
+                    window.__ankiwebNotetypeId = d.notetypeId;
+                    window.loadNote(d);
+                });
+            }
+        });
+        require('anki/ui').loaded.then(function() {
+            window.pycmd('load:' + window.__ankiwebEditNid);
+        });
+        {{ paste_handler_js | safe }}
+        {{ editor_links_js | safe }}
+    })();
 </script>

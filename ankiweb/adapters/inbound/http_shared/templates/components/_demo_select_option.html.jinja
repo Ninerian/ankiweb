@@ -1,5 +1,4 @@
 {% from "components/select_option.html.jinja" import select_option %}
-
 <div class="flex flex-col gap-3" data-signals="{ activeOpt: 'opt2' }">
     <div class="border border-base-300 rounded-box p-2 max-w-xs bg-base-100">
         {% call select_option(value="opt1", signal="$activeOpt", active=false) %}
@@ -15,7 +14,6 @@
             RTL Option
         {% endcall %}
     </div>
-
     <div>
         Selected option: <span class="badge badge-primary" data-text="$activeOpt">opt2</span>
     </div>

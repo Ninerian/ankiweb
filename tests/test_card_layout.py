@@ -470,12 +470,26 @@ def test_preview_link_targets_note_of_requested_notetype(client):
 
 
 def test_preview_is_unavailable_without_notes(client):
+    class PreviewParser(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.disabled = False
+
+        def handle_starttag(
+            self, tag: str, attrs: list[tuple[str, str | None]]
+        ) -> None:
+            attributes = dict(attrs)
+            if attributes.get("id") == "preview":
+                self.disabled = attributes.get("aria-disabled") == "true"
+
     ntid = client.portal.call(client.app.state.service.run, _basic_id)
 
     response = client.get(f"/card-layout/{ntid}")
 
     assert response.status_code == 200
-    assert 'id="preview" aria-disabled="true"' in response.text
+    parser = PreviewParser()
+    parser.feed(response.text)
+    assert parser.disabled
     assert 'href="/preview/' not in response.text
     assert 'role="status"' in response.text
 

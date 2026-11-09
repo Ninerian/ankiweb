@@ -25,17 +25,13 @@
     as_element="span",
     class_=""
 ) -%}
-{% set placement_class = "tooltip-top" if placement in ["top", "auto", ""] else ("tooltip-bottom" if placement == "bottom" else ("tooltip-left" if placement == "left" else "tooltip-right")) %}
-{% set tip_text = (tooltip|striptags) if html else tooltip %}
-{% if as_element %}
-<{{ as_element }}
-    class="tooltip {{ placement_class }}{% if class_ %} {{ class_ }}{% endif %}"
-    data-tip="{{ tip_text }}"
-    {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}
->
-    {{ caller() if caller else '' }}
-</{{ as_element }}>
-{% else %}
-    {{ caller() if caller else '' }}
-{% endif %}
+    {% set placement_class = "tooltip-top" if placement in ["top", "auto", ""] else ("tooltip-bottom" if placement == "bottom" else ("tooltip-left" if placement == "left" else "tooltip-right")) %}
+    {% set tip_text = (tooltip|striptags) if html else tooltip %}
+    {% if as_element %}
+        <{{ as_element }} class="tooltip {{ placement_class }}{% if class_ %} {{ class_ }}{% endif %}" data-tip="{{ tip_text }}" {% for k, v in kwargs.items() %}{{ k|replace('_', '-') }}="{{ v }}" {% endfor %}>
+            {{ caller() if caller else '' }}
+        </{{ as_element }}>
+    {% else %}
+        {{ caller() if caller else '' }}
+    {% endif %}
 {%- endmacro %}

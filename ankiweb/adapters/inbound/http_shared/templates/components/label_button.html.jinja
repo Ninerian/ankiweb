@@ -16,17 +16,15 @@
     size="xs",
     type="submit"
 ) %}
-  <button
-    type="{{ type }}"
-    {% if id %}id="{{ id }}"{% endif %}
-    class="btn btn-{{ size }}{% if primary or active %} btn-primary{% endif %}{% if active %} btn-active{% endif %}{% if ellipsis %} max-w-full justify-start{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
-    {% if tooltip %}title="{{ tooltip }}"{% endif %}
-    {% if disabled %}disabled{% endif %}
-    tabindex="{% if tabbable %}0{% else %}-1{% endif %}"
-    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
-  >
-    {% if ellipsis %}<span class="truncate">{% endif %}
-    {% if caller is defined %}{{ caller() }}{% endif %}
-    {% if ellipsis %}</span>{% endif %}
-  </button>
+    <button type="{{ type }}"
+            {% if id %}id="{{ id }}"{% endif %}
+            class="btn btn-{{ size }}{% if primary or active %} btn-primary{% endif %}{% if active %} btn-active{% endif %}{% if ellipsis %} max-w-full justify-start{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
+            {% if tooltip %}title="{{ tooltip }}"{% endif %}
+            {% if disabled %}disabled{% endif %}
+            tabindex="{% if tabbable %}0{% else %}-1{% endif %}"
+            {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}>
+        {% if ellipsis %}<span class="truncate">{% endif %}
+        {% if caller is defined %}{{ caller() }}{% endif %}
+        {% if ellipsis %}</span>{% endif %}
+    </button>
 {% endmacro %}

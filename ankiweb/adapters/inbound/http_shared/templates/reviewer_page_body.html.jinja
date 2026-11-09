@@ -1,173 +1,174 @@
 <style>
-  body {
-    margin: 0 !important;
-    padding: 0 !important;
-    height: 100vh;
-  }
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 100vh;
+    }
 </style>
 <div class="flex flex-col min-h-screen">
-  <header class="flex justify-between items-center px-3 py-2 border-b border-base-300 bg-base-100 sticky top-0 z-30">
-    <a href="/deckbrowser" class="btn btn-sm btn-outline inline-flex items-center">
-      &lsaquo; {{ tr.actions_decks() }}
-    </a>
-    <div id="reviewer-actions-bar">{{ actions_bar | safe }}</div>
-  </header>
-
-  <div class="flex-1 overflow-y-auto px-3 py-2">
-    <div id="_mark" hidden>★</div>
-    <div id="_flag" hidden>⚑</div>
-    <div id="qa" dir="auto"></div>
-  </div>
-
-  <div id="ankiweb-answer" class="sticky bottom-0 bg-base-100 border-t border-base-300 w-full z-30"></div>
+    <header class="flex justify-between items-center px-3 py-2 border-b border-base-300 bg-base-100 sticky top-0 z-30">
+        <a href="/deckbrowser"
+           class="btn btn-sm btn-outline inline-flex items-center">‹ {{ tr.actions_decks() }}</a>
+        <div id="reviewer-actions-bar">{{ actions_bar | safe }}</div>
+    </header>
+    <div class="flex-1 overflow-y-auto px-3 py-2">
+        <div id="_mark" hidden>★</div>
+        <div id="_flag" hidden>⚑</div>
+        <div id="qa" dir="auto"></div>
+    </div>
+    <div id="ankiweb-answer"
+         class="sticky bottom-0 bg-base-100 border-t border-base-300 w-full z-30"></div>
 </div>
 <script>
-  (function() {
-      var b = window.__ankiwebBridge;
-      var _ankiAudio = null;
-      var _side = 'question';
+    (function() {
+        var b = window.__ankiwebBridge;
+        var _ankiAudio = null;
+        var _side = 'question';
 
-      function ankiwebPlayAudio(files) {
-          if (_ankiAudio) {
-              try {
-                  _ankiAudio.pause();
-              } catch (e) {}
-              _ankiAudio = null;
-          }
-          files = files || [];
-          var i = 0;
+        function ankiwebPlayAudio(files) {
+            if (_ankiAudio) {
+                try {
+                    _ankiAudio.pause();
+                } catch (e) {}
+                _ankiAudio = null;
+            }
+            files = files || [];
+            var i = 0;
 
-          function next() {
-              if (i >= files.length) return;
-              _ankiAudio = new Audio('/' + encodeURIComponent(files[i]));
-              i++;
-              _ankiAudio.addEventListener('ended', next);
-              var p = _ankiAudio.play();
-              if (p && p.catch) {
-                  p.catch(function() {});
-              }
-          }
-          next();
-      }
+            function next() {
+                if (i >= files.length) return;
+                _ankiAudio = new Audio('/' + encodeURIComponent(files[i]));
+                i++;
+                _ankiAudio.addEventListener('ended', next);
+                var p = _ankiAudio.play();
+                if (p && p.catch) {
+                    p.catch(function() {});
+                }
+            }
+            next();
+        }
 
-      function ankiwebShowAnswer() {
-          var ta = document.getElementById('typeans');
-          if (ta && ta.tagName === 'INPUT') {
-              window.pycmd('typed:' + ta.value);
-          }
-          window.pycmd('ans');
-      }
-      window.ankiwebShowAnswer = ankiwebShowAnswer;
+        function ankiwebShowAnswer() {
+            var ta = document.getElementById('typeans');
+            if (ta && ta.tagName === 'INPUT') {
+                window.pycmd('typed:' + ta.value);
+            }
+            window.pycmd('ans');
+        }
+        window.ankiwebShowAnswer = ankiwebShowAnswer;
 
-      function ankiwebTypeAnsPress(e) {
-          if (e && (e.key === 'Enter' || e.keyCode === 13)) {
-              ankiwebShowAnswer();
-          }
-      }
-      window.ankiwebTypeAnsPress = ankiwebTypeAnsPress;
+        function ankiwebTypeAnsPress(e) {
+            if (e && (e.key === 'Enter' || e.keyCode === 13)) {
+                ankiwebShowAnswer();
+            }
+        }
+        window.ankiwebTypeAnsPress = ankiwebTypeAnsPress;
 
-      function ankiwebSetDue() {
-          window.ankiwebPrompt('Set due date (e.g. 0, 3, 1-7):', '').then(function(s) {
-              if (s !== null && s !== '') {
-                  window.pycmd('setdue:' + s);
-              }
-          });
-      }
-      window.ankiwebSetDue = ankiwebSetDue;
+        function ankiwebSetDue() {
+            window.ankiwebPrompt('Set due date (e.g. 0, 3, 1-7):', '').then(function(s) {
+                if (s !== null && s !== '') {
+                    window.pycmd('setdue:' + s);
+                }
+            });
+        }
+        window.ankiwebSetDue = ankiwebSetDue;
 
-      function ankiwebDeleteNote() {
-          window.ankiwebConfirm('Delete this note?', {danger: true}).then(function(ok) {
-              if (ok) {
-                  window.pycmd('deletenote');
-              }
-          });
-      }
-      window.ankiwebDeleteNote = ankiwebDeleteNote;
-      function activateReviewerLink(id) {
-          var link = document.getElementById(id);
-          if (!link || !link.hasAttribute('href')) return false;
-          link.click();
-          return true;
-      }
+        function ankiwebDeleteNote() {
+            window.ankiwebConfirm('Delete this note?', {
+                danger: true
+            }).then(function(ok) {
+                if (ok) {
+                    window.pycmd('deletenote');
+                }
+            });
+        }
+        window.ankiwebDeleteNote = ankiwebDeleteNote;
 
-      b.registerCalls({
-          _showQuestion: function() {
-              _side = 'question';
-              var actionsBar = document.getElementById('reviewer-actions-bar');
-              if (actionsBar && arguments.length > 3) {
-                  actionsBar.innerHTML = String(arguments[3]);
-              }
-              return window._showQuestion.apply(window, arguments);
-          },
-          _showAnswer: function() {
-              _side = 'answer';
-              return window._showAnswer.apply(window, arguments);
-          },
-          ankiwebSetAnswerBar: function(h) {
-              document.getElementById('ankiweb-answer').innerHTML = String(h);
-          },
-          ankiwebPlayAudio: function(files) {
-              return ankiwebPlayAudio(files);
-          },
-          _drawMark: function(b) {
-              return window._drawMark && window._drawMark(b);
-          },
-          _drawFlag: function(n) {
-              return window._drawFlag && window._drawFlag(n);
-          },
-          ankiwebReviewerError: function(m) {
-              window.ankiwebAlert(m);
-          }
-      });
-      document.addEventListener('keydown', function(e) {
-          var t = document.activeElement;
-          if (t && (t.id === 'typeans' || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-          var k = e.key;
-          if (e.ctrlKey && (k === '1' || k === '2' || k === '3' || k === '4')) {
-              e.preventDefault();
-              window.pycmd('setflag:' + k);
-              return;
-          }
-          if (e.ctrlKey || e.metaKey || e.altKey) return;
-          if (k === ' ' || k === 'Enter') {
-              e.preventDefault();
-              if (_side === 'question') {
-                  window.ankiwebShowAnswer();
-              } else {
-                  window.pycmd('ease3');
-              }
-          } else if (_side === 'answer' && (k === '1' || k === '2' || k === '3' || k === '4')) {
-              e.preventDefault();
-              window.pycmd('ease' + k);
-          } else if (k === 'r' || k === 'R' || k === 'F5') {
-              e.preventDefault();
-              window.pycmd('replay');
-          } else if (k === 'e' || k === 'E') {
-              if (activateReviewerLink('reviewer-card-edit')) e.preventDefault();
-          } else if (k === '*') {
-              e.preventDefault();
-              window.pycmd('mark');
-          } else if (k === '-') {
-              e.preventDefault();
-              window.pycmd('buryc');
-          } else if (k === '=') {
-              e.preventDefault();
-              window.pycmd('buryn');
-          } else if (k === '@') {
-              e.preventDefault();
-              window.pycmd('suspendc');
-          } else if (k === '!') {
-              e.preventDefault();
-              window.pycmd('suspendn');
-          } else if (k === 'i' || k === 'I') {
-              if (activateReviewerLink('reviewer-card-info')) e.preventDefault();
-          } else if (k === 'u' || k === 'U') {
-              e.preventDefault();
-              window.pycmd('undo');
-          }
-      });
-      window.addEventListener('load', function() {
-          window.pycmd('show');
-      });
-  })();
+        function activateReviewerLink(id) {
+            var link = document.getElementById(id);
+            if (!link || !link.hasAttribute('href')) return false;
+            link.click();
+            return true;
+        }
+
+        b.registerCalls({
+            _showQuestion: function() {
+                _side = 'question';
+                var actionsBar = document.getElementById('reviewer-actions-bar');
+                if (actionsBar && arguments.length > 3) {
+                    actionsBar.innerHTML = String(arguments[3]);
+                }
+                return window._showQuestion.apply(window, arguments);
+            },
+            _showAnswer: function() {
+                _side = 'answer';
+                return window._showAnswer.apply(window, arguments);
+            },
+            ankiwebSetAnswerBar: function(h) {
+                document.getElementById('ankiweb-answer').innerHTML = String(h);
+            },
+            ankiwebPlayAudio: function(files) {
+                return ankiwebPlayAudio(files);
+            },
+            _drawMark: function(b) {
+                return window._drawMark && window._drawMark(b);
+            },
+            _drawFlag: function(n) {
+                return window._drawFlag && window._drawFlag(n);
+            },
+            ankiwebReviewerError: function(m) {
+                window.ankiwebAlert(m);
+            }
+        });
+        document.addEventListener('keydown', function(e) {
+            var t = document.activeElement;
+            if (t && (t.id === 'typeans' || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+            var k = e.key;
+            if (e.ctrlKey && (k === '1' || k === '2' || k === '3' || k === '4')) {
+                e.preventDefault();
+                window.pycmd('setflag:' + k);
+                return;
+            }
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (k === ' ' || k === 'Enter') {
+                e.preventDefault();
+                if (_side === 'question') {
+                    window.ankiwebShowAnswer();
+                } else {
+                    window.pycmd('ease3');
+                }
+            } else if (_side === 'answer' && (k === '1' || k === '2' || k === '3' || k === '4')) {
+                e.preventDefault();
+                window.pycmd('ease' + k);
+            } else if (k === 'r' || k === 'R' || k === 'F5') {
+                e.preventDefault();
+                window.pycmd('replay');
+            } else if (k === 'e' || k === 'E') {
+                if (activateReviewerLink('reviewer-card-edit')) e.preventDefault();
+            } else if (k === '*') {
+                e.preventDefault();
+                window.pycmd('mark');
+            } else if (k === '-') {
+                e.preventDefault();
+                window.pycmd('buryc');
+            } else if (k === '=') {
+                e.preventDefault();
+                window.pycmd('buryn');
+            } else if (k === '@') {
+                e.preventDefault();
+                window.pycmd('suspendc');
+            } else if (k === '!') {
+                e.preventDefault();
+                window.pycmd('suspendn');
+            } else if (k === 'i' || k === 'I') {
+                if (activateReviewerLink('reviewer-card-info')) e.preventDefault();
+            } else if (k === 'u' || k === 'U') {
+                e.preventDefault();
+                window.pycmd('undo');
+            }
+        });
+        window.addEventListener('load', function() {
+            window.pycmd('show');
+        });
+    })();
 </script>

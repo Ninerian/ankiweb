@@ -1,66 +1,77 @@
 {% include "browser_styles.html.jinja" %}
 {% include "browser_state.html.jinja" %}
-
-<div
-  id="browser"
-  class="text-sm"
-  data-signals='{"_browserBusy": false}'
-  data-indicator:_browser-busy
-  data-on:ankiweb:browser-refresh__window="$_browserBusy ? (el.dataset.refreshPending = 'true') : @post('/browse/refresh', {contentType: 'form', selector: '#browser-state'})"
-  data-effect="(!$_browserBusy && el.dataset.refreshPending === 'true') ? (delete el.dataset.refreshPending, @post('/browse/refresh', {contentType: 'form', selector: '#browser-state'})) : null"
->
-  <div id="browser-top" class="flex flex-wrap items-center gap-2 p-2 border-b border-base-300">
-    <button
-      type="button"
-      id="browser-sidebar-toggle"
-      class="btn btn-ghost btn-sm btn-square"
-      aria-label="{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}"
-      title="{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}"
-      aria-controls="sidebar-panel"
-      aria-expanded="false"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" class="size-4" aria-hidden="true"><path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"></path><path d="M9 4v16"></path></svg>
-    </button>
-    {% include "browser_search.html.jinja" %}
-    <span id="browser-status" class="text-base-content/60">{{ count_label }}</span>
-    {% include "browser_actions.html.jinja" %}
-    {% include "browser_selection.html.jinja" %}
-  </div>
-
-  <div id="browser-main" class="drawer">
-    <input id="browser-sidebar-state" type="checkbox" class="drawer-toggle">
-    <div class="drawer-content">
-    <!-- Results table -->
-    <div id="results-wrap">
-      {% include "browser_results.html.jinja" %}
+<div id="browser"
+     class="text-sm"
+     data-signals='{"_browserBusy": false}'
+     data-indicator:_browser-busy
+     data-on:ankiweb:browser-refresh__window="$_browserBusy ? (el.dataset.refreshPending = 'true') : @post('/browse/refresh', {contentType: 'form', selector: '#browser-state'})"
+     data-effect="(!$_browserBusy && el.dataset.refreshPending === 'true') ? (delete el.dataset.refreshPending, @post('/browse/refresh', {contentType: 'form', selector: '#browser-state'})) : null">
+    <div id="browser-top"
+         class="flex flex-wrap items-center gap-2 p-2 border-b border-base-300">
+        <button type="button"
+                id="browser-sidebar-toggle"
+                class="btn btn-ghost btn-sm btn-square"
+                aria-label="{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}"
+                title="{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}"
+                aria-controls="sidebar-panel"
+                aria-expanded="false">
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-linejoin="round"
+                 stroke-linecap="round"
+                 stroke-width="2"
+                 class="size-4"
+                 aria-hidden="true">
+                <path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"></path>
+                <path d="M9 4v16"></path>
+            </svg>
+        </button>
+        {% include "browser_search.html.jinja" %}
+        <span id="browser-status" class="text-base-content/60">{{ count_label }}</span>
+        {% include "browser_actions.html.jinja" %}
+        {% include "browser_selection.html.jinja" %}
     </div>
-    <!-- Detail: desktop-only aside; mobile-only bottom modal. #detail is moved between them by script. -->
-    <aside id="detail-desktop" class="hidden md:block">
-      {% include "browser_detail_shell.html.jinja" %}
-    </aside>
-    <dialog id="detail-offcanvas" class="modal modal-bottom md:hidden" aria-labelledby="detail-offcanvas-label">
-      <div class="modal-box p-0 max-w-full">
-        <div class="flex justify-between items-center border-b border-base-300 p-2">
-          <h6 class="font-bold text-sm m-0" id="detail-offcanvas-label">{{ tr.browsing_card() }} – {{ tr.importing_details() }}</h6>
-          <form method="dialog">
-            <button type="submit" class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
-          </form>
+    <div id="browser-main" class="drawer">
+        <input id="browser-sidebar-state" type="checkbox" class="drawer-toggle">
+        <div class="drawer-content">
+            <!-- Results table -->
+            <div id="results-wrap">{% include "browser_results.html.jinja" %}</div>
+            <!-- Detail: desktop-only aside; mobile-only bottom modal. #detail is moved between them by script. -->
+            <aside id="detail-desktop" class="hidden md:block">
+                {% include "browser_detail_shell.html.jinja" %}
+            </aside>
+            <dialog id="detail-offcanvas"
+                    class="modal modal-bottom md:hidden"
+                    aria-labelledby="detail-offcanvas-label">
+                <div class="modal-box p-0 max-w-full">
+                    <div class="flex justify-between items-center border-b border-base-300 p-2">
+                        <h6 class="font-bold text-sm m-0"
+                            id="detail-offcanvas-label">{{ tr.browsing_card() }} – {{ tr.importing_details() }}</h6>
+                        <form method="dialog">
+                            <button type="submit"
+                                    class="btn btn-sm btn-circle btn-ghost"
+                                    aria-label="Close">✕</button>
+                        </form>
+                    </div>
+                    <div id="detail-mobile-slot" class="p-0 overflow-y-auto"></div>
+                </div>
+                <form method="dialog" class="modal-backdrop">
+                    <button type="submit">close</button>
+                </form>
+            </dialog>
+            <script>
+                if (!window.matchMedia('(min-width: 768px)').matches) document.getElementById('detail-mobile-slot').appendChild(document.getElementById('detail'));
+            </script>
         </div>
-        <div id="detail-mobile-slot" class="p-0 overflow-y-auto"></div>
-      </div>
-      <form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
-    </dialog>
-    <script>
-      if (!window.matchMedia('(min-width: 768px)').matches) document.getElementById('detail-mobile-slot').appendChild(document.getElementById('detail'));
-    </script>
+        <div class="drawer-side">
+            <label for="browser-sidebar-state"
+                   class="drawer-overlay"
+                   aria-label="{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}"></label>
+            {% include "browser_sidebar.html.jinja" %}
+        </div>
     </div>
-    <div class="drawer-side">
-      <label for="browser-sidebar-state" class="drawer-overlay" aria-label="{{ tr.browsing_sidebar_decks() }} &amp; {{ tr.browsing_sidebar_tags() }}"></label>
-      {% include "browser_sidebar.html.jinja" %}
-    </div>
-  </div>
-
-  {% include "browser_dialogs.html.jinja" %}
+    {% include "browser_dialogs.html.jinja" %}
 </div>
-
 {% include "browser_runtime.html.jinja" %}

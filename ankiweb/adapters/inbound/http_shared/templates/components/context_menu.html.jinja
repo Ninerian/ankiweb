@@ -18,22 +18,20 @@
     class_="",
     items=[]
 ) %}
-  <div
-    {% if id %}id="{{ id }}"{% endif %}
-    class="context-menu{% if class_ %} {{ class_ }}{% endif %}"
-    role="menu"
-    tabindex="0"
-    data-show="${{ signal_name }}.visible"
-    data-style:left="`${${{ signal_name }}.x}px`"
-    data-style:top="`${${{ signal_name }}.y}px`"
-    data-on:click="${{ signal_name }}.visible = false"
-    data-on:click__outside="${{ signal_name }}.visible = false"
-    data-on:keydown__window="evt.key === 'Escape' && (${{ signal_name }}.visible = false)"
-    data-on:keydown="evt.key === 'Escape' ? (${{ signal_name }}.visible = false) : (evt.key === 'ArrowDown' ? (el.querySelector('.dropdown-item, .context-menu-item, button')?.focus()) : void 0)"
-    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
-  >
-    {% if caller is defined %}
-      {{ caller() }}
-    {% endif %}
-  </div>
+    <div {% if id %}id="{{ id }}"{% endif %}
+         class="context-menu{% if class_ %} {{ class_ }}{% endif %}"
+         role="menu"
+         tabindex="0"
+         data-show="${{ signal_name }}.visible"
+         data-style:left="`${${{ signal_name }}.x}px`"
+         data-style:top="`${${{ signal_name }}.y}px`"
+         data-on:click="${{ signal_name }}.visible = false"
+         data-on:click__outside="${{ signal_name }}.visible = false"
+         data-on:keydown__window="evt.key === 'Escape' && (${{ signal_name }}.visible = false)"
+         data-on:keydown="evt.key === 'Escape' ? (${{ signal_name }}.visible = false) : (evt.key === 'ArrowDown' ? (el.querySelector('.dropdown-item, .context-menu-item, button')?.focus()) : void 0)"
+         {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}>
+        {% if caller is defined %}
+            {{ caller() }}
+        {% endif %}
+    </div>
 {% endmacro %}

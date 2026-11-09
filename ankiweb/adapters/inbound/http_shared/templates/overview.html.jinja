@@ -1,134 +1,129 @@
 <style>
-  /* Override vendored overview.css rules that fight the theme */
-  #study {
-    background: var(--color-primary) !important;
-    border-color: var(--color-primary) !important;
-    color: var(--color-primary-content, #fff) !important;
-  }
-  #study:hover, #study:focus {
-    background: color-mix(in oklab, var(--color-primary) 85%, #000) !important;
-    border-color: color-mix(in oklab, var(--color-primary) 85%, #000) !important;
-    color: var(--color-primary-content, #fff) !important;
-  }
-  /* Fix description padding from vendored .descfont { padding: 1em; } */
-  .card-body .descfont.description {
-    padding: 0.75rem 1rem !important;
-    border-radius: var(--radius-box, 0.5rem);
-    background-color: var(--color-base-200);
-  }
-  /* Make Study Now sticky above the bottom nav bar below md */
-  @media (max-width: 767.98px) {
-    .study-action-sticky {
-      position: sticky;
-      bottom: calc(var(--ankiweb-bottomnav-h) + 0.5rem);
-      z-index: 40;
-      background: var(--color-base-100);
-      padding: 0.5rem 0;
-      border-radius: var(--radius-box, 0.5rem);
+    /* Override vendored overview.css rules that fight the theme */
+    #study {
+        background: var(--color-primary) !important;
+        border-color: var(--color-primary) !important;
+        color: var(--color-primary-content, #fff) !important;
     }
-  }
-</style>
 
+    #study:hover,
+    #study:focus {
+        background: color-mix(in oklab, var(--color-primary) 85%, #000) !important;
+        border-color: color-mix(in oklab, var(--color-primary) 85%, #000) !important;
+        color: var(--color-primary-content, #fff) !important;
+    }
+
+    /* Fix description padding from vendored .descfont { padding: 1em; } */
+    .card-body .descfont.description {
+        padding: 0.75rem 1rem !important;
+        border-radius: var(--radius-box, 0.5rem);
+        background-color: var(--color-base-200);
+    }
+
+    /* Make Study Now sticky above the bottom nav bar below md */
+    @media (max-width: 767.98px) {
+        .study-action-sticky {
+            position: sticky;
+            bottom: calc(var(--ankiweb-bottomnav-h) + 0.5rem);
+            z-index: 40;
+            background: var(--color-base-100);
+            padding: 0.5rem 0;
+            border-radius: var(--radius-box, 0.5rem);
+        }
+    }
+</style>
 <div id="overview-page" class="overview-page mx-auto px-4 py-3">
-  <div class="card bg-base-100 border border-base-300 shadow-sm mx-auto mt-2 md:mt-4 max-w-lg">
-    <div class="card-body text-center p-3 md:p-6">
-      <h3 class="card-title justify-center text-xl font-bold mb-3">{{ name }}</h3>
-      {% if desc %}
-        <div class="descfont description text-left mb-4">
-          {{ desc | safe }}
-        </div>
-      {% endif %}
-      <div class="grid grid-cols-3 text-center gap-2 mb-4">
-        <div>
-          <div class="text-2xl font-semibold new-count">{{ new }}</div>
-          <div class="text-sm text-base-content/60">{{ tr.statistics_counts_new_cards() | tr_clean }}</div>
-        </div>
-        <div>
-          <div class="text-2xl font-semibold learn-count">{{ learn }}</div>
-          <div class="text-sm text-base-content/60">{{ tr.statistics_counts_learning_cards() | tr_clean }}</div>
-        </div>
-        <div>
-          <div class="text-2xl font-semibold review-count">{{ review }}</div>
-          <div class="text-sm text-base-content/60">{{ tr.studying_to_review() | tr_clean }}</div>
-        </div>
-      </div>
-      <div class="study-action-sticky flex flex-col mb-3">
-        <button
-          type="button"
-          id="study"
-          class="btn btn-primary btn-lg w-full"
-          autofocus
-          data-on:click__prevent="@post('/overview/study')"
-        >
-          {{ tr.studying_study_now() | tr_clean }}
-        </button>
-      </div>
-      <div class="flex flex-wrap justify-center gap-2">
-        <a href="{{ '/filtered-deck/' ~ deck_id if is_dyn else '/deck-options/' ~ deck_id }}" class="btn btn-outline btn-sm">
-          {{ tr.actions_options() | tr_clean }}
-        </a>
-        {% if is_dyn %}
-          <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/refresh')">
-            {{ tr.actions_rebuild() | tr_clean }}
-          </button>
-          <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/empty')">
-            {{ tr.studying_empty() | tr_clean }}
-          </button>
-        {% else %}
-          <a href="/custom-study" class="btn btn-outline btn-sm">
-            {{ tr.actions_custom_study() | tr_clean }}
-          </a>
-        {% endif %}
-        {% if have_buried %}
-          <button class="btn btn-outline btn-sm" type="button" data-on:click__prevent="@post('/overview/unbury')">
-            {{ tr.studying_unbury() | tr_clean }}
-          </button>
-        {% endif %}
-        <button
-          class="btn btn-outline btn-sm"
-          type="button"
-          data-on:click="$showDescEdit = true"
-        >
-          {% if tr.studying_edit() == 'Bearbeiten' %}{{ tr.fields_description() | tr_clean }} {{ tr.studying_edit() | tr_clean | lower }}{% else %}{{ tr.studying_edit() | tr_clean }} {{ tr.fields_description() | tr_clean }}{% endif %}
-        </button>
-      </div>
-      <div
-        id="descedit"
-        class="mt-3 text-left"
-        data-signals='{"showDescEdit": false, "desc": {{ raw_desc | tojson }}, "md": {{ "true" if md_checked else "false" }}}'
-        data-show="$showDescEdit"
-        style="display:none;"
-      >
-        <textarea id="descbox" class="textarea w-full" data-bind="desc" rows="4" cols="50">{{ raw_desc }}</textarea>
-        <div class="flex items-center gap-2 my-2 cursor-pointer">
-          <input
-            class="checkbox checkbox-sm"
-            type="checkbox"
-            id="descmd"
-            data-bind="md"
-            {% if md_checked %}
-              checked
+    <div class="card bg-base-100 border border-base-300 shadow-sm mx-auto mt-2 md:mt-4 max-w-lg">
+        <div class="card-body text-center p-3 md:p-6">
+            <h3 class="card-title justify-center text-xl font-bold mb-3">{{ name }}</h3>
+            {% if desc %}
+                <div class="descfont description text-left mb-4">{{ desc | safe }}</div>
             {% endif %}
-          >
-          <label class="cursor-pointer text-sm" for="descmd">{{ tr.deck_config_description_new_handling2() | tr_clean }}</label>
+            <div class="grid grid-cols-3 text-center gap-2 mb-4">
+                <div>
+                    <div class="text-2xl font-semibold new-count">{{ new }}</div>
+                    <div class="text-sm text-base-content/60">{{ tr.statistics_counts_new_cards() | tr_clean }}</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-semibold learn-count">{{ learn }}</div>
+                    <div class="text-sm text-base-content/60">{{ tr.statistics_counts_learning_cards() | tr_clean }}</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-semibold review-count">{{ review }}</div>
+                    <div class="text-sm text-base-content/60">{{ tr.studying_to_review() | tr_clean }}</div>
+                </div>
+            </div>
+            <div class="study-action-sticky flex flex-col mb-3">
+                <button type="button"
+                        id="study"
+                        class="btn btn-primary btn-lg w-full"
+                        autofocus
+                        data-on:click__prevent="@post('/overview/study')">
+                    {{ tr.studying_study_now() | tr_clean }}
+                </button>
+            </div>
+            <div class="flex flex-wrap justify-center gap-2">
+                <a href="{{ '/filtered-deck/' ~ deck_id if is_dyn else '/deck-options/' ~ deck_id }}"
+                   class="btn btn-outline btn-sm">{{ tr.actions_options() | tr_clean }}</a>
+                {% if is_dyn %}
+                    <button class="btn btn-outline btn-sm"
+                            type="button"
+                            data-on:click__prevent="@post('/overview/refresh')">
+                        {{ tr.actions_rebuild() | tr_clean }}
+                    </button>
+                    <button class="btn btn-outline btn-sm"
+                            type="button"
+                            data-on:click__prevent="@post('/overview/empty')">
+                        {{ tr.studying_empty() | tr_clean }}
+                    </button>
+                {% else %}
+                    <a href="/custom-study" class="btn btn-outline btn-sm">
+                        {{ tr.actions_custom_study() | tr_clean }}
+                    </a>
+                {% endif %}
+                {% if have_buried %}
+                    <button class="btn btn-outline btn-sm"
+                            type="button"
+                            data-on:click__prevent="@post('/overview/unbury')">
+                        {{ tr.studying_unbury() | tr_clean }}
+                    </button>
+                {% endif %}
+                <button class="btn btn-outline btn-sm"
+                        type="button"
+                        data-on:click="$showDescEdit = true">
+                    {% if tr.studying_edit() == "Bearbeiten" %}{{ tr.fields_description() | tr_clean }} {{ tr.studying_edit() | tr_clean | lower }}{% else %}{{ tr.studying_edit() | tr_clean }} {{ tr.fields_description() | tr_clean }}{% endif %}
+                </button>
+            </div>
+            <div id="descedit"
+                 class="mt-3 text-left"
+                 data-signals='{"showDescEdit": false, "desc": {{ raw_desc | tojson }}, "md": {{ "true" if md_checked else "false" }}}'
+                 data-show="$showDescEdit"
+                 style="display:none">
+                <textarea id="descbox"
+                          class="textarea w-full"
+                          data-bind="desc"
+                          rows="4"
+                          cols="50">{{ raw_desc }}</textarea>
+                <div class="flex items-center gap-2 my-2 cursor-pointer">
+                    <input class="checkbox checkbox-sm"
+                           type="checkbox"
+                           id="descmd"
+                           data-bind="md"
+                           {% if md_checked %} checked {% endif %}>
+                    <label class="cursor-pointer text-sm"
+                           for="descmd">{{ tr.deck_config_description_new_handling2() | tr_clean }}</label>
+                </div>
+                <div class="text-center flex justify-center gap-2">
+                    <button class="btn btn-primary btn-sm"
+                            type="button"
+                            data-on:click__prevent="@post('/overview/setdesc', {payload: {desc: $desc, md: $md}})">
+                        {{ tr.actions_save() | tr_clean }}
+                    </button>
+                    <button class="btn btn-neutral btn-sm"
+                            type="button"
+                            data-on:click="$showDescEdit = false">{{ tr.actions_cancel() | tr_clean }}</button>
+                </div>
+            </div>
         </div>
-        <div class="text-center flex justify-center gap-2">
-          <button
-            class="btn btn-primary btn-sm"
-            type="button"
-            data-on:click__prevent="@post('/overview/setdesc', {payload: {desc: $desc, md: $md}})"
-          >
-            {{ tr.actions_save() | tr_clean }}
-          </button>
-          <button
-            class="btn btn-neutral btn-sm"
-            type="button"
-            data-on:click="$showDescEdit = false"
-          >
-            {{ tr.actions_cancel() | tr_clean }}
-          </button>
-        </div>
-      </div>
     </div>
-  </div>
 </div>

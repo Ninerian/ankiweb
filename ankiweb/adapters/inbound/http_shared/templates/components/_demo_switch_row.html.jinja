@@ -1,6 +1,7 @@
 {% from "components/switch_row.html.jinja" import switch_row %}
-
-<div class="flex flex-col gap-3" style="max-width: 500px;" data-signals="{ swRow1: true, swRowDef: false }">
+<div class="flex flex-col gap-3"
+     style="max-width: 500px"
+     data-signals="{ swRow1: true, swRowDef: false }">
     <div class="border border-base-300 rounded-box p-2 bg-base-100">
         {% call switch_row(signal="$swRow1", signal_default="$swRowDef", default_value=false) %}
             <div>
@@ -13,7 +14,6 @@
             (Default is OFF; click revert button on the right to revert)
         </div>
     </div>
-
     <div class="border border-base-300 rounded-box p-2 bg-base-100">
         {% call switch_row(value=false, default_value=false) %}
             <div>
@@ -22,7 +22,6 @@
             </div>
         {% endcall %}
     </div>
-
     <div class="border border-base-300 rounded-box p-2 bg-base-100">
         {% call switch_row(value=true, default_value=true, disabled=true) %}
             <div>

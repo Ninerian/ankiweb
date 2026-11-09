@@ -20,26 +20,16 @@
    - class_: additional CSS classes on wrapper element
 #}
 {% macro with_context(key="", context_value=none, signal_name=none, signal_value=none, signals=none, as_element=none, class_="") -%}
-{%- if signals or signal_name -%}
-    {%- set tag = as_element | default("div", true) -%}
-    <{{ tag }}{% if class_ %} class="{{ class_ }}"{% endif %}
-        {%- if signals %}
-            {%- if signals is mapping %}
-                data-signals='{{ signals | tojson }}'
-            {%- else %}
-                data-signals='{{ signals }}'
-            {%- endif -%}
-        {%- elif signal_name %}
-            data-signals='{ {{ signal_name }}: {{ signal_value | tojson | safe if signal_value is not none else "null" }} }'
-        {%- endif %}
-        {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
-        {{ caller(context_value, signal_name) if caller else '' }}
-    </{{ tag }}>
-{%- elif as_element -%}
-    <{{ as_element }}{% if class_ %} class="{{ class_ }}"{% endif %}{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+    {%- if signals or signal_name -%}
+        {%- set tag = as_element | default("div", true) -%}
+        <{{ tag }}{% if class_ %} class="{{ class_ }}"{% endif %} {%- if signals %} {%- if signals is mapping %} data-signals='{{ signals | tojson }}' {%- else %} data-signals='{{ signals }}' {%- endif -%} {%- elif signal_name %} data-signals='{ {{ signal_name }}: {{ signal_value | tojson | safe if signal_value is not none else "null" }} }' {%- endif %} {% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+            {{ caller(context_value, signal_name) if caller else '' }}
+        </{{ tag }}>
+    {%- elif as_element -%}
+        <{{ as_element }}{% if class_ %} class="{{ class_ }}"{% endif %}{% for k, v in kwargs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+            {{ caller(context_value, none) if caller else '' }}
+        </{{ as_element }}>
+    {%- else -%}
         {{ caller(context_value, none) if caller else '' }}
-    </{{ as_element }}>
-{%- else -%}
-    {{ caller(context_value, none) if caller else '' }}
-{%- endif -%}
+    {%- endif -%}
 {%- endmacro %}

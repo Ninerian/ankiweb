@@ -1,7 +1,7 @@
 {% from "components/with_floating.html.jinja" import with_floating %}
 {% from "components/popover.html.jinja" import popover %}
-
-<div class="flex flex-col gap-4" data-signals="{ demoFltOpen1: false, demoFltOpen2: false, demoFltOpen3: false }">
+<div class="flex flex-col gap-4"
+     data-signals="{ demoFltOpen1: false, demoFltOpen2: false, demoFltOpen3: false }">
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">1. WithFloating (Basic Bottom with Arrow & Outside Click)</h5>
         <p class="text-base-content/60 text-sm mb-3">
@@ -10,14 +10,10 @@
         </p>
         <div class="inline-block">
             {% set basic_ref %}
-                <button
-                    type="button"
-                    class="btn btn-outline btn-primary"
-                    id="demoFltBasicBtn"
-                    data-on:click="$demoFltOpen1 = !$demoFltOpen1"
-                >
-                    Toggle Floating Element
-                </button>
+                <button type="button"
+                        class="btn btn-outline btn-primary"
+                        id="demoFltBasicBtn"
+                        data-on:click="$demoFltOpen1 = !$demoFltOpen1">Toggle Floating Element</button>
             {% endset %}
             {% set basic_flt %}
                 {% call popover(id="demoFltBasicPopover", min_height=60, popover_width="220px") %}
@@ -39,7 +35,6 @@
             ) }}
         </div>
     </div>
-
     <div class="card bg-base-100 border border-base-300 p-4">
         <h5 class="card-title text-base-content font-bold mb-1">2. Edge Placement & Viewport Flip Test</h5>
         <p class="text-base-content/60 text-sm mb-3">
@@ -48,14 +43,10 @@
         <div class="flex justify-between">
             <div>
                 {% set flip_ref %}
-                    <button
-                        type="button"
-                        class="btn btn-outline"
-                        id="demoFltFlipBtn"
-                        data-on:click="$demoFltOpen2 = !$demoFltOpen2"
-                    >
-                        Test Flip Placement
-                    </button>
+                    <button type="button"
+                            class="btn btn-outline"
+                            id="demoFltFlipBtn"
+                            data-on:click="$demoFltOpen2 = !$demoFltOpen2">Test Flip Placement</button>
                 {% endset %}
                 {% set flip_flt %}
                     {% call popover(id="demoFltFlipPopover", popover_width="200px") %}
@@ -75,17 +66,12 @@
                     id="demo_wf_flip"
                 ) }}
             </div>
-
             <div>
                 {% set right_ref %}
-                    <button
-                        type="button"
-                        class="btn btn-outline btn-info"
-                        id="demoFltRightBtn"
-                        data-on:click="$demoFltOpen3 = !$demoFltOpen3"
-                    >
-                        Right Placement
-                    </button>
+                    <button type="button"
+                            class="btn btn-outline btn-info"
+                            id="demoFltRightBtn"
+                            data-on:click="$demoFltOpen3 = !$demoFltOpen3">Right Placement</button>
                 {% endset %}
                 {% set right_flt %}
                     {% call popover(id="demoFltRightPopover", popover_width="180px") %}

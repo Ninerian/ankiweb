@@ -1,6 +1,5 @@
 {# Badge component ported from ts/lib/components/Badge.svelte #}
 {% from "components/icon_constrain.html.jinja" import icon_constrain %}
-
 {% macro badge(
     class_="",
     tooltip=none,
@@ -9,18 +8,16 @@
     flip_x=false,
     type="submit"
 ) %}
-  {% set outer_caller = caller %}
-  <button
-    type="{{ type }}"
-    class="badge{% if class_ %} {{ class_ }}{% endif %}"
-    {% if tooltip %}title="{{ tooltip }}"{% endif %}
-    tabindex="-1"
-    {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}
-  >
-    {% call icon_constrain(icon_size=icon_size, width_multiplier=width_multiplier, flip_x=flip_x) %}
-      {% if outer_caller is defined %}
-        {{ outer_caller() }}
-      {% endif %}
-    {% endcall %}
-  </button>
+    {% set outer_caller = caller %}
+    <button type="{{ type }}"
+            class="badge{% if class_ %} {{ class_ }}{% endif %}"
+            {% if tooltip %}title="{{ tooltip }}"{% endif %}
+            tabindex="-1"
+            {% for k, v in kwargs.items() %}{{ k }}="{{ v }}" {% endfor %}>
+        {% call icon_constrain(icon_size=icon_size, width_multiplier=width_multiplier, flip_x=flip_x) %}
+            {% if outer_caller is defined %}
+                {{ outer_caller() }}
+            {% endif %}
+        {% endcall %}
+    </button>
 {% endmacro %}

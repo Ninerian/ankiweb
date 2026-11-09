@@ -1,66 +1,57 @@
 {% from "components/container.html.jinja" import container %}
 {% from "components/col.html.jinja" import col %}
-
 {% call container(breakpoint="sm", style="--gutter-block: 1rem; --gutter-inline: 2px;") %}
-  {% call col(style="--col-justify: center;") %}
-    <div class="congrats" data-on-interval__duration.60s="window.location.reload()">
-      <h1>{{ congrats }}</h1>
-
-      {% if next_learn_msg %}
-        <p>{{ next_learn_msg }}</p>
-      {% endif %}
-
-      {% if review_remaining %}
-        <p>{{ today_reviews }}</p>
-      {% endif %}
-
-      {% if new_remaining %}
-        <p>{{ today_new }}</p>
-      {% endif %}
-
-      {% if show_buried %}
-        <p>{{ buried_msg | safe }}</p>
-      {% endif %}
-
-      {% if show_custom_study %}
-        <p>{{ custom_study_msg | safe }}</p>
-      {% endif %}
-
-      {% if deck_description %}
-        <div class="description">
-          {{ deck_description | safe }}
+    {% call col(style="--col-justify: center;") %}
+        <div class="congrats"
+             data-on-interval__duration.60s="window.location.reload()">
+            <h1>{{ congrats }}</h1>
+            {% if next_learn_msg %}
+                <p>{{ next_learn_msg }}</p>
+            {% endif %}
+            {% if review_remaining %}
+                <p>{{ today_reviews }}</p>
+            {% endif %}
+            {% if new_remaining %}
+                <p>{{ today_new }}</p>
+            {% endif %}
+            {% if show_buried %}
+                <p>{{ buried_msg | safe }}</p>
+            {% endif %}
+            {% if show_custom_study %}
+                <p>{{ custom_study_msg | safe }}</p>
+            {% endif %}
+            {% if deck_description %}
+                <div class="description">{{ deck_description | safe }}</div>
+            {% endif %}
+            <div class="congrats-actions mt-4 pt-2 border-t border-base-300">
+                <a href="/deckbrowser" class="btn btn-primary">Back to Decks</a>
+            </div>
         </div>
-      {% endif %}
-
-      <div class="congrats-actions mt-4 pt-2 border-t border-base-300">
-        <a href="/deckbrowser" class="btn btn-primary">Back to Decks</a>
-      </div>
-    </div>
-  {% endcall %}
+    {% endcall %}
 {% endcall %}
-
 <style>
-  .congrats {
-    margin-top: 2em;
-    max-width: 30em;
-    font-size: var(--font-size, 1rem);
-  }
+    .congrats {
+        margin-top: 2em;
+        max-width: 30em;
+        font-size: var(--font-size, 1rem);
+    }
 
-  .congrats a {
-    color: var(--color-primary);
-    text-decoration: none;
-  }
+    .congrats a {
+        color: var(--color-primary);
+        text-decoration: none;
+    }
 
-  .congrats a.btn-primary {
-    color: var(--color-primary-content, #fff);
-  }
-  .congrats a:hover {
-    text-decoration: underline;
-  }
+    .congrats a.btn-primary {
+        color: var(--color-primary-content, #fff);
+    }
 
-  .congrats .description {
-    border: 1px solid var(--color-base-300);
-    border-radius: var(--radius-box, 0.5rem);
-    padding: 1em;
-  }
+    .congrats a:hover {
+        text-decoration: underline;
+    }
+
+    .congrats .description {
+        border: 1px solid var(--color-base-300);
+        border-radius: var(--radius-box, 0.5rem);
+        padding: 1em;
+    }
 </style>

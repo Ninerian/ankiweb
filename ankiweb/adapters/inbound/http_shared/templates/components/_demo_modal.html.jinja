@@ -1,21 +1,26 @@
 {% from "components/modal.html.jinja" import modal %}
-
 <div class="border border-base-300 p-4 mb-4 rounded-box bg-base-100">
     <h5 class="font-bold text-lg mb-2">1. Standard Modal Dialog (Native dialog element with daisyUI modal)</h5>
-    <button type="button" class="btn btn-outline btn-primary" onclick="document.getElementById('demoModalBasic').showModal()" id="openDemoModalBasicBtn">
-        Open Standard Modal
-    </button>
-
+    <button type="button"
+            class="btn btn-outline btn-primary"
+            onclick="document.getElementById('demoModalBasic').showModal()"
+            id="openDemoModalBasicBtn">Open Standard Modal</button>
     {% call modal(id="demoModalBasic", keyboard=true) %}
         <div class="flex justify-between items-center mb-3">
             <h5 class="me-3 font-bold text-lg" id="demoModalBasicLabel">Modal Title</h5>
             <form method="dialog">
-                <button type="submit" class="btn btn-sm btn-circle btn-ghost" aria-label="Close" id="closeDemoModalBasicBtn">✕</button>
+                <button type="submit"
+                        class="btn btn-sm btn-circle btn-ghost"
+                        aria-label="Close"
+                        id="closeDemoModalBasicBtn">✕</button>
             </form>
         </div>
         <div class="py-2">
             <p id="demoModalBasicBody">This is the modal body content styled according to upstream theme canvas and text colors.</p>
-            <input type="text" class="input w-full mt-3" placeholder="Focus target inside modal" id="modalFocusInput">
+            <input type="text"
+                   class="input w-full mt-3"
+                   placeholder="Focus target inside modal"
+                   id="modalFocusInput">
         </div>
         <div class="modal-action">
             <form method="dialog" class="flex gap-2">
@@ -25,18 +30,19 @@
         </div>
     {% endcall %}
 </div>
-
 <div class="border border-base-300 p-4 rounded-box bg-base-100">
     <h5 class="font-bold text-lg mb-2">2. Large Modal with custom class and static backdrop</h5>
-    <button type="button" class="btn btn-outline" onclick="document.getElementById('demoModalStatic').showModal()" id="openDemoModalStaticBtn">
-        Open Large Static Modal
-    </button>
-
+    <button type="button"
+            class="btn btn-outline"
+            onclick="document.getElementById('demoModalStatic').showModal()"
+            id="openDemoModalStaticBtn">Open Large Static Modal</button>
     {% call modal(id="demoModalStatic", dialog_class="max-w-3xl", backdrop="static", keyboard=true) %}
         <div class="flex justify-between items-center mb-3">
             <h5 class="me-3 font-bold text-lg">Static Backdrop Modal</h5>
             <form method="dialog">
-                <button type="submit" class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
+                <button type="submit"
+                        class="btn btn-sm btn-circle btn-ghost"
+                        aria-label="Close">✕</button>
             </form>
         </div>
         <div class="py-2">

@@ -1,6 +1,5 @@
 {% from "components/button_group.html.jinja" import button_group %}
 {% from "components/button_group_item.html.jinja" import button_group_item %}
-
 <div class="border border-base-300 p-3 mb-3 rounded-box">
     <h6 class="text-base-content/60 mb-2">Standard ButtonGroup:</h6>
     {% call button_group() %}
@@ -9,7 +8,6 @@
         <button type="button" class="btn btn-primary join-item">Right</button>
     {% endcall %}
 </div>
-
 <div class="border border-base-300 p-3 mb-3 rounded-box">
     <h6 class="text-base-content/60 mb-2">ButtonGroup with size=1.5 and wrap=false:</h6>
     {% call button_group(size=1.5, wrap=false) %}
