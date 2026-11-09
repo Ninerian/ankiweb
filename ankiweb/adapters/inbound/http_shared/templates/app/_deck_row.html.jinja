@@ -1,15 +1,15 @@
 {% import 'app/_deck_language_strings.html.jinja' as language_strings with context %}
 {% set labels = language_strings.deck_language_labels %}
 {% set names = language_strings.deck_language_names %}
-<article id="deck-{{ view.row.deck_id }}" class="card deck-card bg-base-200" data-show="{{ view.show }}"{% if view.row.deck_id == created_id %} data-class:deck-drop="true"{% endif %}>
+<article id="deck-{{ row.deck_id }}" class="card deck-card bg-base-200"{% if row.deck_id == created_id %} data-class:deck-drop="true"{% endif %}>
   <div class="card-body gap-0 p-4">
     <div class="flex min-w-0 items-start gap-3">
-      <span class="grid size-12 flex-none place-items-center rounded-deck border-2 border-base-content bg-secondary text-2xl leading-none" aria-hidden="true">{{ view.row.emoji }}</span>
+      <span class="grid size-12 flex-none place-items-center rounded-deck border-2 border-base-content bg-secondary text-2xl leading-none" aria-hidden="true">{{ row.emoji }}</span>
       <div class="min-w-0 flex-1">
-        <h3 class="text-deck-name leading-deck-name font-black tracking-deck-name wrap-anywhere">{{ view.row.name }}</h3>
-        {% if view.row.languages is not none %}
-        {% set src = view.row.languages.src %}
-        {% set dst = view.row.languages.dst %}
+        <h3 class="text-deck-name leading-deck-name font-black tracking-deck-name wrap-anywhere">{{ row.name }}</h3>
+        {% if row.languages is not none %}
+        {% set src = row.languages.src %}
+        {% set dst = row.languages.dst %}
         {% set src_language = LANGUAGES | selectattr('code', 'equalto', src) | first %}
         {% set dst_language = LANGUAGES | selectattr('code', 'equalto', dst) | first %}
         <span class="badge mt-1 h-auto max-w-full rounded-full border-deck-pill border-neo-edge bg-base-100 px-2.25 py-0.75 font-review-sheet text-deck-pill leading-deck-pill font-black tracking-wide text-base-content">
@@ -21,27 +21,27 @@
         {% endif %}
       </div>
       <div class="flex-none">
-        <button id="deck-menu-button-{{ view.row.deck_id }}" type="button" class="btn btn-square neo-press size-10 min-h-0 rounded-deck bg-base-200 p-0 text-xl font-black shadow-neo active:shadow-none aria-expanded:translate-x-0.5 aria-expanded:translate-y-0.5 aria-expanded:bg-accent aria-expanded:text-accent-content aria-expanded:shadow-none" popovertarget="deck-menu-{{ view.row.deck_id }}" style="anchor-name:--deck-menu-{{ view.row.deck_id }}" aria-haspopup="menu" aria-controls="deck-menu-{{ view.row.deck_id }}" aria-expanded="false" aria-label="{{ labels.menu_open.format(deck=view.row.name) }}" data-on:keydown="window.avDeckMenuButtonKey(evt)"><span aria-hidden="true">⋯</span></button>
-        <ul id="deck-menu-{{ view.row.deck_id }}" class="dropdown dropdown-end menu rounded-box border-2 border-neo-edge bg-base-200 shadow-neo" popover role="menu" aria-labelledby="deck-menu-button-{{ view.row.deck_id }}" style="position-anchor:--deck-menu-{{ view.row.deck_id }}" data-on:toggle="el.previousElementSibling.setAttribute('aria-expanded', evt.newState === 'open' ? 'true' : 'false')" data-on:keydown="window.avDeckMenuKey(evt)">
-          <li role="none"><button type="button" role="menuitem" data-on:click="window.avDeckOpener(el.closest('[popover]').previousElementSibling); el.closest('[popover]').hidePopover(); @get('/app/decks/{{ view.row.deck_id }}/settings')">{{ labels.settings }}</button></li>
-          <li role="none"><button type="button" role="menuitem" class="text-error" {% if view.row.deck_id == 1 %}disabled aria-disabled="true" title="{{ labels.protected }}"{% else %}data-on:click="window.avDeckOpener(el.closest('[popover]').previousElementSibling); el.closest('[popover]').hidePopover(); @get('/app/decks/{{ view.row.deck_id }}/delete')"{% endif %}>{{ labels.delete }}</button></li>
+        <button id="deck-menu-button-{{ row.deck_id }}" type="button" class="btn btn-square neo-press size-10 min-h-0 rounded-deck bg-base-200 p-0 text-xl font-black shadow-neo active:shadow-none aria-expanded:translate-x-0.5 aria-expanded:translate-y-0.5 aria-expanded:bg-accent aria-expanded:text-accent-content aria-expanded:shadow-none" popovertarget="deck-menu-{{ row.deck_id }}" style="anchor-name:--deck-menu-{{ row.deck_id }}" aria-haspopup="menu" aria-controls="deck-menu-{{ row.deck_id }}" aria-expanded="false" aria-label="{{ labels.menu_open.format(deck=row.name) }}" data-on:keydown="window.avDeckMenuButtonKey(evt)"><span aria-hidden="true">⋯</span></button>
+        <ul id="deck-menu-{{ row.deck_id }}" class="dropdown dropdown-end menu rounded-box border-2 border-neo-edge bg-base-200 shadow-neo" popover role="menu" aria-labelledby="deck-menu-button-{{ row.deck_id }}" style="position-anchor:--deck-menu-{{ row.deck_id }}" data-on:toggle="el.previousElementSibling.setAttribute('aria-expanded', evt.newState === 'open' ? 'true' : 'false')" data-on:keydown="window.avDeckMenuKey(evt)">
+          <li role="none"><button type="button" role="menuitem" data-on:click="el.closest('[popover]').hidePopover(); @get('/app/decks/{{ row.deck_id }}/settings')">{{ labels.settings }}</button></li>
+          <li role="none"><button type="button" role="menuitem" class="text-error" {% if row.deck_id == 1 %}disabled aria-disabled="true" title="{{ labels.protected }}"{% else %}data-on:click="el.closest('[popover]').hidePopover(); @get('/app/decks/{{ row.deck_id }}/delete')"{% endif %}>{{ labels.delete }}</button></li>
         </ul>
       </div>
     </div>
     <div class="my-3 flex flex-wrap gap-1.5">
-      <span class="badge badge-warning lowercase h-auto border-deck-pill border-current px-2.25 py-0.75 text-deck-pill leading-deck-pill font-extrabold">{{ view.row.due }} {{ tr.statistics_due_count() }}</span>
-      <span class="badge badge-info lowercase h-auto border-deck-pill border-current px-2.25 py-0.75 text-deck-pill leading-deck-pill font-extrabold">{{ view.row.new }} {{ tr.actions_new() }}</span>
+      <span class="badge badge-warning lowercase h-auto border-deck-pill border-current px-2.25 py-0.75 text-deck-pill leading-deck-pill font-extrabold">{{ row.due }} {{ tr.statistics_due_count() }}</span>
+      <span class="badge badge-info lowercase h-auto border-deck-pill border-current px-2.25 py-0.75 text-deck-pill leading-deck-pill font-extrabold">{{ row.new }} {{ tr.actions_new() }}</span>
     </div>
     <div class="mb-1.25 flex justify-between gap-2 text-deck-label font-black uppercase tracking-deck-label text-muted-fg">
       <span>{{ s("app_decks_progress") }}</span>
-      <span>{{ view.row.progress_pct }}%</span>
+      <span>{{ row.progress_pct }}%</span>
     </div>
-    <div class="h-3 overflow-hidden rounded-full border-2 border-base-content bg-deck-track" role="progressbar" aria-label="{{ s('app_decks_progress_for', deck=view.row.name) }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ view.row.progress_pct }}">
-      <div class="meter-fill" style="width: {{ view.row.progress_pct }}%"></div>
+    <div class="h-3 overflow-hidden rounded-full border-2 border-base-content bg-deck-track" role="progressbar" aria-label="{{ s('app_decks_progress_for', deck=row.name) }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ row.progress_pct }}">
+      <div class="meter-fill" style="width: {{ row.progress_pct }}%"></div>
     </div>
     <div class="mt-3.75 grid grid-cols-2 gap-2.5 pr-0.75 pb-0.75">
-      <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" href="/app/review?deck={{ view.row.deck_id }}" aria-label="{{ s('app_decks_learn_deck', deck=view.row.name) }}">{{ s("app_decks_learn") }}</a>
-      <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none bg-base-200 dark:bg-base-300" href="/app/edit?deck={{ view.row.deck_id }}">{{ s("app_decks_edit") }}</a>
+      <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" href="/app/review?deck={{ row.deck_id }}" aria-label="{{ s('app_decks_learn_deck', deck=row.name) }}">{{ s("app_decks_learn") }}</a>
+      <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none bg-base-200 dark:bg-base-300" href="/app/edit?deck={{ row.deck_id }}">{{ s("app_decks_edit") }}</a>
     </div>
   </div>
 </article>

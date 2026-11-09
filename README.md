@@ -417,6 +417,33 @@ routes use HTTP/Datastar and do not open WebSockets. The active native reviewer 
 into the WebSocket bridge for commands; reviewer Card Info/Edit navigation uses the
 native links described above.
 
+### Deck list (`/app/`)
+
+The deck list has no data signals. It follows Datastar's click-to-edit pattern: a
+click asks the server for the editing UI (`GET /app/decks/new`, `/{id}/settings`,
+`/{id}/delete`), which renders a native `<dialog id="deck-dialog" data-token="…">`
+into `#deck-dialog-host`. Drafts live in ordinary form controls; Save submits the
+`<form>` with `@post(…, {contentType: 'form'})` and the server re-validates every
+field. Only `_`-prefixed indicator signals (busy state) remain, and they are never
+sent.
+
+- **Search:** the `q` input is a plain form field; `GET /app/decks/search` patches
+  `#deck-results`. Create/Save/Delete do not patch the list themselves: they dispatch
+  `ankiweb:decks-refresh`, which re-runs the *same* search with the live field value.
+  Datastar's `requestCancellation: 'auto'` is keyed by method + full URL, so the newest
+  search or refresh wins and a stale response cannot restore a deleted row.
+- **Preview:** `POST /app/decks/new/preview` and `/{id}/settings/preview` return
+  display-only fragments (preview, language hints, flag suggestion, change count,
+  name counter, save availability). The baseline for "changed" is the saved deck read
+  by the server. Fragments are patched through `#deck-dialog[data-token="…"] …`, so a
+  response for a closed dialog finds no target and is dropped; inputs, cursor, and
+  focus are never patched.
+- **Local gestures:** dialog open/close and focus are native `<dialog>`; emoji tabs,
+  language swap, and the flag suggestion are small DOM helpers in
+  `shell_src/app/decks.js` and carry no data.
+
+Shared transport helpers live in `http_app/deck_dialog.py`.
+
 ### Browser selection and actions
 
 The Browser has no client-side business-selection signal. Its stateless hidden

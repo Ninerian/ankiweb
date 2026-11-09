@@ -1,4 +1,3 @@
-import json
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -481,39 +480,148 @@ def test_rows_have_ids_and_names_are_escaped(tmp_path: Path) -> None:
     assert "&lt;b&gt;x&lt;/b&gt;" in html
 
 
-def test_search_expression_survives_hostile_names(tmp_path: Path) -> None:
+def test_search_survives_hostile_names(tmp_path: Path) -> None:
     name = 'It\'s "Q" \\ $x <i>'
-    client, _ = _client(tmp_path, [name])
+    client, ids = _client(tmp_path, [name])
     with client:
-        html = client.get("/app/").text
-    page = _parse(html)
-    row_show = next(a["data-show"] for t, a in page.tags if t == "article")
-    empty_show = page.by_id("empty-state")["data-show"]
-    assert row_show is not None
-    assert empty_show is not None
-    literal, _, rest = row_show.partition(".includes(")
-    assert json.loads(literal) == name.lower()
-    assert "$x" not in row_show
-    assert "$q" in rest
-    assert json.loads(empty_show.split("!", 2)[2].split(".some(")[0]) == [name.lower()]
+        response = _search(client, "$X <I>")
+    assert response.status_code == 200
+    assert f'id="deck-{ids[name]}"' in response.text
+    assert "&lt;i&gt;" in response.text
+    assert "<i>" not in response.text
+    assert "data: selector #deck-results" in response.text
 
 
-def test_empty_state_is_rendered_hidden(tmp_path: Path) -> None:
+def _search(client: TestClient, query: str):
+    return client.get(
+        "/app/decks/search",
+        params={"q": query},
+        headers={"Datastar-Request": "true"},
+    )
+
+
+@pytest.mark.parametrize("created", ["0", "-1", "abc", "9" * 100])
+def test_search_ignores_invalid_created_header(tmp_path: Path, created: str) -> None:
     client, _ = _client(tmp_path, ["Alpha"])
     with client:
-        page = _parse(client.get("/app/").text)
-    empty = page.by_id("empty-state")
-    assert empty["style"] == "display:none"
+        response = client.get(
+            "/app/decks/search", params={"q": ""}, headers={"X-Deck-Created": created}
+        )
+    assert response.status_code == 200
+    assert "data-class:deck-drop" not in response.text
+
+
+def test_refresh_marks_created_row_for_animation(tmp_path: Path) -> None:
+    client, ids = _client(tmp_path, ["Alpha", "Beta"])
+    with client:
+        response = client.get(
+            "/app/decks/search",
+            params={"q": "alpha"},
+            headers={"X-Deck-Created": str(ids["Alpha"])},
+        )
+    page = _parse(response.text)
+    assert page.by_id(f"deck-{ids['Alpha']}")["data-class:deck-drop"] == "true"
+    assert not any(a.get("id") == f"deck-{ids['Beta']}" for _, a in page.tags)
+
+
+def test_search_filters_server_results_in_anki_order(tmp_path: Path) -> None:
+    names = ["Zebra", "Alpine", "Alpha", "Beta"]
+    client, ids = _client(tmp_path, names)
+    with client:
+        response = _search(client, "  AL  ")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert "data: selector #deck-results" in response.text
+    page = _parse(response.text)
+    row_ids = [attrs["id"] for tag, attrs in page.tags if tag == "article"]
+    assert row_ids == [f"deck-{ids['Alpha']}", f"deck-{ids['Alpine']}"]
+    assert not any(
+        attrs.get("id") in {"empty-state", "no-decks"} for _, attrs in page.tags
+    )
+
+
+@pytest.mark.parametrize(
+    ("query", "matched"),
+    [
+        ("\ufeff\u00a0ALPHA\u2003", ["Alpha"]),
+        ("\u0085alpha\u0085", []),
+        ("\u001calpha\u001c", []),
+        ("𐐨", ["𐐀letters"]),
+        ("i\u0307", ["İstanbul"]),
+        ("strasse", []),
+        ("straße", ["Straße"]),
+    ],
+)
+def test_search_uses_javascript_trim_and_unicode_lower(
+    tmp_path: Path, query: str, matched: list[str]
+) -> None:
+    names = ["Alpha", "𐐀letters", "İstanbul", "Straße"]
+    client, ids = _client(tmp_path, names)
+    with client:
+        response = _search(client, query)
+    assert response.status_code == 200
+    page = _parse(response.text)
+    row_ids = [attrs["id"] for tag, attrs in page.tags if tag == "article"]
+    assert row_ids == [f"deck-{ids[name]}" for name in matched]
+    assert any(attrs.get("id") == "empty-state" for _, attrs in page.tags) == (
+        not matched
+    )
+    assert not any(attrs.get("id") == "no-decks" for _, attrs in page.tags)
+
+
+def test_search_distinguishes_empty_query_no_match_and_empty_collection(
+    tmp_path: Path,
+) -> None:
+    full_dir = tmp_path / "full"
+    empty_dir = tmp_path / "empty"
+    full_dir.mkdir()
+    empty_dir.mkdir()
+    client, ids = _client(full_dir, ["Alpha", "Beta"])
+    with client:
+        unfiltered = _parse(_search(client, "\ufeff \u2003").text)
+        no_match = _parse(_search(client, "missing").text)
+    assert [attrs["id"] for tag, attrs in unfiltered.tags if tag == "article"] == [
+        f"deck-{ids['Alpha']}",
+        f"deck-{ids['Beta']}",
+    ]
+    assert not any(
+        a.get("id") in {"empty-state", "no-decks"} for _, a in unfiltered.tags
+    )
+    assert any(a.get("id") == "empty-state" for _, a in no_match.tags)
+    assert not any(a.get("id") == "no-decks" for _, a in no_match.tags)
+    empty_client, _ = _client(empty_dir, [])
+    with empty_client:
+        for query in ("", "missing"):
+            empty = _parse(_search(empty_client, query).text)
+            assert any(a.get("id") == "no-decks" for _, a in empty.tags)
+            assert not any(a.get("id") == "empty-state" for _, a in empty.tags)
+
+
+def test_unfiltered_page_has_search_but_no_empty_state(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path, ["Alpha"])
+    with client:
+        html = client.get("/app/").text
+        page = _parse(html)
+    assert not any(a.get("id") == "empty-state" for _, a in page.tags)
     assert page.by_id("deck-search")["type"] == "search"
+    search = page.by_id("deck-search")
+    assert search["name"] == "q"
+    assert search["value"] == ""
+    assert page.by_id("deck-search-form")["role"] == "search"
+    assert page.by_id("deck-dialog-host")
+    assert "data-signals" not in page.by_id("decks-page")
+    deck_page = _parse(html.split('<main id="decks-page"', 1)[1].split("</main>", 1)[0])
+    for _, attrs in deck_page.tags:
+        assert not any(key.startswith(("data-signals", "data-bind")) for key in attrs)
 
 
-def test_empty_collection_has_no_deck_rows_or_search(tmp_path: Path) -> None:
+def test_empty_collection_has_no_deck_rows(tmp_path: Path) -> None:
     client, _ = _client(tmp_path, [])
     with client:
         html = client.get("/app/").text
     page = _parse(html)
     assert not any(t == "article" for t, _ in page.tags)
-    assert "deck-search" not in html
+    assert page.by_id("no-decks")
 
 
 def test_app_root_redirects_to_deck_list(tmp_path: Path) -> None:
@@ -534,6 +642,19 @@ def test_deck_list_follows_password_gate(tmp_path: Path) -> None:
         assert "set-cookie" not in response.headers
         client.cookies.set(COOKIE, auth_token(password))
         assert client.get("/app/").status_code == 200
+
+
+def test_search_follows_password_gate(tmp_path: Path) -> None:
+    password = f"test-{tmp_path.name}"
+    client, _ = _client(tmp_path, ["Alpha"], password)
+    with client:
+        unauthenticated = _search(client, "alpha")
+        assert "window.location = '/app/login'" in unauthenticated.text
+        assert 'id="deck-results"' not in unauthenticated.text
+        client.cookies.set(COOKIE, auth_token(password))
+        authenticated = _search(client, "alpha")
+        assert authenticated.status_code == 200
+        assert "data: selector #deck-results" in authenticated.text
 
 
 def test_page_does_not_reference_old_client(tmp_path: Path) -> None:

@@ -2,12 +2,14 @@
 
 import re
 from dataclasses import dataclass
-from typing import Literal
+from enum import StrEnum
 
 __all__ = [
     "LANGUAGES",
     "DeckLanguageError",
     "Language",
+    "LanguageErrorKind",
+    "LanguageMode",
     "LanguagePair",
     "apply_marker",
     "choose",
@@ -51,10 +53,25 @@ _MARKER = re.compile(
 _SEPARATOR = "<!--ankiweb:lang-separator-->\n\n"
 
 
+class LanguageMode(StrEnum):
+    """How a deck relates to languages; values are the wire/form values."""
+
+    PAIR = "langs"
+    NONE = "none"
+
+
+class LanguageErrorKind(StrEnum):
+    """Why a language choice is invalid."""
+
+    SAME = "same"
+    UNKNOWN = "unknown"
+    INCOMPLETE = "incomplete"
+
+
 class DeckLanguageError(Exception):
     """An invalid language choice, identified by its kind."""
 
-    def __init__(self, kind: Literal["same", "unknown", "incomplete"]) -> None:
+    def __init__(self, kind: LanguageErrorKind) -> None:
         self.kind = kind
         super().__init__(kind)
 
@@ -68,9 +85,9 @@ class LanguagePair:
 
     def __post_init__(self) -> None:
         if self.src not in _LANGUAGE_CODES or self.dst not in _LANGUAGE_CODES:
-            raise DeckLanguageError("unknown")
+            raise DeckLanguageError(LanguageErrorKind.UNKNOWN)
         if self.src == self.dst:
-            raise DeckLanguageError("same")
+            raise DeckLanguageError(LanguageErrorKind.SAME)
 
 
 def read_marker(desc: str) -> LanguagePair | None:
@@ -128,10 +145,12 @@ def replace_description(desc: str, previous: str, *, markdown: bool) -> str:
 
 def choose(mode: str, src: str, dst: str) -> LanguagePair | None:
     """Convert a language selection into a validated pair or no pair."""
-    if mode == "none":
+    try:
+        selected = LanguageMode(mode)
+    except ValueError:
+        raise DeckLanguageError(LanguageErrorKind.UNKNOWN) from None
+    if selected is LanguageMode.NONE:
         return None
-    if mode != "langs":
-        raise DeckLanguageError("unknown")
     if not src or not dst:
-        raise DeckLanguageError("incomplete")
+        raise DeckLanguageError(LanguageErrorKind.INCOMPLETE)
     return LanguagePair(src, dst)

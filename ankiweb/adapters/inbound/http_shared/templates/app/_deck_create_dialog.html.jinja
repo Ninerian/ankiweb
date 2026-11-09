@@ -1,0 +1,37 @@
+{% import 'app/_deck_projection.html.jinja' as form_projection with context %}
+{% import 'app/_deck_languages.html.jinja' as language_picker with context %}
+{% import 'app/_deck_emoji_picker.html.jinja' as emojis with context %}
+<dialog id="deck-dialog" data-token="{{ token }}" class="modal modal-bottom sm:modal-middle" aria-labelledby="deck-sheet-title" data-init="el.showModal()" data-on:close="window.avDeckDialogClosed(el)">
+  <div class="modal-box mx-auto flex max-h-review-sheet-max-height w-full max-w-xl flex-col overflow-hidden rounded-t-box border-2 border-neo-edge bg-base-200 p-0 shadow-neo sm:rounded-box">
+    <header class="flex-none px-5 pt-5">
+      <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-base-300 sm:hidden" aria-hidden="true"></div>
+      <div class="mb-4 flex items-center justify-between gap-4">
+        <h2 id="deck-sheet-title" class="text-xl font-black">{{ s('app_decks_new_title') }}</h2>
+        <button id="deck-sheet-close" type="button" class="review-sheet-close" aria-label="{{ tr.actions_close() | tr_clean }}" data-on:click="el.closest('dialog').close()"><span aria-hidden="true">✕</span></button>
+      </div>
+    </header>
+    <form id="deck-create-form" class="flex min-h-0 flex-1 flex-col" data-indicator:_saving data-on:submit__prevent="!$_saving &amp;&amp; (el.setAttribute('data-submitted', 'true'), @post('/app/decks', {contentType:'form', requestCancellation:'disabled'}))">
+      <input type="hidden" name="token" value="{{ token }}">
+      <div class="min-h-0 flex-1 overflow-y-auto px-5" data-on:input="el.closest('form').removeAttribute('data-submitted')" data-on:input__debounce.200ms="!$_saving &amp;&amp; @post('/app/decks/new/preview', {contentType:'form'})">
+        {{ form_projection.output('preview', 'new', projection) }}
+        <fieldset class="fieldset mb-3">
+          <div class="flex items-baseline justify-between gap-2">
+            <label class="fieldset-legend" for="deck-name">{{ s('app_decks_name') }}</label>
+            {{ form_projection.output('name-count', 'new', projection) }}
+          </div>
+          <label class="input flex h-12.5 w-full items-center gap-2.5 border-neo-edge bg-base-200 px-3.5 shadow-neo focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-primary">
+            <input id="deck-name" name="name" class="grow text-base font-bold placeholder:text-muted-fg placeholder:opacity-100" type="text" maxlength="40" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="{{ s('app_decks_name_placeholder') }}" value="{{ draft.name }}" autofocus data-on:keydown="evt.key === 'Enter' &amp;&amp; (evt.preventDefault(), el.form.requestSubmit())">
+          </label>
+        </fieldset>
+        {{ form_projection.output('error', 'new', projection, error | default('')) }}
+        {{ language_picker.languages('new', projection) }}
+        <p class="mb-2 text-sm font-black">{{ s('app_decks_pick_emoji') }}</p>
+        {{ emojis.emoji_picker('new', draft.emoji) }}
+      </div>
+      <footer class="flex-none border-t-2 border-neo-edge bg-base-200 px-5 pt-3 pb-review-sheet-safe-bottom">
+        {{ form_projection.output('submit', 'new', projection) }}
+      </footer>
+    </form>
+  </div>
+  <form id="deck-sheet-backdrop" class="modal-backdrop" method="dialog"><button aria-label="{{ tr.actions_close() | tr_clean }}">{{ tr.actions_close() | tr_clean }}</button></form>
+</dialog>

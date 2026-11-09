@@ -1,25 +1,21 @@
 """Server-rendered deck settings and deletion dialogs."""
 
 from collections.abc import Callable
-from html import escape
-from uuid import uuid4
 
 from datastar_py.fastapi import DatastarResponse
-from datastar_py.fastapi import ServerSentEventGenerator as SSE
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
-from ankiweb.adapters.inbound.http_app.decks import (
-    FormSignals,
-    _deck_error,
-    _form_string,
-    _js_literal,
-    _render_decks,
-)
+from ankiweb.adapters.inbound.http_app import deck_dialog
+from ankiweb.adapters.inbound.http_app.decks import _deck_error, toast_patch
 from ankiweb.adapters.inbound.http_shared.templating import render
-from ankiweb.core.app_client.deck_languages import LANGUAGES, DeckLanguageError, choose
+from ankiweb.core.app_client.deck_languages import (
+    LANGUAGES,
+    DeckLanguageError,
+    LanguageMode,
+    choose,
+)
 from ankiweb.core.app_client.decks import (
     DeckNameError,
-    deck_rows,
     deck_settings,
     delete_deck,
     update_deck_settings,
@@ -28,17 +24,6 @@ from ankiweb.core.app_client.emoji_picker import EMOJI_GROUPS
 from ankiweb.core.app_client.lang import ResolvedLang
 from ankiweb.core.app_client.strings import s
 from ankiweb.core.ports import CollectionPort
-
-
-def _toast(message: str):
-    # A fresh keyed child restarts the toast animation when Datastar morphs.
-    html = (
-        '<div id="toast" class="toast toast-top toast-center pointer-events-none z-50" '
-        'role="status" aria-live="polite">'
-        f'<div id="deck-toast-{uuid4().hex}" class="alert deck-toast">'
-        f"{escape(message)}</div></div>"
-    )
-    return SSE.patch_elements(html, selector="#toast")
 
 
 def _parse_deck_id(value: str) -> int:
@@ -54,14 +39,6 @@ def _parse_deck_id(value: str) -> int:
     return deck_id
 
 
-def _emoji_group(emoji: str) -> str:
-    group = "world" if any(item.flag == emoji for item in LANGUAGES) else "study"
-    for item in EMOJI_GROUPS:
-        if emoji in item.emojis:
-            group = item.key
-    return group
-
-
 def add_deck_settings_routes(
     router: APIRouter, get_service: Callable[[], CollectionPort], lang: ResolvedLang
 ) -> None:
@@ -75,6 +52,8 @@ def add_deck_settings_routes(
 def _add_get_settings_route(
     router: APIRouter, get_service: Callable[[], CollectionPort], lang: ResolvedLang
 ) -> None:
+    from ankiweb.adapters.inbound.http_app.deck_form import FormDraft, project_form
+
     @router.get("/decks/{deck_id}/settings")
     async def get_settings(deck_id: str) -> DatastarResponse:
         try:
@@ -83,86 +62,76 @@ def _add_get_settings_route(
                 lambda col: deck_settings(col, parsed_id)
             )
         except DeckNameError as error:
-            return DatastarResponse(_toast(_deck_error(error, lang)))
+            return DatastarResponse(toast_patch(_deck_error(error, lang)))
 
         pair = settings.languages
-        mode = "langs" if pair else "none"
-        src = pair.src if pair else ""
-        dst = pair.dst if pair else ""
-        group = _emoji_group(settings.emoji)
+        draft = FormDraft(
+            settings.name,
+            settings.emoji,
+            LanguageMode.PAIR if pair else LanguageMode.NONE,
+            pair.src if pair else "",
+            pair.dst if pair else "",
+        )
         body = render(
-            "app/_deck_settings_sheet.html.jinja",
-            fragment="body",
+            "app/_deck_settings_dialog.html.jinja",
             settings=settings,
+            projection=project_form(draft, draft),
+            token=deck_dialog.new_token(),
             app_lang=lang,
             LANGUAGES=LANGUAGES,
             emoji_groups=EMOJI_GROUPS,
-            js_literal=_js_literal,
         )
-        return DatastarResponse(
-            [
-                SSE.patch_elements(body, selector="#deck-settings-body"),
-                SSE.patch_signals(
-                    {
-                        "setId": settings.deck_id,
-                        "setName": settings.name,
-                        "setEmoji": settings.emoji,
-                        "setMode": mode,
-                        "setSrc": src,
-                        "setDst": dst,
-                        "baseName": settings.name,
-                        "baseEmoji": settings.emoji,
-                        "baseMode": mode,
-                        "baseSrc": src,
-                        "baseDst": dst,
-                        "setEmojiGroup": group,
-                        "saving": False,
-                        "setError": "",
-                        "setOpen": True,
-                    }
-                ),
-            ]
-        )
+        return DatastarResponse(deck_dialog.show_dialog(body))
 
 
 def _add_save_settings_route(
     router: APIRouter, get_service: Callable[[], CollectionPort], lang: ResolvedLang
 ) -> None:
+    from ankiweb.adapters.inbound.http_app.deck_form import (
+        FormDraft,
+        project_form,
+        render_fragment,
+    )
+
     @router.post("/decks/{deck_id}/settings")
-    async def save_settings(
-        deck_id: str, payload: FormSignals = None
-    ) -> DatastarResponse:
-        name = payload.get("setName") if isinstance(payload, dict) else None
-        emoji = payload.get("setEmoji") if isinstance(payload, dict) else None
-        mode = payload.get("setMode") if isinstance(payload, dict) else None
-        src = payload.get("setSrc") if isinstance(payload, dict) else None
-        dst = payload.get("setDst") if isinstance(payload, dict) else None
+    async def save_settings(deck_id: str, request: Request) -> DatastarResponse:
+        fields = await deck_dialog.form_fields(request)
+        if fields is None:
+            return deck_dialog.no_patch()
+        token = deck_dialog.valid_token(fields.get("token"))
+        if (
+            token is None
+            or not {"name", "emoji", "mode", "src", "dst"} <= fields.keys()
+        ):
+            return deck_dialog.no_patch()
+        draft = FormDraft(
+            *(fields[key] for key in ("name", "emoji", "mode", "src", "dst"))
+        )
         try:
             parsed_id = _parse_deck_id(deck_id)
-            valid_name = _form_string(name)
-            valid_emoji = _form_string(emoji)
-            languages = choose(_form_string(mode), _form_string(src), _form_string(dst))
+            languages = choose(draft.mode, draft.src, draft.dst)
             service = get_service()
             await service.run_op(
                 lambda col: update_deck_settings(
-                    col, parsed_id, valid_name, valid_emoji, languages
+                    col, parsed_id, draft.name, draft.emoji, languages
                 ),
                 initiator="app",
             )
         except (DeckNameError, DeckLanguageError) as error:
-            return DatastarResponse(
-                SSE.patch_signals({"setError": _deck_error(error, lang, src=src)})
+            target, html = render_fragment(
+                "error",
+                "set",
+                project_form(draft),
+                lang,
+                error=_deck_error(error, lang, src=draft.src),
             )
+            return DatastarResponse(deck_dialog.patch_in_dialog(token, target, html))
 
-        rows = await service.run(deck_rows)
         return DatastarResponse(
             [
-                SSE.patch_elements(
-                    _render_decks(rows, lang, fragment="content"),
-                    selector="#decks-content",
-                ),
-                _toast(s("app_decks_saved", lang=lang.catalog_lang)),
-                SSE.patch_signals({"setError": "", "setOpen": False}),
+                toast_patch(s("app_decks_saved", lang=lang.catalog_lang)),
+                deck_dialog.close_dialog(token),
+                deck_dialog.refresh_decks(),
             ]
         )
 
@@ -174,32 +143,33 @@ def _add_get_delete_route(
     async def get_delete(deck_id: str) -> DatastarResponse:
         try:
             parsed_id = _parse_deck_id(deck_id)
+            if parsed_id == 1:
+                raise DeckNameError("protected")
             settings = await get_service().run(
                 lambda col: deck_settings(col, parsed_id)
             )
-            if settings.deck_id == 1:
-                raise DeckNameError("protected")
         except DeckNameError as error:
-            return DatastarResponse(_toast(_deck_error(error, lang)))
+            return DatastarResponse(toast_patch(_deck_error(error, lang)))
         body = render(
-            "app/_deck_delete_sheet.html.jinja",
-            fragment="body",
+            "app/_deck_delete_dialog.html.jinja",
             settings=settings,
+            token=deck_dialog.new_token(),
             app_lang=lang,
         )
-        return DatastarResponse(
-            [
-                SSE.patch_elements(body, selector="#deck-delete-body"),
-                SSE.patch_signals({"delOpen": True}),
-            ]
-        )
+        return DatastarResponse(deck_dialog.show_dialog(body))
 
 
 def _add_remove_deck_route(
     router: APIRouter, get_service: Callable[[], CollectionPort], lang: ResolvedLang
 ) -> None:
     @router.post("/decks/{deck_id}/delete")
-    async def remove_deck(deck_id: str) -> DatastarResponse:
+    async def remove_deck(deck_id: str, request: Request) -> DatastarResponse:
+        fields = await deck_dialog.form_fields(request)
+        if fields is None:
+            return deck_dialog.no_patch()
+        token = deck_dialog.valid_token(fields.get("token"))
+        if token is None:
+            return deck_dialog.no_patch()
         try:
             parsed_id = _parse_deck_id(deck_id)
             if parsed_id == 1:
@@ -209,15 +179,11 @@ def _add_remove_deck_route(
                 lambda col: delete_deck(col, parsed_id), initiator="app"
             )
         except DeckNameError as error:
-            return DatastarResponse(_toast(_deck_error(error, lang)))
-        rows = await service.run(deck_rows)
+            return DatastarResponse(toast_patch(_deck_error(error, lang)))
         return DatastarResponse(
             [
-                SSE.patch_elements(
-                    _render_decks(rows, lang, fragment="content"),
-                    selector="#decks-content",
-                ),
-                _toast(s("app_decks_deleted", lang=lang.catalog_lang)),
-                SSE.patch_signals({"delOpen": False}),
+                toast_patch(s("app_decks_deleted", lang=lang.catalog_lang)),
+                deck_dialog.close_dialog(token),
+                deck_dialog.refresh_decks(),
             ]
         )

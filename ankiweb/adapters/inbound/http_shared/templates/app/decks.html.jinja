@@ -1,45 +1,58 @@
-{% macro content() %}
-<div id="decks-content">
-  <header class="mb-6">
-    <p class="mb-1.25 text-deck-label font-black uppercase tracking-deck-label text-muted-fg">{{ s("app_decks_study_space") }}</p>
-    <h1 class="mb-4.5 text-deck-title leading-none font-black tracking-deck-title">{{ s("app_decks_my_decks") }}</h1>
-{% if views %}
-    <label class="input flex h-12.5 w-full items-center gap-2.5 border-neo-edge bg-base-200 px-3.5 shadow-neo focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-primary">
-      <svg class="size-5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
-      <span class="sr-only">{{ s("app_decks_search") }}</span>
-      <input id="deck-search" class="grow text-base font-bold placeholder:text-muted-fg placeholder:opacity-100" type="search" placeholder="{{ s('app_decks_search') }}" autocomplete="off" data-bind:q>
-    </label>
-{% endif %}
-  </header>
-{% if views %}
+{% macro results() %}
+<div id="deck-results">
+{% if rows %}
   <section aria-labelledby="decks-heading">
     <h2 id="decks-heading" class="mb-2.5 ml-0.5 text-deck-label font-black uppercase tracking-deck-label text-muted-fg">{{ s("app_decks_your_decks") }}</h2>
     <div id="deck-list" class="grid gap-3.5">
-{% for view in views %}
+{% for row in matches %}
 {% include "app/_deck_row.html.jinja" %}
 {% endfor %}
     </div>
-    <div id="empty-state" class="deck-card rounded-box bg-base-200 px-5 py-7 text-center font-bold text-muted-fg" role="status" style="display:none" data-show="{{ no_match }}">
+{% if not matches %}
+    <div id="empty-state" class="deck-card rounded-box bg-base-200 px-5 py-7 text-center font-bold text-muted-fg" role="status">
       <strong class="block text-deck-empty font-black text-base-content">{{ s("app_decks_no_results") }}</strong>
       <p>{{ s("app_decks_try_search") }}</p>
-      <button id="empty-new-deck" type="button" class="btn btn-accent neo-press mt-4" aria-haspopup="dialog" data-on:click="$newName = Array.from($q).slice(0, 40).join(''); $newError = ''; window.avDeckOpener(el); $newOpen = true"><span aria-hidden="true">+</span> {{ s("app_decks_new") }}</button>
+      <button id="empty-new-deck" type="button" class="btn btn-accent neo-press mt-4" aria-haspopup="dialog" data-on:click="@get('/app/decks/new?prefill=1', {contentType:'form', selector:'#deck-search-form'})"><span aria-hidden="true">+</span> {{ s("app_decks_new") }}</button>
     </div>
+{% endif %}
   </section>
 {% else %}
   <section id="no-decks" class="deck-card rounded-box bg-base-200 px-5 py-7 text-center">
-    <button type="button" class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" aria-haspopup="dialog" data-on:click="$newError = ''; window.avDeckOpener(el); $newOpen = true">{{ s("app_decks_add_first") }}</button>
+    <button type="button" class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none btn-accent" aria-haspopup="dialog" data-on:click="@get('/app/decks/new')">{{ s("app_decks_add_first") }}</button>
   </section>
 {% endif %}
 </div>
 {% endmacro %}
-{% if fragment == "content" %}
-{{ content() }}
+{% macro search_form() %}
+<form id="deck-search-form" role="search" data-on:submit__prevent="@get('/app/decks/search', {contentType:'form'})">
+  <label id="deck-search-label" class="input flex h-12.5 w-full items-center gap-2.5 border-neo-edge bg-base-200 px-3.5 shadow-neo focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-primary">
+    <svg class="size-5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
+    <span class="sr-only">{{ s("app_decks_search") }}</span>
+    <input id="deck-search" name="q" value="{{ q }}" class="grow text-base font-bold placeholder:text-muted-fg placeholder:opacity-100" type="search" placeholder="{{ s('app_decks_search') }}" autocomplete="off" data-on:input__debounce.200ms="@get('/app/decks/search', {contentType:'form'})">
+  </label>
+</form>
+{% endmacro %}
+{% macro content() %}
+<div id="decks-content" data-on:ankiweb:decks-refresh__window="@get('/app/decks/search', {contentType:'form', selector:'#deck-search-form', headers:{'X-Deck-Created':String(evt.detail.created || 0)}})">
+  <style>#decks-content:has(#no-decks) #deck-search-label { display: none; }</style>
+  <header class="mb-6">
+    <p class="mb-1.25 text-deck-label font-black uppercase tracking-deck-label text-muted-fg">{{ s("app_decks_study_space") }}</p>
+    <h1 class="mb-4.5 text-deck-title leading-none font-black tracking-deck-title">{{ s("app_decks_my_decks") }}</h1>
+    {{ search_form() }}
+  </header>
+  {{ results() }}
+</div>
+{% endmacro %}
+{% if fragment == "results" %}
+{{ results() }}
+{% elif fragment == "search" %}
+{{ search_form() }}
 {% elif fragment == "toast" %}
 <div id="toast" class="toast toast-top toast-center pointer-events-none z-50" role="status" aria-live="polite">
   <div id="deck-toast-{{ created_id }}" class="alert deck-toast">{{ s("app_decks_created") }}</div>
 </div>
 {% else %}
-<main id="decks-page" class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pb-30 pl-4" data-signals="{q: '', newName: '', newEmoji: '📚', newMode: 'langs', newSrc: '', newDst: '', newOpen: false, creating: false, newError: '', setOpen: false, setId: 0, setName: '', setEmoji: '', setMode: 'langs', setSrc: '', setDst: '', baseName: '', baseEmoji: '', baseMode: 'langs', baseSrc: '', baseDst: '', saving: false, setError: '', delOpen: false}">
+<main id="decks-page" class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pb-30 pl-4">
   {{ content() }}
   <button id="install-app" type="button" class="btn neo-press mt-4" hidden>{{ s('app_install_button') }}</button>
   <div id="ios-install-hint" class="mt-4 rounded-box border-2 border-neo-edge bg-base-200 p-4 font-bold shadow-neo" hidden>
@@ -47,11 +60,9 @@
     <button id="ios-install-dismiss" type="button" class="btn btn-sm neo-press mt-3">{{ s('app_install_ios_dismiss') }}</button>
   </div>
   <div class="deck-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-5 pt-7 pb-[max(18px,env(safe-area-inset-bottom))]">
-    <button id="btn-new-deck" type="button" class="btn btn-accent btn-block neo-press pointer-events-auto min-h-14 max-w-deck text-lg font-black" aria-haspopup="dialog" data-on:click="$newError = ''; window.avDeckOpener(el); $newOpen = true"><span aria-hidden="true">+</span> {{ s("app_decks_new") }}</button>
+    <button id="btn-new-deck" type="button" class="btn btn-accent btn-block neo-press pointer-events-auto min-h-14 max-w-deck text-lg font-black" aria-haspopup="dialog" data-on:click="@get('/app/decks/new')"><span aria-hidden="true">+</span> {{ s("app_decks_new") }}</button>
   </div>
   <div id="toast" class="toast toast-top toast-center pointer-events-none z-50" role="status" aria-live="polite"></div>
-  {% include "app/_deck_sheet.html.jinja" %}
-  {% include "app/_deck_settings_sheet.html.jinja" %}
-  {% include "app/_deck_delete_sheet.html.jinja" %}
+  <div id="deck-dialog-host"></div>
 </main>
 {% endif %}
