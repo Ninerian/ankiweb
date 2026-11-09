@@ -1,0 +1,49 @@
+{% import 'app/_deck_language_strings.html.jinja' as language_strings with context %}
+{% set labels = language_strings.deck_language_labels %}
+<dialog id="deck-dialog"
+        class="modal modal-bottom sm:modal-middle"
+        data-token="{{ token }}"
+        aria-labelledby="deck-delete-title"
+        aria-describedby="deck-delete-description"
+        data-init="el.showModal()"
+        data-on:close="window.avDeckDialogClosed(el)">
+    <div class="modal-box mx-auto flex max-h-review-sheet-max-height w-full max-w-xl flex-col overflow-hidden rounded-t-box border-2 border-neo-edge bg-base-200 p-0 shadow-neo sm:rounded-box">
+        <header class="flex-none px-5 pt-5">
+            <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-base-300 sm:hidden"
+                 aria-hidden="true"></div>
+            <div class="mb-4 flex items-center justify-between gap-4">
+                <h2 id="deck-delete-title" class="text-xl font-black">{{ labels.delete_title }}</h2>
+                <button id="deck-delete-close"
+                        type="button"
+                        class="review-sheet-close"
+                        aria-label="{{ tr.actions_close() | tr_clean }}"
+                        data-on:click="el.closest('dialog').close()"><span aria-hidden="true">✕</span></button>
+            </div>
+        </header>
+        <form id="deck-delete-form"
+              class="flex min-h-0 flex-1 flex-col"
+              data-indicator:_saving
+              data-on:submit__prevent="!$_saving &amp;&amp; @post('/app/decks/{{ settings.deck_id }}/delete', {contentType: 'form', requestCancellation: 'disabled'})">
+            <input type="hidden" name="token" value="{{ token }}">
+            <div class="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
+                <p id="deck-delete-description"
+                   class="text-base font-bold wrap-anywhere">{{ s('app_decks_delete_body', deck=settings.name, cards=settings.card_count) }}</p>
+            </div>
+            <footer class="flex flex-none gap-2.5 border-t-2 border-neo-edge bg-base-200 px-5 pt-3 pb-review-sheet-safe-bottom">
+                <button id="deck-delete-cancel"
+                        type="button"
+                        class="btn neo-press min-h-14 min-w-0 flex-5 rounded-deck bg-base-300 text-base font-black shadow-neo active:shadow-none"
+                        autofocus
+                        data-on:click="el.closest('dialog').close()">{{ labels.cancel }}</button>
+                <button id="deck-delete-confirm"
+                        type="submit"
+                        class="btn btn-error neo-press min-h-14 min-w-0 flex-7 rounded-deck text-base font-black shadow-neo active:shadow-none">{{ labels.delete_confirm }}</button>
+            </footer>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button type="submit"
+                tabindex="-1"
+                aria-label="{{ tr.actions_close() | tr_clean }}"></button>
+    </form>
+</dialog>

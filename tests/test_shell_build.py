@@ -84,7 +84,7 @@ def test_dev_css_is_isolated_and_removed_by_production_build(
         )
         if full_build:
             for name, marker in {
-                "decks.js": b"window.avDeckFocus",
+                "decks.js": b"window.avDeckDialogClosed",
                 "install.js": b"beforeinstallprompt",
                 "edit.js": b"window.avInsert",
                 "login.js": b"login-mascot-emoji",

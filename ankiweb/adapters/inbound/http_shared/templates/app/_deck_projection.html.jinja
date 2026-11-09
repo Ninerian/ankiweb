@@ -1,0 +1,84 @@
+{% import 'app/_deck_language_strings.html.jinja' as strings with context %}
+{% set labels = strings.deck_language_labels %}
+{% macro text_with_language(text, code) %}{% set parts = text.split('\x1f') %}{{ parts[0] }}<strong>{{ strings.deck_language_names.get(code, '') }}</strong>{{ parts[1] }}{% endmacro %}
+{% macro output(fragment, prefix, projection, error='') %}
+    {% set p = projection %}
+    {% if fragment == "preview" %}
+        <div id="{{ prefix }}-preview"
+             class="mb-4 flex items-center gap-3 rounded-box border-2 border-dashed border-neo-edge bg-base-100 p-3"
+             aria-hidden="true">
+            <span id="{{ 'preview-emoji' if prefix == 'new' else 'settings-preview-emoji' }}"
+                  class="grid size-15 flex-none place-items-center rounded-deck border-2 border-neo-edge bg-base-200 text-3xl shadow-neo">{{ p.emoji }}</span>
+            <span class="min-w-0"><span id="{{ 'preview-name' if prefix == 'new' else 'settings-preview-name' }}"
+                                        class="block text-lg font-black wrap-anywhere">{{ p.name or s("app_decks_name_placeholder") }}</span>
+            {% if p.chip == "pair" %}<span id="{{ 'preview-languages' if prefix == 'new' else 'settings-preview-languages' }}"
+                                           class="badge mt-1 h-auto max-w-full rounded-full border-deck-pill border-neo-edge bg-base-100 px-2.25 py-0.75 font-review-sheet text-deck-pill leading-deck-pill font-black tracking-wide text-base-content">{{ p.src_flag }} {{ p.src | upper }} → {{ p.dst_flag }} {{ p.dst | upper }}</span>
+{% else %}<span class="badge mt-1 h-auto max-w-full rounded-full border-deck-pill border-dashed border-neo-edge bg-transparent px-2.25 py-0.75 font-review-sheet text-deck-pill leading-deck-pill font-extrabold text-muted-fg">{{ labels.none_chip if p.chip == 'none' else labels.unset }}</span>{% endif %}
+    </span>
+    </div>
+{% elif fragment == "messages" %}
+    <div id="{{ prefix }}-messages">
+        {% if p.message == "same" %}
+            <div class="alert alert-error border-review-ease-error-border bg-error text-error-content shadow-[2px_2px_0_var(--color-error-border)] mt-2 flex items-start gap-2 rounded-deck border-2 px-3 py-2.5 text-sm font-bold wrap-anywhere"><span aria-hidden="true">⚠</span><span>{{ text_with_language(labels.same, p.src) }}</span></div>
+        {% elif p.message %}
+            <div class="alert alert-warning border-review-ease-warning-border bg-warning text-warning-content mt-2 flex items-start gap-2 rounded-deck border-2 px-3 py-2.5 text-sm font-bold wrap-anywhere"><span aria-hidden="true">⚠</span><span>{{ labels[p.message] }}</span></div>
+        {% endif %}
+    </div>
+{% elif fragment in ("src-flag", "dst-flag") %}
+    {% set is_src = fragment == 'src-flag' %}
+    <span id="{{ prefix }}-flag-{{ 'src' if is_src else 'dst' }}"
+          class="pointer-events-none absolute top-1/2 left-2 z-10 grid h-8.5 w-9.5 -translate-y-1/2 place-items-center rounded-lg border-2 border-neo-edge bg-base-100 text-xl leading-none data-[empty=true]:border-dashed data-[empty=true]:bg-transparent data-[empty=true]:text-sm data-[empty=true]:font-black data-[empty=true]:text-muted-fg"
+          aria-hidden="true"
+          data-empty="{{ 'false' if (p.src if is_src else p.dst) else 'true' }}"
+          data-invalid="{{ 'true' if p.message == 'same' else 'false' }}">{{ p.src_flag if is_src else p.dst_flag }}</span>
+{% elif fragment == "swap" %}
+    <button id="{{ prefix }}-swap"
+            type="button"
+            class="btn neo-press h-auto min-h-10 min-w-0 gap-2 rounded-full bg-base-200 px-3 py-1.5 text-sm leading-tight font-black whitespace-normal focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary disabled:shadow-none"
+            aria-label="{{ labels.swap }}"
+            title="{{ labels.swap }}"
+            data-on:click="window.avDeckSwapLanguages(el)"
+            {% if not p.can_swap %}disabled{% endif %}><span class="shrink-0 text-lg leading-none" aria-hidden="true">⇅</span><span class="min-w-0 wrap-anywhere">{{ labels.swap_short }}</span></button>
+{% elif fragment == "suggest" %}
+    <span id="{{ prefix }}-suggest"><button id="new-flag-suggest"
+                                            type="button"
+                                            class="btn btn-sm mt-2 h-auto min-h-0 max-w-full gap-2 rounded-full border-2 border-info-content bg-info px-3 py-1.5 text-left text-sm leading-tight font-black text-info-content whitespace-normal focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary active:translate-x-px active:translate-y-px"
+                                            {% if not p.suggestion %}hidden style="display:none"{% endif %}
+                                            data-flag="{{ p.suggestion }}"
+                                            data-on:click="window.avDeckPickFlag(el)"><span class="shrink-0 text-lg leading-none" aria-hidden="true">{{ p.suggestion }}</span>{{ text_with_language(labels.flag_suggest, p.dst) }}</button></span>
+{% elif fragment == "dirty" %}
+    <div id="{{ prefix }}-dirty"><div id="deck-settings-dirty"
+                                      class="badge badge-info mb-3 h-auto rounded-full border-2 border-neo-edge px-3 py-1 font-review-sheet text-xs font-black"
+                                      role="status"
+                                      {% if not p.dirty %}hidden style="display:none"{% endif %}><span class="size-2 rounded-full border border-neo-edge bg-info-content"
+                                                                                                       aria-hidden="true"></span><span>{{ p.dirty }} {{ labels.changes_one if p.dirty == 1 else labels.changes_many }}</span></div></div>
+{% elif fragment in ("name-changed", "emoji-changed", "lang-changed") %}
+    {% set changed = p.changed_name if fragment == 'name-changed' else p.changed_emoji if fragment == 'emoji-changed' else p.changed_languages %}
+    <span id="{{ prefix }}-{{ fragment }}"
+          class="badge badge-info badge-sm h-auto rounded-full border-deck-pill border-neo-edge px-1.5 py-0.5 font-review-sheet text-review-dist-heading leading-none font-black uppercase tracking-wide"
+          {% if not changed %}hidden style="display:none"{% endif %}>{{ labels.changed_tag }}</span>
+{% elif fragment == "name-count" %}
+    {% if p.name_count >= 40 %}<span id="{{ prefix }}-name-count"
+                                     class="text-xs font-bold text-error-content">{{ p.name_count }} / 40</span>
+{% else %}<span id="{{ prefix }}-name-count"
+                class="text-xs font-bold text-muted-fg">{{ p.name_count }} / 40</span>{% endif %}
+{% elif fragment == "error" %}
+<div id="{{ prefix }}-error"><p id="{{ 'deck-name-error' if prefix == 'new' else 'deck-settings-error' }}"
+                                class="mb-3 text-sm font-bold text-error-content"
+                                role="alert"
+                                {% if not error %}hidden{% endif %}>{{ error }}</p></div>
+{% elif fragment == "submit" %}
+{% if prefix == "new" %}
+    <span id="new-submit" class="block w-full"><button id="btn-create-deck"
+                                                       type="submit"
+                                                       class="btn btn-accent btn-block neo-press min-h-14 rounded-deck text-lg font-black shadow-neo active:shadow-none"
+                                                       {% if not p.can_submit_content %}disabled{% endif %}>{{ s("app_decks_create") }}</button></span>
+{% else %}
+    <span id="set-submit" class="flex-7"><button id="deck-settings-save"
+                                                 type="submit"
+                                                 class="btn btn-accent w-full neo-press min-h-14 rounded-deck text-base font-black shadow-neo active:shadow-none"
+                                                 {% if not p.can_submit_content %}disabled{% endif %}>{{ labels.save }}</button></span>
+{% endif %}
+{% endif %}
+{% endmacro %}
+{% if fragment is defined and projection is defined %}{{ output(fragment, prefix, projection, error | default('')) }}{% endif %}

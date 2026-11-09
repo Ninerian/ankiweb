@@ -1,0 +1,57 @@
+{% set group_labels = {'study': s('app_decks_emoji_group_study'), 'nature': s('app_decks_emoji_group_nature'), 'fun': s('app_decks_emoji_group_fun'), 'world': s('app_decks_emoji_group_world')} %}
+{% macro emoji_option(value, selected) %}
+    <label class="btn btn-square relative aspect-square h-auto min-h-0 w-full max-w-13.5 justify-self-center rounded-field border-2 border-neo-edge bg-base-100 p-0 text-2xl leading-none shadow-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none has-checked:translate-x-0.5 has-checked:translate-y-0.5 has-checked:bg-accent has-checked:shadow-none">
+        <input class="sr-only"
+               type="radio"
+               name="emoji"
+               value="{{ value }}"
+               aria-label="{{ value }}"
+               {% if value == selected %}checked{% endif %}>
+        <span aria-hidden="true">{{ value }}</span>
+    </label>
+{% endmacro %}
+{% macro emoji_picker(prefix, emoji) %}
+    {% set selected = namespace(group='study', found=false) %}
+    {% for group in emoji_groups %}
+        {% if emoji in group.emojis %}
+            {% set selected.group = group.key %}{% set selected.found = true %}
+        {% endif %}
+    {% endfor %}
+    {% if not selected.found %}
+        {% for language in LANGUAGES %}
+            {% if emoji == language.flag %}
+                {% set selected.group = "world" %}{% set selected.found = true %}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+    {% set id_prefix = '' if prefix == 'new' else 'set-' %}
+    <style>
+        [id^="{{ id_prefix }}emoji-group-"][hidden] {
+            display: none;
+        }
+    </style>
+    <div class="mb-3 flex flex-nowrap gap-2 overflow-x-auto pb-1"
+         role="tablist"
+         aria-label="{{ s('app_decks_pick_category') }}">
+        {% for group in emoji_groups %}
+            <button id="{{ id_prefix }}emoji-tab-{{ group.key }}"
+                    type="button"
+                    class="btn btn-sm flex-none rounded-full border-2 border-neo-edge bg-base-200 font-black uppercase shadow-none aria-selected:bg-accent aria-selected:text-accent-content aria-selected:shadow-neo"
+                    role="tab"
+                    aria-controls="{{ id_prefix }}emoji-group-{{ group.key }}"
+                    aria-selected="{{ 'true' if group.key == selected.group else 'false' }}"
+                    data-on:click="window.avDeckEmojiTab(el)">{{ group_labels[group.key] }}</button>
+        {% endfor %}
+    </div>
+    {% for group in emoji_groups %}
+        <div id="{{ id_prefix }}emoji-group-{{ group.key }}"
+             class="mb-4 grid grid-cols-6 gap-2"
+             role="radiogroup"
+             aria-label="{{ s('app_decks_pick_emoji') }}"
+             {% if group.key != selected.group %}hidden{% endif %}>
+            {% for option in group.emojis %}{{ emoji_option(option, emoji) }}{% endfor %}
+            {% if group.key == "world" %}{% for language in LANGUAGES %}{% if language.flag not in group.emojis %}{{ emoji_option(language.flag, emoji) }}{% endif %}{% endfor %}{% endif %}
+            {% if group.key == "study" and not selected.found and emoji %}{{ emoji_option(emoji, emoji) }}{% endif %}
+        </div>
+    {% endfor %}
+{% endmacro %}
