@@ -1,58 +1,44 @@
-let deckOpener = null;
-const deckDialogs = new Map();
-
-const isVisible = (element) => element?.isConnected
-  && !element.closest("[hidden], [inert]")
-  && element.getClientRects().length > 0
-  && getComputedStyle(element).visibility === "visible";
-
-window.avDeckOpener = (element) => { deckOpener = element; };
-window.avDeckFocus = (open, dialogId = "deck-sheet", focusId = "deck-name") => {
-  const state = deckDialogs.get(dialogId) ?? { open: false, opener: null, openerId: "" };
-  deckDialogs.set(dialogId, state);
-  if (state.open === open) return;
-  state.open = open;
-  if (open) {
-    state.opener = deckOpener;
-    state.openerId = deckOpener?.id ?? "";
+window.avDeckDialogClosed = (dialog) => {
+  dialog.remove();
+  if (document.activeElement === document.body) {
+    document.getElementById("btn-new-deck")?.focus();
   }
-  requestAnimationFrame(() => {
-    if (state.open !== open) return;
-    if (open) {
-      const target = document.getElementById(focusId);
-      if (isVisible(target)) target.focus();
-    } else {
-      const replacement = state.openerId && document.getElementById(state.openerId);
-      const target = isVisible(state.opener) ? state.opener
-        : isVisible(replacement) ? replacement : document.getElementById("btn-new-deck");
-      target?.focus();
-    }
-  });
 };
 
-window.avDeckModalKey = (event) => {
-  if (event.key !== "Tab") return;
-  const dialog = event.currentTarget;
-  const visible = [...dialog.querySelectorAll("a[href], button, input:not([type=hidden]), select, textarea, [tabindex]")]
-    .filter((element) => element.tabIndex >= 0 && !element.matches(":disabled") && isVisible(element));
-  const radioGroups = new Map();
-  for (const element of visible) {
-    if (element.type !== "radio" || !element.name) continue;
-    const current = radioGroups.get(element.name);
-    if (!current || element.checked) radioGroups.set(element.name, element);
+window.avDeckEmojiTab = (tab) => {
+  const form = tab.closest("form");
+  if (!form) return;
+  for (const sibling of form.querySelectorAll('[role="tab"][aria-controls]')) {
+    const selected = sibling === tab;
+    sibling.setAttribute("aria-selected", String(selected));
+    const panel = document.getElementById(sibling.getAttribute("aria-controls"));
+    if (panel) panel.hidden = !selected;
   }
-  const controls = visible.filter((element) => element.type !== "radio" || !element.name
-    || radioGroups.get(element.name) === element);
-  if (!controls.length) return;
-  const first = controls[0];
-  const last = controls[controls.length - 1];
-  if (!dialog.contains(document.activeElement) || (event.shiftKey && document.activeElement === first)) {
-    event.preventDefault();
-    (event.shiftKey ? last : first).focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
+};
+
+window.avDeckSwapLanguages = (button) => {
+  const form = button.closest("form");
+  const src = form?.querySelector('select[name="src"]');
+  const dst = form?.querySelector('select[name="dst"]');
+  if (!src || !dst) return;
+  [src.value, dst.value] = [dst.value, src.value];
+  src.dispatchEvent(new Event("input", { bubbles: true }));
+};
+
+window.avDeckPickFlag = (button) => {
+  const form = button.closest("form");
+  const radio = [...(form?.querySelectorAll('input[name="emoji"]') ?? [])]
+    .find((input) => input.value === button.dataset.flag);
+  if (!radio) return;
+  radio.checked = true;
+  const panel = radio.closest('[role="radiogroup"]');
+  const tab = [...form.querySelectorAll('[role="tab"][aria-controls]')]
+    .find((item) => item.getAttribute("aria-controls") === panel?.id);
+  if (tab) {
+    window.avDeckEmojiTab(tab);
+    tab.focus();
   }
+  radio.dispatchEvent(new Event("input", { bubbles: true }));
 };
 
 window.avDeckMenuButtonKey = (event) => {
@@ -89,11 +75,11 @@ window.avDeckMenuKey = (event) => {
   items[index].focus();
 };
 
-document.addEventListener("change", (event) => {
-  if (!(event.target instanceof HTMLInputElement)) return;
-  const previewId = event.target.name.startsWith("new-emoji-") ? "preview-emoji"
-    : event.target.name.startsWith("set-emoji-") ? "settings-preview-emoji" : null;
-  if (!previewId) return;
+document.addEventListener("input", (event) => {
+  if (!(event.target instanceof HTMLInputElement) || event.target.name !== "emoji") return;
+  const form = event.target.form;
+  const previewId = form?.id === "deck-create-form" ? "preview-emoji"
+    : form?.id === "deck-settings-form" ? "settings-preview-emoji" : null;
   const preview = document.getElementById(previewId);
   if (!preview) return;
   preview.classList.remove("emoji-pop");

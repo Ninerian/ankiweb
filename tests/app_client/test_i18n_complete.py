@@ -34,6 +34,10 @@ BACKEND_ONLY_STRINGS = {
     "app_edit_progress_reset_failed",
     "app_edit_progress_reset_unrecorded",
     "app_edit_progress_reset_uncleared",
+    "app_decks_name_empty",
+    "app_decks_name_invalid",
+    "app_decks_name_taken",
+    "app_decks_name_too_long",
     "app_login_error_empty",
     "app_login_error_wrong",
 }

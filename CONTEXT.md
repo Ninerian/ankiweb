@@ -10,6 +10,7 @@ _Avoid_: Stack, Ordner
 
 **Sprachpaar**:
 Ein geordnetes Paar aus Ursprungssprache und Zielsprache fuer genau ein Deck. Beide Sprachen muessen verschieden sein und zum Katalog `de`, `en`, `es`, `fr`, `it`, `pt`, `nl`, `pl`, `tr`, `ru`, `ja`, `zh`, `ko`, `ar`, `sv`, `la` gehoeren. Ein Deck ohne gueltigen Sprach-Marker hat kein Sprachpaar; Unterdecks erben kein Sprachpaar.
+Die Formularauswahl `LanguageMode` unterscheidet Sprachpaar (`langs`) und keine Sprachen (`none`). Gespeichert wird weiterhin nur das Sprachpaar oder dessen Abwesenheit; ungueltige Eingaben bleiben bis zur Validierung erhalten.
 
 **Ursprungssprache**:
 Die Sprache des Sprachpaars, die die lernende Person bereits kann; sie steht vor dem Pfeil.

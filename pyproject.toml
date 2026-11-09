@@ -110,3 +110,8 @@ profile = "jinja"
 # architecture to satisfy a generic linter is out of scope and would risk regressing tests that
 # assert on rendered markup substrings.
 ignore = "H008,H011,H015,H021,H023,H050,J018"
+
+[dependency-groups]
+dev = [
+    "djlint>=1.49.9",
+]
