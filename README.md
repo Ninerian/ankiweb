@@ -570,17 +570,19 @@ uv run --locked --extra dev pre-commit install
 ```
 
 The installed hook is shared by worktrees using the same common Git directory. Before each
-commit, it runs Ruff lint, Ruff format check, ty, and Complexipy against the whole repository;
-failures block the commit, and no files are auto-fixed. Run the same checks manually or uninstall
-the hook with:
+commit, it runs Ruff lint, Ruff format check, ty, and Complexipy against the whole repository.
+It also reformats and then lints staged `.html.jinja` templates with djLint; if formatting changes
+a file, review and stage it again before retrying the commit. Failures block the commit. To run
+all hooks on every tracked file (including reformatting all matching templates), or uninstall:
 
 ```bash
 uv run --locked --extra dev pre-commit run --all-files
 uv run --locked --extra dev pre-commit uninstall
 ```
 
-On pushes and pull requests, `.github/workflows/code-quality.yml` runs the same four checks
-using locked `uv` development dependencies.
+On pushes and pull requests, `.github/workflows/code-quality.yml` runs the existing four checks on
+all tracked files using locked `uv` development dependencies. CI also lints all tracked
+`.html.jinja` templates with djLint, but skips the djLint formatter.
 
 Apply Python formatting separately with `uv run ruff format .`. Re-run the complete test block
 after changing Ruff's rule categories or preview settings.

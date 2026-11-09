@@ -5,9 +5,7 @@
       <label for="target" class="block text-sm font-medium mb-1">{{ tr.actions_export() | tr_clean }}:</label>
       <select name="target" id="target" class="select select-sm w-full" data-attr="{disabled: $fmt === 'colpkg'}">
         <option value="all">{{ tr.browsing_whole_collection() | tr_clean }}</option>
-        {% for d in decks %}<option value="{{ d.id }}">{{ d.name }}</option>{%
-          endfor
-        %}
+        {% for d in decks %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
       </select>
     </div>
     <fieldset class="mb-4 border border-base-300 rounded-box p-3">

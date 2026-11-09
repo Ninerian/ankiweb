@@ -30,9 +30,7 @@
       window.__ankiwebContext = {{ context | tojson }}
       window.__ankiwebEnableBridge = {{ bridge | tojson }}
     </script>
-    {% for c in css_files %}<link rel="stylesheet" href="/_anki/{{ c }}">{%
-      endfor
-    %}
+    {% for c in css_files %}<link rel="stylesheet" href="/_anki/{{ c }}">{% endfor %}
     {% for j in js_files %}<script src="/_anki/{{ j }}"></script>{% endfor %}
     <script src="/shell/static/bootstrap.js"></script>
     <script src="/shell/static/dialogs.js"></script>

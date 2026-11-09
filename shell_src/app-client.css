@@ -458,27 +458,28 @@
   .review-confetti {
     @apply absolute inset-0 pointer-events-none;
   }
-  .review-confetti i {
+  /* Keep the original confetti selector specificity. */
+  .review-confetti i:where(.review-confetti-piece) {
     @apply absolute top-1/2 left-1/2 w-review-complete-confetti-width h-review-complete-confetti-height
       rounded-review-complete-confetti bg-review-complete-error animate-review-complete-confetti
       motion-reduce:animate-none;
   }
-  .review-confetti i:nth-child(1) {
+  .review-confetti i:where(.review-confetti-piece):nth-child(1) {
     @apply -translate-x-review-complete-offset-47 -translate-y-review-complete-offset-22 -rotate-24;
   }
-  .review-confetti i:nth-child(2) {
+  .review-confetti i:where(.review-confetti-piece):nth-child(2) {
     @apply translate-x-review-complete-offset-42 -translate-y-review-complete-offset-24 rotate-35 bg-review-complete-info;
   }
-  .review-confetti i:nth-child(3) {
+  .review-confetti i:where(.review-confetti-piece):nth-child(3) {
     @apply -translate-x-review-complete-offset-44 translate-y-review-complete-offset-14 rotate-40 bg-review-complete-warning;
   }
-  .review-confetti i:nth-child(4) {
+  .review-confetti i:where(.review-confetti-piece):nth-child(4) {
     @apply translate-x-review-complete-offset-42 translate-y-review-complete-offset-13 -rotate-35 bg-review-complete-success;
   }
-  .review-confetti i:nth-child(5) {
+  .review-confetti i:where(.review-confetti-piece):nth-child(5) {
     @apply -translate-x-review-complete-offset-28 -translate-y-review-complete-offset-29 rotate-25 bg-review-complete-info;
   }
-  .review-confetti i:nth-child(6) {
+  .review-confetti i:where(.review-confetti-piece):nth-child(6) {
     @apply translate-x-review-complete-offset-28 translate-y-review-complete-offset-23 rotate-60 bg-review-complete-warning;
   }
 

@@ -29,8 +29,8 @@
 {% else %}
 <div id="review-app" class="review-app" data-signals="{revealed: false, sheetOpen: false, dueOpen: false, cardId: {{ view.card_id if view else 0 }}, ease: 0, flag: 0, spec: ''}" data-on:keydown__window="evt.key === 'Escape' &amp;&amp; $sheetOpen ? ($sheetOpen = false, $dueOpen = false) : $sheetOpen ? window.avSheetKey(evt) : window.avKeydown(evt, $revealed, $sheetOpen)">
   {{ progress_hud() }}
-  {% include 'app/_review_stage.html.jinja' %}
-  {% include 'app/_review_bar.html.jinja' %}
-  {% include 'app/_review_sheet.html.jinja' %}
+  {% include "app/_review_stage.html.jinja" %}
+  {% include "app/_review_bar.html.jinja" %}
+  {% include "app/_review_sheet.html.jinja" %}
 </div>
 {% endif %}

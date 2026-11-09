@@ -43,12 +43,12 @@
         <div class="flex justify-between items-center border-b border-base-300 p-2">
           <h6 class="font-bold text-sm m-0" id="detail-offcanvas-label">{{ tr.browsing_card() }} – {{ tr.importing_details() }}</h6>
           <form method="dialog">
-            <button class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
+            <button type="submit" class="btn btn-sm btn-circle btn-ghost" aria-label="Close">✕</button>
           </form>
         </div>
         <div id="detail-mobile-slot" class="p-0 overflow-y-auto"></div>
       </div>
-      <form method="dialog" class="modal-backdrop"><button>close</button></form>
+      <form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
     </dialog>
     <script>
       if (!window.matchMedia('(min-width: 768px)').matches) document.getElementById('detail-mobile-slot').appendChild(document.getElementById('detail'));

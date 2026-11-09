@@ -13,9 +13,11 @@
     disabled=false,
     tabbable=false,
     size="xs",
-    flip_x=false
+    flip_x=false,
+    type="submit"
 ) %}
   <button
+    type="{{ type }}"
     {% if id %}id="{{ id }}"{% endif %}
     class="btn btn-square btn-{{ size }}{% if primary or active %} btn-primary{% endif %}{% if active %} btn-active{% endif %}{% if flip_x %} [&_svg]:-scale-x-100{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
     {% if tooltip %}title="{{ tooltip }}"{% endif %}

@@ -2,7 +2,7 @@
      data-show="$summaryOpen" data-class:modal-open="$summaryOpen" style="display:none"
      data-on:keydown="evt.key === 'Escape' ? (evt.stopPropagation(), $summaryOpen = false, window.avCloseSummary()) : window.avModalKey(evt)">
   <div class="modal-box rounded-box border-3 border-neo-edge bg-base-200 p-6 text-center shadow-neo">
-    <div class="review-celebration" aria-hidden="true"><div class="review-confetti"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="review-sticker">🎉</div></div>
+    <div class="review-celebration" aria-hidden="true"><div class="review-confetti"><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i></div><div class="review-sticker">🎉</div></div>
     <h2 id="add-summary-title" class="text-3xl font-black tracking-tight">{{ s('app_add_cards_ready') }}</h2>
     <p class="mt-2 text-sm font-bold text-muted-fg"><span class="text-2xl font-black text-review-streak-foreground" data-text="$count">{{ count }}</span> {{ s('app_add_cards_added') }}</p>
     <div class="modal-action flex-wrap justify-center">

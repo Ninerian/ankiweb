@@ -6,10 +6,12 @@
     tooltip=none,
     icon_size=100,
     width_multiplier=1,
-    flip_x=false
+    flip_x=false,
+    type="submit"
 ) %}
   {% set outer_caller = caller %}
   <button
+    type="{{ type }}"
     class="badge{% if class_ %} {{ class_ }}{% endif %}"
     {% if tooltip %}title="{{ tooltip }}"{% endif %}
     tabindex="-1"

@@ -1083,13 +1083,13 @@
             <p class="py-4" id="deck-options-close-dialog-description">You have unsaved changes. Are you sure you want to close?</p>
             <div class="modal-action flex-wrap">
                 <form method="dialog">
-                    <button class="btn btn-sm btn-ghost" autofocus>Keep editing</button>
+                    <button type="submit" class="btn btn-sm btn-ghost" autofocus>Keep editing</button>
                 </form>
                 <a class="btn btn-sm btn-error" href="/deckbrowser">Discard changes and close</a>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button>close</button>
+            <button type="submit">close</button>
         </form>
     </dialog>
     <!-- Add Preset Modal -->
@@ -1098,7 +1098,7 @@
             <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
                 <h5 class="font-bold text-lg" id="addPresetModalLabel">{{ tr.deck_config_add_group() }}</h5>
                 <form method="dialog">
-                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                    <button type="submit" class="btn btn-sm btn-circle btn-ghost">✕</button>
                 </form>
             </div>
             <div>
@@ -1107,13 +1107,13 @@
             </div>
             <div class="modal-action">
                 <form method="dialog">
-                    <button class="btn btn-sm btn-ghost">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-ghost">Cancel</button>
                 </form>
                 <button type="button" class="btn btn-sm btn-primary" data-on:click="@post('/deck-options/add-preset')">Add</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button>close</button>
+            <button type="submit">close</button>
         </form>
     </dialog>
 
@@ -1123,7 +1123,7 @@
             <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
                 <h5 class="font-bold text-lg" id="clonePresetModalLabel">{{ tr.deck_config_clone_group() }}</h5>
                 <form method="dialog">
-                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                    <button type="submit" class="btn btn-sm btn-circle btn-ghost">✕</button>
                 </form>
             </div>
             <div>
@@ -1132,13 +1132,13 @@
             </div>
             <div class="modal-action">
                 <form method="dialog">
-                    <button class="btn btn-sm btn-ghost">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-ghost">Cancel</button>
                 </form>
                 <button type="button" class="btn btn-sm btn-primary" data-on:click="@post('/deck-options/clone-preset')">Clone</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button>close</button>
+            <button type="submit">close</button>
         </form>
     </dialog>
 
@@ -1148,7 +1148,7 @@
             <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
                 <h5 class="font-bold text-lg" id="renamePresetModalLabel">{{ tr.deck_config_rename_group() }}</h5>
                 <form method="dialog">
-                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                    <button type="submit" class="btn btn-sm btn-circle btn-ghost">✕</button>
                 </form>
             </div>
             <div>
@@ -1157,13 +1157,13 @@
             </div>
             <div class="modal-action">
                 <form method="dialog">
-                    <button class="btn btn-sm btn-ghost">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-ghost">Cancel</button>
                 </form>
                 <button type="button" class="btn btn-sm btn-primary" data-on:click="@post('/deck-options/rename-preset')">Rename</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button>close</button>
+            <button type="submit">close</button>
         </form>
     </dialog>
 
@@ -1173,7 +1173,7 @@
             <div class="flex justify-between items-center pb-2 mb-3 border-b border-base-300">
                 <h5 class="font-bold text-lg" id="deletePresetModalLabel">{{ tr.deck_config_remove_group() }}</h5>
                 <form method="dialog">
-                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                    <button type="submit" class="btn btn-sm btn-circle btn-ghost">✕</button>
                 </form>
             </div>
             <div>
@@ -1182,13 +1182,13 @@
             </div>
             <div class="modal-action">
                 <form method="dialog">
-                    <button class="btn btn-sm btn-ghost">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-ghost">Cancel</button>
                 </form>
                 <button type="button" class="btn btn-sm btn-error" data-on:click="@post('/deck-options/delete-preset')">Delete</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
-            <button>close</button>
+            <button type="submit">close</button>
         </form>
     </dialog>
 </div>

@@ -27,4 +27,4 @@ jobs:
         run: uv sync --locked --extra dev
 
       - name: Run quality checks
-        run: uv run --locked --extra dev pre-commit run --all-files
+        run: SKIP=djlint-format uv run --locked --extra dev pre-commit run --all-files

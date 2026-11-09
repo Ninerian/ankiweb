@@ -41,25 +41,19 @@
       <div>
         <label for="cramkind" class="block text-sm font-medium mb-1">{{ tr.browsing_sidebar_card_state() }}</label>
         <select id="cramkind" class="select select-sm w-full" data-bind="cram_kind">
-          {% for k, t in kinds %}<option value="{{ k }}">{{ t }}</option>{%
-            endfor
-          %}
+          {% for k, t in kinds %}<option value="{{ k }}">{{ t }}</option>{% endfor %}
         </select>
       </div>
       <div>
         <label for="inc" class="block text-sm font-medium mb-1">{{ tr.custom_study_require_one_or_more_of_these() }}</label>
         <select id="inc" class="select select-sm w-full h-auto" multiple size="4" data-bind="include">
-          {% for t in tags %}<option value="{{ t }}">{{ t }}</option>{%
-            endfor
-          %}
+          {% for t in tags %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
         </select>
       </div>
       <div>
         <label for="exc" class="block text-sm font-medium mb-1">{{ tr.custom_study_select_tags_to_exclude() }}</label>
         <select id="exc" class="select select-sm w-full h-auto" multiple size="4" data-bind="exclude">
-          {% for t in tags %}<option value="{{ t }}">{{ t }}</option>{%
-            endfor
-          %}
+          {% for t in tags %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
         </select>
       </div>
     </div>

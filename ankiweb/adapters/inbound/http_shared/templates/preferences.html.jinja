@@ -109,6 +109,7 @@
                 {{ number_field("time_limit_mins", tr.preferences_timebox_time_limit(), r.time_limit_secs // 60, "time_limit_mins", suffix=tr.preferences_mins()) }}
                 {{ checkbox_field("load_balancer_enabled", "Enable load balancer", r.load_balancer_enabled, "load_balancer_enabled") }}
                 {{ checkbox_field("fsrs_short_term_with_steps_enabled", "Use FSRS for short-term scheduling (with steps)", r.fsrs_short_term_with_steps_enabled, "fsrs_short_term_with_steps_enabled") }}
+              </div>
             </div>
           </section>
 

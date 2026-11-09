@@ -10,7 +10,6 @@
   <span>{{ parts[0] }}<strong data-text="{{ js_literal(deck_language_names) }}[{{ signal }}]"></strong>{{ parts[1] }}</span>
 {% endmacro %}
 
-
 {% macro languages(prefix) %}
 <fieldset class="fieldset mb-4" aria-describedby="{{ prefix }}-lang-msg" data-signals:_swap__ifmissing="''" data-on:change="${{ prefix }}Error = ''">
   <legend class="fieldset-legend">{{ deck_language_labels.languages }}{% if prefix == 'set' %} <span id="set-lang-changed" class="badge badge-info badge-sm h-auto rounded-full border-deck-pill border-neo-edge px-1.5 py-0.5 font-review-sheet text-review-dist-heading leading-none font-black uppercase tracking-wide" data-show="$setMode !== $baseMode || ($setMode === 'langs' && ($setSrc !== $baseSrc || $setDst !== $baseDst))" style="display:none">{{ deck_language_labels.changed_tag }}</span>{% endif %}</legend>

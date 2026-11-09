@@ -13,9 +13,11 @@
     disabled=false,
     tabbable=false,
     ellipsis=false,
-    size="xs"
+    size="xs",
+    type="submit"
 ) %}
   <button
+    type="{{ type }}"
     {% if id %}id="{{ id }}"{% endif %}
     class="btn btn-{{ size }}{% if primary or active %} btn-primary{% endif %}{% if active %} btn-active{% endif %}{% if ellipsis %} max-w-full justify-start{% endif %}{% if class_ %} {{ class_ }}{% endif %}"
     {% if tooltip %}title="{{ tooltip }}"{% endif %}

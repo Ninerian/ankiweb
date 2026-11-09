@@ -10,7 +10,7 @@
 {% endif %}
 <section id="session-complete" data-mood="{{ summary.mood }}" aria-labelledby="sc-title" class="review-complete card deck-card">
   <span class="text-xs font-black uppercase tracking-widest text-muted-fg">{{ s('app_review_complete_session') }}</span>
-  <div class="review-celebration" aria-hidden="true"><div class="review-confetti"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="review-sticker">{{ emoji }}</div></div>
+  <div class="review-celebration" aria-hidden="true"><div class="review-confetti"><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i><i class="review-confetti-piece"></i></div><div class="review-sticker">{{ emoji }}</div></div>
   <h1 id="sc-title" tabindex="-1" class="text-3xl font-black tracking-tight sm:text-4xl">{{ title }}</h1>
   <p id="sc-sub" class="mx-auto mt-2 max-w-sm text-sm text-muted-fg">{{ subtitle }}{% if summary.hard_effort %} {{ s('app_review_complete_hard_extra') }}{% endif %}</p>
   <div class="stats review-stats grid rounded-deck" aria-label="{{ s('app_review_complete_statistics') }}">

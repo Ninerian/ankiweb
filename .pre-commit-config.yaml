@@ -15,6 +15,18 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
+      - id: djlint-format
+        name: DjLint format
+        entry: uv run --locked --extra dev djlint --reformat
+        files: '\.html\.jinja$'
+        language: system
+        stages: [pre-commit]
+      - id: djlint-check
+        name: DjLint lint
+        entry: uv run --locked --extra dev djlint --lint
+        files: '\.html\.jinja$'
+        language: system
+        stages: [pre-commit]
       - id: ty
         name: ty
         entry: uv run --locked --extra dev ty check
