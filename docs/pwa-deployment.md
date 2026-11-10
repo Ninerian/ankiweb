@@ -69,6 +69,15 @@ its own manifest and installation identity. Android and iOS device installation,
 HTTPS deployment in practice, and launcher maskable-icon cropping have **not** been
 verified.
 
+The app stylesheet disables vertical viewport overscroll without locking document
+or inner scrolling; horizontal navigation gestures are unchanged. This also applies
+when `/app/` is opened in a browser tab. Safari supports `overscroll-behavior`
+from iOS 16; older versions may still bounce. Check on a physical iPhone in Safari
+and from the home screen: overscroll at both ends of short and long deck pages,
+scroll long review cards and editor card lists, open scrollable dialogs, and check
+login and editor fields with the keyboard open and dismissed. Actual device
+behavior, including keyboard viewport movement, has not been verified.
+
 The app uses the Kartenblitz icon: yellow flashcards with a lightning bolt. The
 192- and 512-pixel PNGs are opaque, full-bleed squares, with the artwork inside
 the maskable safe zone (a radius of at most 102.4 in a 256-by-256 coordinate

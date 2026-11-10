@@ -614,7 +614,6 @@ def _assert_edit_page(
         else dict.fromkeys(("front", "back", "hint", "example"), ""),
         learned=learned,
     )
-    assert attributes["data-signals"] == "{_busy: false}"
     assert attributes["data-browse-phase"] == ("open" if view == "cards" else "closed")
     return attributes
 

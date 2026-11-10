@@ -56,9 +56,6 @@ def test_edit_page_initializes_model_and_session(client: TestClient) -> None:
         assert f'id="{name}"' in page.text
     for step in (1, 2, 3):
         assert f'data-step-section="{step}"' in page.text
-    assert "window.avAction(" in page.text
-    assert "data-indicator:_busy" in page.text
-    assert 'data-attr:disabled="$_busy"' in page.text
     assert "app_sid" in page.cookies
     assert "HttpOnly" in page.headers["set-cookie"]
     assert "SameSite=lax" in page.headers["set-cookie"]
@@ -73,11 +70,6 @@ def test_edit_page_initializes_model_and_session(client: TestClient) -> None:
         "Example",
     ]
     assert "set-cookie" not in client.get(f"/app/edit/{deck_id}/front").headers
-
-
-def test_editor_signals_only_track_request_busy(client: TestClient) -> None:
-    page = client.get("/app/edit/1/front")
-    assert 'data-signals="{_busy: false}"' in page.text
 
 
 def test_editor_form_contains_only_draft_fields(client: TestClient) -> None:

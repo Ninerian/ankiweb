@@ -20,6 +20,29 @@ const requestEditorFocus = (callback) => {
 };
 
 window.avFocus = (id) => {
+  const request = document.getElementById("edit-step-request");
+  if (busy() && request) {
+    const session = request.closest("#edit-session");
+    const revision = session?.dataset.rev;
+    const controller = stepRequest;
+    const generation = editorFocusGeneration;
+    const afterStep = (event) => {
+      if (event.detail.el !== request) return;
+      if (!["finished", "error", "retrying", "retries-failed"].includes(event.detail.type)) return;
+      document.removeEventListener("datastar-fetch", afterStep);
+      if (event.detail.type !== "finished" || controller?.signal.aborted ||
+          controller !== stepRequest || generation !== editorFocusGeneration ||
+          editSession() !== session || session?.dataset.rev !== revision) return;
+      requestEditorFocus(() => {
+        if (!busy() && !controller?.signal.aborted && controller === stepRequest &&
+            editSession() === session && session?.dataset.rev === revision) {
+          document.getElementById(id)?.focus();
+        }
+      });
+    };
+    document.addEventListener("datastar-fetch", afterStep);
+    return;
+  }
   requestEditorFocus(() => document.getElementById(id)?.focus());
 };
 
@@ -87,6 +110,7 @@ window.avAction = (suffix) => {
   return `/app/edit/${deck}/${session?.dataset.instance}/${session?.dataset.rev}${suffix}`;
 };
 window.avRequestStep = (to, via) => {
+  if (busy()) return;
   window.avBumpRev();
   document.getElementById("edit-step-request")?.dispatchEvent(
     new CustomEvent("av-step", { detail: { to, via } })

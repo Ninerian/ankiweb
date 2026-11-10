@@ -123,6 +123,13 @@
 /* Emit the shared press utility before app templates consume it. */
 @source inline("neo-press");
 
+@layer base {
+  /* Suppress viewport bounce without locking the page or its inner scrollers. */
+  html, body {
+    overscroll-behavior-y: none;
+  }
+}
+
 @theme inline {
   --color-muted-fg: var(--color-muted);
   --color-neo-edge: var(--color-neo-border);

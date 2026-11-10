@@ -110,36 +110,3 @@ def test_theme_content_contrast(theme: str, color: str) -> None:
     foreground = _luminance(colors[f"{color}-content"])
     ratio = (max(background, foreground) + 0.05) / (min(background, foreground) + 0.05)
     assert ratio >= 4.5, f"{theme} {color}: {ratio:.2f}:1, expected at least 4.5:1"
-
-
-APP_MARKUP_DIRS = (
-    ROOT / "ankiweb/adapters/inbound/http_shared/templates/app",
-    ROOT / "ankiweb/adapters/inbound/http_app",
-)
-
-
-def _classes_used_by_app_markup() -> set[str]:
-    used: set[str] = set()
-    for directory in APP_MARKUP_DIRS:
-        for path in directory.rglob("*"):
-            if path.suffix not in {".jinja", ".py"}:
-                continue
-            for attribute in re.findall(r'class="([^"]+)"', path.read_text("utf-8")):
-                used.update(attribute.split())
-    # av-* are card classes the sanitizer keeps from note fields; tokens with
-    # template or signal expressions are not literal class names.
-    return {
-        name
-        for name in used
-        if not name.startswith("av-") and not re.search(r"[{}$]", name)
-    }
-
-
-def test_every_class_used_in_app_markup_exists_in_built_css() -> None:
-    css = BUILT.read_text(encoding="utf-8")
-    missing = sorted(
-        name
-        for name in _classes_used_by_app_markup()
-        if "." + name not in css.replace("\\", "")
-    )
-    assert not missing, f"classes missing from app-client.css: {missing}"

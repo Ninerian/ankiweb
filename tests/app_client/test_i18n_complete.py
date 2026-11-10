@@ -1,5 +1,7 @@
 import inspect
+import re
 import unicodedata
+from collections import Counter
 from html.parser import HTMLParser
 from pathlib import Path
 from string import Formatter
@@ -30,6 +32,10 @@ PRESEEDED_UNUSED_REVIEW = {
 PRESEEDED_UNUSED_ADD: set[str] = set()
 # Used by server-side responses, not directly by templates.
 BACKEND_ONLY_STRINGS = {
+    "app_add_back_required",
+    "app_add_both_required",
+    "app_add_duplicate",
+    "app_add_front_required",
     "app_add_edit_unavailable",
     "app_edit_progress_reset_failed",
     "app_edit_progress_reset_unrecorded",
@@ -193,6 +199,7 @@ class _VisibleText(HTMLParser):
         self.path = path
         self.ignored_tag: str | None = None
         self.hardcoded: list[str] = []
+        self.event_calls: Counter[str] = Counter()
 
     def _check(self, value: str, where: str) -> None:
         for part in value.split(_EXPRESSION):
@@ -218,6 +225,11 @@ class _VisibleText(HTMLParser):
             "submit",
         }
         for name, value in attrs:
+            if name.startswith("data-on:") and value:
+                self.event_calls.update(
+                    re.findall(f"{_EXPRESSION}(\\w+){_EXPRESSION}", value)
+                )
+        for name, value in attrs:
             if value is not None and (
                 name in _VISIBLE_ATTRIBUTES or (button_input and name == "value")
             ):
@@ -232,16 +244,45 @@ class _VisibleText(HTMLParser):
             self._check(data, "text")
 
 
+def _template_output(value: nodes.Node, *, named: bool) -> str:
+    if isinstance(value, nodes.TemplateData):
+        return value.data
+    if not named:
+        return _EXPRESSION
+    calls = (value, *value.find_all(nodes.Call))
+    return _EXPRESSION + "".join(
+        f"{_EXPRESSION}{call.node.name}{_EXPRESSION}"
+        for call in calls
+        if isinstance(call, nodes.Call) and isinstance(call.node, nodes.Name)
+    )
+
+
+def _template_markup(node: nodes.Node, excluded: set[str], *, named: bool) -> str:
+    if isinstance(node, nodes.Macro) and node.name in excluded:
+        return ""
+    if isinstance(node, nodes.Output):
+        return "".join(_template_output(value, named=named) for value in node.nodes)
+    return "".join(
+        _template_markup(child, excluded, named=named)
+        for child in node.iter_child_nodes()
+    )
+
+
 def _hardcoded_text(path: Path, source: str) -> list[str]:
-    # Keep HTML around expressions so both text nodes and attributes are scanned.
-    markup: list[str] = []
-    for _, jinja_type, value in _env.lex(source):
-        if jinja_type == "data":
-            markup.append(value)
-        elif jinja_type == "variable_begin":
-            markup.append(_EXPRESSION)
+    tree = _env.parse(source)
+    macros = {macro.name for macro in tree.find_all(nodes.Macro)}
+    references = Counter(
+        name.name for name in tree.find_all(nodes.Name) if name.name in macros
+    )
     parser = _VisibleText(path)
-    parser.feed("".join(markup))
+    parser.feed(_template_markup(tree, set(), named=True))
+    parser.close()
+    # Event-handler-only macros produce JavaScript, not visible text.
+    event_only = {
+        name for name, count in references.items() if parser.event_calls[name] == count
+    }
+    parser = _VisibleText(path)
+    parser.feed(_template_markup(tree, event_only, named=False))
     parser.close()
     return parser.hardcoded
 
@@ -278,6 +319,10 @@ def test_anki_call_inventory_validates_parameterized_keys(temp_collection) -> No
 
 def test_visible_text_scan_finds_text_and_attributes() -> None:
     source = """
+        {% macro action() %}window.alert('not visible'){% endmacro %}
+        {% macro caption() %}Macro label{% endmacro %}
+        <button data-on:click="{{ action() }}" data-value="{{ caption() }}"
+                aria-label="{{ caption() }}"></button>
         <p>Hardcoded {{ s('app_add_hint') }}!</p>
         <input placeholder="Type here" aria-label="{{ s('app_add_hint') }}">
         <img alt="Card image" title="Open {{ s('app_add_hint') }}">
@@ -287,9 +332,9 @@ def test_visible_text_scan_finds_text_and_attributes() -> None:
         <span>{{ s('app_add_hint') }}</span><span>123 → ✨</span>
     """
     errors = _hardcoded_text(APP_TEMPLATES / "example.html.jinja", source)
-    for text in ("Hardcoded", "Type here", "Card image", "Open", "Save"):
+    for text in ("Hardcoded", "Type here", "Card image", "Open", "Save", "Macro label"):
         assert any(text in error for error in errors)
-    assert len(errors) == 5
+    assert len(errors) == 6
 
 
 def test_visible_text_scan_has_narrow_legacy_exception() -> None:

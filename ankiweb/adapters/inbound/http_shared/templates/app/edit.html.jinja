@@ -8,7 +8,6 @@
             <button type="button"
                     class="add-step{% if projection.step|int == loop.index %} add-step-active{% elif projection.step|int > loop.index %} add-step-done{% endif %}"
                     {% if projection.step|int == loop.index %}aria-current="step"{% endif %}
-                    data-attr:disabled="$_busy"
                     data-on:click="{{ request_step(loop.index, 'chip') }}"><span class="add-step-num" aria-hidden="true">{{ loop.index }}</span><span>{{ label }}</span></button>
         {% endfor %}
     </div>
@@ -38,7 +37,6 @@
         {% if projection.draft.example %}<div class="add-preview-section"><span class="add-preview-tag">{{ s("app_add_example") }}</span><p class="av-example">{{ projection.example_html|safe }}</p></div>{% endif %}
         <button type="button"
                 class="add-preview-edit"
-                data-attr:disabled="$_busy"
                 data-on:click="{{ request_step(1, 'chip') }}">{{ s("app_edit_preview_edit") if projection.draft.nid else s('app_add_edit_preview') }}</button>
     </div>
 {% endmacro %}
@@ -49,7 +47,6 @@
                 <button type="button"
                         class="btn btn-square neo-press h-16 min-h-0 w-14.5 shrink-0 rounded-2xl border-3 border-neo-edge bg-base-200 p-0 shadow-neo active:shadow-none"
                         aria-label="{{ s('app_add_previous_step') }}"
-                        data-attr:disabled="$_busy"
                         data-on:click="{{ request_step(projection.step|int - 1, 'next') }}">
                     <svg aria-hidden="true"
                          viewBox="0 0 24 24"
@@ -66,7 +63,6 @@
         {% if projection.step|int < 3 %}<button id="btn-next"
                                                 type="button"
                                                 class="btn btn-accent neo-press h-16 min-h-0 min-w-0 flex-1 whitespace-nowrap rounded-2xl border-3 border-neo-edge px-2 text-[clamp(1rem,calc(6vw_-_2px),1.35rem)] leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none"
-                                                data-attr:disabled="$_busy"
                                                 data-on:click="{{ request_step(projection.step|int + 1, 'next') }}">{{ s("app_add_next_back") if projection.step|int == 1 else s('app_add_next_preview') }}</button>
     {% else %}<button id="btn-add"
                       type="button"
@@ -74,8 +70,8 @@
                       data-save-failed="{{ s('app_add_save_failed') }}"
                       data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? window.avEditError(el.dataset.saveFailed) : null"
                       data-on:click="$_busy ? null : @post(window.avAction('/commit'), {contentType:'form', selector:'#edit-form'})"
-                      data-indicator:_busy
-                      data-attr:disabled="$_busy">{{ s("app_edit_save") if projection.draft.nid else tr.actions_add()|tr_clean }}</button>{% endif %}
+                      data-indicator:_committing
+                      data-attr:disabled="$_committing">{{ s("app_edit_save") if projection.draft.nid else tr.actions_add()|tr_clean }}</button>{% endif %}
 </div>
 </footer>
 {% endmacro %}
@@ -97,7 +93,7 @@
          data-attr:inert="$_busy">
         <span id="edit-step-request"
               hidden
-              data-indicator:_busy
+              data-indicator:_step-busy
               data-on:datastar-fetch="el === evt.detail.el &amp;&amp; (evt.detail.type === 'error' || evt.detail.type === 'retries-failed') ? window.avStepRejected() : null"
               data-on:av-step="@post(window.avAction('/step/' + evt.detail.to + '/' + evt.detail.via), {contentType:'form', selector:'#edit-form', requestCancellation:window.avStepRequest()})"></span>
         {{ error() }}
@@ -157,6 +153,7 @@
                                   class="add-input"
                                   rows="4"
                                   data-attr:readonly="$_busy"{% if languages %} lang="{{ languages.dst }}"{% endif %}
+                                  autocomplete="off"
                                   aria-describedby="input-front-help{% if projection.draft.nid and projection.draft.learned %} edit-warning{% endif %}"
                                   placeholder="{{ s('app_add_front_placeholder_languages') if languages else s('app_add_front_placeholder') }}"
                                   required>{{ projection.draft.front }}</textarea>
@@ -170,18 +167,21 @@
                                   class="add-input"
                                   rows="4"
                                   data-attr:readonly="$_busy"{% if languages %} lang="{{ languages.src }}"{% endif %}
+                                  autocomplete="off"
                                   aria-describedby="input-back-help"
                                   placeholder="{{ s('app_add_back_placeholder_languages') if languages else s('app_add_back_placeholder') }}"
                                   required>{{ projection.draft.back }}</textarea>
                         <p class="add-counter"><span data-counter-for="back">{{ projection.counts.back }}</span> {{ s("app_add_characters") }}</p>
                         <details class="collapse collapse-arrow add-optional"{% if projection.draft.hint %} open{% endif %}><summary class="collapse-title font-extrabold">{{ s("app_add_hint") }} · {{ s("app_add_optional") }}</summary><div class="collapse-content">{{ field_label('input-hint', s('app_add_hint'), '') }}<textarea id="input-hint"
                                                                                                                                                                                                                                                                                                                                         name="hint"
+                                                                                                                                                                                                                                                                                                                                        autocomplete="off"
                                                                                                                                                                                                                                                                                                                                         class="add-input add-input-sm"
                                                                                                                                                                                                                                                                                                                                         rows="2"
                                                                                                                                                                                                                                                                                                                                         data-attr:readonly="$_busy"
                                                                                                                                                                                                                                                                                                                                         placeholder="{{ s('app_add_hint_placeholder') }}">{{ projection.draft.hint }}</textarea><p class="add-counter"><span data-counter-for="hint">{{ projection.counts.hint }}</span> {{ s("app_add_characters") }}</p><div class="add-chips">{{ chip(s('app_add_chip_noun'), 'input-hint', true) }}{{ chip(s('app_add_chip_verb'), 'input-hint', true) }}{{ chip(s('app_add_chip_adjective'), 'input-hint', true) }}{{ chip(s('app_add_chip_plural'), 'input-hint', true) }}</div></div></details>
                         <details class="collapse collapse-arrow add-optional"{% if projection.draft.example %} open{% endif %}><summary class="collapse-title font-extrabold">{{ s("app_add_example") }} · {{ s("app_add_optional") }}</summary><div class="collapse-content">{{ field_label('input-example', s('app_add_example'), s('app_add_example_help')) }}<textarea id="input-example"
                                                                                                                                                                                                                                                                                                                                                                            name="example"
+                                                                                                                                                                                                                                                                                                                                                                           autocomplete="off"
                                                                                                                                                                                                                                                                                                                                                                            class="add-input add-input-sm"
                                                                                                                                                                                                                                                                                                                                                                            rows="2"
                                                                                                                                                                                                                                                                                                                                                                            data-attr:readonly="$_busy"
@@ -212,11 +212,12 @@
           data-initial-view="{{ initial_view }}"
           data-initial-card="{{ projection.draft.nid }}"
           data-initial-step="{{ projection.step.path }}"
-          data-signals="{_busy: false}"
+          data-signals="{_stepBusy: false, _committing: false, _requestBusy: false}"
+          data-computed:_busy="$_stepBusy || $_committing || $_requestBusy"
           data-discard="{{ s('app_edit_discard') }}"
           data-load-failed="{{ s('app_add_edit_unavailable') }}"
           data-browse-phase="{{ 'open' if initial_view == 'cards' else 'closed' }}"
-          data-indicator:_busy
+          data-indicator:_request-busy
           data-attr:aria-busy="$_busy ? 'true' : 'false'"
           data-on:av-history="window.avPrepareHistory(evt); evt.detail.path ? @post(window.avAction(evt.detail.path), {contentType:'form', selector:'#edit-form'}) : null"
           data-on:av-history-failed="window.avEditError(el.dataset.loadFailed)"

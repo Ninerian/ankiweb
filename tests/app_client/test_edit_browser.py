@@ -3,7 +3,7 @@ import re
 import socket
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from concurrent.futures import Future
 from itertools import pairwise
 from pathlib import Path
@@ -20,6 +20,7 @@ from anki.notes import NoteId
 from anki.scheduler.v3 import Scheduler
 from fastapi import FastAPI
 
+from ankiweb.adapters.inbound.http_app import edit as edit_routes
 from ankiweb.app import create_app
 from ankiweb.core.app_client.deck_languages import LanguagePair, apply_marker
 from ankiweb.core.app_client.vocab import add_vocab_note
@@ -4226,7 +4227,9 @@ def test_language_chips_edit_selection_and_save(page: Page, live_app: LiveApp) -
     assert front.evaluate("el => [el.selectionStart, el.selectionEnd]") == [2, 2]
     expect(counter).to_have_text("4")
 
-    front.press("Home")
+    # Home is not a caret-to-start shortcut on every platform.
+    front.evaluate("el => el.setSelectionRange(0, 0)")
+    assert front.evaluate("el => [el.selectionStart, el.selectionEnd]") == [0, 0]
     chips.get_by_role("button", name="der", exact=True).click()
     expect(front).to_have_value("der Sära")
     expect(front).to_be_focused()
@@ -4293,7 +4296,9 @@ def test_arabic_attached_chip_and_french_mobile_layout(
     chips = page.locator("#add-chips-front")
     expect(chips).to_have_attribute("lang", "ar")
     front.fill("كتاب")
-    front.press("Home")
+    # Use the logical string start independently of bidi keyboard behavior.
+    front.evaluate("el => el.setSelectionRange(0, 0)")
+    assert front.evaluate("el => [el.selectionStart, el.selectionEnd]") == [0, 0]
     chips.get_by_role("button", name="ال", exact=True).click()
     expect(front).to_have_value("الكتاب")
     expect(front).to_be_focused()
@@ -4508,6 +4513,111 @@ def test_typing_during_pending_step_does_not_corrupt_fields(
     assert errors == []
 
 
+def test_step_buttons_remain_visually_stable_while_preview_request_is_open(
+    page: Page, live_app: LiveApp, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit/1/front")
+    _front(page).fill("Question")
+    _front(page).press("Enter")
+    _wait_for_back(page)
+    _back(page).fill("Answer")
+    wizard = page.locator("#add-wizard")
+    session = page.locator("#edit-session")
+    expect(wizard).to_have_attribute("aria-busy", "false")
+
+    before_patch = threading.Event()
+    finish_response = threading.Event()
+    response_factory = edit_routes.DatastarResponse
+
+    def hold_response(*args: Any, **kwargs: Any) -> Any:
+        response = response_factory(*args, **kwargs)
+        body = response.body_iterator
+
+        async def stream() -> AsyncIterator[Any]:
+            await asyncio.to_thread(before_patch.wait)
+            async for chunk in body:
+                yield chunk
+            await asyncio.to_thread(finish_response.wait)
+
+        response.body_iterator = stream()
+        return response
+
+    monkeypatch.setattr(edit_routes, "DatastarResponse", hold_response)
+    requests: list[str] = []
+    page.on(
+        "request",
+        lambda request: (
+            requests.append(request.url)
+            if "/step/" in request.url or request.url.endswith("/commit")
+            else None
+        ),
+    )
+
+    def button_styles() -> list[dict[str, str]]:
+        return page.locator("#edit-steps button, #edit-actions button").evaluate_all(
+            """buttons => buttons.map(button => {
+              const style = getComputedStyle(button);
+              return {
+                color: style.color, background: style.backgroundColor,
+                border: style.borderColor, opacity: style.opacity,
+                filter: style.filter, shadow: style.boxShadow
+              };
+            })"""
+        )
+
+    def paint() -> None:
+        page.evaluate(
+            "() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
+        )
+
+    try:
+        idle_back_styles = button_styles()
+        with page.expect_request("**/app/edit/1/*/*/step/preview/*"):
+            _back(page).press("Enter")
+        expect(wizard).to_have_attribute("aria-busy", "true")
+        expect(session).to_have_attribute("inert", "")
+        paint()
+        assert button_styles() == idle_back_styles
+
+        # Deliver the real patches, but keep the step request open after the
+        # preview's save button has mounted.
+        before_patch.set()
+        save = page.locator("#btn-add")
+        expect(save).to_be_visible()
+        expect(page.locator("#preview")).to_contain_text("Answer")
+        expect(wizard).to_have_attribute("aria-busy", "true")
+        expect(session).to_have_attribute("inert", "")
+        assert not save.evaluate("button => button.disabled")
+        paint()
+        held_preview_styles = button_styles()
+
+        # Real pointer input must not launch another step or a save.
+        for button in (
+            page.locator("#edit-steps button").first,
+            page.locator("#edit-actions button").first,
+            save,
+        ):
+            button.scroll_into_view_if_needed()
+            box = button.bounding_box()
+            assert box is not None
+            page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        page.mouse.move(0, 0)
+        paint()
+        assert len(requests) == 1
+        assert live_app.notes() == []
+
+        finish_response.set()
+        expect(wizard).to_have_attribute("aria-busy", "false")
+        expect(session).not_to_have_attribute("inert", "")
+        paint()
+        assert button_styles() == held_preview_styles
+        expect(save).to_be_enabled()
+    finally:
+        before_patch.set()
+        finish_response.set()
+
+
 def test_saving_makes_form_inert_and_prevents_duplicate_save(
     page: Page, live_app: LiveApp
 ) -> None:
@@ -4525,6 +4635,7 @@ def test_saving_makes_form_inert_and_prevents_duplicate_save(
     session = page.locator("#edit-session")
     expect(session).to_have_attribute("inert", "")
     expect(page.locator("#btn-add")).to_be_disabled()
+    page.locator("#btn-add").evaluate("button => button.click()")
     page.keyboard.press("Tab")
     assert not session.evaluate("el => el.contains(document.activeElement)")
     page.keyboard.type("unexpected")

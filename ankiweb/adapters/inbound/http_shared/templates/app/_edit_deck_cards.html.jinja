@@ -21,7 +21,7 @@
                         data-load-failed="{{ s('app_add_edit_unavailable') }}"
                         data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? window.avEditError(el.dataset.loadFailed) : null"
                         data-on:click="$_busy ? null : (window.avBumpRev(), @post(window.avAction('/card/{{ card.nid }}'), {contentType:'form', selector:'#edit-form'}))"
-                        data-indicator:_busy
+                        data-indicator:_request-busy
                         data-attr:disabled="$_busy">
                     <span class="browse-num" aria-hidden="true">{{ loop.index }}</span>
                     <span class="browse-body">
