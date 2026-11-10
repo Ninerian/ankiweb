@@ -4,10 +4,10 @@
      aria-modal="true"
      aria-labelledby="add-summary-title"
      tabindex="-1"
-     data-show="$summaryOpen"
-     data-class:modal-open="$summaryOpen"
+     data-show="$_summaryOpen"
+     data-class:modal-open="$_summaryOpen"
      style="display:none"
-     data-on:keydown="evt.key === 'Escape' ? (evt.stopPropagation(), $summaryOpen = false, window.avCloseSummary()) : window.avModalKey(evt)">
+     data-on:keydown="evt.key === 'Escape' ? (evt.stopPropagation(), $_summaryOpen = false, window.avCloseSummary()) : window.avModalKey(evt)">
     <div class="modal-box rounded-box border-3 border-neo-edge bg-base-200 p-6 text-center shadow-neo">
         <div class="review-celebration" aria-hidden="true">
             <div class="review-confetti">
@@ -16,8 +16,7 @@
             <div class="review-sticker">🎉</div>
         </div>
         <h2 id="add-summary-title" class="text-3xl font-black tracking-tight">{{ s("app_add_cards_ready") }}</h2>
-        <p class="mt-2 text-sm font-bold text-muted-fg"><span class="text-2xl font-black text-review-streak-foreground"
-                                                              data-text="$count">{{ count }}</span> {{ s("app_add_cards_added") }}</p>
+        <p class="mt-2 text-sm font-bold text-muted-fg">{% include "app/_edit_summary_count.html.jinja" %} {{ s("app_add_cards_added") }}</p>
         <div class="modal-action flex-wrap justify-center">
             <a id="summary-keep-adding"
                class="btn neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 font-black shadow-neo active:shadow-none"
@@ -27,5 +26,5 @@
         </div>
     </div>
     <div class="modal-backdrop"
-         data-on:click="$summaryOpen = false; window.avCloseSummary()"></div>
+         data-on:click="$_summaryOpen = false; window.avCloseSummary()"></div>
 </div>

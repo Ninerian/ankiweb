@@ -642,6 +642,12 @@
 
 
 @layer components {
+  #edit-session, #edit-form { display: contents; }
+  #edit-step ~ [data-step-section] { display: none; }
+  #edit-step[data-step="1"] ~ [data-step-section="1"],
+  #edit-step[data-step="2"] ~ [data-step-section="2"],
+  #edit-step[data-step="3"] ~ [data-step-section="3"] { display: block; }
+
   .add-card {
     @apply flex flex-col rounded-box border-3 border-solid border-neo-edge bg-base-200 p-4.5 shadow-neo;
   }
@@ -979,13 +985,13 @@
   }
 
   /* Lift the validation toast above the action bar, including its safe area. */
-  body:has(#add-wizard) #app-error {
+  #add-wizard #edit-error {
     @apply pointer-events-none z-50 p-0;
     --toast-y: calc(-1 * (var(--spacing-review-bar-safe-bottom) + 4.25rem));
   }
 
-  body:has(#add-wizard) #app-error .alert {
-    @apply pointer-events-auto w-[calc(100vw-2rem)] max-w-full justify-center rounded-2xl border-3
+  #add-wizard #edit-error .alert {
+    @apply pointer-events-none w-[calc(100vw-2rem)] max-w-full justify-center rounded-2xl border-3
       border-solid border-error px-4 py-3 text-center text-sm font-black shadow-neo;
     animation: add-toast-in 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
   }
@@ -997,7 +1003,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     #add-wizard .browse-fade { transition: none; }
-    body:has(#add-wizard) #app-error .alert { animation: none; }
+    #add-wizard #edit-error .alert { animation: none; }
   }
 }
 /* end plan 4 */
