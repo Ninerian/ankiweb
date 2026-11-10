@@ -1,5 +1,5 @@
-import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from html.parser import HTMLParser
 from typing import cast
 
 import pytest
@@ -40,18 +40,103 @@ def _run[T](client: TestClient, fn: Callable[[Collection], T]) -> T:
     return client.portal.call(service.run, fn)
 
 
-def _signals(response: Response) -> dict[str, object]:
+class _Element(HTMLParser):
+    def __init__(self, html: str, element_id: str) -> None:
+        super().__init__(convert_charrefs=True)
+        self.element_id = element_id
+        self.found = False
+        self.depth = 0
+        self.text: list[str] = []
+        self.attrs: dict[str, str | None] = {}
+        self.feed(html)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if (
+            not self.depth
+            and not self.found
+            and attributes.get("id") == self.element_id
+        ):
+            self.found = True
+            self.depth = 1
+            self.attrs = attributes
+        elif self.depth and tag not in {
+            "input",
+            "br",
+            "hr",
+            "img",
+            "meta",
+            "link",
+            "path",
+        }:
+            self.depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if self.depth and tag not in {
+            "input",
+            "br",
+            "hr",
+            "img",
+            "meta",
+            "link",
+            "path",
+        }:
+            self.depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self.depth:
+            self.text.append(data)
+
+
+def _element(response: Response, element_id: str) -> _Element:
+    html = (
+        "\n".join(
+            line.removeprefix("data: elements ")
+            for line in response.text.splitlines()
+            if line.startswith("data: elements ")
+        )
+        if response.headers["content-type"].startswith("text/event-stream")
+        else response.text
+    )
+    return _Element(html, element_id)
+
+
+def _commit(client: TestClient, values: Mapping[str, object]) -> Response:
+    page = client.get("/app/edit/1/front")
+    form = _element(page, "edit-session")
+    assert form.found
+    return client.post(
+        f"/app/edit/1/{form.attrs['data-instance']}/{form.attrs['data-rev']}/commit",
+        data={"nid": "0", "front": "", "back": "", "hint": "", "example": "", **values},
+    )
+
+
+def _assert_success(response: Response, *, count: int, reset: bool) -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
-    for line in response.text.splitlines():
-        if line.startswith("data: signals "):
-            return json.loads(line.removeprefix("data: signals "))
-    raise AssertionError("No Datastar signal patch")
+    summary = _element(response, "summary-count")
+    assert summary.found and "".join(summary.text).strip() == str(count)
+    form = _element(response, "edit-session")
+    assert form.found and form.attrs["data-nid"] == "0"
+    assert _element(response, "progress-reset-notice").found is reset
+    error = _element(response, "edit-error")
+    assert error.found and "".join(error.text).strip() == ""
+    assert "hidden" in error.attrs and error.attrs["role"] == "alert"
+
+
+def _assert_error(response: Response, message: str) -> None:
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert "data: selector #edit-session[data-instance=" in response.text
+    assert "] #edit-error" in response.text
+    error = _element(response, "edit-error")
+    assert error.found and "".join(error.text).strip() == message
+    assert not _element(response, "edit-form").found
 
 
 def _seed_learned(client: TestClient) -> tuple[NoteId, CardId]:
-    created = client.post("/app/edit/commit?deck=1", json=_ORIGINAL)
-    assert _signals(created)["count"] == 1
+    created = _commit(client, _ORIGINAL)
+    _assert_success(created, count=1, reset=False)
 
     def learn(col: Collection) -> tuple[NoteId, CardId]:
         notes = col.find_notes("")
@@ -100,12 +185,10 @@ def test_changed_learned_note_broadcasts_note_and_card_changes(
         lambda flags, initiator: events.append((flags, initiator))
     )
 
-    response = client.post("/app/edit/commit?deck=1", json={**_UPDATED, "nid": nid})
+    response = _commit(client, {**_UPDATED, "nid": nid})
 
-    signals = _signals(response)
-    assert signals["_editSaved"] is True
-    assert signals["progressReset"] is True
-    assert signals["error"] == ""
+    _assert_success(response, count=1, reset=True)
+    assert "window.avAfterCommit()" in response.text
     assert len(events) == 1
     flags, initiator = events[0]
     assert initiator == "app"
@@ -126,29 +209,25 @@ def test_unchanged_learned_note_emits_no_event(client: TestClient) -> None:
         lambda flags, initiator: events.append((flags, initiator))
     )
 
-    response = client.post("/app/edit/commit?deck=1", json={**_ORIGINAL, "nid": nid})
+    response = _commit(client, {**_ORIGINAL, "nid": nid})
 
-    signals = _signals(response)
-    assert signals["_editSaved"] is True
-    assert signals["progressReset"] is False
-    assert signals["error"] == ""
+    _assert_success(response, count=1, reset=False)
+    assert "window.avAfterCommit()" in response.text
     assert events == []
     assert _snapshot(client, nid, cid) == before
     assert _run(client, lambda col: col.find_notes("")) == [nid]
 
 
 def test_adding_note_broadcasts_note_changes(client: TestClient) -> None:
-    assert client.get("/app/edit?deck=1").status_code == 200
+    assert client.get("/app/edit/1/front").status_code == 200
     events: list[tuple[dict[str, bool], str | None]] = []
     cast(FastAPI, client.app).state.service.subscribe(
         lambda flags, initiator: events.append((flags, initiator))
     )
 
-    response = client.post("/app/edit/commit?deck=1", json=_ORIGINAL)
+    response = _commit(client, _ORIGINAL)
 
-    signals = _signals(response)
-    assert signals["count"] == 1
-    assert signals["error"] == ""
+    _assert_success(response, count=1, reset=False)
     assert len(events) == 1
     flags, initiator = events[0]
     assert initiator == "app"
@@ -186,18 +265,16 @@ def test_disconnected_socket_does_not_interrupt_editor_broadcast(
         async def send_json(self, message: dict[str, object]) -> None:
             self.messages.append(message)
 
-    assert client.get("/app/edit?deck=1").status_code == 200
+    assert client.get("/app/edit/1/front").status_code == 200
     broken = DisconnectedSocket()
     healthy = HealthySocket()
     hub = cast(FastAPI, client.app).state.hub
     hub.register("reviewer", broken)
     hub.register("reviewer", healthy)
 
-    response = client.post("/app/edit/commit?deck=1", json=_ORIGINAL)
+    response = _commit(client, _ORIGINAL)
 
-    signals = _signals(response)
-    assert signals["count"] == 1
-    assert signals["error"] == ""
+    _assert_success(response, count=1, reset=False)
     assert broken.sends == 1
     assert len(healthy.messages) == 1
     message = healthy.messages[0]
@@ -265,15 +342,13 @@ def test_scheduler_failure_broadcasts_persisted_changes(
         lambda flags, initiator: events.append((flags, initiator))
     )
 
-    response = client.post("/app/edit/commit?deck=1", json={**_UPDATED, "nid": nid})
+    response = _commit(client, {**_UPDATED, "nid": nid})
 
-    assert _signals(response) == {
-        "error": (
-            "The note text was saved, but learning progress was not reset. "
-            "Please try saving again."
-        )
-    }
-    assert "datastar-patch-elements" not in response.text
+    _assert_error(
+        response,
+        "The note text was saved, but learning progress was not reset. "
+        "Please try saving again.",
+    )
     assert calls == [([cid], True)]
     assert len(note_changes) == 1
     assert len(events) == 1
@@ -294,6 +369,15 @@ def test_scheduler_failure_broadcasts_persisted_changes(
     else:
         assert schedule == before[1]
     _assert_pending_marker(client, nid)
+
+    monkeypatch.setattr(scheduler_class, "schedule_cards_as_new", original_reset)
+    retry = _commit(client, {**_UPDATED, "nid": nid})
+    _assert_success(retry, count=1, reset=True)
+    assert _run(client, lambda col: col.get_config(_JOURNAL)) == []
+    fields, schedule = _snapshot(client, nid, cid)
+    assert fields == [escape_field(_UPDATED[key]) for key in _FIELDS]
+    assert schedule[:2] == (0, 0) and schedule[-2:] == (0, 0)
+    assert len(events) == 2 and events[1][0]["card"] is True
 
 
 def test_journal_clear_failure_broadcasts_note_and_reset_changes(
@@ -330,15 +414,13 @@ def test_journal_clear_failure_broadcasts_note_and_reset_changes(
         lambda flags, initiator: events.append((flags, initiator))
     )
 
-    response = client.post("/app/edit/commit?deck=1", json={**_UPDATED, "nid": nid})
+    response = _commit(client, {**_UPDATED, "nid": nid})
 
-    assert _signals(response) == {
-        "error": (
-            "The note text was saved and learning progress was reset, but the "
-            "pending reset could not be cleared. Please contact support."
-        )
-    }
-    assert "datastar-patch-elements" not in response.text
+    _assert_error(
+        response,
+        "The note text was saved and learning progress was reset, but the "
+        "pending reset could not be cleared. Please contact support.",
+    )
     assert calls == [([cid], True)]
     assert len(note_changes) == len(reset_changes) == len(events) == 1
     expected = OpChanges()

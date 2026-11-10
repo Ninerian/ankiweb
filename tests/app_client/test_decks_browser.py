@@ -174,7 +174,7 @@ def test_deck_list_search_and_links(
         edit = page.locator(f"#deck-{deck_id}").get_by_role(
             "link", name="Edit", exact=True
         )
-        assert edit.get_attribute("href") == f"/app/edit?deck={deck_id}"
+        assert edit.get_attribute("href") == f"/app/edit/{deck_id}/front"
         assert page.evaluate("document.documentElement.scrollWidth") == 375
         browser.close()
     assert problems == []
@@ -214,7 +214,7 @@ def test_deck_overview_initializes_before_and_after_editor_navigation(
         page.locator(f"#deck-{deck_id}").get_by_role(
             "link", name="Edit", exact=True
         ).click()
-        expect(page).to_have_url(f"{base}/app/edit?deck={deck_id}")
+        expect(page).to_have_url(f"{base}/app/edit/{deck_id}/front")
         expect(page.locator("#input-front")).to_be_visible()
         page.wait_for_load_state("networkidle")
         assert problems == []
@@ -224,7 +224,7 @@ def test_deck_overview_initializes_before_and_after_editor_navigation(
         check_deck_sheet()
         assert problems == []
 
-        page.goto(f"{base}/app/edit?deck={deck_id}&view=cards")
+        page.goto(f"{base}/app/edit/{deck_id}/cards")
         cards = page.locator("#deck-cards")
         expect(cards).to_be_visible()
         expect(cards).to_be_focused()

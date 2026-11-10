@@ -73,6 +73,12 @@ template within the note type. Cloze entries include all cloze cards for that no
 
 ![Browser](docs/images/browser.png)
 
+**App card editor** — `/app/edit/<deck>/front` supports adding and editing deck cards.
+Done discards a confirmed draft and opens a server-rendered summary dialog with the
+current session's added-card count; Escape closes it and returns focus to Done.
+The editor uses one request-busy signal; browse animation phase lives on the wizard's
+`data-browse-phase` attribute and the server supplies form and card-list updates.
+
 **Reused, not rewritten** — where Anki ships a compiled SvelteKit page, ankiweb serves the
 vendored build and wires it to the backend. Here's the full Deck Options screen, unchanged:
 

@@ -2,20 +2,14 @@
          class="deck-browse"
          aria-labelledby="deck-cards-title"
          tabindex="-1"
-         data-attr:aria-describedby="$progressReset ? 'deck-progress-reset-notice' : null"
-         data-show="$_browsePhase === 'open' || $_browsePhase === 'closing'"
-         data-class:is-folding="$_browsePhase === 'closing'"
-         data-attr:inert="$_browsePhase !== 'open'"
-         data-attr:aria-hidden="$_browsePhase === 'open' ? null : 'true'"
-         inert
-         aria-hidden="true"
-         style="display:none">
+         {% if progress_reset|default(false) %}aria-describedby="deck-progress-reset-notice"{% endif %}
+         {% if initial_view|default('') != 'cards' %}inert aria-hidden="true"{% endif %}>
     <h2 id="deck-cards-title" class="sr-only">{{ s("app_edit_browse_title") }}</h2>
-    <div id="deck-progress-reset-notice"
-         class="alert alert-success mb-3 text-sm font-bold"
-         role="status"
-         data-show="$progressReset"
-         style="display:none">{{ s("app_edit_progress_reset") }}</div>
+    {% if progress_reset|default(false) %}
+        <div id="deck-progress-reset-notice"
+             class="alert alert-success mb-3 text-sm font-bold"
+             role="status">{{ s("app_edit_progress_reset") }}</div>
+    {% endif %}
     <ul class="deck-browse-list">
         {% for card in deck_cards|reverse %}
             <li style="--fan-delay: {{ [loop.index0, 5]|min * 38 }}ms;
@@ -25,10 +19,10 @@
                         data-note-id="{{ card.nid }}"
                         aria-label="{{ s('app_edit_row_label', front=card.front) }}{% if card.learned %}, {{ s('app_edit_learned') }}{% endif %}"
                         data-load-failed="{{ s('app_add_edit_unavailable') }}"
-                        data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? ($error = el.dataset.loadFailed) : null"
-                        data-on:click="$saving ? null : ($error = '', @post('/app/edit/card/{{ card.nid }}?deck={{ deck_id }}'))"
-                        data-indicator:saving
-                        data-attr:disabled="$saving">
+                        data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? window.avEditError(el.dataset.loadFailed) : null"
+                        data-on:click="$_busy ? null : (window.avBumpRev(), @post(window.avAction('/card/{{ card.nid }}'), {contentType:'form', selector:'#edit-form'}))"
+                        data-indicator:_busy
+                        data-attr:disabled="$_busy">
                     <span class="browse-num" aria-hidden="true">{{ loop.index }}</span>
                     <span class="browse-body">
                         <span class="flex flex-wrap items-start justify-between gap-2">

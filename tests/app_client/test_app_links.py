@@ -1,6 +1,6 @@
 """Exercise the links rendered by the app's deck, review, add and offline pages."""
 
-import json
+import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from urllib.parse import urldefrag, urljoin, urlsplit
@@ -145,6 +145,28 @@ def _assert_target(
     assert str(response.url) == urljoin(str(client.base_url), target)
 
 
+def _summary_links(client: TestClient, deck_id: int, editor: Response) -> list[_Anchor]:
+    token = re.search(r'data-instance="([0-9a-f]{16})"', editor.text)
+    assert token is not None
+    done = client.post(
+        f"/app/edit/{deck_id}/{token.group(1)}/0/done",
+        data={"front": "", "back": "", "hint": "", "example": "", "nid": "0"},
+    )
+    assert done.status_code == 200
+    fragments = [
+        "\n".join(
+            line.removeprefix("elements ")
+            for line in data.splitlines()
+            if line.startswith("elements ")
+        )
+        for event_type, data in parse_datastar_events(done.text)
+        if event_type == "datastar-patch-elements"
+    ]
+    dialogs = [fragment for fragment in fragments if 'id="add-summary"' in fragment]
+    assert len(dialogs) == 1
+    return _anchors(dialogs[0])
+
+
 @pytest.fixture
 def link_decks(client: TestClient) -> list[tuple[int, int]]:
     def seed(col: Collection) -> list[tuple[int, int]]:
@@ -179,7 +201,7 @@ def test_rendered_app_link_matrix(
         learn = _link(decks_links, text="Learn", ancestor=row)
         add = _link(decks_links, text="Edit", ancestor=row)
         review_url = f"/app/review?deck={deck_id}"
-        add_url = f"/app/edit?deck={deck_id}"
+        add_url = f"/app/edit/{deck_id}/front"
         _assert_target(client, "/app/", learn, review_url)
         _assert_target(client, "/app/", add, add_url)
 
@@ -198,19 +220,21 @@ def test_rendered_app_link_matrix(
         _assert_target(
             client, add_url, _link(add_links, element_id="deck-chip"), "/app/"
         )
+        summary_links = _summary_links(client, deck_id, add_page)
         _assert_target(
             client,
             add_url,
-            _link(add_links, text="Back to decks", ancestor="add-summary"),
+            _link(summary_links, text="Back to decks", ancestor="add-summary"),
             "/app/",
         )
         _assert_target(
             client,
             add_url,
-            _link(add_links, text="Start studying", ancestor="add-summary"),
+            _link(summary_links, text="Start studying", ancestor="add-summary"),
             review_url,
         )
         _crawl(client, add_url, add_links)
+        _crawl(client, add_url, summary_links)
 
     offline = client.get("/app/offline")
     assert offline.status_code == 200
@@ -261,22 +285,26 @@ def test_add_summary_study_link_after_commit(
     client: TestClient, link_decks: list[tuple[int, int]]
 ) -> None:
     deck_id, _ = link_decks[0]
-    add_url = f"/app/edit?deck={deck_id}"
-    assert client.get(add_url).status_code == 200
+    add_url = f"/app/edit/{deck_id}/front"
+    editor = client.get(add_url)
+    assert editor.status_code == 200
+    token = re.search(r'data-instance="([0-9a-f]{16})"', editor.text)
+    assert token is not None
     added = client.post(
-        f"/app/edit/commit?deck={deck_id}",
-        json={"front": "A new word", "back": "A new meaning"},
+        f"/app/edit/{deck_id}/{token.group(1)}/0/commit",
+        data={
+            "front": "A new word",
+            "back": "A new meaning",
+            "hint": "",
+            "example": "",
+            "nid": "0",
+        },
     )
     assert added.status_code == 200
-    signals = [
-        json.loads(line.removeprefix("data: signals "))
-        for line in added.text.splitlines()
-        if line.startswith("data: signals ")
-    ]
-    assert any(patch.get("count") == 1 for patch in signals)
+    assert re.search(r'id="summary-count"[^>]*>1</span>', added.text)
     page = client.get(add_url)
     assert page.status_code == 200
-    links = _anchors(page.text)
+    links = _summary_links(client, deck_id, page)
     study = _link(links, text="Start studying", ancestor="add-summary")
     _assert_target(client, add_url, study, f"/app/review?deck={deck_id}")
     _crawl(client, add_url, links)

@@ -8,6 +8,7 @@ from concurrent.futures import Future
 from itertools import pairwise
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import uvicorn
@@ -142,10 +143,16 @@ def _back(page: Page) -> Locator:
     return page.get_by_label("Back (Answer / Meaning)", exact=True)
 
 
+def _wait_for_back(page: Page) -> None:
+    back = page.locator("#input-back")
+    expect(back).to_be_visible()
+    expect(back).to_be_editable()
+
+
 def _to_preview(page: Page, front: str, back: str) -> None:
     _front(page).fill(front)
     _front(page).press("Enter")
-    expect(_back(page)).to_be_visible()
+    _wait_for_back(page)
     _back(page).fill(back)
     _back(page).press("Enter")
     expect(page.get_by_role("button", name="Add", exact=True)).to_be_visible()
@@ -199,11 +206,11 @@ def _progress(live_app: LiveApp, nid: NoteId) -> tuple[int, ...]:
 
 
 def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) -> None:
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     front = "a < b & c"
     _front(page).fill(front)
     _front(page).press("Enter")
-    expect(_back(page)).to_be_visible()
+    _wait_for_back(page)
     _back(page).fill("Answer & meaning")
     page.get_by_text("Hint · Optional", exact=True).click()
     page.get_by_label("Hint", exact=True).fill("noun <feminine>")
@@ -249,14 +256,14 @@ def test_wizard_add_reload_and_session_isolation(page: Page, live_app: LiveApp) 
     isolated = browser.new_context()
     try:
         other = isolated.new_page()
-        other.goto(f"{live_app}/app/edit?deck=1")
+        other.goto(f"{live_app}/app/edit/1/front")
         expect(other.locator("#added-cards")).to_contain_text(front)
         expect(other.locator("#added-cards .add-stack-count")).to_have_text("1")
         other.get_by_role("button", name="Done", exact=True).click()
-        expect(other).to_have_url(f"{live_app}/app/edit?deck=1")
+        expect(other).to_have_url(f"{live_app}/app/edit/1/front")
         summary = other.get_by_role("dialog")
         expect(summary).to_be_visible()
-        expect(summary.locator("[data-text='$count']")).to_have_text("0")
+        expect(summary.locator("#summary-count")).to_have_text("0")
         assert live_app.notes() == saved
     finally:
         isolated.close()
@@ -267,7 +274,7 @@ def test_added_stack_opens_list_and_preserves_draft(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     _add(page, "a < b & c", "first answer")
     original = live_app.notes()
     nid = original[0][0]
@@ -317,11 +324,35 @@ def test_added_stack_opens_list_and_preserves_draft(
     assert live_app.persisted_notes() == original
 
 
+def test_browse_step_patch_keeps_editor_out_of_tab_order(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit/1/front")
+    _front(page).fill("Draft")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.locator("#pile").click()
+    assert len(accepted) == 1
+    wizard = page.locator("#add-wizard")
+    cards = page.locator("#deck-cards")
+    expect(wizard).to_have_attribute("data-browse-phase", "open")
+    page.evaluate("window.avRequestStep('back', 'chip')")
+    expect(page.locator("#edit-step")).to_have_attribute("data-step", "2")
+    expect(wizard).to_have_attribute("aria-busy", "false")
+    expect(page.locator("#edit-steps")).to_have_attribute("inert", "")
+    expect(page.locator("#edit-actions")).to_have_attribute("inert", "")
+    expect(page.locator("#pile")).to_have_attribute("aria-expanded", "true")
+    cards.focus()
+    page.keyboard.press("Tab")
+    expect(cards.locator("button[data-note-id]")).to_be_focused()
+
+
 def test_pile_keyboard_badge_and_back_restore_focus(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     expect(page.locator("#pile")).to_be_disabled()
     expect(page.locator("#added-cards .stacked-card")).to_have_count(0)
     expect(page.locator("#added-cards .add-stack-badge")).to_have_count(0)
@@ -341,7 +372,7 @@ def test_pile_keyboard_badge_and_back_restore_focus(
     expect(cards.get_by_role("button", name="Back to new card")).to_have_count(0)
     expect(cards.get_by_role("button")).to_have_count(1)
     expect(page.locator("#edit-back")).to_have_accessible_name("Back to card editor")
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards")
     expect(pile).to_have_attribute("aria-expanded", "true")
     page.keyboard.press("Escape")
     expect(cards).not_to_be_visible()
@@ -353,7 +384,7 @@ def test_pile_keyboard_badge_and_back_restore_focus(
     page.locator("#edit-back").click()
     expect(cards).not_to_be_visible()
     expect(pile).to_be_focused()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/front")
     expect(page.locator("#edit-back")).to_have_accessible_name("Exit Creator")
     expect(pile).to_have_attribute("aria-expanded", "false")
 
@@ -387,7 +418,7 @@ def test_pile_supports_touch_with_existing_and_new_cards(
     try:
         touch_page = context.new_page()
         touch_page.emulate_media(reduced_motion="reduce")
-        touch_page.goto(f"{live_app}/app/edit?deck=1")
+        touch_page.goto(f"{live_app}/app/edit/1/front")
         cards = touch_page.locator("#deck-cards")
         back = touch_page.locator("#edit-back")
         pile = touch_page.locator("#pile")
@@ -444,7 +475,7 @@ def test_pile_pointer_swipe_requires_upward_threshold(
 ) -> None:
     _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Swipe card", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     cards = page.locator("#deck-cards")
     pile = page.locator("#pile")
     cue = page.locator(".pile-cue").bounding_box()
@@ -484,7 +515,7 @@ def test_touch_swipe_scrubs_and_settles_without_extra_history(
     try:
         touch_page = context.new_page()
         touch_page.emulate_media(reduced_motion="no-preference")
-        editor_url = f"{live_app}/app/edit?deck=1"
+        editor_url = f"{live_app}/app/edit/1/front"
         touch_page.goto(f"{live_app}/app/")
         touch_page.goto(editor_url)
         wizard = touch_page.locator("#add-wizard")
@@ -638,7 +669,7 @@ def test_touch_swipe_scrubs_and_settles_without_extra_history(
             cards.get_by_role("button", name=re.compile("Drag card"))
         ).to_be_visible()
         expect(cards).to_be_focused()
-        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(touch_page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         touch_page.go_back()
         expect(touch_page).to_have_url(editor_url)
         expect(wizard).to_have_attribute("data-browse-phase", "closed")
@@ -807,7 +838,7 @@ def test_touch_swipe_previews_real_cards_and_unwinds_or_opens(
     try:
         touch_page = context.new_page()
         touch_page.emulate_media(reduced_motion="no-preference")
-        editor_url = f"{live_app}/app/edit?deck=1"
+        editor_url = f"{live_app}/app/edit/1/front"
         touch_page.goto(f"{live_app}/app/")
         touch_page.goto(editor_url)
         cards = touch_page.locator("#deck-cards")
@@ -975,7 +1006,7 @@ def test_touch_swipe_previews_real_cards_and_unwinds_or_opens(
         before = frame()
         touch_page.evaluate("window.recordSwipeRelease()")
         touch("touchEnd")
-        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(touch_page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         expect(cards).to_be_visible()
         expect(cards).to_be_focused()
         touch_page.wait_for_function(
@@ -999,7 +1030,7 @@ def test_touch_swipe_previews_real_cards_and_unwinds_or_opens(
         expect(_front(touch_page)).to_have_value("Unfold card 10")
         expect(_front(touch_page)).to_be_focused()
         touch_page.go_back()
-        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(touch_page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         expect(cards).to_be_focused()
         touch_page.go_back()
         expect(touch_page).to_have_url(editor_url)
@@ -1023,7 +1054,7 @@ def test_touch_regrab_of_returning_pile_opens_without_a_snap(
     try:
         touch_page = context.new_page()
         touch_page.emulate_media(reduced_motion="no-preference")
-        editor_url = f"{live_app}/app/edit?deck=1"
+        editor_url = f"{live_app}/app/edit/1/front"
         touch_page.goto(editor_url)
         cue = touch_page.locator(".pile-cue").bounding_box()
         assert cue is not None
@@ -1118,7 +1149,7 @@ def test_touch_regrab_of_returning_pile_opens_without_a_snap(
             boundary["before"]["editorOpacity"], abs=0.03
         )
         cards = touch_page.locator("#deck-cards")
-        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(touch_page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         expect(cards.get_by_role("button", name=re.compile("Regrab"))).to_be_visible()
         expect(cards).to_be_focused()
     finally:
@@ -1138,7 +1169,7 @@ def test_history_open_during_touch_drag_finishes_after_pointer_ends(
     try:
         touch_page = context.new_page()
         touch_page.emulate_media(reduced_motion="no-preference")
-        editor_url = f"{live_app}/app/edit?deck=1"
+        editor_url = f"{live_app}/app/edit/1/front"
         touch_page.goto(editor_url)
         pile = touch_page.locator("#pile")
         cards = touch_page.locator("#deck-cards")
@@ -1189,7 +1220,7 @@ def test_history_open_during_touch_drag_finishes_after_pointer_ends(
         assert touch_page.evaluate("window.opacityAtInterruption") > 0
         client.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
 
-        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(touch_page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         expect(
             cards.get_by_role("button", name=re.compile("History drag"))
         ).to_be_visible()
@@ -1214,7 +1245,7 @@ def test_reopening_while_swipe_return_is_in_progress_reverses(
     try:
         touch_page = context.new_page()
         touch_page.emulate_media(reduced_motion="no-preference")
-        editor_url = f"{live_app}/app/edit?deck=1"
+        editor_url = f"{live_app}/app/edit/1/front"
         touch_page.goto(editor_url)
         pile = touch_page.locator("#pile")
         cards = touch_page.locator("#deck-cards")
@@ -1319,7 +1350,7 @@ def test_reopening_while_swipe_return_is_in_progress_reverses(
         assert frames["late"]["pileY"] < frames["early"]["pileY"] - 2
         assert frames["late"]["editorOpacity"] < frames["early"]["editorOpacity"] - 0.05
         assert frames["late"]["rowOpacity"] > frames["early"]["rowOpacity"] + 0.05
-        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(touch_page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         expect(wizard).to_have_attribute("data-browse-phase", "open")
         expect(cards.get_by_role("button", name=re.compile("Return"))).to_be_visible()
         expect(cards).to_be_focused()
@@ -1339,7 +1370,7 @@ def test_reopening_during_swipe_return_animates_editor_out(
     try:
         touch_page = context.new_page()
         touch_page.emulate_media(reduced_motion="no-preference")
-        editor_url = f"{live_app}/app/edit?deck=1"
+        editor_url = f"{live_app}/app/edit/1/front"
         touch_page.goto(editor_url)
         cue = touch_page.locator(".pile-cue").bounding_box()
         assert cue is not None
@@ -1394,7 +1425,7 @@ def test_reopening_during_swipe_return_animates_editor_out(
         client.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
         touch_page.wait_for_function("() => window.firstReturnNavigated === true")
         cards = touch_page.locator("#deck-cards")
-        expect(touch_page).to_have_url(f"{editor_url}&view=cards")
+        expect(touch_page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         expect(cards.get_by_role("button", name=re.compile("Reopen"))).to_be_visible()
         expect(cards).to_be_focused()
         opacities = touch_page.evaluate("window.reopenFrames")
@@ -1423,7 +1454,7 @@ def test_long_card_list_does_not_overflow_page_during_touch_drag(
     try:
         touch_page = context.new_page()
         touch_page.emulate_media(reduced_motion="no-preference")
-        touch_page.goto(f"{live_app}/app/edit?deck=1")
+        touch_page.goto(f"{live_app}/app/edit/1/front")
         cue = touch_page.locator(".pile-cue").bounding_box()
         assert cue is not None
         x = cue["x"] + cue["width"] / 2
@@ -1479,7 +1510,7 @@ def test_browse_fans_and_folds_with_bounded_stagger(
         ],
     )
     page.emulate_media(reduced_motion="no-preference")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     wizard = page.locator("#add-wizard")
     pile = page.locator("#pile")
     cards = page.locator("#deck-cards")
@@ -1592,7 +1623,7 @@ def test_browse_visibly_lifts_stack_and_fades_chrome(
 ) -> None:
     _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Motion", "answer"))
     page.emulate_media(reduced_motion="no-preference")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     wizard = page.locator("#add-wizard")
     pile = page.locator("#pile")
     cards = page.locator("#deck-cards")
@@ -1676,7 +1707,7 @@ def test_add_animates_stack_but_edit_does_not_append_or_animate(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="no-preference")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     page.evaluate(
         """() => {
           window.stackAnimations = [];
@@ -1696,6 +1727,7 @@ def test_add_animates_stack_but_edit_does_not_append_or_animate(
     expect(_front(page)).to_have_value("Original card")
     _front(page).fill("Edited card")
     _front(page).press("Enter")
+    _wait_for_back(page)
     _back(page).press("Enter")
     page.locator("#btn-add").click()
     expect(page.locator("#deck-cards")).to_be_visible()
@@ -1720,7 +1752,7 @@ def test_back_interrupts_opening_and_is_blocked_while_closing(
 ) -> None:
     _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Interrupt", "answer"))
     page.emulate_media(reduced_motion="no-preference")
-    url = f"{live_app}/app/edit?deck=1"
+    url = f"{live_app}/app/edit/1/front"
     page.goto(url)
     wizard = page.locator("#add-wizard")
     pile = page.locator("#pile")
@@ -1730,7 +1762,7 @@ def test_back_interrupts_opening_and_is_blocked_while_closing(
     pile.click()
     expect(wizard).to_have_attribute("data-browse-phase", "opening")
     done.evaluate("el => el.click()")
-    expect(page).to_have_url(url + "&view=cards")
+    expect(page).to_have_url(url.removesuffix("/front") + "/cards")
     expect(page.locator("#add-summary")).not_to_be_visible()
     expect(back).to_have_role("button")
     expect(back).not_to_have_attribute("href", re.compile("."))
@@ -1775,7 +1807,7 @@ def test_reduced_motion_browse_pick_and_close_are_usable(
         live_app, lambda col: add_vocab_note(col, DeckId(1), "Still card", "answer")
     )
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     pile = page.locator("#pile")
     cards = page.locator("#deck-cards")
     page.evaluate(
@@ -1876,7 +1908,7 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     ids = _run(live_app, _seed_deck_list_notes)
     before_ids = _run(live_app, lambda col: sorted(col.find_notes("")))
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     pile = page.locator("#pile")
     badge = page.locator("#added-cards .add-stack-badge")
     stack = page.locator("#added-cards .stacked-card")
@@ -1936,6 +1968,7 @@ def test_deck_list_includes_previous_sessions_and_edits_in_place(
     expect(page.locator("#edit-warning")).not_to_be_visible()
     front.fill("Edited historical card")
     front.press("Enter")
+    _wait_for_back(page)
     expect(page.locator("#input-back")).to_have_value("Answer 2")
     expect(page.locator("#input-hint")).to_have_value("hint <one>")
     expect(page.locator("#input-example")).to_have_value("A *word*\nnext line")
@@ -1987,7 +2020,7 @@ def test_empty_session_list_reopens_after_edit_and_selects_another_card(
         ],
     )
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     opener = page.locator("#pile")
     cards = page.locator("#deck-cards")
     front = page.locator("#input-front")
@@ -1999,6 +2032,7 @@ def test_empty_session_list_reopens_after_edit_and_selects_another_card(
     expect(front).to_be_focused()
     front.fill("Edited existing")
     front.press("Enter")
+    _wait_for_back(page)
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
     expect(cards).to_be_visible()
@@ -2010,12 +2044,12 @@ def test_empty_session_list_reopens_after_edit_and_selects_another_card(
     expect(page.locator("#added-cards .add-stack-count")).to_have_text("2")
     page.locator("#edit-back").click()
     expect(cards).not_to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/front")
     expect(opener).to_be_focused()
     page.get_by_role("button", name="Done", exact=True).click()
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
-    expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    expect(summary.locator("#summary-count")).to_have_text("0")
     page.keyboard.press("Escape")
     expect(summary).not_to_be_visible()
     expect(page.get_by_role("button", name="Done", exact=True)).to_be_focused()
@@ -2050,18 +2084,18 @@ def test_failed_card_load_keeps_list_open_and_can_retry(
         live_app, lambda col: add_vocab_note(col, DeckId(1), "Retry card", "answer")
     )
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
     row = cards.locator(f"button[data-note-id='{nid}']")
-    url = f"{live_app}/app/edit/card/{nid}?deck=1"
+    url = f"{live_app}/app/edit/1/*/*/card/{nid}"
     page.route(url, lambda route: route.fulfill(status=404, body="Unavailable"))
     row.click()
-    alert = page.locator("#app-error")
+    alert = page.locator("#edit-error")
     expect(alert).to_be_visible()
     expect(alert).to_contain_text(error)
     expect(cards).to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards")
     expect(row).to_be_enabled()
     expect(page.locator("#input-front")).not_to_be_visible()
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Retry card"
@@ -2070,7 +2104,7 @@ def test_failed_card_load_keeps_list_open_and_can_retry(
     row.click()
     expect(cards).not_to_be_visible()
     expect(alert).not_to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&card={nid}")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards/{nid}/front")
     expect(page.locator("#input-front")).to_have_value("Retry card")
     expect(page.locator("#input-front")).to_be_focused()
 
@@ -2080,9 +2114,9 @@ def test_browser_back_traverses_card_list_editor_and_decks(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
-    card_url = f"{editor_url}&card={nid}"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
+    card_url = f"{editor_url.removesuffix('/front')}/cards/{nid}/front"
     page.goto(f"{live_app}/app/")
     page.goto(editor_url)
     cards = page.locator("#deck-cards")
@@ -2114,9 +2148,9 @@ def test_reload_dirty_card_rejected_back_preserves_history(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
-    card_url = f"{editor_url}&card={nid}"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
+    card_url = f"{editor_url.removesuffix('/front')}/cards/{nid}/front"
     page.goto(f"{live_app}/app/")
     page.goto(editor_url)
     page.locator("#pile").click()
@@ -2140,6 +2174,7 @@ def test_reload_dirty_card_rejected_back_preserves_history(
     page.go_back()
     expect(page).to_have_url(cards_url)
     expect(cards).to_be_visible()
+    expect(page.locator("#edit-session")).to_have_attribute("data-nid", "0")
     assert len(accepted) == 1
     page.go_back()
     expect(page).to_have_url(editor_url)
@@ -2150,8 +2185,11 @@ def test_reload_dirty_card_rejected_back_preserves_history(
     page.go_forward()
     expect(page).to_have_url(card_url)
     expect(_front(page)).to_have_value("Saved")
+    expect(cards).not_to_be_visible()
     page.go_back()
     expect(page).to_have_url(cards_url)
+    expect(cards).to_be_visible()
+    expect(page.locator("#edit-session")).to_have_attribute("data-nid", "0")
     page.go_back()
     expect(page).to_have_url(editor_url)
     page.go_back()
@@ -2163,8 +2201,8 @@ def test_reload_list_keeps_back_and_rejected_forward_usable(
 ) -> None:
     _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     page.goto(f"{live_app}/app/")
     page.goto(editor_url)
     page.locator("#pile").click()
@@ -2205,8 +2243,8 @@ def test_browser_forward_reloads_each_card_from_list(
         ],
     )
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     page.goto(editor_url)
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
@@ -2216,15 +2254,19 @@ def test_browser_forward_reloads_each_card_from_list(
         ids, ("First", "Second"), ("first answer", "second answer"), strict=True
     ):
         cards.locator(f"button[data-note-id='{nid}']").click()
-        expect(page).to_have_url(f"{editor_url}&card={nid}")
+        expect(page).to_have_url(
+            f"{editor_url.removesuffix('/front')}/cards/{nid}/front"
+        )
         expect(_front(page)).to_have_value(front)
         page.go_back()
         expect(page).to_have_url(cards_url)
         expect(cards).to_be_visible()
-        with page.expect_request(f"{live_app}/app/edit/card/{nid}?deck=1") as request:
+        with page.expect_request(f"{live_app}/app/edit/1/*/*/card/{nid}") as request:
             page.go_forward()
         assert request.value.method == "POST"
-        expect(page).to_have_url(f"{editor_url}&card={nid}")
+        expect(page).to_have_url(
+            f"{editor_url.removesuffix('/front')}/cards/{nid}/front"
+        )
         expect(cards).not_to_be_visible()
         expect(_front(page)).to_have_value(front)
         expect(_back(page)).to_have_value(back)
@@ -2238,9 +2280,9 @@ def test_history_card_load_blocks_reverse_navigation_until_complete(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
-    card_url = f"{editor_url}&card={nid}"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
+    card_url = f"{editor_url.removesuffix('/front')}/cards/{nid}/front"
     page.goto(editor_url)
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
@@ -2252,7 +2294,7 @@ def test_history_card_load_blocks_reverse_navigation_until_complete(
     expect(cards).to_be_visible()
 
     pending: list[Route] = []
-    load_url = f"{live_app}/app/edit/card/{nid}?deck=1"
+    load_url = f"{live_app}/app/edit/1/*/*/card/{nid}"
 
     def hold_load(route: Route) -> None:
         pending.append(route)
@@ -2289,7 +2331,7 @@ def test_failed_history_card_load_restores_usable_editor(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
+    editor_url = f"{live_app}/app/edit/1/front"
     page.goto(editor_url)
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
@@ -2298,10 +2340,10 @@ def test_failed_history_card_load_restores_usable_editor(
     expect(_front(page)).to_have_value("Saved")
     page.go_back()
     expect(cards).to_be_visible()
-    load_url = f"{live_app}/app/edit/card/{nid}?deck=1"
+    load_url = f"{live_app}/app/edit/1/*/*/card/{nid}"
     page.route(load_url, lambda route: route.fulfill(status=404, body="Unavailable"))
     page.go_forward()
-    expect(page.locator("#app-error")).to_be_visible()
+    expect(page.locator("#edit-error")).to_be_visible()
     expect(page).to_have_url(editor_url)
     expect(_front(page)).to_be_visible()
     expect(_front(page)).to_have_value("")
@@ -2310,10 +2352,10 @@ def test_failed_history_card_load_restores_usable_editor(
     expect(row).to_be_enabled()
     row.click()
     expect(_front(page)).to_have_value("Saved")
-    expect(page).to_have_url(f"{editor_url}&card={nid}")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards/{nid}/front")
 
 
-def test_history_card_error_signal_restores_editor_and_next_card_url(
+def test_history_card_error_patch_restores_editor_and_next_card_url(
     page: Page, live_app: LiveApp
 ) -> None:
     first, second = _run(
@@ -2324,38 +2366,42 @@ def test_history_card_error_signal_restores_editor_and_next_card_url(
         ],
     )
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     page.goto(editor_url)
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
     cards.locator(f"button[data-note-id='{first}']").click()
-    expect(page).to_have_url(f"{editor_url}&card={first}")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards/{first}/front")
     expect(_front(page)).to_have_value("First")
     page.go_back()
     expect(page).to_have_url(cards_url)
     expect(cards).to_be_visible()
 
-    load_url = f"{live_app}/app/edit/card/{first}?deck=1"
-    page.route(
-        load_url,
-        lambda route: route.fulfill(
+    load_url = f"{live_app}/app/edit/1/*/*/card/{first}"
+
+    def fail_load(route: Route) -> None:
+        parts = urlsplit(route.request.url).path.split("/")
+        instance, revision = parts[4:6]
+        selector = f'#edit-session[data-instance="{instance}"][data-rev="{revision}"] #edit-error'
+        route.fulfill(
             status=200,
             content_type="text/event-stream",
             body=(
-                "event: datastar-patch-signals\n"
-                'data: signals {"error":"Simulated AnkiException"}\n\n'
+                "event: datastar-patch-elements\n"
+                f"data: selector {selector}\n"
+                'data: elements <div id="edit-error" role="alert">'
+                "Could not add the card. Please try again.</div>\n\n"
             ),
-        ),
-    )
+        )
+
+    page.route(load_url, fail_load)
     with page.expect_request(load_url) as request:
         page.go_forward()
     assert request.value.method == "POST"
-    alert = page.locator("#app-error")
+    alert = page.locator("#edit-error")
     expect(alert).to_be_visible()
-    expect(alert).to_contain_text(
-        "This card is unavailable for editing. Please try again."
-    )
+    expect(alert).to_contain_text("Could not add the card. Please try again.")
     expect(page).to_have_url(editor_url)
     expect(cards).not_to_be_visible()
     expect(_front(page)).to_be_visible()
@@ -2372,7 +2418,9 @@ def test_history_card_error_signal_restores_editor_and_next_card_url(
     expect(_front(page)).to_have_value("Second")
     expect(_front(page)).to_be_focused()
     expect(_back(page)).to_have_value("second answer")
-    expect(page).to_have_url(f"{editor_url}&card={second}")
+    expect(page).to_have_url(
+        f"{editor_url.removesuffix('/front')}/cards/{second}/front"
+    )
 
 
 def test_forward_card_load_clears_previous_card_error(
@@ -2386,23 +2434,23 @@ def test_forward_card_load_clears_previous_card_error(
         ],
     )
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     page.goto(editor_url)
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
     cards.locator(f"button[data-note-id='{first}']").click()
-    expect(page).to_have_url(f"{editor_url}&card={first}")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards/{first}/front")
     expect(_front(page)).to_have_value("First")
     page.go_back()
     expect(page).to_have_url(cards_url)
     expect(cards).to_be_visible()
 
-    second_url = f"{live_app}/app/edit/card/{second}?deck=1"
+    second_url = f"{live_app}/app/edit/1/*/*/card/{second}"
     page.route(second_url, lambda route: route.fulfill(status=404, body="Unavailable"))
     second_row = cards.locator(f"button[data-note-id='{second}']")
     second_row.click()
-    alert = page.locator("#app-error")
+    alert = page.locator("#edit-error")
     expect(alert).to_be_visible()
     expect(alert).to_contain_text(
         "This card is unavailable for editing. Please try again."
@@ -2411,11 +2459,11 @@ def test_forward_card_load_clears_previous_card_error(
     expect(second_row).to_be_enabled()
     page.unroute(second_url)
 
-    with page.expect_request(f"{live_app}/app/edit/card/{first}?deck=1") as request:
+    with page.expect_request(f"{live_app}/app/edit/1/*/*/card/{first}") as request:
         page.go_forward()
     assert request.value.method == "POST"
     expect(alert).not_to_be_visible()
-    expect(page).to_have_url(f"{editor_url}&card={first}")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards/{first}/front")
     expect(cards).not_to_be_visible()
     expect(_front(page)).to_have_value("First")
     expect(_front(page)).to_be_focused()
@@ -2427,9 +2475,9 @@ def test_unrelated_failed_preview_does_not_cancel_history_card_load(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
-    card_url = f"{editor_url}&card={nid}"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
+    card_url = f"{editor_url.removesuffix('/front')}/cards/{nid}/front"
     page.goto(editor_url)
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
@@ -2438,31 +2486,44 @@ def test_unrelated_failed_preview_does_not_cancel_history_card_load(
     expect(_front(page)).to_have_value("Saved")
 
     previews: list[Route] = []
-    preview_url = f"{live_app}/app/edit/preview"
+    preview_url = f"{live_app}/app/edit/1/*/*/step/preview/*"
 
     def hold_preview(route: Route) -> None:
         previews.append(route)
 
     page.route(preview_url, hold_preview)
+    _front(page).press("Enter")
+    _wait_for_back(page)
+    expect(page.locator("#btn-next")).to_contain_text("Preview")
     page.evaluate(
         """() => {
           window.previewFinished = false;
           document.addEventListener('datastar-fetch', event => {
-            if (event.detail.el.id === 'btn-next' && event.detail.type === 'finished')
+            if (event.detail.el.id === 'edit-step-request' && event.detail.type === 'finished')
               window.previewFinished = true;
           });
         }"""
     )
-    _front(page).press("Enter")
     with page.expect_request(preview_url):
         _back(page).press("Enter")
     assert len(previews) == 1
-    page.go_back()
+    expect(page.locator("#add-wizard")).to_have_attribute("aria-busy", "true")
+    # Force an overlapping history request to retain the stale-failure regression.
+    page.evaluate(
+        """() => {
+          const pop = window.avEditPop;
+          window.avEditPop = (event, message) => {
+            document.querySelector('#add-wizard').setAttribute('aria-busy', 'false');
+            pop(event, message);
+          };
+        }"""
+    )
+    page.evaluate("history.go(-2)")
     expect(page).to_have_url(cards_url)
     expect(cards).to_be_visible()
 
     loads: list[Route] = []
-    load_url = f"{live_app}/app/edit/card/{nid}?deck=1"
+    load_url = f"{live_app}/app/edit/1/*/*/card/{nid}"
 
     def hold_load(route: Route) -> None:
         loads.append(route)
@@ -2477,7 +2538,7 @@ def test_unrelated_failed_preview_does_not_cancel_history_card_load(
     page.wait_for_function("() => window.previewFinished")
     expect(page).to_have_url(card_url)
     expect(cards).to_be_visible()
-    expect(page.locator("#app-error")).not_to_be_visible()
+    expect(page.locator("#edit-error")).not_to_be_visible()
 
     loads[0].continue_()
     expect(cards).not_to_be_visible()
@@ -2492,7 +2553,7 @@ def test_history_navigation_closes_summary_and_focuses_destination(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
+    editor_url = f"{live_app}/app/edit/1/front"
     page.goto(editor_url)
     _add(page, "Session addition", "answer")
     page.locator("#pile").click()
@@ -2503,8 +2564,9 @@ def test_history_navigation_closes_summary_and_focuses_destination(
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
     expect(summary.locator("#summary-keep-adding")).to_be_focused()
+    expect(page.locator("#edit-session")).to_have_attribute("data-nid", "0")
     page.go_back()
-    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
     expect(summary).not_to_be_visible()
     expect(cards).to_be_visible()
     expect(cards).to_be_focused()
@@ -2520,7 +2582,7 @@ def test_rejected_forward_preserves_previous_history_entry(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
+    editor_url = f"{live_app}/app/edit/1/front"
     page.goto(f"{live_app}/app/")
     page.goto(editor_url)
     page.locator("#pile").click()
@@ -2528,6 +2590,7 @@ def test_rejected_forward_preserves_previous_history_entry(
     expect(_front(page)).to_have_value("Saved")
     page.go_back()
     expect(page.locator("#deck-cards")).to_be_visible()
+    expect(page.locator("#edit-session")).to_have_attribute("data-nid", "0")
     page.go_back()
     expect(page).to_have_url(editor_url)
     expect(_front(page)).to_be_visible()
@@ -2550,7 +2613,7 @@ def test_browser_back_during_list_opening_finishes_at_editor(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="no-preference")
-    editor_url = f"{live_app}/app/edit?deck=1"
+    editor_url = f"{live_app}/app/edit/1/front"
     page.goto(editor_url)
     wizard = page.locator("#add-wizard")
     cards = page.locator("#deck-cards")
@@ -2561,7 +2624,7 @@ def test_browser_back_during_list_opening_finishes_at_editor(
     expect(wizard).to_have_attribute("data-browse-phase", "closed")
 
     page.go_back()
-    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
     expect(wizard).to_have_attribute("data-browse-phase", "opening")
     page.go_back()
     expect(page).to_have_url(editor_url)
@@ -2576,8 +2639,8 @@ def test_done_while_editing_keeps_url_and_editor_in_sync(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    card_url = f"{editor_url}&card={nid}"
+    editor_url = f"{live_app}/app/edit/1/front"
+    card_url = f"{editor_url.removesuffix('/front')}/cards/{nid}/front"
     page.goto(editor_url)
     _add(page, "Session addition", "answer")
     original = live_app.notes()
@@ -2614,8 +2677,8 @@ def test_done_while_editing_keeps_url_and_editor_in_sync(
 def test_direct_card_list_reload_and_ui_back(page: Page, live_app: LiveApp) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Listed", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     page.goto(cards_url)
     cards = page.locator("#deck-cards")
     expect(cards).to_be_visible()
@@ -2633,9 +2696,9 @@ def test_direct_card_list_reload_and_ui_back(page: Page, live_app: LiveApp) -> N
 def test_direct_card_reload_and_ui_back_to_list(page: Page, live_app: LiveApp) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Direct", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    page.goto(f"{editor_url}&view=cards&card={nid}")
-    expect(page).to_have_url(f"{editor_url}&card={nid}")
+    editor_url = f"{live_app}/app/edit/1/front"
+    page.goto(f"{editor_url.removesuffix('/front')}/cards/{nid}/front")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards/{nid}/front")
     expect(_front(page)).to_be_visible()
     expect(_front(page)).to_have_value("Direct")
     expect(_back(page)).to_have_value("answer")
@@ -2645,7 +2708,7 @@ def test_direct_card_reload_and_ui_back_to_list(page: Page, live_app: LiveApp) -
     expect(_back(page)).to_have_value("answer")
 
     page.locator("#edit-back").click()
-    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
     cards = page.locator("#deck-cards")
     expect(cards).to_be_visible()
     expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Direct")
@@ -2670,34 +2733,32 @@ def test_invalid_history_state_on_direct_card_keeps_navigation_usable(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Direct", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    page.goto(f"{editor_url}&card={nid}")
+    editor_url = f"{live_app}/app/edit/1/front"
+    page.goto(f"{editor_url.removesuffix('/front')}/cards/{nid}/front")
     expect(_front(page)).to_have_value("Direct")
     page.evaluate("(state) => history.replaceState(state, '', location.href)", state)
     page.reload()
     expect(_front(page)).to_have_value("Direct")
     page.locator("#edit-back").click()
-    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
     expect(page.locator("#deck-cards")).to_contain_text("Direct")
     page.locator("#edit-back").click()
     expect(page).to_have_url(editor_url)
     expect(_front(page)).to_have_value("")
 
 
-def test_reload_preserves_legacy_saved_list_navigation(
-    page: Page, live_app: LiveApp
-) -> None:
+def test_reload_preserves_saved_list_navigation(page: Page, live_app: LiveApp) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     page.goto(editor_url)
     page.locator("#pile").click()
     page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
     expect(_front(page)).to_have_value("Saved")
-    # Simulate the duplicate list entry written by the previous save implementation.
+    # Simulate the duplicate list entry with the current history state.
     page.evaluate(
-        "(url) => history.replaceState({avEdit: true, avIndex: 2, avSkipList: 2}, '', url)",
+        "(url) => history.replaceState({avEdit: true, avIndex: 2, avEditorIndex: 0}, '', url)",
         cards_url,
     )
     page.reload()
@@ -2735,8 +2796,8 @@ def test_direct_card_preserves_special_fields_without_executing_them(
             requests.append(request.url) if request.method == "POST" else None
         ),
     )
-    editor_url = f"{live_app}/app/edit?deck=1"
-    page.goto(f"{editor_url}&card={nid}")
+    editor_url = f"{live_app}/app/edit/1/front"
+    page.goto(f"{editor_url.removesuffix('/front')}/cards/{nid}/front")
     for visit in range(2):
         expect(_front(page)).to_have_value(front)
         expect(_back(page)).to_have_value(back)
@@ -2754,7 +2815,7 @@ def test_direct_card_preserves_special_fields_without_executing_them(
     expect(_front(page)).to_have_value("Changed")
     _front(page).fill(front)
     page.locator("#edit-back").click()
-    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
     expect(page.locator("#deck-cards")).to_be_visible()
     page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
     expect(_front(page)).to_have_value(front)
@@ -2767,11 +2828,11 @@ def test_direct_card_preserves_special_fields_without_executing_them(
     page.go_back()
     page.wait_for_function("() => window.historyPops.length >= 2")
     assert len(rejected) == 1
-    expect(page).to_have_url(f"{editor_url}&card={nid}")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards/{nid}/front")
     expect(_front(page)).to_have_value("Changed again")
     accepted = _respond_to_confirm(page, accept=True)
     page.go_back()
-    expect(page).to_have_url(f"{editor_url}&view=cards")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
     expect(page.locator("#deck-cards")).to_be_visible()
     assert len(accepted) == 1
 
@@ -2782,8 +2843,8 @@ def test_invalid_direct_card_opens_plain_editor(
 ) -> None:
     _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    page.goto(f"{editor_url}&view=cards&card={card}")
+    editor_url = f"{live_app}/app/edit/1/front"
+    page.goto(f"{editor_url.removesuffix('/front')}/cards/{card}/front")
     expect(page).to_have_url(editor_url)
     expect(page.locator("#deck-cards")).not_to_be_visible()
     expect(_front(page)).to_be_visible()
@@ -2796,8 +2857,8 @@ def test_save_returns_to_list_without_duplicate_browser_back(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     page.goto(f"{live_app}/app/")
     page.goto(editor_url)
     _add(page, "Saved", "answer")
@@ -2806,10 +2867,11 @@ def test_save_returns_to_list_without_duplicate_browser_back(
     cards = page.locator("#deck-cards")
     expect(page).to_have_url(cards_url)
     cards.locator(f"button[data-note-id='{nid}']").click()
-    expect(page).to_have_url(f"{editor_url}&card={nid}")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards/{nid}/front")
     expect(_front(page)).to_have_value("Saved")
     _front(page).fill("Updated")
     _front(page).press("Enter")
+    _wait_for_back(page)
     _back(page).press("Enter")
     page.locator("#btn-add").click()
     expect(page).to_have_url(cards_url)
@@ -2825,16 +2887,13 @@ def test_save_returns_to_list_without_duplicate_browser_back(
     page.get_by_role("button", name="Done", exact=True).click()
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
-    expect(summary.locator("[data-text='$count']")).to_have_text("1")
+    expect(summary.locator("#summary-count")).to_have_text("1")
     page.keyboard.press("Escape")
     expect(summary).not_to_be_visible()
     page.go_forward()
     expect(page).to_have_url(cards_url)
     expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Updated")
     page.go_forward()
-    expect(page).to_have_url(f"{editor_url}&card={nid}")
-    expect(_front(page)).to_have_value("Updated")
-    page.go_back()
     expect(page).to_have_url(cards_url)
     expect(cards).to_be_visible()
     page.locator("#edit-back").click()
@@ -2849,13 +2908,14 @@ def test_save_direct_card_back_and_forward_remain_usable(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Direct", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     page.goto(f"{live_app}/app/")
-    page.goto(f"{editor_url}&card={nid}")
+    page.goto(f"{editor_url.removesuffix('/front')}/cards/{nid}/front")
     expect(_front(page)).to_have_value("Direct")
     _front(page).fill("Updated direct")
     _front(page).press("Enter")
+    _wait_for_back(page)
     _back(page).press("Enter")
     page.locator("#btn-add").click()
     expect(page).to_have_url(cards_url)
@@ -2882,9 +2942,11 @@ def test_list_back_after_consecutive_saved_cards(
         ],
     )
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
+    editor_url = f"{live_app}/app/edit/1/front"
     page.goto(f"{live_app}/app/")
-    page.goto(f"{editor_url}&view=cards" if direct_list else editor_url)
+    page.goto(
+        f"{editor_url.removesuffix('/front')}/cards" if direct_list else editor_url
+    )
     if not direct_list:
         page.locator("#pile").click()
     cards = page.locator("#deck-cards")
@@ -2896,9 +2958,10 @@ def test_list_back_after_consecutive_saved_cards(
         expect(page.locator("#edit-back")).to_have_attribute("aria-disabled", "false")
         _front(page).fill(f"{original} updated")
         _front(page).press("Enter")
+        _wait_for_back(page)
         _back(page).press("Enter")
         page.locator("#btn-add").click()
-        expect(page).to_have_url(f"{editor_url}&view=cards")
+        expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         expect(cards).to_be_visible()
         expect(row).to_contain_text(f"{original} updated")
 
@@ -2909,14 +2972,11 @@ def test_list_back_after_consecutive_saved_cards(
         expect(page).to_have_url(editor_url)
         expect(_front(page)).to_have_value("")
         page.go_forward()
-        expect(page).to_have_url(f"{editor_url}&view=cards")
+        expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         expect(cards).to_contain_text("First updated")
         expect(cards).to_contain_text("Second updated")
         page.go_forward()
-        expect(page).to_have_url(f"{editor_url}&card={ids[1]}")
-        expect(_front(page)).to_have_value("Second updated")
-        page.go_back()
-        expect(page).to_have_url(f"{editor_url}&view=cards")
+        expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
         expect(cards).to_be_visible()
 
     page.locator("#edit-back").click()
@@ -2934,7 +2994,7 @@ def test_list_back_after_consecutive_saved_cards(
 
 def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) -> None:
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     _add(page, "First", "first answer")
     _add(page, "Second", "second answer")
     original = live_app.notes()
@@ -2957,7 +3017,7 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     page.on("dialog", dismiss_unexpected)
     back.click()
     expect(cards).to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards")
     assert unexpected == []
     cards.locator(f"button[data-note-id='{first}']").click()
     expect(_front(page)).to_have_value("First")
@@ -2965,7 +3025,7 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     _front(page).fill("First")
     back.click()
     expect(cards).to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards")
     cards.locator(f"button[data-note-id='{second}']").click()
     expect(_front(page)).to_have_value("Second")
     page.remove_listener("dialog", dismiss_unexpected)
@@ -2977,13 +3037,13 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     assert len(rejected) == 1
     expect(cards).not_to_be_visible()
     expect(_front(page)).to_have_value("Changed second")
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&card={second}")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards/{second}/front")
     accepted = _respond_to_confirm(page, accept=True)
     back.click()
     assert len(accepted) == 1
     expect(cards).to_be_visible()
     expect(back).to_have_accessible_name("Back to card editor")
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards")
     expect(cards.locator(f"button[data-note-id='{second}']")).to_contain_text("Second")
 
     cards.locator(f"button[data-note-id='{first}']").click()
@@ -2991,13 +3051,13 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     _front(page).fill("Changed first")
     rejected = _respond_to_confirm(page, accept=False)
     page.go_back()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&card={first}")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards/{first}/front")
     assert len(rejected) == 1
     expect(_front(page)).to_have_value("Changed first")
     expect(cards).not_to_be_visible()
     accepted = _respond_to_confirm(page, accept=True)
     page.go_back()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards")
     assert len(accepted) == 1
     expect(cards).to_be_visible()
     expect(cards.locator(f"button[data-note-id='{first}']")).to_contain_text("First")
@@ -3008,16 +3068,16 @@ def test_unchanged_and_dirty_edits_guard_discard(page: Page, live_app: LiveApp) 
     rejected = _respond_to_confirm(page, accept=False)
     page.keyboard.press("Escape")
     assert len(rejected) == 1
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&card={first}")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards/{first}/front")
     expect(_front(page)).to_have_value("Changed with Escape")
     accepted = _respond_to_confirm(page, accept=True)
     page.keyboard.press("Escape")
     assert len(accepted) == 1
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards")
     expect(cards).to_be_visible()
     expect(cards.locator(f"button[data-note-id='{first}']")).to_contain_text("First")
     back.click()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/front")
     expect(_front(page)).to_have_value("")
     assert live_app.notes() == original
 
@@ -3028,7 +3088,7 @@ def test_back_has_button_semantics_and_guards_for_browse_and_edit(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    url = f"{live_app}/app/edit?deck=1"
+    url = f"{live_app}/app/edit/1/front"
     page.goto(url)
     pile = page.locator("#pile")
     cards = page.locator("#deck-cards")
@@ -3041,7 +3101,7 @@ def test_back_has_button_semantics_and_guards_for_browse_and_edit(
     back.click(button="middle")
     back.click(button="right")
     expect(cards).to_be_visible()
-    expect(page).to_have_url(f"{url}&view=cards")
+    expect(page).to_have_url(f"{url.removesuffix('/front')}/cards")
     assert len(page.context.pages) == 1
     back.focus()
     page.keyboard.press(key)
@@ -3058,7 +3118,7 @@ def test_back_has_button_semantics_and_guards_for_browse_and_edit(
     back.click(button="right")
     expect(_front(page)).to_have_value("Unsaved edit")
     expect(cards).not_to_be_visible()
-    expect(page).to_have_url(f"{url}&card={nid}")
+    expect(page).to_have_url(f"{url.removesuffix('/front')}/cards/{nid}/front")
     assert len(page.context.pages) == 1
     rejected = _respond_to_confirm(page, accept=False)
     back.focus()
@@ -3079,13 +3139,14 @@ def test_failed_edit_save_stays_in_editor_and_can_retry(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
     cards.locator(f"button[data-note-id='{nid}']").click()
     expect(_front(page)).to_have_value("Saved")
     _front(page).fill("Updated")
     _front(page).press("Enter")
+    _wait_for_back(page)
     _back(page).press("Enter")
 
     def fail_update(*args, **kwargs):
@@ -3097,7 +3158,7 @@ def test_failed_edit_save_stays_in_editor_and_can_retry(
             fail_update,
         )
         page.locator("#btn-add").click()
-        expect(page.locator("#app-error")).to_be_visible()
+        expect(page.locator("#edit-error")).to_be_visible()
     expect(cards).not_to_be_visible()
     expect(page.locator("#preview")).to_contain_text("Updated")
     expect(page.locator("#btn-add")).to_be_enabled()
@@ -3114,7 +3175,7 @@ def test_invalid_edit_stays_in_editor_until_corrected(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     _add(page, "First", "one")
     _add(page, "Second", "two")
     first = live_app.notes()[0][0]
@@ -3124,9 +3185,10 @@ def test_invalid_edit_stays_in_editor_until_corrected(
     expect(_front(page)).to_have_value("First")
     _front(page).fill("Second")
     _front(page).press("Enter")
+    _wait_for_back(page)
     _back(page).press("Enter")
     page.locator("#btn-add").click()
-    expect(page.locator("#app-error")).to_be_visible()
+    expect(page.locator("#edit-error")).to_be_visible()
     expect(cards).not_to_be_visible()
     expect(page.locator("#preview")).to_contain_text("Second")
     expect(page.locator("#btn-add")).to_be_enabled()
@@ -3134,9 +3196,11 @@ def test_invalid_edit_stays_in_editor_until_corrected(
 
     previous = page.get_by_role("button", name="Previous Step")
     previous.click()
+    expect(_back(page)).to_be_visible()
     previous.click()
     _front(page).fill("Corrected")
     _front(page).press("Enter")
+    _wait_for_back(page)
     _back(page).press("Enter")
     page.locator("#btn-add").click()
     expect(cards).to_be_visible()
@@ -3151,7 +3215,7 @@ def test_back_does_not_leave_existing_card_while_saving(
 ) -> None:
     nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    url = f"{live_app}/app/edit?deck=1"
+    url = f"{live_app}/app/edit/1/front"
     page.goto(url)
     page.locator("#pile").click()
     cards = page.locator("#deck-cards")
@@ -3159,6 +3223,7 @@ def test_back_does_not_leave_existing_card_while_saving(
     expect(_front(page)).to_have_value("Saved")
     _front(page).fill("Updated")
     _front(page).press("Enter")
+    _wait_for_back(page)
     _back(page).press("Enter")
 
     pending: list[Route] = []
@@ -3173,32 +3238,32 @@ def test_back_does_not_leave_existing_card_while_saving(
         dialog.dismiss()
 
     page.on("dialog", dismiss_unexpected)
-    page.route("**/app/edit/commit?deck=1", hold_commit)
-    with page.expect_request("**/app/edit/commit?deck=1"):
+    page.route("**/app/edit/1/*/*/commit", hold_commit)
+    with page.expect_request("**/app/edit/1/*/*/commit"):
         page.locator("#btn-add").click()
     back = page.locator("#edit-back")
     expect(back).to_have_attribute("aria-disabled", "true")
     expect(back).to_have_role("button")
     expect(back).not_to_have_attribute("href", re.compile("."))
-    back.focus()
-    expect(back).to_be_focused()
+    expect(page.locator("#edit-session")).to_have_attribute("inert", "")
+    back.evaluate("el => el.click()")
     page.keyboard.press("Enter")
-    expect(page).to_have_url(f"{url}&card={nid}")
+    expect(page).to_have_url(f"{url.removesuffix('/front')}/cards/{nid}/preview")
     page.keyboard.press("Space")
-    expect(page).to_have_url(f"{url}&card={nid}")
+    expect(page).to_have_url(f"{url.removesuffix('/front')}/cards/{nid}/preview")
     page.evaluate(
         "() => { window.historyPops = []; window.addEventListener('popstate', () => window.historyPops.push(location.href)); }"
     )
     page.go_back()
     page.wait_for_function("() => window.historyPops.length >= 2")
-    expect(page).to_have_url(f"{url}&card={nid}")
+    expect(page).to_have_url(f"{url.removesuffix('/front')}/cards/{nid}/preview")
     expect(cards).not_to_be_visible()
     expect(page.locator("#preview")).to_contain_text("Updated")
     expect(page.locator("#btn-add")).to_be_disabled()
     assert unexpected == []
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Saved"
     assert len(pending) == 1
-    with page.expect_request("**/app/edit/commit?deck=1"):
+    with page.expect_request("**/app/edit/1/*/*/commit"):
         pending[0].abort()
     expect(cards).not_to_be_visible()
     expect(page.locator("#preview")).to_contain_text("Updated")
@@ -3210,7 +3275,7 @@ def test_back_does_not_leave_existing_card_while_saving(
     expect(cards).to_be_focused()
     expect(cards.locator(f"button[data-note-id='{nid}']")).to_contain_text("Updated")
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Updated"
-    expect(page).to_have_url(f"{url}&view=cards")
+    expect(page).to_have_url(f"{url.removesuffix('/front')}/cards")
     page.go_back()
     expect(page).to_have_url(url)
     expect(_front(page)).to_have_value("")
@@ -3259,7 +3324,7 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     nid = _run(live_app, seed)
     before = _progress(live_app, nid)
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     opener = page.locator("#pile")
     cards = page.locator("#deck-cards")
     opener.click()
@@ -3273,6 +3338,7 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     expect(page.locator("#edit-warning")).to_be_visible()
 
     front.press("Enter")
+    _wait_for_back(page)
     expect(page.locator("#input-back")).to_have_value("answer")
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
@@ -3291,7 +3357,7 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     page.locator("#edit-back").click()
     assert len(accepted) == 1
     expect(cards).to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards")
     assert _progress(live_app, nid) == before
     assert _run(live_app, lambda col: col.get_note(nid)["Front"]) == "Reviewed"
 
@@ -3301,6 +3367,7 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     expect(page.locator("#edit-warning")).to_have_text(warning)
     front.fill("Edited reviewed")
     front.press("Enter")
+    _wait_for_back(page)
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
     expect(cards).to_be_visible()
@@ -3322,6 +3389,7 @@ def test_learned_edit_warns_and_only_changed_save_resets_progress(
     row.click()
     expect(front).to_have_value("Edited reviewed")
     front.press("Enter")
+    _wait_for_back(page)
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
     expect(cards).to_be_visible()
@@ -3352,8 +3420,8 @@ def test_front_description_tracks_learned_selection_history_and_reset(
         live_app, lambda col: add_vocab_note(col, DeckId(1), "New card", "answer")
     )
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     help_text = "What will you test?"
     warning = "Changes to this learned card will reset its learning progress."
     front = page.locator("#input-front")
@@ -3400,6 +3468,7 @@ def test_front_description_tracks_learned_selection_history_and_reset(
     expect(front).to_have_accessible_description(f"{help_text} {warning}")
     front.fill("Edited reviewed")
     front.press("Enter")
+    _wait_for_back(page)
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
     expect(cards).to_be_visible()
@@ -3433,7 +3502,7 @@ def test_direct_learned_card_front_description_survives_reload(
 ) -> None:
     nid = _run(live_app, _seed_reviewed_note)
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1&card={nid}")
+    page.goto(f"{live_app}/app/edit/1/cards/{nid}/front")
     front = page.locator("#input-front")
     for reload_page in (False, True):
         if reload_page:
@@ -3496,7 +3565,7 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
 
     monkeypatch.setattr(scheduler_class, "schedule_cards_as_new", fail_once)
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     page.locator("#pile").click()
     page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
     front = page.locator("#input-front")
@@ -3504,11 +3573,12 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
     expect(page.locator("#edit-warning")).to_have_text(warning)
     front.fill("Edited reviewed")
     front.press("Enter")
+    _wait_for_back(page)
     page.locator("#input-back").press("Enter")
     page.locator("#btn-add").click()
 
-    expect(page.locator("#app-error")).to_be_visible()
-    expect(page.locator("#app-error")).to_have_text(failure)
+    expect(page.locator("#edit-error")).to_be_visible()
+    expect(page.locator("#edit-error")).to_have_text(failure)
     expect(page.locator("#edit-back")).to_be_visible()
     expect(page.locator("#edit-warning")).to_be_visible()
     expect(page.locator("#edit-warning")).to_have_text(warning)
@@ -3533,27 +3603,26 @@ def test_learned_edit_partial_save_can_retry_progress_reset(
 
         page.context.clear_cookies()
         assert page.context.cookies() == []
-        page.goto(f"{live_app}/app/edit?deck=1")
+        page.goto(f"{live_app}/app/edit/1/front")
         page.locator("#pile").click()
         page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
         expect(front).to_have_value("Edited reviewed")
         expect(page.locator("#edit-warning")).to_be_visible()
         expect(page.locator("#edit-warning")).to_have_text(warning)
         front.press("Enter")
+        _wait_for_back(page)
         expect(page.locator("#input-back")).to_have_value("answer")
         page.locator("#input-back").press("Enter")
 
     with page.expect_request(
         lambda request: (
-            request.method == "POST" and request.url.endswith("/app/edit/commit?deck=1")
+            request.method == "POST" and urlsplit(request.url).path.endswith("/commit")
         )
     ) as retry:
         page.locator("#btn-add").click()
-    retry_payload = retry.value.post_data_json
-    assert isinstance(retry_payload, dict)
-    assert retry_payload["nid"] == nid
-    assert retry_payload["learned"] is True
-    assert retry_payload["front"] == "Edited reviewed"
+    retry_payload = parse_qs(retry.value.post_data or "")
+    assert retry_payload["nid"] == [str(nid)]
+    assert retry_payload["front"] == ["Edited reviewed"]
     cards = page.locator("#deck-cards")
     expect(cards).to_be_visible()
     expect(cards).to_be_focused()
@@ -3593,7 +3662,7 @@ def test_deck_badge_and_session_summary_count_different_cards(
         ],
     )
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     region = page.locator("#added-cards")
     badge = region.locator(".add-stack-badge")
     count = badge.locator(".add-stack-count")
@@ -3607,7 +3676,7 @@ def test_deck_badge_and_session_summary_count_different_cards(
         front = f"Question {index}"
         page.locator("#input-front").fill(front)
         page.locator("#input-front").press("Enter")
-        expect(page.locator("#input-back")).to_be_visible()
+        _wait_for_back(page)
         page.locator("#input-back").fill(f"Answer {index}")
         page.locator("#input-back").press("Enter")
         expect(page.locator("#preview")).to_contain_text(front)
@@ -3633,7 +3702,7 @@ def test_deck_badge_and_session_summary_count_different_cards(
 
 
 def test_double_click_add_saves_only_one_note(page: Page, live_app: LiveApp) -> None:
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     _to_preview(page, "Double click", "one note")
     page.get_by_role("button", name="Add", exact=True).dblclick()
     expect(_front(page)).to_be_visible()
@@ -3656,7 +3725,7 @@ def test_five_card_floor_stack_is_opaque_stepped_and_does_not_overflow(
         ],
     )
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     region = page.locator("#added-cards")
     cards = region.locator(".stacked-card")
     expect(cards).to_have_count(5)
@@ -3722,41 +3791,66 @@ def test_five_card_floor_stack_is_opaque_stepped_and_does_not_overflow(
 def test_required_fields_block_wizard_advancement(
     page: Page, live_app: LiveApp
 ) -> None:
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     page.get_by_role("button", name=re.compile(r"Next: Back")).click()
-    expect(page.locator("#app-error")).to_contain_text("Front cannot be empty")
+    expect(page.locator("#edit-error")).to_contain_text("Front cannot be empty")
     expect(_front(page)).to_be_visible()
     _front(page).fill("Question")
+    expect(page.locator("#edit-error")).to_be_hidden()
+    expect(page.locator("#edit-error")).to_be_empty()
     _front(page).press("Enter")
-    expect(_back(page)).to_be_visible()
+    _wait_for_back(page)
     _back(page).press("Enter")
-    expect(page.locator("#app-error")).to_contain_text("Back cannot be empty")
+    expect(page.locator("#edit-error")).to_contain_text("Back cannot be empty")
     expect(_back(page)).to_be_visible()
+
+
+def test_new_editor_request_clears_previous_error_while_pending(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.goto(f"{live_app}/app/edit/1/front")
+    next_button = page.locator("#btn-next")
+    alert = page.locator("#edit-error")
+    next_button.click()
+    expect(alert).to_contain_text("Front cannot be empty")
+
+    pending: list[Route] = []
+    url = "**/app/edit/1/*/*/step/back/next"
+    page.route(url, lambda route: pending.append(route))  # noqa: PLW0108
+    with page.expect_request(url):
+        next_button.click()
+    expect(alert).to_be_hidden()
+    expect(alert).to_be_empty()
+    assert len(pending) == 1
+    pending[0].continue_()
+    expect(alert).to_contain_text("Front cannot be empty")
 
 
 def test_validation_toast_and_optional_fields_keep_add_styles(
     page: Page, live_app: LiveApp
 ) -> None:
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     page.get_by_role("button", name=re.compile(r"Next: Back")).click()
     alert = page.get_by_role("alert")
     expect(alert).to_contain_text("Front cannot be empty")
     expect(alert).to_be_visible()
-    expect(alert).to_have_css("border-top-width", "3px")
-    expect(alert).to_have_css("border-top-style", "solid")
-    expect(alert).to_have_css("border-top-left-radius", "16px")
-    expect(alert).to_have_css("text-align", "center")
-    expect(alert).to_have_css("font-weight", "900")
-    expect(alert).to_have_css("animation-name", "none")
-    expect(page.locator("#app-error")).to_have_css("z-index", "50")
-    toast_box = alert.bounding_box()
+    message = alert.locator(".alert")
+    expect(message).to_have_css("border-top-width", "3px")
+    expect(message).to_have_css("border-top-style", "solid")
+    expect(message).to_have_css("border-top-left-radius", "16px")
+    expect(message).to_have_css("text-align", "center")
+    expect(message).to_have_css("font-weight", "900")
+    expect(message).to_have_css("animation-name", "none")
+    expect(page.locator("#edit-error")).to_have_css("z-index", "50")
+    toast_box = message.bounding_box()
     footer_box = page.locator("#add-wizard footer").bounding_box()
     assert toast_box is not None and footer_box is not None
     assert toast_box["y"] + toast_box["height"] <= footer_box["y"]
 
     _front(page).fill("Question")
     _front(page).press("Enter")
+    _wait_for_back(page)
     editor_style = page.locator("#add-editor").evaluate(
         """el => ({
             background: getComputedStyle(el).backgroundColor,
@@ -3786,12 +3880,12 @@ def test_validation_toast_and_optional_fields_keep_add_styles(
 def test_duplicate_preserves_preview_and_saved_note(
     page: Page, live_app: LiveApp
 ) -> None:
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     _add(page)
     saved = live_app.notes()
     _to_preview(page, "Hund", "different answer")
     page.get_by_role("button", name="Add", exact=True).click()
-    expect(page.locator("#app-error")).to_contain_text(
+    expect(page.locator("#edit-error")).to_contain_text(
         "A card with this front already exists."
     )
     expect(page.locator("#preview")).to_contain_text("different answer")
@@ -3801,12 +3895,17 @@ def test_duplicate_preserves_preview_and_saved_note(
 def test_finish_clean_empty_session_opens_summary(
     page: Page, live_app: LiveApp
 ) -> None:
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     page.get_by_role("button", name="Done", exact=True).click()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/front")
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
-    expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    expect(summary).to_have_attribute("open", "")
+    assert summary.evaluate("el => el.matches(':modal')")
+    expect(summary.locator("#summary-count")).to_have_text("0")
+    page.keyboard.press("Escape")
+    expect(summary).not_to_be_visible()
+    expect(page.locator("#edit-done")).to_be_focused()
     assert live_app.notes() == []
 
 
@@ -3815,18 +3914,18 @@ def test_finish_from_clean_card_list_without_session_additions_opens_summary(
 ) -> None:
     _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Existing", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     page.locator("#pile").click()
     expect(page.locator("#deck-cards")).to_be_visible()
     page.get_by_role("button", name="Done", exact=True).click()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1&view=cards")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/cards")
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
-    expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    expect(summary.locator("#summary-count")).to_have_text("0")
     assert len(live_app.notes()) == 1
 
     cards = page.locator("#deck-cards")
-    cards_url = f"{live_app}/app/edit?deck=1&view=cards"
+    cards_url = f"{live_app}/app/edit/1/cards"
     page.keyboard.down("Escape")
     expect(summary).not_to_be_visible()
     expect(cards).to_be_visible()
@@ -3840,7 +3939,7 @@ def test_finish_from_clean_card_list_without_session_additions_opens_summary(
 
     page.keyboard.press("Escape")
     expect(cards).not_to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/front")
 
 
 @pytest.mark.parametrize("session_added", [False, True])
@@ -3849,8 +3948,8 @@ def test_finish_from_card_list_guards_draft_and_preserves_focus(
 ) -> None:
     _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Existing", "answer"))
     page.emulate_media(reduced_motion="reduce")
-    editor_url = f"{live_app}/app/edit?deck=1"
-    cards_url = f"{editor_url}&view=cards"
+    editor_url = f"{live_app}/app/edit/1/front"
+    cards_url = f"{editor_url.removesuffix('/front')}/cards"
     page.goto(editor_url)
     if session_added:
         _add(page, "Session addition", "answer")
@@ -3882,7 +3981,7 @@ def test_finish_from_card_list_guards_draft_and_preserves_focus(
     expect(page).to_have_url(cards_url)
     expect(cards).to_be_visible()
     expect(summary).to_be_visible()
-    expect(summary.locator("[data-text='$count']")).to_have_text(
+    expect(summary.locator("#summary-count")).to_have_text(
         "1" if session_added else "0"
     )
     expect(summary.get_by_role("button", name="Close", exact=True)).to_have_count(0)
@@ -3920,7 +4019,7 @@ def test_finish_from_card_list_guards_draft_and_preserves_focus(
 def test_finish_empty_session_confirms_unsaved_draft(
     page: Page, live_app: LiveApp
 ) -> None:
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     _front(page).fill("unfinished card")
     done = page.get_by_role("button", name="Done", exact=True)
     cancelled = _respond_to_confirm(page, accept=False)
@@ -3932,10 +4031,10 @@ def test_finish_empty_session_confirms_unsaved_draft(
     accepted = _respond_to_confirm(page, accept=True)
     done.click()
     assert len(accepted) == 1
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/front")
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
-    expect(summary.locator("[data-text='$count']")).to_have_text("0")
+    expect(summary.locator("#summary-count")).to_have_text("0")
     page.keyboard.press("Escape")
     expect(summary).not_to_be_visible()
     expect(_front(page)).to_have_value("")
@@ -3944,7 +4043,7 @@ def test_finish_empty_session_confirms_unsaved_draft(
 
 
 def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> None:
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     done = page.get_by_role("button", name="Done", exact=True)
     _add(page)
     saved = live_app.notes()
@@ -3974,7 +4073,7 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     expect(decks).to_be_focused()
     page.keyboard.press("Escape")
     expect(dialog).not_to_be_visible()
-    expect(page).to_have_url(f"{live_app}/app/edit?deck=1")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/front")
     expect(_front(page)).to_be_visible()
     expect(done).to_be_focused()
     assert live_app.notes() == saved
@@ -4001,7 +4100,7 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
     expect(page).to_have_url(f"{live_app}/app/review?deck=1")
     assert live_app.notes() == saved
 
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     done.click()
     expect(dialog).to_be_visible()
     decks.click()
@@ -4013,7 +4112,7 @@ def test_finish_guard_dialog_and_study_link(page: Page, live_app: LiveApp) -> No
 def test_exit_and_deck_links_guard_unsaved_text(
     page: Page, live_app: LiveApp, link_name: str
 ) -> None:
-    url = f"{live_app}/app/edit?deck=1"
+    url = f"{live_app}/app/edit/1/front"
     page.goto(url)
     _front(page).fill("unsaved")
     link = page.locator("#add-wizard header").get_by_role(
@@ -4040,7 +4139,7 @@ def test_exit_and_deck_links_guard_unsaved_text(
 def test_clean_exit_and_deck_links_navigate_without_confirmation(
     page: Page, live_app: LiveApp, link_name: str
 ) -> None:
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     link = page.locator("#add-wizard header").get_by_role(
         "link", name=link_name, exact=True
     )
@@ -4062,7 +4161,7 @@ def test_mobile_layout_and_browser_errors(
 
     page.on("console", record_console)
     page.emulate_media(color_scheme=scheme)
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     _add(page)
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
@@ -4100,10 +4199,10 @@ def test_language_chips_edit_selection_and_save(page: Page, live_app: LiveApp) -
         ),
     )
     errors = _browser_errors(page)
-    page.goto(f"{live_app}/app/edit?deck={deck_id}")
+    page.goto(f"{live_app}/app/edit/{deck_id}/front")
     front = page.locator("#input-front")
     chips = page.locator("#add-chips-front")
-    counter = page.locator("[data-text='$front.length']")
+    counter = page.locator('[data-counter-for="front"]')
     expect(page.locator("label[for='input-front']")).to_have_text(
         "Front (Question / Prompt) · 🇩🇪 German"
     )
@@ -4157,7 +4256,7 @@ def test_editor_without_language_pair_keeps_legacy_chips(
     page: Page, live_app: LiveApp
 ) -> None:
     errors = _browser_errors(page)
-    page.goto(f"{live_app}/app/edit?deck=1")
+    page.goto(f"{live_app}/app/edit/1/front")
     expect(page.locator("label[for='input-front']")).to_have_text(
         "Front (Question / Prompt)"
     )
@@ -4189,7 +4288,7 @@ def test_arabic_attached_chip_and_french_mobile_layout(
         ),
     )
     errors = _browser_errors(page)
-    page.goto(f"{live_app}/app/edit?deck={arabic}")
+    page.goto(f"{live_app}/app/edit/{arabic}/front")
     front = page.locator("#input-front")
     chips = page.locator("#add-chips-front")
     expect(chips).to_have_attribute("lang", "ar")
@@ -4201,7 +4300,7 @@ def test_arabic_attached_chip_and_french_mobile_layout(
     assert front.evaluate("el => [el.selectionStart, el.selectionEnd]") == [2, 2]
 
     front.fill("")
-    page.goto(f"{live_app}/app/edit?deck={french}")
+    page.goto(f"{live_app}/app/edit/{french}/front")
     french_chips = page.locator("#add-chips-front")
     expect(french_chips).to_have_attribute("lang", "fr")
     expect(french_chips.get_by_role("button", name="Ÿ", exact=True)).to_be_visible()
@@ -4209,3 +4308,373 @@ def test_arabic_attached_chip_and_french_mobile_layout(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )
     assert errors == []
+
+
+def test_character_counts_use_utf16_for_loaded_and_edited_values(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(
+        live_app,
+        lambda col: add_vocab_note(col, DeckId(1), "😀a", "b😀", "😀", "😀😀"),
+    )
+    page.goto(f"{live_app}/app/edit/1/cards/{nid}/front")
+    for field, count in (
+        ("front", "3"),
+        ("back", "3"),
+        ("hint", "2"),
+        ("example", "4"),
+    ):
+        expect(page.locator(f'[data-counter-for="{field}"]')).to_have_text(count)
+    _front(page).fill("😀😀x")
+    expect(page.locator('[data-counter-for="front"]')).to_have_text("5")
+    _front(page).press("Enter")
+    _wait_for_back(page)
+    _back(page).fill("😀😀")
+    expect(page.locator('[data-counter-for="back"]')).to_have_text("4")
+
+
+def test_two_tabs_share_session_counts_but_not_drafts(
+    page: Page, live_app: LiveApp
+) -> None:
+    url = f"{live_app}/app/edit/1/front"
+    page.goto(url)
+    other = page.context.new_page()
+    other.goto(url)
+    assert page.locator("#edit-session").get_attribute("data-instance") != (
+        other.locator("#edit-session").get_attribute("data-instance")
+    )
+    _front(other).fill("Second tab")
+    _add(page, "First tab", "first answer")
+    expect(_front(other)).to_have_value("Second tab")
+    _to_preview(other, "Second tab", "second answer")
+    other.get_by_role("button", name="Add", exact=True).click()
+    expect(_front(other)).to_have_value("")
+    expect(other.locator("#added-cards .add-stack-count")).to_have_text("2")
+    other.get_by_role("button", name="Done", exact=True).click()
+    expect(other.locator("#summary-count")).to_have_text("2")
+    page.reload()
+    expect(page.locator("#added-cards .add-stack-count")).to_have_text("2")
+    page.get_by_role("button", name="Done", exact=True).click()
+    expect(page.locator("#summary-count")).to_have_text("2")
+    assert len(live_app.notes()) == 2
+    other.close()
+
+
+@pytest.mark.parametrize("target_step", [2, 3])
+def test_late_step_is_dropped_after_switching_cards(
+    page: Page, live_app: LiveApp, target_step: int
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit/1/front")
+    _front(page).fill("Draft")
+    if target_step == 3:
+        _front(page).press("Enter")
+        _wait_for_back(page)
+        expect(page.locator("#btn-next")).to_contain_text("Preview")
+        _back(page).fill("draft answer")
+    pending: list[tuple[Route, Any]] = []
+
+    def hold_preview(route: Route) -> None:
+        pending.append((route, route.fetch()))
+
+    step_url = f"**/app/edit/1/*/*/step/{'back' if target_step == 2 else 'preview'}/*"
+    page.route(step_url, hold_preview)
+    page.evaluate(
+        """() => {
+          window.stepFinished = false;
+          let started = false;
+          document.addEventListener('datastar-fetch', event => {
+            if (event.detail.el.id !== 'edit-step-request') return;
+            if (event.detail.type === 'started') started = true;
+            if (started && event.detail.type === 'finished') window.stepFinished = true;
+          });
+        }"""
+    )
+    with page.expect_request(step_url):
+        (_front(page) if target_step == 2 else _back(page)).press("Enter")
+    expect(page.locator("#pile")).to_be_disabled()
+    expect(page.locator("#edit-done")).to_be_disabled()
+    expect(page.locator("#edit-back")).to_have_attribute("aria-disabled", "true")
+    # Simulate an already-dispatched navigation to exercise the stale response guard.
+    page.evaluate(
+        """() => document.querySelector('#add-wizard').dispatchEvent(
+          new CustomEvent('av-history', {detail: {view: 'cards'}}))"""
+    )
+    expect(page.locator("#deck-cards")).to_be_visible()
+    page.evaluate(
+        """nid => document.querySelector('#add-wizard').dispatchEvent(
+          new CustomEvent('av-history', {detail: {view: 'card', card: nid}}))""",
+        str(nid),
+    )
+    expect(_front(page)).to_have_value("Saved")
+    expect(_front(page)).to_be_focused()
+    expect(page.locator("#edit-step")).to_have_attribute("data-step", "1")
+    assert len(pending) == 1
+    route, response = pending[0]
+    route.fulfill(response=response)
+    page.wait_for_function("() => window.stepFinished")
+    expect(_front(page)).to_have_value("Saved")
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_be_focused()
+    expect(_back(page)).to_have_value("answer")
+    expect(page.locator("#edit-step")).to_have_attribute("data-step", "1")
+    expect(page.locator("#edit-error")).not_to_be_visible()
+
+
+def test_history_navigation_during_pending_step_preserves_draft(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.emulate_media(reduced_motion="reduce")
+    editor_url = f"{live_app}/app/edit/1/front"
+    page.goto(editor_url)
+    _front(page).fill("Draft")
+    _front(page).press("Enter")
+    _wait_for_back(page)
+    _back(page).fill("Answer")
+    pending: list[tuple[Route, Any]] = []
+
+    def hold_step(route: Route) -> None:
+        pending.append((route, route.fetch()))
+
+    step_url = "**/app/edit/1/*/*/step/preview/*"
+    page.route(step_url, hold_step)
+    page.evaluate(
+        """() => {
+          window.stepFinished = false;
+          let started = false;
+          document.addEventListener('datastar-fetch', event => {
+            if (event.detail.el.id !== 'edit-step-request') return;
+            if (event.detail.type === 'started') started = true;
+            if (started && event.detail.type === 'finished') window.stepFinished = true;
+          });
+        }"""
+    )
+    page.evaluate(
+        "() => { window.historyPops = []; window.addEventListener('popstate', () => window.historyPops.push(location.href)); }"
+    )
+    with page.expect_request(step_url):
+        _back(page).press("Enter")
+    expect(page.locator("#edit-done")).to_be_disabled()
+    expect(page.locator("#edit-back")).to_have_attribute("aria-disabled", "true")
+    page.go_back()
+    page.wait_for_function("() => window.historyPops.length >= 2")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/back")
+    assert len(pending) == 1
+    route, response = pending[0]
+    route.fulfill(response=response)
+    page.wait_for_function("() => window.stepFinished")
+    expect(page.locator("#edit-step")).to_have_attribute("data-step", "3")
+    expect(_front(page)).to_have_value("Draft")
+    expect(_back(page)).to_have_value("Answer")
+    page.go_back()
+    _wait_for_back(page)
+    expect(_front(page)).to_have_value("Draft")
+    expect(_back(page)).to_have_value("Answer")
+
+
+def test_typing_during_pending_step_does_not_corrupt_fields(
+    page: Page, live_app: LiveApp
+) -> None:
+    errors = _browser_errors(page)
+    page.goto(f"{live_app}/app/edit/1/front")
+    pending: list[tuple[Route, Any]] = []
+
+    def hold_step(route: Route) -> None:
+        pending.append((route, route.fetch()))
+
+    step_url = "**/app/edit/1/*/*/step/back/*"
+    page.route(step_url, hold_step)
+    page.evaluate(
+        """() => {
+          window.stepFinished = false;
+          document.addEventListener('datastar-fetch', event => {
+            if (event.detail.el.id === 'edit-step-request' && event.detail.type === 'finished')
+              window.stepFinished = true;
+          });
+        }"""
+    )
+    _front(page).fill("Question")
+    with page.expect_request(step_url):
+        _front(page).press("Enter")
+    page.keyboard.type("answer", delay=20)
+    assert len(pending) == 1
+    route, response = pending[0]
+    route.fulfill(response=response)
+    page.wait_for_function("() => window.stepFinished")
+    expect(_back(page)).to_be_visible()
+    expect(_front(page)).to_have_value("Question")
+    expect(_back(page)).to_have_value("")
+    assert errors == []
+
+
+def test_saving_makes_form_inert_and_prevents_duplicate_save(
+    page: Page, live_app: LiveApp
+) -> None:
+    page.goto(f"{live_app}/app/edit/1/front")
+    _to_preview(page, "Question", "Answer")
+    pending: list[Route] = []
+
+    def hold_commit(route: Route) -> None:
+        pending.append(route)
+
+    commit_url = "**/app/edit/1/*/*/commit"
+    page.route(commit_url, hold_commit)
+    with page.expect_request(commit_url):
+        page.locator("#btn-add").click()
+    session = page.locator("#edit-session")
+    expect(session).to_have_attribute("inert", "")
+    expect(page.locator("#btn-add")).to_be_disabled()
+    page.keyboard.press("Tab")
+    assert not session.evaluate("el => el.contains(document.activeElement)")
+    page.keyboard.type("unexpected")
+    expect(_front(page)).to_have_value("Question")
+    expect(_back(page)).to_have_value("Answer")
+    assert len(pending) == 1
+    assert live_app.notes() == []
+    pending[0].continue_()
+    expect(_front(page)).to_have_value("")
+    assert len(live_app.notes()) == 1
+
+
+def test_step_urls_and_browser_history_preserve_draft(
+    page: Page, live_app: LiveApp
+) -> None:
+    base = f"{live_app}/app/edit/1"
+    page.goto(f"{base}/front")
+    _front(page).fill("Question")
+    _front(page).press("Enter")
+    _wait_for_back(page)
+    expect(page).to_have_url(f"{base}/back")
+    _back(page).fill("Answer")
+    _back(page).press("Enter")
+    expect(page.locator("#preview")).to_contain_text("Answer")
+    expect(page).to_have_url(f"{base}/preview")
+
+    page.go_back()
+    _wait_for_back(page)
+    expect(page).to_have_url(f"{base}/back")
+    expect(_front(page)).to_have_value("Question")
+    expect(_back(page)).to_have_value("Answer")
+    page.go_back()
+    expect(_front(page)).to_be_visible()
+    expect(page).to_have_url(f"{base}/front")
+    expect(_front(page)).to_have_value("Question")
+    page.go_forward()
+    _wait_for_back(page)
+    expect(page).to_have_url(f"{base}/back")
+    page.go_forward()
+    expect(page.locator("#preview")).to_contain_text("Question")
+    expect(page.locator("#preview")).to_contain_text("Answer")
+    expect(page).to_have_url(f"{base}/preview")
+
+
+def test_forward_to_preview_revalidates_current_draft(
+    page: Page, live_app: LiveApp
+) -> None:
+    base = f"{live_app}/app/edit/1"
+    page.goto(f"{base}/front")
+    _to_preview(page, "Question", "Answer")
+    expect(page).to_have_url(f"{base}/preview")
+    page.go_back()
+    _wait_for_back(page)
+    expect(page).to_have_url(f"{base}/back")
+    _back(page).fill("")
+    page.go_forward()
+    expect(page.locator("#edit-error")).to_contain_text("Front and back are required")
+    expect(page).to_have_url(f"{base}/back")
+    expect(_back(page)).to_be_visible()
+    expect(_front(page)).to_have_value("Question")
+    expect(_back(page)).to_have_value("")
+
+
+def test_reload_new_card_back_step_redirects_to_front(
+    page: Page, live_app: LiveApp
+) -> None:
+    base = f"{live_app}/app/edit/1"
+    page.goto(f"{base}/front")
+    _front(page).fill("Question")
+    _front(page).press("Enter")
+    _wait_for_back(page)
+    expect(page).to_have_url(f"{base}/back")
+    page.reload()
+    expect(page).to_have_url(f"{base}/front")
+    expect(_front(page)).to_be_visible()
+    expect(_front(page)).to_have_value("")
+
+
+def test_direct_card_preview_renders_saved_note(page: Page, live_app: LiveApp) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    url = f"{live_app}/app/edit/1/cards/{nid}/preview"
+    page.goto(url)
+    expect(page).to_have_url(url)
+    expect(page.locator("#preview")).to_be_visible()
+    expect(page.locator("#preview")).to_contain_text("Saved")
+    expect(page.locator("#preview")).to_contain_text("answer")
+    expect(page.locator("#btn-add")).to_have_text("Save changes")
+
+
+def test_list_back_returns_to_prior_step_without_duplicate_entries(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    base = f"{live_app}/app/edit/1"
+    page.goto(f"{base}/front")
+    _front(page).fill("Draft")
+    _front(page).press("Enter")
+    _wait_for_back(page)
+    _back(page).fill("Draft answer")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.locator("#pile").click()
+    assert len(accepted) == 1
+    expect(page).to_have_url(f"{base}/cards")
+    expect(page.locator("#deck-cards")).to_be_visible()
+    page.locator("#edit-back").click()
+    _wait_for_back(page)
+    expect(page).to_have_url(f"{base}/back")
+    expect(_front(page)).to_have_value("Draft")
+    expect(_back(page)).to_have_value("Draft answer")
+    page.go_back()
+    expect(page).to_have_url(f"{base}/front")
+    expect(_front(page)).to_have_value("Draft")
+    page.go_forward()
+    _wait_for_back(page)
+    expect(page).to_have_url(f"{base}/back")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.go_forward()
+    expect(page).to_have_url(f"{base}/cards")
+    assert len(accepted) == 1
+    expect(page.locator("#deck-cards")).to_be_visible()
+
+
+def test_browser_back_after_add_reaches_previous_page(
+    page: Page, live_app: LiveApp
+) -> None:
+    errors = _browser_errors(page)
+    page.goto(f"{live_app}/app/")
+    page.goto(f"{live_app}/app/edit/1/front")
+    _add(page, "Added", "answer")
+    expect(page).to_have_url(f"{live_app}/app/edit/1/front")
+    page.go_back()
+    expect(page).to_have_url(f"{live_app}/app/")
+    assert errors == []
+
+
+def test_direct_editor_routes_redirect_to_valid_views(
+    page: Page, live_app: LiveApp
+) -> None:
+    nid = _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    base = f"{live_app}/app/edit/1"
+    for path, target in (
+        (base, f"{base}/front"),
+        (f"{base}/back", f"{base}/front"),
+        (f"{base}/preview", f"{base}/front"),
+        (f"{base}/invalid-step", f"{base}/front"),
+        (f"{base}/cards/invalid-id", f"{base}/front"),
+        (f"{base}/cards/{nid}", f"{base}/cards/{nid}/front"),
+        (f"{base}/cards/{nid}/invalid-step", f"{base}/front"),
+        (f"{live_app}/app/edit/invalid-deck/front", f"{live_app}/app/"),
+    ):
+        page.goto(path)
+        expect(page).to_have_url(target)

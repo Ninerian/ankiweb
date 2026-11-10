@@ -1,4 +1,4 @@
-// Datastar's input binding observes the input event after the caret-preserving edit.
+// Preserve the caret and dispatch input for counters and revision tracking.
 window.avInsert = (button) => {
   const input = document.getElementById(button.dataset.target);
   if (!(input instanceof HTMLTextAreaElement)) return;
@@ -15,7 +15,7 @@ const requestEditorFocus = (callback) => {
   const generation = editorFocusGeneration;
   requestAnimationFrame(() => {
     if (generation === editorFocusGeneration &&
-        !document.getElementById("add-summary")?.classList.contains("modal-open")) callback();
+        !document.getElementById("add-summary")?.open) callback();
   });
 };
 
@@ -43,18 +43,183 @@ window.avAddKey = (event) => {
   next.click();
 };
 
-window.avConfirmDiscard = (front, back, hint, example, saving, message, nid = 0, original = {}) => {
-  if (saving) return false;
-  const fields = { front, back, hint, example };
-  const dirty = nid
-    ? Object.entries(fields).some(([key, value]) => value !== original[key])
-    : Object.values(fields).some(Boolean);
-  return !dirty || window.confirm(message);
+const editForm = () => document.getElementById("edit-form");
+const editSession = () => document.getElementById("edit-session");
+const editWizard = () => document.getElementById("add-wizard");
+const browsePhase = () => editWizard()?.dataset.browsePhase || "closed";
+const browsing = () => ["opening", "open", "closing"].includes(browsePhase());
+const busy = () => editWizard()?.getAttribute("aria-busy") === "true";
+const syncBrowseElements = () => {
+  const wizard = editWizard();
+  if (!wizard) return;
+  const phase = browsePhase();
+  const inBrowse = browsing();
+  for (const id of ["edit-steps", "edit-actions", "add-editor"]) {
+    const element = document.getElementById(id);
+    if (element && element.inert !== inBrowse) element.inert = inBrowse;
+  }
+  const cards = document.getElementById("deck-cards");
+  if (cards) {
+    const hidden = phase !== "open";
+    if (cards.inert !== hidden) cards.inert = hidden;
+    if (hidden && cards.getAttribute("aria-hidden") !== "true") cards.setAttribute("aria-hidden", "true");
+    else if (!hidden && cards.hasAttribute("aria-hidden")) cards.removeAttribute("aria-hidden");
+  }
+  const pile = document.getElementById("pile");
+  if (pile) {
+    const expanded = String(inBrowse);
+    if (pile.getAttribute("aria-expanded") !== expanded) pile.setAttribute("aria-expanded", expanded);
+    const disabled = pile.dataset.empty === "true" || busy() || inBrowse;
+    if (pile.disabled !== disabled) pile.disabled = disabled;
+  }
 };
+const setBrowsePhase = (phase) => {
+  const wizard = editWizard();
+  if (!wizard) return;
+  wizard.dataset.browsePhase = phase;
+  syncBrowseElements();
+  window.avSyncBack();
+};
+window.avNid = () => Number(editSession()?.dataset.nid || 0);
+window.avAction = (suffix) => {
+  const session = editSession();
+  const deck = document.getElementById("add-wizard")?.dataset.deckId;
+  return `/app/edit/${deck}/${session?.dataset.instance}/${session?.dataset.rev}${suffix}`;
+};
+window.avRequestStep = (to, via) => {
+  window.avBumpRev();
+  document.getElementById("edit-step-request")?.dispatchEvent(
+    new CustomEvent("av-step", { detail: { to, via } })
+  );
+};
+let stepRequest;
+window.avStepRequest = () => {
+  stepRequest?.abort();
+  stepRequest = new AbortController();
+  return stepRequest;
+};
+window.avBumpRev = () => {
+  const session = editSession();
+  if (session) session.dataset.rev = String(Number(session.dataset.rev) + 1);
+};
+const editDirty = () => {
+  const form = editForm();
+  if (!form) return false;
+  const original = JSON.parse(editSession()?.dataset.original || "{}");
+  return ["front", "back", "hint", "example"].some((key) => {
+    const value = form.elements.namedItem(key)?.value ?? "";
+    return window.avNid() ? value !== original[key] : value !== "";
+  });
+};
+window.avConfirmDiscard = (message) => !busy() && (!editDirty() || window.confirm(message));
+window.avGuardNav = (event, message) => {
+  if (!window.avConfirmDiscard(message)) event.preventDefault();
+};
+window.avCanFinish = (message) =>
+  !document.getElementById("add-summary")?.open &&
+  !["opening", "closing", "returning"].includes(browsePhase()) &&
+  window.avConfirmDiscard(message);
 
-window.avGuardNav = (event, front, back, hint, example, saving, message, nid, original) => {
-  if (!window.avConfirmDiscard(front, back, hint, example, saving, message, nid, original)) {
-    event.preventDefault();
+window.avSyncBack = () => {
+  const phase = browsePhase();
+  const inBrowse = browsing();
+  const saving = busy();
+  const back = document.getElementById("edit-back");
+  if (!back) return;
+  const nid = window.avNid();
+  back.setAttribute("aria-label", inBrowse ? back.dataset.browseBack : nid ? back.dataset.listBack : back.dataset.exit);
+  const link = !nid && !inBrowse && phase === "closed" && !saving && !editDirty();
+  if (link) {
+    back.setAttribute("href", "/app/");
+    back.removeAttribute("role");
+  } else {
+    back.removeAttribute("href");
+    back.setAttribute("role", "button");
+  }
+  back.setAttribute("aria-disabled", String(saving || phase === "closing" || phase === "returning"));
+};
+let pendingCommitBrowse = false;
+window.avAfterCommit = () => {
+  invalidateDraft();
+  pendingCommitBrowse = true;
+};
+window.avEditFetch = (event) => {
+  const { el, type } = event.detail;
+  queueMicrotask(() => {
+    window.avSyncBack();
+    if (el.id === "btn-add" && type === "finished" && pendingCommitBrowse) {
+      pendingCommitBrowse = false;
+      setBrowsePhase("opening");
+      window.avOpenBrowseAfterSave();
+    }
+  });
+  if (el !== editWizard()) return;
+  if (type === "error" || type === "retries-failed") window.avEditHistoryFailed();
+  else if (type === "finished" && document.getElementById("edit-error")?.textContent.trim()) {
+    window.avEditHistoryFailed(false);
+  }
+};
+window.avEditError = (message) => {
+  const error = document.getElementById("edit-error");
+  if (!error) return;
+  if (!message) {
+    error.hidden = true;
+    error.replaceChildren();
+    return;
+  }
+  const alert = document.createElement("div");
+  alert.className = "alert alert-error";
+  alert.textContent = message;
+  error.replaceChildren(alert);
+  error.hidden = false;
+};
+document.addEventListener("input", (event) => {
+  const form = editForm();
+  if (!form || !form.contains(event.target) || !(event.target instanceof HTMLTextAreaElement)) return;
+  window.avEditError();
+  window.avBumpRev();
+  const counter = form.querySelector(`[data-counter-for=\"${event.target.name}\"]`);
+  if (counter) counter.textContent = String(event.target.value.length);
+  window.avSyncBack();
+});
+document.addEventListener("datastar-fetch", (event) => {
+  if (event.detail.type !== "started") return;
+  const source = event.detail.el;
+  if (source === document.getElementById("add-wizard") || editSession()?.contains(source)) {
+    window.avEditError();
+  }
+});
+let lastEditorFocus;
+document.addEventListener("focusin", (event) => {
+  if (event.target instanceof HTMLElement) lastEditorFocus = event.target;
+});
+new MutationObserver((mutations) => {
+  const sessionReplaced = mutations.some((mutation) => [...mutation.addedNodes].some((node) =>
+    node instanceof Element && (node.id === "edit-session" || node.querySelector("#edit-session"))));
+  syncBrowseElements();
+  if (sessionReplaced || mutations.some((mutation) => mutation.target === editWizard())) window.avSyncBack();
+  if (!sessionReplaced) return;
+  const lostFocus = lastEditorFocus;
+  if (!lostFocus?.id || lostFocus.isConnected || document.activeElement !== document.body) return;
+  if (!mutations.some((mutation) => [...mutation.removedNodes].some((node) =>
+    node instanceof Element && node.contains(lostFocus)))) return;
+  if (browsing()) {
+    if (browsePhase() === "open") window.avBrowseReadyFocus();
+    return;
+  }
+  requestEditorFocus(() => {
+    if (document.activeElement === document.body) {
+      document.getElementById(lostFocus.id)?.focus({ preventScroll: true });
+    }
+  });
+}).observe(document.documentElement, {
+  childList: true, subtree: true, attributes: true,
+  attributeFilter: ["data-browse-phase", "aria-busy", "aria-expanded", "aria-hidden", "disabled", "inert"],
+});
+window.avEditKey = (event) => {
+  window.avAddKey(event);
+  if (event.key === "Escape" && !event.repeat && !busy() && (browsing() || window.avNid())) {
+    document.getElementById("edit-back")?.click();
   }
 };
 
@@ -78,42 +243,111 @@ let editUrl;
 let editState;
 let skipHistoryDiscard = false;
 let restoringHistory = false;
-let pendingHistoryFailure = false;
+let pendingHistoryFailure = null;
 let pendingBrowseAfterSave = false;
 let pendingSavedList = false;
 let historyCard = false;
+let draftGeneration = 0;
+const staleDrafts = new Set();
+let staleDirection = 0;
+let arrivingStale = false;
+const historySession = `ankiweb:editor-history:${document.getElementById("add-wizard")?.dataset.deckId}`;
+try {
+  const saved = JSON.parse(sessionStorage.getItem(historySession) || "{}");
+  draftGeneration = saved.generation ?? 0;
+  for (const generation of saved.stale ?? []) staleDrafts.add(generation);
+} catch {
+  sessionStorage.removeItem(historySession);
+}
+const saveDraftHistory = () => {
+  sessionStorage.setItem(historySession, JSON.stringify({
+    generation: draftGeneration, stale: [...staleDrafts],
+  }));
+};
 
-const editViewUrl = (view, card) => {
-  const url = new URL(window.location.href);
-  url.searchParams.delete("view");
-  url.searchParams.delete("card");
-  if (view === "cards") url.searchParams.set("view", "cards");
-  if (view === "card") url.searchParams.set("card", String(card));
-  return url.href;
+const invalidateDraft = () => {
+  const generation = editState?.avDraft;
+  if (Number.isSafeInteger(generation)) staleDrafts.add(generation);
+  saveDraftHistory();
+};
+
+const newDraft = () => {
+  draftGeneration++;
+  editState = { ...editState, avDraft: draftGeneration };
+  saveDraftHistory();
+};
+
+const editViewUrl = (view, card, step = "front") => {
+  const deck = document.getElementById("add-wizard")?.dataset.deckId;
+  const prefix = `/app/edit/${deck}`;
+  const path = view === "cards" ? `${prefix}/cards` :
+    view === "card" ? `${prefix}/cards/${card}/${step}` : `${prefix}/${step}`;
+  return new URL(path, location.origin).href;
+};
+
+const currentStep = () => ["front", "back", "preview"][
+  Number(document.getElementById("edit-step")?.dataset.step || 1) - 1
+];
+
+const editUrlView = () => {
+  const parts = location.pathname.split("/").filter(Boolean).slice(3);
+  if (parts[0] === "cards") {
+    return parts.length === 1 ? { view: "cards" } :
+      { view: "card", card: parts[1], step: parts[2] };
+  }
+  return { view: "editor", step: parts[0] };
 };
 
 const validEditHistory = (state) =>
   state?.avEdit === true && Number.isSafeInteger(state.avIndex) &&
   state.avIndex >= 0 && state.avIndex < history.length;
 
-const setEditHistory = (view, card, replace = false) => {
-  const listSkips = view === "card" ? editState?.avSkipList : 0;
+const editHistoryView = (url) => new URL(url).pathname.endsWith("/cards") ? "cards" : "draft";
+
+const setEditHistory = (view, card, replace = false, step = "front") => {
+  if (view === "card" && !replace && editHistoryView(editUrl) === "cards") newDraft();
   const state = {
+    ...editState,
     avEdit: true,
     avIndex: (editState?.avIndex ?? 0) + (replace ? 0 : 1),
-    ...(listSkips ? { avSkipList: listSkips } : {}),
   };
-  const url = editViewUrl(view, card);
+  if (view === "cards" && !replace) {
+    state.avEditorIndex = editState?.avIndex ?? 0;
+  } else if (view === "card" && !replace && new URL(editUrl).pathname.endsWith("/cards")) {
+    state.avListIndex = editState?.avIndex ?? 0;
+  }
+  const url = editViewUrl(view, card, step);
   history[replace ? "replaceState" : "pushState"](state, "", url);
   editUrl = url;
   editState = state;
 };
 
+let pendingStepHistory;
+window.avStepApplied = (step, nid, fromHistory) => {
+  if (fromHistory) {
+    if (!pendingStepHistory) return;
+    const leaveList = pendingStepHistory.leaveList;
+    editState = pendingStepHistory.state;
+    editUrl = pendingStepHistory.url;
+    pendingStepHistory = null;
+    if (leaveList) browseEvent("av-history", { view: "editor" });
+  } else if (editUrl !== editViewUrl(nid ? "card" : "editor", nid, step)) {
+    setEditHistory(nid ? "card" : "editor", nid, false, step);
+  }
+};
+window.avStepRejected = () => {
+  if (!pendingStepHistory) return;
+  const state = pendingStepHistory.state;
+  pendingStepHistory = null;
+  restoreEditHistory(state);
+};
+
 const finishHistoryRestore = () => {
   restoringHistory = false;
-  if (pendingHistoryFailure) {
-    pendingHistoryFailure = false;
-    window.avEditHistoryFailed();
+  if (pendingHistoryFailure !== null) {
+    const showMessage = pendingHistoryFailure;
+    pendingHistoryFailure = null;
+    window.avEditHistoryFailed(showMessage);
   }
   if (pendingBrowseAfterSave) {
     pendingBrowseAfterSave = false;
@@ -135,55 +369,120 @@ const restoreEditHistory = (state) => {
 
 
 window.avEditCardLoaded = (nid) => {
+  if (historyCard) newDraft();
   if (historyCard) historyCard = false;
   else setEditHistory("card", nid);
+  window.avCloseBrowse(true);
 };
 
-window.avEditHistoryFailed = () => {
+window.avEditHistoryFailed = (showMessage = true) => {
   if (!historyCard) return;
   if (restoringHistory) {
-    pendingHistoryFailure = true;
+    pendingHistoryFailure = showMessage;
     return;
   }
   historyCard = false;
   setEditHistory("editor", null, true);
   browseEvent("av-history", { view: "editor" });
-  browseEvent("av-history-failed");
+  if (showMessage) browseEvent("av-history-failed");
 };
 
-window.avEditBack = (event, front, back, hint, example, saving, message, nid, original, browsing, phase) => {
-  if (saving || phase === "closing" || phase === "returning") {
+window.avPrepareHistory = (event) => {
+  const detail = event.detail;
+  window.avBumpRev();
+  if (detail.view === "card") {
+    detail.path = `/card/${encodeURIComponent(detail.card)}`;
+    return;
+  }
+  detail.path = window.avNid() ? "/reset" : null;
+  const open = detail.view === "cards" &&
+    !(browsing() && ["opening", "open"].includes(browsePhase()));
+  if (open) {
+    setBrowsePhase("opening");
+    window.avOpenBrowse(document.getElementById("pile"), false);
+  } else if (detail.view !== "cards") window.avCloseBrowse(false);
+};
+
+window.avEditBack = (event) => {
+  const inBrowse = browsing();
+  const phase = browsePhase();
+  const nid = window.avNid();
+  const message = inBrowse || nid ? editWizard().dataset.discard : event.currentTarget.dataset.discard;
+  if (busy() || phase === "closing" || phase === "returning") {
     event.preventDefault();
     return;
   }
-  if (!browsing && !nid) {
+  if (!inBrowse && !nid) {
     if (event.currentTarget.hasAttribute("href")) {
-      window.avGuardNav(event, front, back, hint, example, saving, message, nid, original);
+      window.avGuardNav(event, message);
     } else {
       event.preventDefault();
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      if (window.avConfirmDiscard(front, back, hint, example, saving, message, nid, original)) {
-        window.location.assign("/app/");
-      }
+      if (window.avConfirmDiscard(message)) window.location.assign("/app/");
     }
     return;
   }
   event.preventDefault();
-  if (!browsing && !window.avConfirmDiscard(front, back, hint, example, saving, message, nid, original)) return;
-  if (browsing && editState?.avSkipList > editState.avIndex) {
-    setEditHistory("editor", null, true);
-    browseEvent("av-history", { view: "editor" });
-  } else if (editState?.avIndex > 0) {
+  if (!inBrowse && !window.avConfirmDiscard(message)) return;
+  const target = inBrowse ? editState?.avEditorIndex : editState?.avListIndex;
+  if (Number.isSafeInteger(target) && target < editState.avIndex) {
     skipHistoryDiscard = true;
-    history.go(browsing && editState.avSkipList ? -editState.avSkipList : -1);
+    history.go(target - editState.avIndex);
   } else {
-    const view = browsing ? "editor" : "cards";
+    const view = inBrowse ? "editor" : "cards";
     setEditHistory(view, null, true);
     browseEvent("av-history", { view });
   }
 };
 
-window.avEditPop = (event, front, back, hint, example, saving, message, nid, original, browsing, phase) => {
+window.addEventListener("popstate", (event) => {
+  if (editHistoryView(location.href) === "cards") {
+    if (staleDirection < 0 && validEditHistory(event.state) &&
+        event.state.avIndex > editState.avIndex) staleDirection = 0;
+    if (staleDirection > 0) {
+      event.stopImmediatePropagation();
+      staleDirection = 0;
+      location.reload();
+    }
+    return;
+  }
+  if (!staleDrafts.has(event.state?.avDraft)) return;
+  const delta = Math.sign(event.state.avIndex - editState.avIndex);
+  const direction = arrivingStale ? 1 :
+    (staleDirection < 0 && delta > 0 ? 1 : staleDirection || delta);
+  if (!direction) return;
+  staleDirection = direction;
+  event.stopImmediatePropagation();
+  if (direction > 0) setTimeout(() => {
+    if (staleDirection > 0 && staleDrafts.has(history.state?.avDraft)) {
+      staleDirection = 0;
+      history.go(editState.avIndex - history.state.avIndex);
+    }
+  }, 200);
+  history.go(direction);
+}, true);
+
+window.avEditPop = (event, message) => {
+  const saving = busy();
+  const inBrowse = browsing();
+  const phase = browsePhase();
+  if (arrivingStale) {
+    if (editHistoryView(location.href) !== "cards" &&
+        staleDrafts.has(event.state?.avDraft)) history.forward();
+    else { arrivingStale = false; location.reload(); }
+    return;
+  }
+  const nid = window.avNid();
+  if (validEditHistory(event.state) && staleDrafts.has(event.state.avDraft) &&
+      editHistoryView(location.href) !== "cards") {
+    const direction = staleDirection || Math.sign(event.state.avIndex - editState.avIndex);
+    if (direction) {
+      staleDirection = direction;
+      history.go(direction);
+    }
+    return;
+  }
+  staleDirection = 0;
   if (restoringHistory) {
     if (event.state?.avEdit && event.state.avIndex === editState.avIndex && location.href === editUrl) {
       finishHistoryRestore();
@@ -192,20 +491,35 @@ window.avEditPop = (event, front, back, hint, example, saving, message, nid, ori
     }
     return;
   }
-  const url = new URL(window.location.href);
-  const card = url.searchParams.get("card");
-  const view = card ? "card" : url.searchParams.get("view") === "cards" ? "cards" : "editor";
-  const sameView = view === "card" ? !browsing && Number(card) === nid :
-    view === "cards" ? browsing && !nid && (phase === "opening" || phase === "open") : !browsing && !nid;
-  if (saving || (!sameView && !skipHistoryDiscard && !browsing &&
-      !window.avConfirmDiscard(front, back, hint, example, saving, message, nid, original))) {
+  if (pendingStepHistory) {
+    stepRequest?.abort();
+    pendingStepHistory = null;
+  }
+  const { view, card, step } = editUrlView();
+  const sameDraft = view === "card" ? !inBrowse && Number(card) === nid :
+    view === "editor" ? !inBrowse && !nid : false;
+  const sameView = view === "cards" ? inBrowse && (phase === "opening" || phase === "open") :
+    sameDraft && step === currentStep();
+  const leaveList = view === "editor" && inBrowse && !nid && step !== currentStep();
+  if (!saving && ((sameDraft && !sameView) || leaveList)) {
+    pendingStepHistory = {
+      state: validEditHistory(event.state) ? event.state : { avEdit: true, avIndex: 0 },
+      url: location.href,
+      leaveList,
+    };
+    window.avRequestStep(step, "history");
+    return;
+  }
+  if (saving || (!sameView && !skipHistoryDiscard && !inBrowse &&
+      !window.avConfirmDiscard(message))) {
     skipHistoryDiscard = false;
     restoreEditHistory(event.state);
     return;
   }
   skipHistoryDiscard = false;
-  editUrl = url.href;
+  editUrl = location.href;
   editState = validEditHistory(event.state) ? event.state : { avEdit: true, avIndex: 0 };
+  if (view === "editor" && staleDrafts.has(editState.avDraft)) newDraft();
   if (sameView) {
     if (pendingSavedList && view === "cards") {
       window.avOpenBrowse(document.getElementById("pile"), false);
@@ -221,10 +535,26 @@ window.avEditPop = (event, front, back, hint, example, saving, message, nid, ori
 document.addEventListener("DOMContentLoaded", () => {
   const wizard = document.getElementById("add-wizard");
   if (!wizard) return;
+  syncBrowseElements();
+  window.avSyncBack();
   editState = validEditHistory(history.state) ? { ...history.state } : { avEdit: true, avIndex: 0 };
-  if (!Number.isSafeInteger(editState.avSkipList) || editState.avSkipList <= 0 ||
-      editState.avSkipList > history.length) delete editState.avSkipList;
-  editUrl = editViewUrl(wizard.dataset.initialView, wizard.dataset.initialCard);
+  if (wizard.dataset.initialView === "cards") editState.avDraft = null;
+  else {
+    if (Number.isSafeInteger(editState.avDraft) && !staleDrafts.has(editState.avDraft)) {
+      draftGeneration = Math.max(draftGeneration, editState.avDraft);
+    } else {
+      draftGeneration++;
+    }
+    editState.avDraft = draftGeneration;
+    saveDraftHistory();
+  }
+  editUrl = editViewUrl(wizard.dataset.initialView, wizard.dataset.initialCard, wizard.dataset.initialStep);
+  if (staleDrafts.has(history.state?.avDraft) && wizard.dataset.initialView !== "cards") {
+    staleDirection = 1;
+    arrivingStale = true;
+    history.forward();
+    return;
+  }
   history.replaceState(editState, "", editUrl);
 });
 
@@ -314,16 +644,14 @@ const returnPileDrag = (wizard) => {
   }, () => {});
 };
 
-document.addEventListener("av-browse-returning", (event) => {
-  if (event.target instanceof HTMLElement && event.target.hasAttribute("data-browse-drag")) {
-    event.target.dataset.browseRestored = "";
-    returnPileDrag(event.target);
-  }
-}, { capture: true });
-document.addEventListener("av-browse-settled", (event) => {
-  if (event.target instanceof HTMLElement) event.target.removeAttribute("data-browse-restored");
-}, { capture: true });
 
+
+window.avPileOpen = (trigger) => {
+  if (browsing() || !window.avConfirmDiscard(trigger.dataset.discard)) return;
+  window.avBumpRev();
+  setBrowsePhase("opening");
+  window.avOpenBrowse(trigger);
+};
 
 window.avOpenBrowse = (trigger, pushHistory = true) => {
   clearTimeout(browseTimer);
@@ -357,7 +685,8 @@ window.avOpenBrowse = (trigger, pushHistory = true) => {
   const finishOpening = () => {
     if (sequence !== browseSequence) return;
     captureBrowseOrigin();
-    browseEvent("av-browse-ready");
+    setBrowsePhase("open");
+    window.avBrowseReadyFocus();
     positionBrowseRows();
     if (dragged) clearPileDrag(wizard);
   };
@@ -372,11 +701,10 @@ window.avOpenBrowseAfterSave = () => {
     pendingBrowseAfterSave = true;
     return;
   }
-  // Cards reached from a list already have that list immediately behind them.
-  // Returning there avoids replacing the card with a second identical list.
-  if (editState?.avIndex > 0) {
+  const listIndex = editState?.avListIndex;
+  if (Number.isSafeInteger(listIndex) && listIndex < editState.avIndex) {
     pendingSavedList = true;
-    history.back();
+    history.go(listIndex - editState.avIndex);
     return;
   } else {
     setEditHistory("cards", null, true);
@@ -384,7 +712,7 @@ window.avOpenBrowseAfterSave = () => {
   window.avOpenBrowse(document.getElementById("pile"), false);
 };
 
-window.avCloseBrowse = (editing = false, phase = "open") => {
+window.avCloseBrowse = (editing = false, phase = browsePhase()) => {
   if (editing) browseEditing = true;
   if (phase === "closing") return;
   if (phase === "closed" || phase === "returning") {
@@ -394,16 +722,26 @@ window.avCloseBrowse = (editing = false, phase = "open") => {
   clearTimeout(browseTimer);
   browseSequence++;
   const returnEditor = () => {
-    browseEvent("av-browse-returning", { editing: browseEditing });
+    const wizard = editWizard();
+    if (wizard?.hasAttribute("data-browse-drag")) {
+      wizard.dataset.browseRestored = "";
+      returnPileDrag(wizard);
+    }
+    setBrowsePhase("returning");
+    window.avBrowseFocus(browseEditing);
+    const settle = () => {
+      wizard?.removeAttribute("data-browse-restored");
+      setBrowsePhase("closed");
+    };
     const duration = browseMotionTime(500);
-    if (duration) browseTimer = setTimeout(() => browseEvent("av-browse-settled"), duration);
-    else browseEvent("av-browse-settled");
+    if (duration) browseTimer = setTimeout(settle, duration);
+    else settle();
   };
   if (phase === "opening") {
     returnEditor();
   } else {
     positionBrowseRows();
-    browseEvent("av-browse-closing");
+    setBrowsePhase("closing");
     const duration = browseMotionTime(460);
     if (duration) browseTimer = setTimeout(returnEditor, duration);
     else returnEditor();
@@ -522,6 +860,9 @@ document.addEventListener("click", (event) => {
 
 
 window.avAnimateCommit = () => {
+  invalidateDraft();
+  newDraft();
+  setEditHistory("editor", null, true);
   const editor = document.getElementById("add-editor");
   const stack = document.getElementById("added-cards");
   const stamp = stack?.dataset.ts;
@@ -551,44 +892,50 @@ document.addEventListener("animationend", (event) => {
   }
 });
 
-let summaryTrigger;
-window.avOpenSummary = (trigger) => {
-  if (new URL(window.location.href).searchParams.has("card")) {
+window.avFinishEditor = () => {
+  if (editUrlView().view !== "cards") {
+    invalidateDraft();
+    newDraft();
     setEditHistory("editor", null, true);
   }
-  summaryTrigger = trigger;
-  const generation = ++editorFocusGeneration;
-  // Datastar flushes the visibility and class changes after the click handler.
-  queueMicrotask(() => {
-    if (generation === editorFocusGeneration &&
-        document.getElementById("add-summary")?.classList.contains("modal-open")) {
-      document.getElementById("summary-keep-adding")?.focus();
-    }
-  });
 };
 
-window.avCloseSummary = () => {
-  editorFocusGeneration++;
-  summaryTrigger?.focus();
+let summaryClosingForHistory = false;
+window.avSummaryHistory = () => {
+  const dialog = document.getElementById("add-summary");
+  if (!dialog?.open) return;
+  summaryClosingForHistory = true;
+  dialog.close();
 };
 
-window.avModalKey = (event) => {
-  if (event.key !== "Tab") return;
-  const dialog = event.currentTarget;
-  const controls = [...dialog.querySelectorAll("a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])")]
-    .filter((element) => element.getClientRects().length > 0);
-  if (!controls.length) {
-    event.preventDefault();
-    dialog.focus();
+window.avSummaryClosed = (dialog) => {
+  const placeholder = document.createElement("div");
+  placeholder.hidden = true;
+  const count = dialog.querySelector("#summary-count");
+  if (count) placeholder.append(count);
+  dialog.replaceWith(placeholder);
+  if (summaryClosingForHistory) {
+    summaryClosingForHistory = false;
     return;
   }
-  const first = controls[0];
-  const last = controls[controls.length - 1];
-  if (event.shiftKey && (document.activeElement === first || !controls.includes(document.activeElement))) {
+  editorFocusGeneration++;
+  document.getElementById("edit-done")?.focus();
+};
+
+window.avSummaryKey = (event, dialog) => {
+  if (event.key === "Escape") {
+    event.stopPropagation();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const links = [...dialog.querySelectorAll("a[href]")];
+  const first = links[0];
+  const last = links.at(-1);
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
     event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && (document.activeElement === last || !controls.includes(document.activeElement))) {
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
     event.preventDefault();
-    first.focus();
+    first?.focus();
   }
 };

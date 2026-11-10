@@ -1,28 +1,40 @@
-"""Card editor page, preview, and per-session additions."""
+"""Card editor routes and per-session additions.
+
+GET /edit/{deck_id}[/front|back|preview|cards]
+GET /edit/{deck_id}/cards/{nid}[/front|back|preview]
+POST /edit/{deck_id}/{instance}/{rev}/step/{step}/{via}
+POST /edit/{deck_id}/{instance}/{rev}/card/{nid}
+POST /edit/{deck_id}/{instance}/{rev}/commit
+POST /edit/{deck_id}/{instance}/{rev}/reset
+"""
 
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from json import JSONDecodeError
 from time import monotonic_ns
 
 import anki.collection  # Initialize before anki.cards to avoid an import cycle.
 from anki.collection_pb2 import OpChanges
 from anki.decks import DeckId
 from anki.errors import AnkiException
-from datastar_py.attributes import SignalValue
+from datastar_py.consts import ElementPatchMode
 from datastar_py.fastapi import DatastarResponse
 from datastar_py.fastapi import ServerSentEventGenerator as SSE
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
+from ankiweb.adapters.inbound.http_app import deck_dialog
+from ankiweb.adapters.inbound.http_app.edit_form import (
+    Draft,
+    Projection,
+    Step,
+    Via,
+    View,
+    project_form,
+    step_error,
+)
 from ankiweb.adapters.inbound.http_app.layout import render_app_page
 from ankiweb.adapters.inbound.http_app.session import get_session, set_session_cookie
-from ankiweb.adapters.inbound.http_datastar.common import (
-    elements_response,
-    error_response,
-    signals_response,
-)
 from ankiweb.adapters.inbound.http_shared.templating import render
 from ankiweb.core.app_client.deck_languages import LANGUAGES, LanguagePair, read_marker
 from ankiweb.core.app_client.deck_notes import (
@@ -49,8 +61,6 @@ from ankiweb.core.app_client.vocab import (
     VocabFields,
     add_vocab_note,
     ensure_vocab_model,
-    escape_field,
-    highlight_example,
 )
 from ankiweb.core.config import Settings
 from ankiweb.core.i18n import tr
@@ -59,12 +69,20 @@ from ankiweb.core.ports import CollectionPort
 logger = logging.getLogger(__name__)
 
 
-def _parse_deck(request: Request) -> int | None:
-    try:
-        deck_id = int(request.query_params.get("deck", ""))
-    except ValueError:
+def _parse_id(value: object) -> int | None:
+    if (
+        not isinstance(value, str)
+        or not value.isascii()
+        or not value.isdecimal()
+        or len(value) > 19
+    ):
         return None
-    return deck_id if 0 < deck_id < 2**63 else None
+    result = int(value)
+    return result if 0 < result < 2**63 else None
+
+
+def _parse_deck(request: Request) -> int | None:
+    return _parse_id(request.path_params.get("deck_id"))
 
 
 def _with_session_cookie(response: Response, new_session_id: str | None) -> Response:
@@ -117,16 +135,46 @@ class _SaveResult:
     error: Exception | None = None
 
 
+def _draft(note: DeckNote) -> Draft:
+    return Draft(**_note_fields(note), nid=note.nid, learned=note.learned)
+
+
 def _initial_card(
-    col: anki.collection.Collection, deck_id: int, requested_card: str | None
-) -> dict[str, str | int | bool] | None:
+    col: anki.collection.Collection, deck_id: int, requested_card: int | None
+) -> Draft | None:
     if requested_card is None:
         return None
     try:
-        note, _ = editable_deck_note(col, deck_id, int(requested_card))
-    except (ValueError, NoteNotEditable):
+        note, _ = editable_deck_note(col, deck_id, requested_card)
+    except NoteNotEditable:
         return None
-    return _note_view(note)
+    return _draft(note)
+
+
+def _page_target(
+    requested: str | None, requested_card: int | None, segment: str
+) -> tuple[View, Step] | None:
+    """Map path segments to the initial view and step; ``None`` means redirect."""
+    if requested is not None and requested_card is None:
+        return None
+    if segment == "cards" and requested is None:
+        return View.CARDS, Step.FRONT
+    try:
+        step = Step.from_path(segment)
+    except ValueError:
+        return None
+    if requested_card is None and step != Step.FRONT:
+        return None
+    return (View.CARD if requested_card else View.EDITOR), step
+
+
+def _canonical_path(
+    deck_id: int, requested_card: int | None, view: View, step: Step
+) -> str:
+    root = f"/app/edit/{deck_id}"
+    if requested_card:
+        return f"{root}/cards/{requested_card}/{step.path}"
+    return f"{root}/cards" if view == View.CARDS else f"{root}/front"
 
 
 class _EditRoutes:
@@ -159,9 +207,16 @@ class _EditRoutes:
         deck_view = await self.get_service().run(lambda col: _deck_view(col, deck_id))
         if deck_view is None:
             return RedirectResponse("/app/", status_code=303)
-        deck_emoji, deck_name, languages = deck_view
+        requested = request.path_params.get("nid")
+        requested_card = _parse_id(requested) if requested is not None else None
+        segment = request.path_params.get("step")
+        if segment is None:
+            return await self._redirect_bare(deck_id, requested_card)
+        target = _page_target(requested, requested_card, segment)
+        if target is None:
+            return RedirectResponse(f"/app/edit/{deck_id}/front", status_code=303)
+        initial_view, step = target
         session, new_session_id = get_session(request)
-        requested_card = request.query_params.get("card")
         count, deck_cards, initial_card = await self.get_service().run(
             lambda col: (
                 self.added_count(col, session, deck_id),
@@ -169,13 +224,49 @@ class _EditRoutes:
                 _initial_card(col, deck_id, requested_card),
             )
         )
-        initial_view = (
-            "card"
-            if initial_card is not None
-            else "cards"
-            if requested_card is None and request.query_params.get("view") == "cards"
-            else "editor"
+        if requested_card and initial_card is None:
+            return RedirectResponse(f"/app/edit/{deck_id}/front", status_code=303)
+        if request.url.query:
+            return RedirectResponse(
+                _canonical_path(deck_id, requested_card, initial_view, step),
+                status_code=303,
+            )
+        response = HTMLResponse(
+            self._page(
+                deck_id,
+                deck_view,
+                count,
+                deck_cards,
+                initial_view,
+                project_form(initial_card or Draft(), step),
+            )
         )
+        return _with_session_cookie(response, new_session_id)
+
+    async def _redirect_bare(
+        self, deck_id: int, requested_card: int | None
+    ) -> RedirectResponse:
+        """Send ``/edit/{deck}`` and ``/cards/{nid}`` to their ``/front`` page."""
+        if requested_card:
+            note = await self.get_service().run(
+                lambda col: _initial_card(col, deck_id, requested_card)
+            )
+            if note is not None:
+                return RedirectResponse(
+                    f"/app/edit/{deck_id}/cards/{requested_card}/front", status_code=303
+                )
+        return RedirectResponse(f"/app/edit/{deck_id}/front", status_code=303)
+
+    def _page(
+        self,
+        deck_id: int,
+        deck_view: tuple[str, str, LanguagePair | None],
+        count: int,
+        deck_cards: list[dict[str, str | int]],
+        initial_view: View,
+        projection: Projection,
+    ) -> str:
+        deck_emoji, deck_name, languages = deck_view
         body = render(
             "app/edit.html.jinja",
             app_lang=self.lang,
@@ -188,125 +279,263 @@ class _EditRoutes:
             count=count,
             deck_cards=deck_cards,
             initial_view=initial_view,
-            initial_card=initial_card,
-            pile_animate=False,
-            preview={},
+            instance=deck_dialog.new_token(),
+            revision=0,
+            projection=projection,
         )
-        response = HTMLResponse(
-            render_app_page(
-                tr.actions_add(),
-                body,
-                active="edit",
-                static_dir=self.static_dir,
-                scripts=("/shell/static/app/edit.js",),
-                lang=self.lang,
-            )
+        return render_app_page(
+            tr.actions_add(),
+            body,
+            active="edit",
+            static_dir=self.static_dir,
+            scripts=("/shell/static/app/edit.js",),
+            show_error_toast=False,
+            lang=self.lang,
         )
-        return _with_session_cookie(response, new_session_id)
 
-    async def preview(self, request: Request) -> DatastarResponse:
-        payload = await request.json()
-        if not isinstance(payload, dict):
-            payload = {}
-        values = {
-            key: value if isinstance(value := payload.get(key), str) else ""
-            for key in ("front", "back", "hint", "example")
-        }
-        example_html = highlight_example(escape_field(values["example"]))
-        fragment = render(
+    @staticmethod
+    def guard(request: Request) -> tuple[str, int] | None:
+        token = deck_dialog.valid_token(request.path_params.get("instance"))
+        raw = request.path_params.get("rev", "")
+        if token is None or not raw.isascii() or not raw.isdecimal() or len(raw) > 18:
+            return None
+        return token, int(raw)
+
+    @staticmethod
+    def selector(guard: tuple[str, int]) -> str:
+        token, revision = guard
+        return f'#edit-session[data-instance="{token}"][data-rev="{revision}"]'
+
+    def fragment(
+        self, name: str, deck_id: int, projection: Projection, **context
+    ) -> str:
+        return render(
             "app/edit.html.jinja",
+            fragment=name,
             app_lang=self.lang,
-            preview_only=True,
-            preview=values,
-            example_html=example_html,
+            deck_id=deck_id,
+            projection=projection,
+            **context,
         )
-        return elements_response(fragment)
 
-    async def load_card(self, request: Request, nid: int) -> Response:
-        deck_id = _parse_deck(request)
-        if deck_id is None:
-            return RedirectResponse("/app/", status_code=303)
-        try:
-            exists = await self.get_service().run(
-                lambda col: col.decks.get(DeckId(deck_id), default=False) is not None
+    def patch(self, guard: tuple[str, int], target: str, html: str):
+        return SSE.patch_elements(html, selector=f"{self.selector(guard)} #{target}")
+
+    def error(
+        self, guard: tuple[str, int], key: str, *, status_code: int = 200
+    ) -> DatastarResponse:
+        html = self.fragment(
+            "error",
+            0,
+            project_form(Draft()),
+            error_message=s(key, lang=self.lang.catalog_lang),
+        )
+        return DatastarResponse(
+            self.patch(guard, "edit-error", html), status_code=status_code
+        )
+
+    async def form_context(
+        self,
+        deck_id: int,
+        projection: Projection,
+        guard: tuple[str, int],
+        *,
+        deck_cards: list[dict[str, str | int]] | None = None,
+    ) -> dict | None:
+        deck_view = await self.get_service().run(lambda col: _deck_view(col, deck_id))
+        if deck_view is None:
+            return None
+        emoji, name, languages = deck_view
+        if deck_cards is None:
+            deck_cards = await self.get_service().run(
+                lambda col: self.deck_cards(col, deck_id)
             )
-        except AnkiException:
-            logger.exception("Failed to validate add deck")
-            return error_response(s("app_add_save_failed", lang=self.lang.catalog_lang))
-        if not exists:
-            return RedirectResponse("/app/", status_code=303)
+        return {
+            "deck_emoji": emoji,
+            "deck_name": name,
+            "languages": languages,
+            "LANGUAGES": LANGUAGES,
+            "target_chips": language_chips(languages.dst) if languages else (),
+            "deck_cards": deck_cards,
+            "instance": guard[0],
+            "revision": guard[1] + 1,
+            "reset_from": guard[1],
+            "progress_reset": projection.progress_reset,
+        }
+
+    async def reset_events(
+        self,
+        deck_id: int,
+        guard: tuple[str, int],
+        projection: Projection,
+        *,
+        deck_cards: list[dict[str, str | int]] | None = None,
+        animation_stamp: int | None = None,
+    ):
+        context = await self.form_context(
+            deck_id, projection, guard, deck_cards=deck_cards
+        )
+        if context is None:
+            return []
+        html = self.fragment(
+            "form", deck_id, projection, animation_stamp=animation_stamp, **context
+        )
+        return [
+            SSE.patch_elements(
+                html, selector=self.selector(guard), mode=ElementPatchMode.REPLACE
+            )
+        ]
+
+    async def step(self, request: Request) -> Response:
+        guard = self.guard(request)
+        deck_id = _parse_deck(request)
+        if guard is None or deck_id is None:
+            return deck_dialog.no_patch()
+        fields = await deck_dialog.form_fields(request)
+        try:
+            to = Step.from_path(request.path_params.get("step", ""))
+            via = Via(request.path_params.get("via", ""))
+            if fields is None:
+                raise ValueError
+            nid = int(fields["nid"])
+            if not 0 <= nid < 2**63:
+                raise ValueError
+            draft = Draft(
+                *(fields[key] for key in ("front", "back", "hint", "example")),
+                nid=nid,
+            )
+        except (ValueError, KeyError):
+            return self.error(guard, "app_add_save_failed")
+        key = step_error(draft, to, via)
+        if key:
+            if via == Via.HISTORY:
+                html = self.fragment(
+                    "error",
+                    deck_id,
+                    project_form(draft),
+                    error_message=s(key, lang=self.lang.catalog_lang),
+                )
+                return DatastarResponse(
+                    [
+                        self.patch(guard, "edit-error", html),
+                        SSE.execute_script(
+                            f"document.querySelector('{self.selector(guard)}') && window.avStepRejected()"
+                        ),
+                    ]
+                )
+            return self.error(guard, key)
+        projection = project_form(draft, to)
+        events = [
+            self.patch(guard, target, self.fragment(fragment, deck_id, projection))
+            for fragment, target in (
+                ("marker", "edit-step"),
+                ("steps", "edit-steps"),
+                ("actions", "edit-actions"),
+                ("preview", "preview"),
+                ("error", "edit-error"),
+            )
+        ]
+        events.append(
+            SSE.execute_script(
+                f"document.querySelector('{self.selector(guard)}') && "
+                f"window.avStepApplied('{to.path}', {nid}, {str(via == Via.HISTORY).lower()})"
+            )
+        )
+        if to != Step.PREVIEW:
+            focus = "input-front" if to == Step.FRONT else "input-back"
+            events.append(
+                SSE.execute_script(
+                    f"document.querySelector('{self.selector(guard)}') && window.avFocus('{focus}')"
+                )
+            )
+        return DatastarResponse(events)
+
+    async def reset(self, request: Request) -> Response:
+        guard, deck_id = self.guard(request), _parse_deck(request)
+        if guard is None or deck_id is None:
+            return deck_dialog.no_patch()
+        if await deck_dialog.form_fields(request) is None:
+            return self.error(guard, "app_add_save_failed")
+        events = await self.reset_events(deck_id, guard, project_form(Draft()))
+        if request.url.path.endswith("/done") and events:
+            session, new_session_id = get_session(request)
+            count = await self.get_service().run(
+                lambda col: self.added_count(col, session, deck_id)
+            )
+            dialog = render(
+                "app/_edit_summary.html.jinja",
+                app_lang=self.lang,
+                deck_id=deck_id,
+                count=count,
+            )
+            next_guard = (guard[0], guard[1] + 1)
+            selector = (
+                f"#add-wizard:has({self.selector(next_guard)}"
+                f'[data-reset-from="{guard[1]}"]) #edit-dialog-host'
+            )
+            events.append(
+                SSE.patch_elements(
+                    dialog, selector=selector, mode=ElementPatchMode.INNER
+                )
+            )
+            return _with_session_cookie(DatastarResponse(events), new_session_id)
+        return DatastarResponse(events)
+
+    async def load_card(self, request: Request) -> Response:
+        guard, deck_id = self.guard(request), _parse_deck(request)
+        nid = _parse_id(request.path_params.get("nid"))
+        if guard is None or deck_id is None or nid is None:
+            return deck_dialog.no_patch()
+        if await deck_dialog.form_fields(request) is None:
+            return self.error(guard, "app_add_save_failed")
         _, new_session_id = get_session(request)
         try:
             note, _ = await self.get_service().run(
                 lambda col: editable_deck_note(col, deck_id, nid)
             )
         except NoteNotEditable:
-            response = PlainTextResponse(
-                s("app_add_edit_unavailable", lang=self.lang.catalog_lang),
-                status_code=404,
+            return _with_session_cookie(
+                PlainTextResponse(
+                    s("app_add_edit_unavailable", lang=self.lang.catalog_lang),
+                    status_code=404,
+                ),
+                new_session_id,
             )
-            return _with_session_cookie(response, new_session_id)
         except AnkiException:
             logger.exception("Failed to load vocabulary note")
             return _with_session_cookie(
-                error_response(s("app_add_save_failed", lang=self.lang.catalog_lang)),
-                new_session_id,
+                self.error(guard, "app_add_save_failed"), new_session_id
             )
-        values = _note_fields(note)
-        original: dict[str, SignalValue] = dict(values)
-        response = signals_response(
-            {
-                **values,
-                "nid": nid,
-                "step": 1,
-                "error": "",
-                "learned": note.learned,
-                "progressReset": False,
-                "editOriginal": original,
-                "editLoaded": monotonic_ns(),
-            }
+        projection = project_form(_draft(note))
+        events = await self.reset_events(deck_id, guard, projection)
+        next_guard = (guard[0], guard[1] + 1)
+        events.append(
+            SSE.execute_script(
+                f"document.querySelector('{self.selector(next_guard)}"
+                f'[data-reset-from="{guard[1]}"]\') && window.avEditCardLoaded({nid})'
+            )
         )
-        return _with_session_cookie(response, new_session_id)
+        return _with_session_cookie(DatastarResponse(events), new_session_id)
 
     async def commit(self, request: Request) -> Response:
-        deck_id = _parse_deck(request)
-        if deck_id is None:
-            return RedirectResponse("/app/", status_code=303)
+        guard, deck_id = self.guard(request), _parse_deck(request)
+        if guard is None or deck_id is None:
+            return deck_dialog.no_patch()
+        fields = await deck_dialog.form_fields(request)
+        if fields is None:
+            return self.error(guard, "app_add_both_required")
         try:
-            exists = await self.get_service().run(
-                lambda col: col.decks.get(DeckId(deck_id), default=False) is not None
-            )
-        except AnkiException:
-            logger.exception("Failed to validate add deck")
-            return error_response(s("app_add_save_failed", lang=self.lang.catalog_lang))
-        if not exists:
-            return RedirectResponse("/app/", status_code=303)
-        input_data = await self.commit_input(request)
-        if isinstance(input_data, Response):
-            return input_data
-        nid, values = input_data
-        return await self.save(request, deck_id, nid, values)
-
-    async def commit_input(
-        self, request: Request
-    ) -> tuple[int, dict[str, str] | None] | Response:
-        try:
-            payload = await request.json()
-        except (JSONDecodeError, UnicodeDecodeError):
-            payload = None
-        if not isinstance(payload, dict):
-            return error_response(
-                s("app_add_both_required", lang=self.lang.catalog_lang)
-            )
-        nid = payload.get("nid", 0)
-        if not isinstance(nid, int) or isinstance(nid, bool) or not 0 <= nid < 2**63:
-            return error_response(s("app_add_save_failed", lang=self.lang.catalog_lang))
-        values = _commit_values(payload)
+            nid = int(fields["nid"])
+            if not 0 <= nid < 2**63 or not all(
+                key in fields for key in ("front", "back", "hint", "example")
+            ):
+                raise ValueError
+        except (KeyError, ValueError):
+            return self.error(guard, "app_add_save_failed")
+        values = _commit_values(fields)
         if values is None and nid == 0:
-            return error_response(
-                s("app_add_both_required", lang=self.lang.catalog_lang)
-            )
-        return nid, values
+            return self.error(guard, "app_add_both_required")
+        return await self.save(request, deck_id, nid, values)
 
     def add_card(
         self,
@@ -367,6 +596,8 @@ class _EditRoutes:
         self, request: Request, deck_id: int, nid: int, values: dict[str, str] | None
     ) -> Response:
         session, new_session_id = get_session(request)
+        guard = self.guard(request)
+        assert guard is not None
 
         try:
             result = await self.get_service().run_op(
@@ -376,27 +607,22 @@ class _EditRoutes:
             if result.error is not None:
                 raise result.error
         except NoteNotEditable:
-            response = error_response(
-                s("app_add_save_failed", lang=self.lang.catalog_lang)
-            )
-            response.status_code = 404
+            response = self.error(guard, "app_add_save_failed", status_code=404)
             return _with_session_cookie(response, new_session_id)
         except InvalidFields:
             return _with_session_cookie(
-                error_response(s("app_add_both_required", lang=self.lang.catalog_lang)),
+                self.error(guard, "app_add_both_required"),
                 new_session_id,
             )
         except DuplicateNote:
             return _with_session_cookie(
-                error_response(s("app_add_duplicate", lang=self.lang.catalog_lang)),
+                self.error(guard, "app_add_duplicate"),
                 new_session_id,
             )
         except ProgressResetFailed:
             logger.exception("Failed to reset learning progress after saving note")
             return _with_session_cookie(
-                error_response(
-                    s("app_edit_progress_reset_failed", lang=self.lang.catalog_lang)
-                ),
+                self.error(guard, "app_edit_progress_reset_failed"),
                 new_session_id,
             )
         except ProgressResetUnrecorded:
@@ -404,23 +630,19 @@ class _EditRoutes:
                 "Failed to record pending learning progress reset before saving note"
             )
             return _with_session_cookie(
-                error_response(
-                    s("app_edit_progress_reset_unrecorded", lang=self.lang.catalog_lang)
-                ),
+                self.error(guard, "app_edit_progress_reset_unrecorded"),
                 new_session_id,
             )
         except ProgressResetUncleared:
             logger.exception("Failed to clear pending learning progress reset")
             return _with_session_cookie(
-                error_response(
-                    s("app_edit_progress_reset_uncleared", lang=self.lang.catalog_lang)
-                ),
+                self.error(guard, "app_edit_progress_reset_uncleared"),
                 new_session_id,
             )
         except (AnkiException, ValueError):
             logger.exception("Failed to add vocabulary note")
             return _with_session_cookie(
-                error_response(s("app_add_save_failed", lang=self.lang.catalog_lang)),
+                self.error(guard, "app_add_save_failed"),
                 new_session_id,
             )
         if result.count is None:
@@ -445,30 +667,35 @@ class _EditRoutes:
             app_lang=self.lang,
             deck_id=deck_id,
             deck_cards=deck_cards,
+            progress_reset=progress_reset,
         )
 
-        response = DatastarResponse(
-            [
-                SSE.patch_elements(fragment),
-                SSE.patch_elements(deck_fragment),
-                SSE.patch_signals(
-                    {
-                        "front": "",
-                        "back": "",
-                        "hint": "",
-                        "example": "",
-                        "step": 1,
-                        "nid": 0,
-                        "learned": False,
-                        "progressReset": progress_reset,
-                        "count": count,
-                        "deckCount": len(deck_cards),
-                        "error": "",
-                        **({"_editSaved": True} if nid else {}),
-                    }
-                ),
-            ]
+        projection = project_form(Draft(), progress_reset=progress_reset)
+        events = [
+            SSE.patch_elements(fragment),
+            SSE.patch_elements(deck_fragment),
+            SSE.patch_elements(
+                render("app/_edit_summary_count.html.jinja", count=count)
+            ),
+        ]
+        events.extend(
+            await self.reset_events(
+                deck_id,
+                guard,
+                projection,
+                deck_cards=deck_cards,
+                animation_stamp=animation_stamp,
+            )
         )
+        next_guard = (guard[0], guard[1] + 1)
+        action = "window.avAfterCommit()" if nid else "window.avAnimateCommit()"
+        events.append(
+            SSE.execute_script(
+                f"document.querySelector('{self.selector(next_guard)}"
+                f'[data-reset-from="{guard[1]}"]\') && {action}'
+            )
+        )
+        response = DatastarResponse(events)
         return _with_session_cookie(response, new_session_id)
 
 
@@ -477,8 +704,23 @@ def build_edit_router(
 ) -> APIRouter:
     routes = _EditRoutes(get_service, settings)
     router = APIRouter()
-    router.add_api_route("/edit", routes.edit_page, methods=["GET"])
-    router.add_api_route("/edit/preview", routes.preview, methods=["POST"])
-    router.add_api_route("/edit/commit", routes.commit, methods=["POST"])
-    router.add_api_route("/edit/card/{nid}", routes.load_card, methods=["POST"])
+
+    @router.get("/edit")
+    async def missing_deck() -> Response:
+        return RedirectResponse("/app/", status_code=303)
+
+    router.add_api_route("/edit/{deck_id}", routes.edit_page, methods=["GET"])
+    router.add_api_route(
+        "/edit/{deck_id}/cards/{nid}", routes.edit_page, methods=["GET"]
+    )
+    router.add_api_route(
+        "/edit/{deck_id}/cards/{nid}/{step}", routes.edit_page, methods=["GET"]
+    )
+    router.add_api_route("/edit/{deck_id}/{step}", routes.edit_page, methods=["GET"])
+    prefix = "/edit/{deck_id}/{instance}/{rev}"
+    router.add_api_route(prefix + "/step/{step}/{via}", routes.step, methods=["POST"])
+    router.add_api_route(prefix + "/reset", routes.reset, methods=["POST"])
+    router.add_api_route(prefix + "/done", routes.reset, methods=["POST"])
+    router.add_api_route(prefix + "/commit", routes.commit, methods=["POST"])
+    router.add_api_route(prefix + "/card/{nid}", routes.load_card, methods=["POST"])
     return router
