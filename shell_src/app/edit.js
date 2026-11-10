@@ -45,6 +45,10 @@ window.avAddKey = (event) => {
 
 const editForm = () => document.getElementById("edit-form");
 const editSession = () => document.getElementById("edit-session");
+const editWizard = () => document.getElementById("add-wizard");
+const browsePhase = () => editWizard()?.dataset.browsePhase || "closed";
+const browsing = () => ["opening", "open", "closing"].includes(browsePhase());
+const busy = () => editWizard()?.getAttribute("aria-busy") === "true";
 window.avNid = () => Number(editSession()?.dataset.nid || 0);
 window.avAction = (suffix) => {
   const session = editSession();
@@ -76,19 +80,24 @@ const editDirty = () => {
     return window.avNid() ? value !== original[key] : value !== "";
   });
 };
-window.avConfirmDiscard = (saving, message) => !saving && (!editDirty() || window.confirm(message));
-window.avGuardNav = (event, saving, message) => {
-  if (!window.avConfirmDiscard(saving, message)) event.preventDefault();
+window.avConfirmDiscard = (message) => !busy() && (!editDirty() || window.confirm(message));
+window.avGuardNav = (event, message) => {
+  if (!window.avConfirmDiscard(message)) event.preventDefault();
 };
+window.avCanFinish = (message) =>
+  !document.getElementById("add-summary")?.open &&
+  !["opening", "closing", "returning"].includes(browsePhase()) &&
+  window.avConfirmDiscard(message);
 
-let backState = [false, false, "closed"];
-window.avSyncBack = (saving, browsing, phase) => {
-  backState = [saving, browsing, phase];
+window.avSyncBack = () => {
+  const phase = browsePhase();
+  const inBrowse = browsing();
+  const saving = busy();
   const back = document.getElementById("edit-back");
   if (!back) return;
   const nid = window.avNid();
-  back.setAttribute("aria-label", browsing ? back.dataset.browseBack : nid ? back.dataset.listBack : back.dataset.exit);
-  const link = !nid && !browsing && phase === "closed" && !saving && !editDirty();
+  back.setAttribute("aria-label", inBrowse ? back.dataset.browseBack : nid ? back.dataset.listBack : back.dataset.exit);
+  const link = !nid && !inBrowse && phase === "closed" && !saving && !editDirty();
   if (link) {
     back.setAttribute("href", "/app/");
     back.removeAttribute("role");
@@ -102,12 +111,20 @@ let pendingCommitBrowse = false;
 window.avAfterCommit = () => {
   invalidateDraft();
   pendingCommitBrowse = true;
-  window.avFinishSave(backState[0]);
 };
-window.avFinishSave = (saving) => {
-  if (!saving && pendingCommitBrowse) {
-    pendingCommitBrowse = false;
-    browseEvent("av-open-saved");
+window.avEditFetch = (event) => {
+  const { el, type } = event.detail;
+  queueMicrotask(() => {
+    window.avSyncBack();
+    if (el.id === "btn-add" && type === "finished" && pendingCommitBrowse) {
+      pendingCommitBrowse = false;
+      browseEvent("av-open-saved");
+    }
+  });
+  if (el !== editWizard()) return;
+  if (type === "error" || type === "retries-failed") window.avEditHistoryFailed();
+  else if (type === "finished" && document.getElementById("edit-error")?.textContent.trim()) {
+    window.avEditHistoryFailed(false);
   }
 };
 window.avEditError = (message) => {
@@ -131,7 +148,7 @@ document.addEventListener("input", (event) => {
   window.avBumpRev();
   const counter = form.querySelector(`[data-counter-for=\"${event.target.name}\"]`);
   if (counter) counter.textContent = String(event.target.value.length);
-  window.avSyncBack(...backState);
+  window.avSyncBack();
 });
 document.addEventListener("datastar-fetch", (event) => {
   if (event.detail.type !== "started") return;
@@ -147,14 +164,14 @@ document.addEventListener("focusin", (event) => {
 new MutationObserver((mutations) => {
   const sessionReplaced = mutations.some((mutation) => [...mutation.addedNodes].some((node) =>
     node instanceof Element && (node.id === "edit-session" || node.querySelector("#edit-session"))));
+  if (sessionReplaced || mutations.some((mutation) => mutation.target === editWizard())) window.avSyncBack();
   if (!sessionReplaced) return;
-  window.avSyncBack(...backState);
   const lostFocus = lastEditorFocus;
   if (!lostFocus?.id || lostFocus.isConnected || document.activeElement !== document.body) return;
   if (!mutations.some((mutation) => [...mutation.removedNodes].some((node) =>
     node instanceof Element && node.contains(lostFocus)))) return;
-  if (backState[1]) {
-    if (backState[2] === "open") window.avBrowseReadyFocus();
+  if (browsing()) {
+    if (browsePhase() === "open") window.avBrowseReadyFocus();
     return;
   }
   requestEditorFocus(() => {
@@ -162,10 +179,13 @@ new MutationObserver((mutations) => {
       document.getElementById(lostFocus.id)?.focus({ preventScroll: true });
     }
   });
-}).observe(document.documentElement, { childList: true, subtree: true });
-window.avEditKey = (event, saving, browsing) => {
+}).observe(document.documentElement, {
+  childList: true, subtree: true, attributes: true,
+  attributeFilter: ["data-browse-phase", "aria-busy"],
+});
+window.avEditKey = (event) => {
   window.avAddKey(event);
-  if (event.key === "Escape" && !event.repeat && !saving && (browsing || window.avNid())) {
+  if (event.key === "Escape" && !event.repeat && !busy() && (browsing() || window.avNid())) {
     document.getElementById("edit-back")?.click();
   }
 };
@@ -319,7 +339,7 @@ window.avEditCardLoaded = (nid) => {
   if (historyCard) newDraft();
   if (historyCard) historyCard = false;
   else setEditHistory("card", nid);
-  window.avCloseBrowse(true, document.getElementById("add-wizard")?.dataset.browsePhase);
+  window.avCloseBrowse(true);
 };
 
 window.avEditHistoryFailed = (showMessage = true) => {
@@ -334,31 +354,46 @@ window.avEditHistoryFailed = (showMessage = true) => {
   if (showMessage) browseEvent("av-history-failed");
 };
 
-window.avEditBack = (event, saving, browsing, phase) => {
+window.avPrepareHistory = (event) => {
+  const detail = event.detail;
+  window.avBumpRev();
+  if (detail.view === "card") {
+    detail.path = `/card/${encodeURIComponent(detail.card)}`;
+    return;
+  }
+  detail.path = window.avNid() ? "/reset" : null;
+  detail.open = detail.view === "cards" &&
+    !(browsing() && ["opening", "open"].includes(browsePhase()));
+  if (detail.view !== "cards") window.avCloseBrowse(false);
+};
+
+window.avEditBack = (event) => {
+  const inBrowse = browsing();
+  const phase = browsePhase();
   const nid = window.avNid();
-  const message = browsing || nid ? document.getElementById("add-wizard").dataset.discard : event.currentTarget.dataset.discard;
-  if (saving || phase === "closing" || phase === "returning") {
+  const message = inBrowse || nid ? editWizard().dataset.discard : event.currentTarget.dataset.discard;
+  if (busy() || phase === "closing" || phase === "returning") {
     event.preventDefault();
     return;
   }
-  if (!browsing && !nid) {
+  if (!inBrowse && !nid) {
     if (event.currentTarget.hasAttribute("href")) {
-      window.avGuardNav(event, saving, message);
+      window.avGuardNav(event, message);
     } else {
       event.preventDefault();
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      if (window.avConfirmDiscard(saving, message)) window.location.assign("/app/");
+      if (window.avConfirmDiscard(message)) window.location.assign("/app/");
     }
     return;
   }
   event.preventDefault();
-  if (!browsing && !window.avConfirmDiscard(saving, message)) return;
-  const target = browsing ? editState?.avEditorIndex : editState?.avListIndex;
+  if (!inBrowse && !window.avConfirmDiscard(message)) return;
+  const target = inBrowse ? editState?.avEditorIndex : editState?.avListIndex;
   if (Number.isSafeInteger(target) && target < editState.avIndex) {
     skipHistoryDiscard = true;
     history.go(target - editState.avIndex);
   } else {
-    const view = browsing ? "editor" : "cards";
+    const view = inBrowse ? "editor" : "cards";
     setEditHistory(view, null, true);
     browseEvent("av-history", { view });
   }
@@ -391,7 +426,10 @@ window.addEventListener("popstate", (event) => {
   history.go(direction);
 }, true);
 
-window.avEditPop = (event, saving, message, browsing, phase) => {
+window.avEditPop = (event, message) => {
+  const saving = busy();
+  const inBrowse = browsing();
+  const phase = browsePhase();
   if (arrivingStale) {
     if (editHistoryView(location.href) !== "cards" &&
         staleDrafts.has(event.state?.avDraft)) history.forward();
@@ -422,11 +460,11 @@ window.avEditPop = (event, saving, message, browsing, phase) => {
     pendingStepHistory = null;
   }
   const { view, card, step } = editUrlView();
-  const sameDraft = view === "card" ? !browsing && Number(card) === nid :
-    view === "editor" ? !browsing && !nid : false;
-  const sameView = view === "cards" ? browsing && (phase === "opening" || phase === "open") :
+  const sameDraft = view === "card" ? !inBrowse && Number(card) === nid :
+    view === "editor" ? !inBrowse && !nid : false;
+  const sameView = view === "cards" ? inBrowse && (phase === "opening" || phase === "open") :
     sameDraft && step === currentStep();
-  const leaveList = view === "editor" && browsing && !nid && step !== currentStep();
+  const leaveList = view === "editor" && inBrowse && !nid && step !== currentStep();
   if (!saving && ((sameDraft && !sameView) || leaveList)) {
     pendingStepHistory = {
       state: validEditHistory(event.state) ? event.state : { avEdit: true, avIndex: 0 },
@@ -436,8 +474,8 @@ window.avEditPop = (event, saving, message, browsing, phase) => {
     window.avRequestStep(step, "history");
     return;
   }
-  if (saving || (!sameView && !skipHistoryDiscard && !browsing &&
-      !window.avConfirmDiscard(saving, message))) {
+  if (saving || (!sameView && !skipHistoryDiscard && !inBrowse &&
+      !window.avConfirmDiscard(message))) {
     skipHistoryDiscard = false;
     restoreEditHistory(event.state);
     return;
@@ -637,7 +675,7 @@ window.avOpenBrowseAfterSave = () => {
   window.avOpenBrowse(document.getElementById("pile"), false);
 };
 
-window.avCloseBrowse = (editing = false, phase = "open") => {
+window.avCloseBrowse = (editing = false, phase = browsePhase()) => {
   if (editing) browseEditing = true;
   if (phase === "closing") return;
   if (phase === "closed" || phase === "returning") {

@@ -11,8 +11,8 @@
             data-label-other="{{ s('app_edit_stack_label_other') }}"
             data-discard="{{ s('app_edit_discard') }}"
             data-attr:aria-expanded="$_browsing ? 'true' : 'false'"
-            data-attr:disabled="{{ (deck_cards|length == 0)|tojson }} || $_browsing || $saving"
-            data-on:click="!$_browsing &amp;&amp; window.avConfirmDiscard($saving, el.dataset.discard) ? (window.avBumpRev(), $_browsing = true, $_browsePhase = 'opening', window.avOpenBrowse(el)) : null">
+            data-attr:disabled="{{ (deck_cards|length == 0)|tojson }} || $_browsing || $_busy"
+            data-on:click="!$_browsing &amp;&amp; window.avConfirmDiscard(el.dataset.discard) ? (window.avBumpRev(), $_browsing = true, $_browsePhase = 'opening', window.avOpenBrowse(el)) : null">
         <span id="added-cards"
               class="pile-cards"{% if animation_stamp|default(false) %} data-ts="{{ animation_stamp }}"{% endif %}>
             {% for card in deck_cards[:5] %}

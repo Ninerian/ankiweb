@@ -26,9 +26,9 @@
                         aria-label="{{ s('app_edit_row_label', front=card.front) }}{% if card.learned %}, {{ s('app_edit_learned') }}{% endif %}"
                         data-load-failed="{{ s('app_add_edit_unavailable') }}"
                         data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? window.avEditError(el.dataset.loadFailed) : null"
-                        data-on:click="$saving ? null : (window.avBumpRev(), @post(window.avAction('/card/{{ card.nid }}'), {contentType:'form', selector:'#edit-form'}))"
-                        data-indicator:saving
-                        data-attr:disabled="$saving">
+                        data-on:click="$_busy ? null : (window.avBumpRev(), @post(window.avAction('/card/{{ card.nid }}'), {contentType:'form', selector:'#edit-form'}))"
+                        data-indicator:_busy
+                        data-attr:disabled="$_busy">
                     <span class="browse-num" aria-hidden="true">{{ loop.index }}</span>
                     <span class="browse-body">
                         <span class="flex flex-wrap items-start justify-between gap-2">

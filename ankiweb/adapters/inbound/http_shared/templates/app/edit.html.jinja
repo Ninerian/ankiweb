@@ -10,7 +10,7 @@
             <button type="button"
                     class="add-step{% if projection.step|int == loop.index %} add-step-active{% elif projection.step|int > loop.index %} add-step-done{% endif %}"
                     {% if projection.step|int == loop.index %}aria-current="step"{% endif %}
-                    data-attr:disabled="$stepping"
+                    data-attr:disabled="$_busy"
                     data-on:click="{{ request_step(loop.index, 'chip') }}"><span class="add-step-num" aria-hidden="true">{{ loop.index }}</span><span>{{ label }}</span></button>
         {% endfor %}
     </div>
@@ -40,7 +40,7 @@
         {% if projection.draft.example %}<div class="add-preview-section"><span class="add-preview-tag">{{ s("app_add_example") }}</span><p class="av-example">{{ projection.example_html|safe }}</p></div>{% endif %}
         <button type="button"
                 class="add-preview-edit"
-                data-attr:disabled="$stepping"
+                data-attr:disabled="$_busy"
                 data-on:click="{{ request_step(1, 'chip') }}">{{ s("app_edit_preview_edit") if projection.draft.nid else s('app_add_edit_preview') }}</button>
     </div>
 {% endmacro %}
@@ -54,7 +54,7 @@
                 <button type="button"
                         class="btn btn-square neo-press h-16 min-h-0 w-14.5 shrink-0 rounded-2xl border-3 border-neo-edge bg-base-200 p-0 shadow-neo active:shadow-none"
                         aria-label="{{ s('app_add_previous_step') }}"
-                        data-attr:disabled="$stepping"
+                        data-attr:disabled="$_busy"
                         data-on:click="{{ request_step(projection.step|int - 1, 'next') }}">
                     <svg aria-hidden="true"
                          viewBox="0 0 24 24"
@@ -71,16 +71,16 @@
         {% if projection.step|int < 3 %}<button id="btn-next"
                                                 type="button"
                                                 class="btn btn-accent neo-press h-16 min-h-0 min-w-0 flex-1 whitespace-nowrap rounded-2xl border-3 border-neo-edge px-2 text-[clamp(1rem,calc(6vw_-_2px),1.35rem)] leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none"
-                                                data-attr:disabled="$stepping"
+                                                data-attr:disabled="$_busy"
                                                 data-on:click="{{ request_step(projection.step|int + 1, 'next') }}">{{ s("app_add_next_back") if projection.step|int == 1 else s('app_add_next_preview') }}</button>
     {% else %}<button id="btn-add"
                       type="button"
                       class="btn btn-success neo-press h-16 min-h-0 min-w-0 flex-1 whitespace-normal rounded-2xl border-3 border-neo-edge text-review-reveal-label leading-tight font-black uppercase tracking-review-reveal-label shadow-neo active:shadow-none"
                       data-save-failed="{{ s('app_add_save_failed') }}"
                       data-on:datastar-fetch="el === evt.detail.el &amp;&amp; evt.detail.type === 'error' ? window.avEditError(el.dataset.saveFailed) : null"
-                      data-on:click="$saving ? null : @post(window.avAction('/commit'), {contentType:'form', selector:'#edit-form'})"
-                      data-indicator:saving
-                      data-attr:disabled="$saving">{{ s("app_edit_save") if projection.draft.nid else tr.actions_add()|tr_clean }}</button>{% endif %}
+                      data-on:click="$_busy ? null : @post(window.avAction('/commit'), {contentType:'form', selector:'#edit-form'})"
+                      data-indicator:_busy
+                      data-attr:disabled="$_busy">{{ s("app_edit_save") if projection.draft.nid else tr.actions_add()|tr_clean }}</button>{% endif %}
 </div>
 </footer>
 {% endmacro %}
@@ -88,7 +88,7 @@
                                                                 class="add-chip"
                                                                 data-target="{{ target }}"
                                                                 data-value="{{ value if value is not none else label ~ (' ' if space else '') }}"
-                                                                data-attr:disabled="$stepping"
+                                                                data-attr:disabled="$_busy"
                                                                 data-on:click="window.avInsert(el)">{{ label }}</button>{% endmacro %}
 {% macro field_label(for_id, label, help, language='') %}<div class="add-label-row"><label for="{{ for_id }}" class="add-label">{{ label }}{% if language %} · {{ language }}{% endif %}</label>{% if help %}<span id="{{ for_id }}-help" class="add-help">{{ help }}</span>{% endif %}</div>{% endmacro %}
 {% macro form() %}
@@ -99,10 +99,10 @@
          data-rev="{{ revision }}"{% if reset_from is defined %} data-reset-from="{{ reset_from }}"{% endif %}
          data-nid="{{ projection.draft.nid }}"
          data-original="{{ projection.draft.fields|tojson|forceescape }}"
-         data-attr:inert="$saving">
+         data-attr:inert="$_busy">
         <span id="edit-step-request"
               hidden
-              data-indicator:stepping
+              data-indicator:_busy
               data-on:datastar-fetch="el === evt.detail.el &amp;&amp; (evt.detail.type === 'error' || evt.detail.type === 'retries-failed') ? window.avStepRejected() : null"
               data-on:av-step="@post(window.avAction('/step/' + evt.detail.to + '/' + evt.detail.via), {contentType:'form', selector:'#edit-form', requestCancellation:window.avStepRequest()})"></span>
         {{ error() }}
@@ -118,7 +118,7 @@
                    data-list-back="{{ s('app_edit_back_to_cards') }}"
                    data-discard="{{ s('app_add_discard_leave') }}"
                    data-on:keydown="window.avBackKey(evt, el)"
-                   data-on:click="window.avEditBack(evt, $saving, $_browsing, $_browsePhase)">
+                   data-on:click="window.avEditBack(evt)">
                     <svg aria-hidden="true"
                          viewBox="0 0 24 24"
                          class="h-5 w-5"
@@ -134,13 +134,13 @@
                    href="/app/"
                    class="flex h-review-hud-control min-w-0 flex-1 items-center gap-2 px-2 text-left"
                    data-discard="{{ s('app_add_discard_leave') }}"
-                   data-on:click="window.avGuardNav(evt, $saving, el.dataset.discard)"><span class="shrink-0">{{ deck_emoji }}</span> <span class="min-w-0 truncate text-xl font-black" dir="auto">{{ deck_name }}</span></a>
+                   data-on:click="window.avGuardNav(evt, el.dataset.discard)"><span class="shrink-0">{{ deck_emoji }}</span> <span class="min-w-0 truncate text-xl font-black" dir="auto">{{ deck_name }}</span></a>
                 <button id="edit-done"
                         type="button"
                         class="btn btn-accent neo-press h-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge px-3.5 text-sm font-black uppercase shadow-neo active:shadow-none"
-                        data-attr:disabled="$saving"
+                        data-attr:disabled="$_busy"
                         data-discard="{{ s('app_add_discard_finish') }}"
-                        data-on:click="document.getElementById('add-summary')?.open || $_browsePhase === 'opening' || $_browsePhase === 'closing' || $_browsePhase === 'returning' ? null : (window.avConfirmDiscard($saving, el.dataset.discard) ? (window.avBumpRev(), window.avFinishEditor(), @post(window.avAction('/done'), {contentType:'form', selector:'#edit-form'})) : null)">{{ s("app_add_done") }}</button>
+                        data-on:click="window.avCanFinish(el.dataset.discard) ? (window.avBumpRev(), window.avFinishEditor(), @post(window.avAction('/done'), {contentType:'form', selector:'#edit-form'})) : null">{{ s("app_add_done") }}</button>
             </div>
             {{ steps() }}
         </header>
@@ -166,7 +166,7 @@
                                   name="front"
                                   class="add-input"
                                   rows="4"
-                                  data-attr:readonly="$stepping"{% if languages %} lang="{{ languages.dst }}"{% endif %}
+                                  data-attr:readonly="$_busy"{% if languages %} lang="{{ languages.dst }}"{% endif %}
                                   aria-describedby="input-front-help{% if projection.draft.nid and projection.draft.learned %} edit-warning{% endif %}"
                                   placeholder="{{ s('app_add_front_placeholder_languages') if languages else s('app_add_front_placeholder') }}"
                                   required>{{ projection.draft.front }}</textarea>
@@ -179,7 +179,7 @@
                                   name="back"
                                   class="add-input"
                                   rows="4"
-                                  data-attr:readonly="$stepping"{% if languages %} lang="{{ languages.src }}"{% endif %}
+                                  data-attr:readonly="$_busy"{% if languages %} lang="{{ languages.src }}"{% endif %}
                                   aria-describedby="input-back-help"
                                   placeholder="{{ s('app_add_back_placeholder_languages') if languages else s('app_add_back_placeholder') }}"
                                   required>{{ projection.draft.back }}</textarea>
@@ -188,13 +188,13 @@
                                                                                                                                                                                                                                                                                                                                         name="hint"
                                                                                                                                                                                                                                                                                                                                         class="add-input add-input-sm"
                                                                                                                                                                                                                                                                                                                                         rows="2"
-                                                                                                                                                                                                                                                                                                                                        data-attr:readonly="$stepping"
+                                                                                                                                                                                                                                                                                                                                        data-attr:readonly="$_busy"
                                                                                                                                                                                                                                                                                                                                         placeholder="{{ s('app_add_hint_placeholder') }}">{{ projection.draft.hint }}</textarea><p class="add-counter"><span data-counter-for="hint">{{ projection.counts.hint }}</span> {{ s("app_add_characters") }}</p><div class="add-chips">{{ chip(s('app_add_chip_noun'), 'input-hint', true) }}{{ chip(s('app_add_chip_verb'), 'input-hint', true) }}{{ chip(s('app_add_chip_adjective'), 'input-hint', true) }}{{ chip(s('app_add_chip_plural'), 'input-hint', true) }}</div></div></details>
                         <details class="collapse collapse-arrow add-optional"{% if projection.draft.example %} open{% endif %}><summary class="collapse-title font-extrabold">{{ s("app_add_example") }} · {{ s("app_add_optional") }}</summary><div class="collapse-content">{{ field_label('input-example', s('app_add_example'), s('app_add_example_help')) }}<textarea id="input-example"
                                                                                                                                                                                                                                                                                                                                                                            name="example"
                                                                                                                                                                                                                                                                                                                                                                            class="add-input add-input-sm"
                                                                                                                                                                                                                                                                                                                                                                            rows="2"
-                                                                                                                                                                                                                                                                                                                                                                           data-attr:readonly="$stepping"
+                                                                                                                                                                                                                                                                                                                                                                           data-attr:readonly="$_busy"
                                                                                                                                                                                                                                                                                                                                                                            aria-describedby="input-example-help"
                                                                                                                                                                                                                                                                                                                                                                            placeholder="{{ s('app_add_example_placeholder_languages') if languages else s('app_add_example_placeholder') }}">{{ projection.draft.example }}</textarea><p class="add-counter"><span data-counter-for="example">{{ projection.counts.example }}</span> {{ s("app_add_characters") }}</p></div></details>
                     </section>
@@ -222,22 +222,22 @@
           data-initial-view="{{ initial_view }}"
           data-initial-card="{{ projection.draft.nid }}"
           data-initial-step="{{ projection.step.path }}"
-          data-signals="{saving: false, stepping: false, _browsing: {{ (initial_view == 'cards')|tojson }}, _browsePhase: '{{ 'open' if initial_view == 'cards' else 'closed' }}'}"
+          data-signals="{_busy: false, _browsing: {{ (initial_view == 'cards')|tojson }}, _browsePhase: '{{ 'open' if initial_view == 'cards' else 'closed' }}'}"
           data-discard="{{ s('app_edit_discard') }}"
           data-load-failed="{{ s('app_add_edit_unavailable') }}"
           data-attr:data-browse-phase="$_browsePhase"
-          data-indicator:saving
-          data-effect="window.avSyncBack($saving, $_browsing, $_browsePhase); window.avFinishSave($saving)"
+          data-indicator:_busy
+          data-attr:aria-busy="$_busy ? 'true' : 'false'"
           data-on:av-browse-ready="$_browsePhase = 'open'; window.avBrowseReadyFocus()"
           data-on:av-browse-closing="$_browsePhase = 'closing'"
           data-on:av-browse-returning="$_browsing = false; $_browsePhase = 'returning'; window.avBrowseFocus(evt.detail.editing)"
           data-on:av-browse-settled="$_browsePhase = 'closed'"
           data-on:av-open-saved="$_browsing = true; $_browsePhase = 'opening'; window.avOpenBrowseAfterSave()"
-          data-on:av-history="evt.detail.view === 'card' ? (window.avBumpRev(), @post(window.avAction('/card/' + encodeURIComponent(evt.detail.card)), {contentType:'form', selector:'#edit-form'})) : (window.avBumpRev(), window.avNid() ? @post(window.avAction('/reset'), {contentType:'form', selector:'#edit-form'}) : null, evt.detail.view === 'cards' ? ($_browsing &amp;&amp; ($_browsePhase === 'opening' || $_browsePhase === 'open') ? null : ($_browsing = true, $_browsePhase = 'opening', window.avOpenBrowse(document.getElementById('pile'), false))) : window.avCloseBrowse(false, $_browsePhase))"
+          data-on:av-history="window.avPrepareHistory(evt); evt.detail.path ? @post(window.avAction(evt.detail.path), {contentType:'form', selector:'#edit-form'}) : null; evt.detail.open ? ($_browsing = true, $_browsePhase = 'opening', window.avOpenBrowse(document.getElementById('pile'), false)) : null"
           data-on:av-history-failed="window.avEditError(el.dataset.loadFailed)"
-          data-on:popstate__window="window.avSummaryHistory(); window.avEditPop(evt, $saving, el.dataset.discard, $_browsing, $_browsePhase)"
-          data-on:datastar-fetch__document="evt.detail.el.id === 'add-wizard' ? (evt.detail.type === 'error' || evt.detail.type === 'retries-failed' ? window.avEditHistoryFailed() : (evt.detail.type === 'finished' &amp;&amp; document.getElementById('edit-error')?.textContent.trim() ? window.avEditHistoryFailed(false) : null)) : null"
-          data-on:keydown__window="window.avEditKey(evt, $saving, $_browsing)">
+          data-on:popstate__window="window.avSummaryHistory(); window.avEditPop(evt, el.dataset.discard)"
+          data-on:datastar-fetch__document="window.avEditFetch(evt)"
+          data-on:keydown__window="window.avEditKey(evt)">
         {{ form() }}
         <div id="edit-dialog-host">
             <div hidden>{% include "app/_edit_summary_count.html.jinja" %}</div>

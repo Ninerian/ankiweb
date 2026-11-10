@@ -2483,6 +2483,17 @@ def test_unrelated_failed_preview_does_not_cancel_history_card_load(
     with page.expect_request(preview_url):
         _back(page).press("Enter")
     assert len(previews) == 1
+    expect(page.locator("#add-wizard")).to_have_attribute("aria-busy", "true")
+    # Force an overlapping history request to retain the stale-failure regression.
+    page.evaluate(
+        """() => {
+          const pop = window.avEditPop;
+          window.avEditPop = (event, message) => {
+            document.querySelector('#add-wizard').setAttribute('aria-busy', 'false');
+            pop(event, message);
+          };
+        }"""
+    )
     page.evaluate("history.go(-2)")
     expect(page).to_have_url(cards_url)
     expect(cards).to_be_visible()
@@ -4358,10 +4369,20 @@ def test_late_step_is_dropped_after_switching_cards(
     )
     with page.expect_request(step_url):
         (_front(page) if target_step == 2 else _back(page)).press("Enter")
-    accepted = _respond_to_confirm(page, accept=True)
-    page.locator("#pile").click()
-    assert len(accepted) == 1
-    page.locator(f"#deck-cards button[data-note-id='{nid}']").click()
+    expect(page.locator("#pile")).to_be_disabled()
+    expect(page.locator("#edit-done")).to_be_disabled()
+    expect(page.locator("#edit-back")).to_have_attribute("aria-disabled", "true")
+    # Simulate an already-dispatched navigation to exercise the stale response guard.
+    page.evaluate(
+        """() => document.querySelector('#add-wizard').dispatchEvent(
+          new CustomEvent('av-history', {detail: {view: 'cards'}}))"""
+    )
+    expect(page.locator("#deck-cards")).to_be_visible()
+    page.evaluate(
+        """nid => document.querySelector('#add-wizard').dispatchEvent(
+          new CustomEvent('av-history', {detail: {view: 'card', card: nid}}))""",
+        str(nid),
+    )
     expect(_front(page)).to_have_value("Saved")
     expect(_front(page)).to_be_focused()
     expect(page.locator("#edit-step")).to_have_attribute("data-step", "1")
@@ -4380,17 +4401,19 @@ def test_late_step_is_dropped_after_switching_cards(
 def test_history_navigation_during_pending_step_preserves_draft(
     page: Page, live_app: LiveApp
 ) -> None:
-    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
     page.emulate_media(reduced_motion="reduce")
     editor_url = f"{live_app}/app/edit/1/front"
     page.goto(editor_url)
     _front(page).fill("Draft")
+    _front(page).press("Enter")
+    _wait_for_back(page)
+    _back(page).fill("Answer")
     pending: list[tuple[Route, Any]] = []
 
     def hold_step(route: Route) -> None:
         pending.append((route, route.fetch()))
 
-    step_url = "**/app/edit/1/*/*/step/back/*"
+    step_url = "**/app/edit/1/*/*/step/preview/*"
     page.route(step_url, hold_step)
     page.evaluate(
         """() => {
@@ -4403,29 +4426,27 @@ def test_history_navigation_during_pending_step_preserves_draft(
           });
         }"""
     )
+    page.evaluate(
+        "() => { window.historyPops = []; window.addEventListener('popstate', () => window.historyPops.push(location.href)); }"
+    )
     with page.expect_request(step_url):
-        _front(page).press("Enter")
-    accepted = _respond_to_confirm(page, accept=True)
-    page.locator("#pile").click()
-    assert len(accepted) == 1
-    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
+        _back(page).press("Enter")
+    expect(page.locator("#edit-done")).to_be_disabled()
+    expect(page.locator("#edit-back")).to_have_attribute("aria-disabled", "true")
     page.go_back()
-    expect(page).to_have_url(editor_url)
-    expect(_front(page)).to_be_visible()
+    page.wait_for_function("() => window.historyPops.length >= 2")
+    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/back")
     assert len(pending) == 1
     route, response = pending[0]
     route.fulfill(response=response)
     page.wait_for_function("() => window.stepFinished")
+    expect(page.locator("#edit-step")).to_have_attribute("data-step", "3")
     expect(_front(page)).to_have_value("Draft")
-    expect(page.locator("#edit-step")).to_have_attribute("data-step", "1")
-    accepted = _respond_to_confirm(page, accept=True)
-    page.go_forward()
-    expect(page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
-    assert len(accepted) == 1
+    expect(_back(page)).to_have_value("Answer")
     page.go_back()
-    expect(page).to_have_url(editor_url)
+    _wait_for_back(page)
     expect(_front(page)).to_have_value("Draft")
-    expect(page.locator("#edit-step")).to_have_attribute("data-step", "1")
+    expect(_back(page)).to_have_value("Answer")
 
 
 def test_typing_during_pending_step_does_not_corrupt_fields(

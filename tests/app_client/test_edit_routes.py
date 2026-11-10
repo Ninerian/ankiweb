@@ -57,8 +57,8 @@ def test_edit_page_initializes_model_and_session(client: TestClient) -> None:
     for step in (1, 2, 3):
         assert f'data-step-section="{step}"' in page.text
     assert "window.avAction(" in page.text
-    assert "data-indicator:saving" in page.text
-    assert 'data-attr:disabled="$saving"' in page.text
+    assert "data-indicator:_busy" in page.text
+    assert 'data-attr:disabled="$_busy"' in page.text
     assert "app_sid" in page.cookies
     assert "HttpOnly" in page.headers["set-cookie"]
     assert "SameSite=lax" in page.headers["set-cookie"]
