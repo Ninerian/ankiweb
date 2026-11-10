@@ -119,6 +119,137 @@ def decks_server(tmp_path: Path) -> Iterator[tuple[str, dict[str, int], _Respons
             thread.join(timeout=10)
 
 
+@pytest.mark.parametrize(
+    ("width", "height"),
+    [(375, 812), (375, 500), (375, 320), (1280, 720)],
+)
+def test_deck_list_scroll_keeps_header_and_create_button_stationary(
+    decks_server: tuple[str, dict[str, int], _ResponseGate],
+    width: int,
+    height: int,
+) -> None:
+    base, _, _ = decks_server
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": width, "height": height})
+        page.goto(f"{base}/app/")
+        page.wait_for_load_state("networkidle")
+        cards = page.locator("#deck-list article")
+        expect(cards).to_have_count(5)
+        title = page.locator("#decks-page h1")
+        search = page.locator("#deck-search")
+        create = page.locator("#btn-new-deck")
+        scroller = page.locator("#deck-scroll")
+        title_before = title.bounding_box()
+        search_before = search.bounding_box()
+        create_before = create.bounding_box()
+        first_before = cards.first.bounding_box()
+        scroll_box = scroller.bounding_box()
+        assert (
+            title_before
+            and search_before
+            and create_before
+            and first_before
+            and scroll_box
+        )
+
+        page.mouse.move(
+            scroll_box["x"] + scroll_box["width"] / 2,
+            scroll_box["y"] + scroll_box["height"] / 2,
+        )
+        page.mouse.wheel(0, 200)
+        page.wait_for_function("document.querySelector('#deck-scroll').scrollTop > 0")
+        first_after = cards.first.bounding_box()
+        title_after = title.bounding_box()
+        search_after = search.bounding_box()
+        create_after = create.bounding_box()
+        assert first_after and title_after and search_after and create_after
+        assert first_after["y"] < first_before["y"] - 50
+        assert abs(title_after["y"] - title_before["y"]) < 1
+        assert abs(search_after["y"] - search_before["y"]) < 1
+        assert abs(create_after["y"] - create_before["y"]) < 1
+        assert page.evaluate("window.scrollY") == 0
+
+        page.mouse.wheel(0, 10000)
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('#deck-scroll');
+                return el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+            }"""
+        )
+        last_action = cards.last.get_by_role("link", name="Edit", exact=True)
+        last_box = last_action.bounding_box()
+        create_box = create.bounding_box()
+        assert last_box and create_box
+        assert last_box["y"] + last_box["height"] <= create_box["y"]
+
+        create.click()
+        expect(page.locator("#deck-dialog")).to_be_visible()
+        page.keyboard.press("Escape")
+        expect(create).to_be_focused()
+
+        search.fill("biology")
+        expect(page.locator("article:visible h3")).to_have_text(["Biology Cells"])
+        search.fill("no matching deck")
+        expect(page.locator("#empty-state")).to_be_visible()
+        search.fill("")
+        expect(cards).to_have_count(5)
+        cards.first.get_by_role("link", name="Edit", exact=True).focus()
+        page.keyboard.press("End")
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('#deck-scroll');
+                return el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+            }"""
+        )
+        last_box = cards.last.get_by_role(
+            "link", name="Edit", exact=True
+        ).bounding_box()
+        assert last_box
+        assert last_box["y"] + last_box["height"] <= create_box["y"]
+        browser.close()
+
+
+def test_deck_list_scrolls_by_touch_without_moving_header(
+    decks_server: tuple[str, dict[str, int], _ResponseGate],
+) -> None:
+    base, _, _ = decks_server
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        context = browser.new_context(
+            viewport={"width": 375, "height": 812}, has_touch=True
+        )
+        page = context.new_page()
+        page.goto(f"{base}/app/")
+        page.wait_for_load_state("networkidle")
+        title = page.locator("#decks-page h1")
+        search = page.locator("#deck-search")
+        title_before = title.bounding_box()
+        search_before = search.bounding_box()
+        scroll_box = page.locator("#deck-scroll").bounding_box()
+        assert title_before and search_before and scroll_box
+        x = scroll_box["x"] + scroll_box["width"] / 2
+        y = scroll_box["y"] + scroll_box["height"] - 20
+        touch = context.new_cdp_session(page)
+        touch.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]},
+        )
+        touch.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchMove", "touchPoints": [{"x": x, "y": y - 200}]},
+        )
+        touch.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        page.wait_for_function("document.querySelector('#deck-scroll').scrollTop > 0")
+        title_after = title.bounding_box()
+        search_after = search.bounding_box()
+        assert title_after and search_after
+        assert abs(title_after["y"] - title_before["y"]) < 1
+        assert abs(search_after["y"] - search_before["y"]) < 1
+        assert page.evaluate("window.scrollY") == 0
+        browser.close()
+
+
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_deck_list_search_and_links(
     decks_server: tuple[str, dict[str, int], _ResponseGate],
@@ -307,11 +438,12 @@ def test_refresh_is_canceled_by_typing_and_preserves_scroll(
             )
         ):
             search.press_sequentially(" ")
-            page.evaluate("window.scrollTo(0, 300)")
-            before = page.evaluate("window.scrollY")
+            page.locator("#deck-scroll").evaluate("(el) => { el.scrollTop = 300; }")
+            before = page.locator("#deck-scroll").evaluate("(el) => el.scrollTop")
+            assert before > 0
         page.wait_for_function("() => window.__searchPatched === true")
         expect(page.locator("article:visible")).to_have_count(5)
-        assert page.evaluate("window.scrollY") == before
+        assert page.locator("#deck-scroll").evaluate("(el) => el.scrollTop") == before
         expect(search).to_be_focused()
         gate.release(canceled=True)
         expect(page.locator("article:visible")).to_have_count(5)

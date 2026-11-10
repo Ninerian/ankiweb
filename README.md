@@ -79,6 +79,7 @@ current session's added-card count; Escape closes it and returns focus to Done.
 The editor combines request-busy states to protect the draft without flashing navigation
 buttons. Card-value fields request browser autocomplete off. Browse animation phase lives on
 the wizard's `data-browse-phase` attribute; the server supplies form and card-list updates.
+The card pile opens its list by click or an upward touch swipe, including diagonal swipes.
 
 **Reused, not rewritten** — where Anki ships a compiled SvelteKit page, ankiweb serves the
 vendored build and wires it to the backend. Here's the full Deck Options screen, unchanged:
@@ -425,6 +426,9 @@ into the WebSocket bridge for commands; reviewer Card Info/Edit navigation uses 
 native links described above.
 
 ### Deck list (`/app/`)
+
+The title and search remain visible while the deck list scrolls independently; extremely
+short viewports fall back to page scrolling so every control stays reachable.
 
 The deck list has no data signals. It follows Datastar's click-to-edit pattern: a
 click asks the server for the editing UI (`GET /app/decks/new`, `/{id}/settings`,

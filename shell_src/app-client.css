@@ -769,7 +769,7 @@
     width: 100%;
     padding: 0;
     text-align: left;
-    touch-action: pan-x;
+    touch-action: none;
   }
   .pile-button:disabled { cursor: default; }
   .pile-size-0 { min-height: 80px; }
@@ -1037,6 +1037,31 @@
 }
 
 @layer components {
+  #decks-page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 20rem;
+    padding-bottom: calc(4rem + max(18px, env(safe-area-inset-bottom)));
+  }
+  #decks-content {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+  }
+  #decks-content > header {
+    flex: none;
+  }
+  #deck-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: -4px;
+    padding: 4px 4px 1.25rem;
+  }
   .deck-dock {
     background: linear-gradient(to top, var(--color-base-100) 55%, transparent);
   }

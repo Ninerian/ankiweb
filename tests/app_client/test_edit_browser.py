@@ -504,6 +504,84 @@ def test_pile_pointer_swipe_requires_upward_threshold(
     expect(pile).to_be_focused()
 
 
+@pytest.mark.parametrize("motion", ["no-preference", "reduce"])
+def test_diagonal_touch_swipe_opens_after_horizontal_start(
+    page: Page, live_app: LiveApp, motion: Literal["no-preference", "reduce"]
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Diagonal", "answer"))
+    browser = page.context.browser
+    assert browser is not None
+    context = browser.new_context(
+        has_touch=True, viewport={"width": 375, "height": 812}
+    )
+    try:
+        touch_page = context.new_page()
+        touch_page.emulate_media(reduced_motion=motion)
+        editor_url = f"{live_app}/app/edit/1/front"
+        touch_page.goto(editor_url)
+        pile = touch_page.locator("#pile")
+        cards = touch_page.locator("#deck-cards")
+        cue = touch_page.locator(".pile-cue").bounding_box()
+        assert cue is not None
+        x = cue["x"] + cue["width"] / 2
+        y = cue["y"] + cue["height"] / 2
+        client = context.new_cdp_session(touch_page)
+        touch_page.evaluate(
+            """() => {
+              window.diagonalEvents = [];
+              for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) {
+                document.addEventListener(type, event => {
+                  if (event.pointerType === 'touch' && event.isTrusted)
+                    window.diagonalEvents.push(type);
+                });
+              }
+            }"""
+        )
+
+        def touch(kind: str, dx: int = 0, dy: int = 0) -> None:
+            points = (
+                []
+                if kind in ("touchEnd", "touchCancel")
+                else [{"x": x + dx, "y": y + dy}]
+            )
+            client.send(
+                "Input.dispatchTouchEvent", {"type": kind, "touchPoints": points}
+            )
+
+        # A browser-canceled gesture must unwind even after passing the threshold.
+        touch("touchStart")
+        touch("touchMove", dy=-60)
+        touch("touchCancel")
+        touch_page.wait_for_function(
+            "() => !document.querySelector('#add-wizard').hasAttribute('data-browse-drag')"
+        )
+        expect(cards).not_to_be_visible()
+        expect(touch_page).to_have_url(editor_url)
+
+        # A horizontal initial drift followed by an upward drag must remain
+        # ours instead of becoming a browser pan and pointercancel.
+        touch_page.evaluate("window.diagonalEvents = []")
+        history_length = touch_page.evaluate("history.length")
+        touch("touchStart")
+        for dx, dy in [(5, -2), (13, -4), (20, -15), (24, -40), (28, -75), (30, -110)]:
+            touch("touchMove", dx=dx, dy=dy)
+        touch("touchEnd")
+        expect(touch_page).to_have_url(f"{editor_url.removesuffix('/front')}/cards")
+        events = touch_page.evaluate("window.diagonalEvents")
+        assert events[0] == "pointerdown"
+        assert events.count("pointermove") >= 2
+        assert events[-1] == "pointerup"
+        assert "pointercancel" not in events
+        assert touch_page.evaluate("history.length") == history_length + 1
+        expect(cards.get_by_role("button", name=re.compile("Diagonal"))).to_be_visible()
+        expect(cards).to_be_focused()
+        touch_page.go_back()
+        expect(touch_page).to_have_url(editor_url)
+        expect(pile).to_be_focused()
+    finally:
+        context.close()
+
+
 def test_touch_swipe_scrubs_and_settles_without_extra_history(
     page: Page, live_app: LiveApp
 ) -> None:

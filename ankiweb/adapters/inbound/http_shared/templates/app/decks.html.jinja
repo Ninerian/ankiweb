@@ -75,7 +75,21 @@
             <h1 class="mb-4.5 text-deck-title leading-none font-black tracking-deck-title">{{ s("app_decks_my_decks") }}</h1>
             {{ search_form() }}
         </header>
-        {{ results() }}
+        <div id="deck-scroll">
+            {{ results() }}
+            <button id="install-app"
+                    type="button"
+                    class="btn neo-press mt-4"
+                    hidden>{{ s("app_install_button") }}</button>
+            <div id="ios-install-hint"
+                 class="mt-4 rounded-box border-2 border-neo-edge bg-base-200 p-4 font-bold shadow-neo"
+                 hidden>
+                <p>{{ s("app_install_ios_hint") }}</p>
+                <button id="ios-install-dismiss"
+                        type="button"
+                        class="btn btn-sm neo-press mt-3">{{ s("app_install_ios_dismiss") }}</button>
+            </div>
+        </div>
     </div>
 {% endmacro %}
 {% if fragment == "results" %}
@@ -91,17 +105,8 @@
     </div>
 {% else %}
     <main id="decks-page"
-          class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pb-30 pl-4">
+          class="mx-auto w-full max-w-deck pt-deck-safe pr-5 pl-4">
         {{ content() }}
-        <button id="install-app" type="button" class="btn neo-press mt-4" hidden>{{ s("app_install_button") }}</button>
-        <div id="ios-install-hint"
-             class="mt-4 rounded-box border-2 border-neo-edge bg-base-200 p-4 font-bold shadow-neo"
-             hidden>
-            <p>{{ s("app_install_ios_hint") }}</p>
-            <button id="ios-install-dismiss"
-                    type="button"
-                    class="btn btn-sm neo-press mt-3">{{ s("app_install_ios_dismiss") }}</button>
-        </div>
         <div class="deck-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-5 pt-7 pb-[max(18px,env(safe-area-inset-bottom))]">
             <button id="btn-new-deck"
                     type="button"
