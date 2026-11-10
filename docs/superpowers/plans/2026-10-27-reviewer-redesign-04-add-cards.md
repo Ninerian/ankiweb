@@ -74,9 +74,9 @@ Speichern: `html.escape(value, quote=False)` (nur `& < >`; Anführungszeichen un
   - [ ] Karte erscheint in `deck_due_tree`-Zählern des Ziel-Decks (`new_count`).
 
 ### 4.2 Seite und Wizard
-- [ ] `data-signals="{step: 1, front: '', back: '', hint: '', example: '', nid: 0, count: 0, error: ''}"` am Wurzelelement (Gotcha #23).
-- [ ] Drei `<section>` mit `data-show="$step === N"` und `style="display:none"` (Gotcha #4). Step-Pills als Buttons mit `data-on:click="$step = N"`; Sprung nach 3 nur wenn Front und Back nicht leer (Ausdruck: `$front.trim() && $back.trim() ? ($step = 3) : ($error = 'Front and back are required')`, Ternär statt `if`).
-- [ ] Textareas `data-bind:front` usw.; Zeichenzähler `data-text="$front.length"`.
+- Historisch: Eingaben und Wizard-Schritt lagen in Datastar-Signalen. Der heutige Editor nutzt ein natives Formular und serverseitige Schrittfragmente.
+- Drei Abschnitte zeigen Front, Back und Vorschau; Pflichtfelder werden beim Schrittwechsel serverseitig geprüft.
+- Zeichenzähler bleiben lokal und verwenden die UTF-16-Länge der Textareas.
 - [ ] Enter-Shortcut: `data-on:keydown__window="window.avAddKey(evt)"` (Delegation, Gotcha #24); Funktion beachtet `isComposing`, Shift+Enter in Textarea = Umbruch. Keine Tastatur-Badges oder Shortcut-Hinweise anzeigen; Step-Pills und Zeichen-Chips bleiben sichtbar.
 - [ ] Optionale Felder als `<details>`; Chips (`der/die/das`, `ä ö ü ß`, `Noun/Verb/Adj/(Plural:)`) schreiben per `data-on:click` in das jeweilige Signal (Cursorposition-Einfügen = Funktion in `add.js`).
 - [ ] Preview (Step 3): rendert aus Signalen mit Escape-first (`data-text` escaped automatisch) und Highlight für Example: Datastar `data-html` existiert nicht in den belegten Referenzen → **Preview vom Server rendern lassen** (`POST /app/add/preview` → patcht `#preview`), nutzt denselben `escape_field` + Highlight-Funktion wie Speichern. Verhindert Drift Preview/Gespeichert.

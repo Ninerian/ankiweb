@@ -68,7 +68,7 @@ The prototype delivers instant dopamine and flow state without requiring backend
 
 The mobile design is implemented as a separate HTTP client under `/app/`, not by
 replacing the existing reviewer's Jinja templates. `/app/` lists decks;
-`/app/review?deck=<id>` studies a deck; `/app/edit?deck=<id>` opens the mobile editor.
+`/app/review?deck=<id>` studies a deck; `/app/edit/<id>/front` opens the mobile editor.
 The existing client and `/add` remain available. The app uses Jinja, Datastar and
 its own app assets; it does not depend on the legacy `/ws` reviewer bridge.
 
@@ -140,16 +140,17 @@ Tap the pile or badge, or swipe upward, to open the deck-card list. On a tap, th
 
 ### E. Mobile Editor Routes & Scope
 
-The deck list's **Edit** / **Bearbeiten** action and its empty state lead to `/app/edit?deck=<id>`. The mobile editor uses:
+The deck list's **Edit** / **Bearbeiten** action leads to `/app/edit/<deck>/front`. The mobile editor uses:
 
 | Route | Purpose |
 |---|---|
-| `GET /app/edit?deck=<id>` | Open the new-card wizard |
-| `GET /app/edit?deck=<id>&view=cards` | Open the deck-card list directly |
-| `GET /app/edit?deck=<id>&card=<nid>` | Open a supported note directly for editing |
-| `POST /app/edit/preview` | Preview `front`, `back`, `hint` and `example` without saving |
-| `POST /app/edit/card/{nid}?deck=<id>` | Load an editable note in the selected deck at Step 1 |
-| `POST /app/edit/commit?deck=<id>` | Create for `nid: 0`; otherwise update the selected deck's existing note |
+| `GET /app/edit/<deck>/<step>` | New-card wizard; `front`, `back`, or `preview`; direct non-front requests redirect to front |
+| `GET /app/edit/<deck>/cards` | Deck-card list |
+| `GET /app/edit/<deck>/cards/<nid>/<step>` | Edit an existing note |
+| `POST /app/edit/<deck>/<instance>/<revision>/step/<step>/<via>` | Validate and project the requested step |
+| `POST /app/edit/<deck>/<instance>/<revision>/card/<nid>` | Load a note |
+| `POST /app/edit/<deck>/<instance>/<revision>/commit` | Create or update a note |
+| `POST /app/edit/<deck>/<instance>/<revision>/reset` | Reset the draft |
 
 Missing, deck-foreign and unsupported notes cannot be loaded or updated. App navigation, templates and client calls use these routes and `shell_src/app/edit.js`, without legacy app-route aliases. The separate full-featured desktop `/add` editor remains unchanged.
 
@@ -223,7 +224,7 @@ state and New deck sheet. Its fixed ids and `mockup.html` / `editor-mockup.html`
 links are prototype data, not production routes.
 
 In the implemented client, **Learn** links to `/app/review?deck=<id>` and
-**Edit / Add** links to `/app/edit?deck=<id>`. Review Back, Edit Back and the
+**Edit / Add** links to `/app/edit/<id>/front`. Review Back, Edit Back and the
 Edit deck chip return to `/app/`; Done opens the summary as described in §5.E.
 There is no mode switch. The app has no theme toggle: it follows
 `prefers-color-scheme`, independently of the old client's night toggle.

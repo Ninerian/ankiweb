@@ -128,7 +128,7 @@ This section describes the standalone historical mockup, not the mobile `/app/ed
 
 ### 2.5 Mobile deck editor (`/app/edit`)
 
-The mobile editor combines creation with editing `AnkiWeb Vocab` notes that have at least one card in the selected deck, including notes from earlier sessions. Deleted notes, other note types and notes without a card in that deck are excluded. The deck list's **Edit** / **Bearbeiten** action and its empty state lead to `GET /app/edit?deck=<id>`; the separate desktop `/add` remains unchanged.
+The mobile editor combines creation with editing `AnkiWeb Vocab` notes that have at least one card in the selected deck, including notes from earlier sessions. Deleted notes, other note types and notes without a card in that deck are excluded. The deck list's **Edit** / **Bearbeiten** action leads to `/app/edit/<deck>/front`; the separate desktop `/add` remains unchanged.
 
 | Element | Behaviour |
 |---|---|
@@ -148,12 +148,13 @@ The final success signal sets `_editSaved: true` only for successful existing-no
 
 | Method and route | Purpose |
 |---|---|
-| `GET /app/edit?deck=<id>` | Open the new-card wizard |
-| `GET /app/edit?deck=<id>&view=cards` | Open the deck-card list directly |
-| `GET /app/edit?deck=<id>&card=<nid>` | Open a supported note directly for editing |
-| `POST /app/edit/preview` | Preview fields without saving |
-| `POST /app/edit/card/{nid}?deck=<id>` | Load a supported note belonging to the selected deck at Step 1 |
-| `POST /app/edit/commit?deck=<id>` | Create with `nid: 0`, otherwise update the selected deck's existing note |
+| `GET /app/edit/<deck>/<step>` | New-card wizard; `front`, `back`, or `preview`; direct non-front requests redirect to front |
+| `GET /app/edit/<deck>/cards` | Deck-card list |
+| `GET /app/edit/<deck>/cards/<nid>/<step>` | Edit an existing note |
+| `POST /app/edit/<deck>/<instance>/<revision>/step/<step>/<via>` | Validate and project a step |
+| `POST /app/edit/<deck>/<instance>/<revision>/card/<nid>` | Load a supported note |
+| `POST /app/edit/<deck>/<instance>/<revision>/commit` | Create or update a note |
+| `POST /app/edit/<deck>/<instance>/<revision>/reset` | Reset the draft |
 
 Missing, deck-foreign and unsupported notes cannot be loaded or updated. App navigation, templates and client calls use these routes and `shell_src/app/edit.js`; there are no old app-route aliases. User-facing list, warning and notice strings are available in German and English.
 
@@ -196,12 +197,12 @@ separate from the existing client and uses the following routes. *Read.*
 | Route | Purpose |
 |---|---|
 | `GET`, `POST /app/login` | App login; successful authentication opens `/app/`, without returning to the original URL |
-| `GET /app/` | Deck list; Learn links to `/app/review?deck=<id>`, Edit to `/app/edit?deck=<id>`. The empty-list action opens the deck-creation dialog |
+| `GET /app/` | Deck list; Learn links to `/app/review?deck=<id>`, Edit to `/app/edit/<id>/front`. The empty-list action opens the deck-creation dialog |
 | `GET /app/review?deck=<id>` | Review for a deck; Back and completion return to `/app/` |
 | `POST /app/review/answer`, `/app/review/action/*`, `/app/review/due` | Answer and card actions |
 | `GET /app/review/info/<card_id>` | Card information |
-| `GET /app/edit?deck=<id>` | Mobile editor; Back and deck chip return to `/app/` (see §2.5) |
-| `POST /app/edit/preview`, `/app/edit/commit`, `/app/edit/card/<nid>` | Preview, persist, and load a deck note for editing |
+| `GET /app/edit/<deck>/<step>` | Mobile editor; Back and deck chip return to `/app/` (see §2.5) |
+| `POST /app/edit/<deck>/<instance>/<revision>/...` | Validate steps, persist, reset, and load a deck note for editing |
 | `GET /app/manifest.webmanifest`, `/app/service-worker.js`, `/app/offline` | Public app install assets and static offline fallback |
 
 The editor commits each new card to the collection immediately as an `AnkiWeb Vocab`

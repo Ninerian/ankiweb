@@ -51,6 +51,8 @@ _Avoid_: Note-Type, Modell, Template
 
 **Hinzugefuegte Karten**:
 Die in der laufenden Sitzung neu gespeicherten Notizen im Wizard unter `/app/edit`; sie sind sofort im Deck gespeichert. Der Sitzungszaehler erfasst nur Neuanlagen und bleibt vom deckweiten Stapel-Badge getrennt. „Fertig“ steht auch in der geoeffneten Deck-Kartenliste bereit und oeffnet die Zusammenfassung, die den Sitzungszaehler auch bei null hinzugefuegten Karten anzeigt. Bei ungespeichertem Entwurf erfolgt vorher eine Abfrage. Bearbeiten erhoeht keinen der beiden Zaehler. Anki-Wortlaut: `adding_added` ("Hinzugefuegt").
+Die Pfade `/app/edit/<deck>/front`, `/back` und `/preview` bilden die Wizard-Schritte ab; `/app/edit/<deck>/cards` zeigt die Deck-Kartenliste, `/app/edit/<deck>/cards/<nid>/<step>` eine bestehende Notiz.
+Fehlermeldungen bleiben bis zur naechsten Eingabe oder Editor-Anfrage sichtbar; eine erneut abgelehnte Anfrage zeigt ihre eigene Meldung.
 _Avoid_: Stack, Stapel, Batch, Neue Karten
 
 **Deck-Kartenliste**:
