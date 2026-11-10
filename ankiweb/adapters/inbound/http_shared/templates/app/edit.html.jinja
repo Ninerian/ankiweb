@@ -3,9 +3,7 @@
 {%- endmacro %}
 {% macro steps() %}
     <div id="edit-steps"
-         class="browse-fade mt-2.5 flex items-center justify-between gap-2"
-         data-show="$_browsePhase !== 'open' &amp;&amp; $_browsePhase !== 'closing'"
-         data-attr:inert="$_browsing">
+         class="browse-fade mt-2.5 flex items-center justify-between gap-2">
         {% for label in [tr.notetypes_front_field(), tr.notetypes_back_field(), tr.actions_preview()] %}
             <button type="button"
                     class="add-step{% if projection.step|int == loop.index %} add-step-active{% elif projection.step|int > loop.index %} add-step-done{% endif %}"
@@ -45,10 +43,7 @@
     </div>
 {% endmacro %}
 {% macro actions() %}
-    <footer id="edit-actions"
-            class="browse-fade review-bar"
-            data-show="$_browsePhase !== 'open' &amp;&amp; $_browsePhase !== 'closing'"
-            data-attr:inert="$_browsing">
+    <footer id="edit-actions" class="browse-fade review-bar">
         <div class="flex gap-2.5">
             {% if projection.step|int > 1 %}
                 <button type="button"
@@ -145,12 +140,7 @@
             {{ steps() }}
         </header>
         <div id="add-stage" class="review-stage">
-            <div id="add-editor"
-                 class="add-card motion-reduce:animate-none"
-                 data-show="$_browsePhase !== 'open' &amp;&amp; $_browsePhase !== 'closing'"
-                 data-class:editor-leaving="$_browsePhase === 'opening'"
-                 data-class:editor-returning="$_browsePhase === 'returning'"
-                 data-attr:inert="$_browsing">
+            <div id="add-editor" class="add-card motion-reduce:animate-none">
                 {% if projection.draft.nid and projection.draft.learned %}<div id="edit-warning"
                                                                                class="alert alert-warning mb-3 text-sm font-bold"
                                                                                role="note">{{ s("app_edit_warning") }}</div>{% endif %}
@@ -222,18 +212,13 @@
           data-initial-view="{{ initial_view }}"
           data-initial-card="{{ projection.draft.nid }}"
           data-initial-step="{{ projection.step.path }}"
-          data-signals="{_busy: false, _browsing: {{ (initial_view == 'cards')|tojson }}, _browsePhase: '{{ 'open' if initial_view == 'cards' else 'closed' }}'}"
+          data-signals="{_busy: false}"
           data-discard="{{ s('app_edit_discard') }}"
           data-load-failed="{{ s('app_add_edit_unavailable') }}"
-          data-attr:data-browse-phase="$_browsePhase"
+          data-browse-phase="{{ 'open' if initial_view == 'cards' else 'closed' }}"
           data-indicator:_busy
           data-attr:aria-busy="$_busy ? 'true' : 'false'"
-          data-on:av-browse-ready="$_browsePhase = 'open'; window.avBrowseReadyFocus()"
-          data-on:av-browse-closing="$_browsePhase = 'closing'"
-          data-on:av-browse-returning="$_browsing = false; $_browsePhase = 'returning'; window.avBrowseFocus(evt.detail.editing)"
-          data-on:av-browse-settled="$_browsePhase = 'closed'"
-          data-on:av-open-saved="$_browsing = true; $_browsePhase = 'opening'; window.avOpenBrowseAfterSave()"
-          data-on:av-history="window.avPrepareHistory(evt); evt.detail.path ? @post(window.avAction(evt.detail.path), {contentType:'form', selector:'#edit-form'}) : null; evt.detail.open ? ($_browsing = true, $_browsePhase = 'opening', window.avOpenBrowse(document.getElementById('pile'), false)) : null"
+          data-on:av-history="window.avPrepareHistory(evt); evt.detail.path ? @post(window.avAction(evt.detail.path), {contentType:'form', selector:'#edit-form'}) : null"
           data-on:av-history-failed="window.avEditError(el.dataset.loadFailed)"
           data-on:popstate__window="window.avSummaryHistory(); window.avEditPop(evt, el.dataset.discard)"
           data-on:datastar-fetch__document="window.avEditFetch(evt)"

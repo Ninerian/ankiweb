@@ -49,6 +49,37 @@ const editWizard = () => document.getElementById("add-wizard");
 const browsePhase = () => editWizard()?.dataset.browsePhase || "closed";
 const browsing = () => ["opening", "open", "closing"].includes(browsePhase());
 const busy = () => editWizard()?.getAttribute("aria-busy") === "true";
+const syncBrowseElements = () => {
+  const wizard = editWizard();
+  if (!wizard) return;
+  const phase = browsePhase();
+  const inBrowse = browsing();
+  for (const id of ["edit-steps", "edit-actions", "add-editor"]) {
+    const element = document.getElementById(id);
+    if (element && element.inert !== inBrowse) element.inert = inBrowse;
+  }
+  const cards = document.getElementById("deck-cards");
+  if (cards) {
+    const hidden = phase !== "open";
+    if (cards.inert !== hidden) cards.inert = hidden;
+    if (hidden && cards.getAttribute("aria-hidden") !== "true") cards.setAttribute("aria-hidden", "true");
+    else if (!hidden && cards.hasAttribute("aria-hidden")) cards.removeAttribute("aria-hidden");
+  }
+  const pile = document.getElementById("pile");
+  if (pile) {
+    const expanded = String(inBrowse);
+    if (pile.getAttribute("aria-expanded") !== expanded) pile.setAttribute("aria-expanded", expanded);
+    const disabled = pile.dataset.empty === "true" || busy() || inBrowse;
+    if (pile.disabled !== disabled) pile.disabled = disabled;
+  }
+};
+const setBrowsePhase = (phase) => {
+  const wizard = editWizard();
+  if (!wizard) return;
+  wizard.dataset.browsePhase = phase;
+  syncBrowseElements();
+  window.avSyncBack();
+};
 window.avNid = () => Number(editSession()?.dataset.nid || 0);
 window.avAction = (suffix) => {
   const session = editSession();
@@ -118,7 +149,8 @@ window.avEditFetch = (event) => {
     window.avSyncBack();
     if (el.id === "btn-add" && type === "finished" && pendingCommitBrowse) {
       pendingCommitBrowse = false;
-      browseEvent("av-open-saved");
+      setBrowsePhase("opening");
+      window.avOpenBrowseAfterSave();
     }
   });
   if (el !== editWizard()) return;
@@ -164,6 +196,7 @@ document.addEventListener("focusin", (event) => {
 new MutationObserver((mutations) => {
   const sessionReplaced = mutations.some((mutation) => [...mutation.addedNodes].some((node) =>
     node instanceof Element && (node.id === "edit-session" || node.querySelector("#edit-session"))));
+  syncBrowseElements();
   if (sessionReplaced || mutations.some((mutation) => mutation.target === editWizard())) window.avSyncBack();
   if (!sessionReplaced) return;
   const lostFocus = lastEditorFocus;
@@ -181,7 +214,7 @@ new MutationObserver((mutations) => {
   });
 }).observe(document.documentElement, {
   childList: true, subtree: true, attributes: true,
-  attributeFilter: ["data-browse-phase", "aria-busy"],
+  attributeFilter: ["data-browse-phase", "aria-busy", "aria-expanded", "aria-hidden", "disabled", "inert"],
 });
 window.avEditKey = (event) => {
   window.avAddKey(event);
@@ -362,9 +395,12 @@ window.avPrepareHistory = (event) => {
     return;
   }
   detail.path = window.avNid() ? "/reset" : null;
-  detail.open = detail.view === "cards" &&
+  const open = detail.view === "cards" &&
     !(browsing() && ["opening", "open"].includes(browsePhase()));
-  if (detail.view !== "cards") window.avCloseBrowse(false);
+  if (open) {
+    setBrowsePhase("opening");
+    window.avOpenBrowse(document.getElementById("pile"), false);
+  } else if (detail.view !== "cards") window.avCloseBrowse(false);
 };
 
 window.avEditBack = (event) => {
@@ -499,6 +535,8 @@ window.avEditPop = (event, message) => {
 document.addEventListener("DOMContentLoaded", () => {
   const wizard = document.getElementById("add-wizard");
   if (!wizard) return;
+  syncBrowseElements();
+  window.avSyncBack();
   editState = validEditHistory(history.state) ? { ...history.state } : { avEdit: true, avIndex: 0 };
   if (wizard.dataset.initialView === "cards") editState.avDraft = null;
   else {
@@ -606,16 +644,14 @@ const returnPileDrag = (wizard) => {
   }, () => {});
 };
 
-document.addEventListener("av-browse-returning", (event) => {
-  if (event.target instanceof HTMLElement && event.target.hasAttribute("data-browse-drag")) {
-    event.target.dataset.browseRestored = "";
-    returnPileDrag(event.target);
-  }
-}, { capture: true });
-document.addEventListener("av-browse-settled", (event) => {
-  if (event.target instanceof HTMLElement) event.target.removeAttribute("data-browse-restored");
-}, { capture: true });
 
+
+window.avPileOpen = (trigger) => {
+  if (browsing() || !window.avConfirmDiscard(trigger.dataset.discard)) return;
+  window.avBumpRev();
+  setBrowsePhase("opening");
+  window.avOpenBrowse(trigger);
+};
 
 window.avOpenBrowse = (trigger, pushHistory = true) => {
   clearTimeout(browseTimer);
@@ -649,7 +685,8 @@ window.avOpenBrowse = (trigger, pushHistory = true) => {
   const finishOpening = () => {
     if (sequence !== browseSequence) return;
     captureBrowseOrigin();
-    browseEvent("av-browse-ready");
+    setBrowsePhase("open");
+    window.avBrowseReadyFocus();
     positionBrowseRows();
     if (dragged) clearPileDrag(wizard);
   };
@@ -685,16 +722,26 @@ window.avCloseBrowse = (editing = false, phase = browsePhase()) => {
   clearTimeout(browseTimer);
   browseSequence++;
   const returnEditor = () => {
-    browseEvent("av-browse-returning", { editing: browseEditing });
+    const wizard = editWizard();
+    if (wizard?.hasAttribute("data-browse-drag")) {
+      wizard.dataset.browseRestored = "";
+      returnPileDrag(wizard);
+    }
+    setBrowsePhase("returning");
+    window.avBrowseFocus(browseEditing);
+    const settle = () => {
+      wizard?.removeAttribute("data-browse-restored");
+      setBrowsePhase("closed");
+    };
     const duration = browseMotionTime(500);
-    if (duration) browseTimer = setTimeout(() => browseEvent("av-browse-settled"), duration);
-    else browseEvent("av-browse-settled");
+    if (duration) browseTimer = setTimeout(settle, duration);
+    else settle();
   };
   if (phase === "opening") {
     returnEditor();
   } else {
     positionBrowseRows();
-    browseEvent("av-browse-closing");
+    setBrowsePhase("closing");
     const duration = browseMotionTime(460);
     if (duration) browseTimer = setTimeout(returnEditor, duration);
     else returnEditor();

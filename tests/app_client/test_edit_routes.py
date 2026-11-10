@@ -75,6 +75,11 @@ def test_edit_page_initializes_model_and_session(client: TestClient) -> None:
     assert "set-cookie" not in client.get(f"/app/edit/{deck_id}/front").headers
 
 
+def test_editor_signals_only_track_request_busy(client: TestClient) -> None:
+    page = client.get("/app/edit/1/front")
+    assert 'data-signals="{_busy: false}"' in page.text
+
+
 def test_editor_form_contains_only_draft_fields(client: TestClient) -> None:
     page = client.get("/app/edit/1/front")
     form = re.search(r'<form\s+id="edit-form".*?</form>', page.text, re.DOTALL)

@@ -854,8 +854,8 @@
   .pile-cue svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
   .pile-button .add-empty { display: flex; }
 
-  .editor-leaving { animation: editor-leave 0.42s cubic-bezier(0.55, 0, 0.9, 0.4) forwards; }
-  .editor-returning { animation: editor-return 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+  #add-wizard[data-browse-phase="opening"] #add-editor { animation: editor-leave 0.42s cubic-bezier(0.55, 0, 0.9, 0.4) forwards; }
+  #add-wizard[data-browse-phase="returning"] #add-editor { animation: editor-return 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
   #add-wizard[data-browse-restored] #add-editor { animation: none; }
   @keyframes editor-leave {
     from { transform: translateY(0) rotate(0); opacity: 1; }
@@ -931,7 +931,7 @@
   #add-wizard[data-browse-unfolded][data-browse-phase="open"] .browse-card { animation: none; }
   .browse-num { @apply text-primary border-neo-edge; display: flex; align-self: stretch; align-items: center; justify-content: center; min-width: 38px; padding-right: 12px; border-right-width: 2px; border-right-style: dashed; font-size: 1.3rem; font-weight: 900; }
   .browse-body { display: block; min-width: 0; }
-  .is-folding .browse-card { animation: browse-fold 0.34s cubic-bezier(0.55, 0, 0.9, 0.4) var(--fold-delay) both; }
+  #add-wizard[data-browse-phase="closing"] .browse-card { animation: browse-fold 0.34s cubic-bezier(0.55, 0, 0.9, 0.4) var(--fold-delay) both; }
   @keyframes browse-fan {
     from { transform: translate(var(--fan-offset-x, 0px), var(--fan-offset-y, 120px)) rotate(3deg) scale(0.94); opacity: 0; }
     to { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
@@ -945,12 +945,18 @@
     :root { --animate-bump: none; --animate-badge-spin: none; }
     .pile-cards { transition: none; }
     #add-wizard[data-browse-phase="opening"] .pile-cards { transform: none; }
-    .editor-leaving, .editor-returning, .browse-card, .is-folding .browse-card { animation: none; }
+    #add-wizard:is([data-browse-phase="opening"], [data-browse-phase="returning"]) #add-editor,
+    #add-wizard[data-browse-phase="closing"] .browse-card, .browse-card { animation: none; }
   }
 
 }
 
 @layer utilities {
+  #add-wizard:is([data-browse-phase="open"], [data-browse-phase="closing"]) :is(#edit-steps, #edit-actions) { display: none; }
+  #add-wizard:not(:is([data-browse-phase="open"], [data-browse-phase="closing"])) #deck-cards { display: none; }
+  #add-wizard:is([data-browse-phase="opening"], [data-browse-phase="open"], [data-browse-phase="closing"]) :is(#edit-steps, #edit-actions, #add-editor) { interactivity: inert; }
+  #add-wizard:not([data-browse-phase="open"]) #deck-cards { interactivity: inert; }
+
   /* daisyUI's collapse and alert rules also live in the utility layer. */
   /* Match the controls' existing press timing while the browse chrome fades. */
   #add-wizard .browse-fade {

@@ -324,6 +324,30 @@ def test_added_stack_opens_list_and_preserves_draft(
     assert live_app.persisted_notes() == original
 
 
+def test_browse_step_patch_keeps_editor_out_of_tab_order(
+    page: Page, live_app: LiveApp
+) -> None:
+    _run(live_app, lambda col: add_vocab_note(col, DeckId(1), "Saved", "answer"))
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_app}/app/edit/1/front")
+    _front(page).fill("Draft")
+    accepted = _respond_to_confirm(page, accept=True)
+    page.locator("#pile").click()
+    assert len(accepted) == 1
+    wizard = page.locator("#add-wizard")
+    cards = page.locator("#deck-cards")
+    expect(wizard).to_have_attribute("data-browse-phase", "open")
+    page.evaluate("window.avRequestStep('back', 'chip')")
+    expect(page.locator("#edit-step")).to_have_attribute("data-step", "2")
+    expect(wizard).to_have_attribute("aria-busy", "false")
+    expect(page.locator("#edit-steps")).to_have_attribute("inert", "")
+    expect(page.locator("#edit-actions")).to_have_attribute("inert", "")
+    expect(page.locator("#pile")).to_have_attribute("aria-expanded", "true")
+    cards.focus()
+    page.keyboard.press("Tab")
+    expect(cards.locator("button[data-note-id]")).to_be_focused()
+
+
 def test_pile_keyboard_badge_and_back_restore_focus(
     page: Page, live_app: LiveApp
 ) -> None:

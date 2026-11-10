@@ -1,6 +1,4 @@
-<div id="pile-region"
-     class="pile-region"
-     data-show="$_browsePhase !== 'open' &amp;&amp; $_browsePhase !== 'closing'">
+<div id="pile-region" class="pile-region">
     <button id="pile"
             type="button"
             {% if deck_cards|length == 0 %}class="pile-button pile-size-0 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary" {% elif deck_cards|length == 1 %}class="pile-button pile-size-1 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary" {% elif deck_cards|length == 2 %}class="pile-button pile-size-2 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary" {% elif deck_cards|length == 3 %}class="pile-button pile-size-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary" {% elif deck_cards|length == 4 %}class="pile-button pile-size-4 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary" {% else %}class="pile-button pile-size-5 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary"{% endif %}
@@ -10,9 +8,9 @@
             data-label-one="{{ s('app_edit_stack_label_one') }}"
             data-label-other="{{ s('app_edit_stack_label_other') }}"
             data-discard="{{ s('app_edit_discard') }}"
-            data-attr:aria-expanded="$_browsing ? 'true' : 'false'"
-            data-attr:disabled="{{ (deck_cards|length == 0)|tojson }} || $_browsing || $_busy"
-            data-on:click="!$_browsing &amp;&amp; window.avConfirmDiscard(el.dataset.discard) ? (window.avBumpRev(), $_browsing = true, $_browsePhase = 'opening', window.avOpenBrowse(el)) : null">
+            data-empty="{{ (deck_cards|length == 0)|tojson }}"
+            {% if not deck_cards %}disabled{% endif %}
+            data-on:click="window.avPileOpen(el)">
         <span id="added-cards"
               class="pile-cards"{% if animation_stamp|default(false) %} data-ts="{{ animation_stamp }}"{% endif %}>
             {% for card in deck_cards[:5] %}

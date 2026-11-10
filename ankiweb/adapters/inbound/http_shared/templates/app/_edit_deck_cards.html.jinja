@@ -3,13 +3,7 @@
          aria-labelledby="deck-cards-title"
          tabindex="-1"
          {% if progress_reset|default(false) %}aria-describedby="deck-progress-reset-notice"{% endif %}
-         data-show="$_browsePhase === 'open' || $_browsePhase === 'closing'"
-         data-class:is-folding="$_browsePhase === 'closing'"
-         data-attr:inert="$_browsePhase !== 'open'"
-         data-attr:aria-hidden="$_browsePhase === 'open' ? null : 'true'"
-         inert
-         aria-hidden="true"
-         style="display:none">
+         {% if initial_view|default('') != 'cards' %}inert aria-hidden="true"{% endif %}>
     <h2 id="deck-cards-title" class="sr-only">{{ s("app_edit_browse_title") }}</h2>
     {% if progress_reset|default(false) %}
         <div id="deck-progress-reset-notice"
