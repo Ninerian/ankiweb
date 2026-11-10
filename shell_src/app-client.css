@@ -1054,13 +1054,51 @@
   #decks-content > header {
     flex: none;
   }
-  #deck-scroll {
+  #deck-scroll-frame {
+    position: relative;
     flex: 1;
     min-height: 0;
+    margin: -4px;
+  }
+  #deck-scroll {
+    height: 100%;
     overflow-y: auto;
     overscroll-behavior: contain;
-    margin: -4px;
     padding: 4px 4px 1.25rem;
+  }
+  #deck-scroll-frame.scrollbar-enhanced #deck-scroll {
+    scrollbar-width: none;
+  }
+  #deck-scroll-frame.scrollbar-enhanced #deck-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  #deck-scrollbar {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: -16px;
+    bottom: 0;
+    width: 16px;
+    opacity: 0;
+    touch-action: none;
+    transition: opacity 180ms ease;
+  }
+  #deck-scrollbar[hidden] { display: none; }
+  #deck-scroll-frame[data-scroll-active] #deck-scrollbar {
+    opacity: 1;
+  }
+  #deck-scrollbar-thumb {
+    position: absolute;
+    right: 4px;
+    width: 7px;
+    border-radius: 999px;
+    background: var(--color-muted);
+  }
+  @media (forced-colors: active) {
+    #deck-scrollbar-thumb { background: CanvasText; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #deck-scrollbar { transition: none; }
   }
   .deck-dock {
     background: linear-gradient(to top, var(--color-base-100) 55%, transparent);

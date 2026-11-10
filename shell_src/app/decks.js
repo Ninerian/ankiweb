@@ -86,3 +86,99 @@ document.addEventListener("input", (event) => {
   void preview.offsetWidth;
   preview.classList.add("emoji-pop");
 });
+
+// Keep native scrolling while drawing a transient overlay outside its content box.
+const deckScroll = document.getElementById("deck-scroll");
+const deckScrollFrame = document.getElementById("deck-scroll-frame");
+const deckScrollbar = document.getElementById("deck-scrollbar");
+const deckThumb = document.getElementById("deck-scrollbar-thumb");
+if (deckScroll && deckScrollFrame && deckScrollbar && deckThumb
+    && window.ResizeObserver && window.MutationObserver && window.PointerEvent
+    && (CSS.supports("scrollbar-width", "none")
+      || "WebkitAppearance" in document.documentElement.style)) {
+  let hideTimer;
+  let drag = null;
+  let updateFrame = 0;
+
+  const updateScrollbar = () => {
+    const height = deckScroll.clientHeight;
+    const maxScroll = deckScroll.scrollHeight - height;
+    deckScrollbar.hidden = maxScroll <= 0 || height <= 0;
+    if (deckScrollbar.hidden) {
+      clearTimeout(hideTimer);
+      deckScrollFrame.removeAttribute("data-scroll-active");
+      drag = null;
+      return;
+    }
+    const thumbHeight = Math.min(height, Math.max(24, height * height / deckScroll.scrollHeight));
+    const travel = height - thumbHeight;
+    deckThumb.style.height = `${thumbHeight}px`;
+    deckThumb.style.transform = `translateY(${travel * deckScroll.scrollTop / maxScroll}px)`;
+  };
+  const scheduleUpdate = () => {
+    if (updateFrame) return;
+    updateFrame = requestAnimationFrame(() => {
+      updateFrame = 0;
+      updateScrollbar();
+    });
+  };
+  const hideAfterIdle = () => {
+    clearTimeout(hideTimer);
+    if (!drag) {
+      hideTimer = setTimeout(() => deckScrollFrame.removeAttribute("data-scroll-active"), 1000);
+    }
+  };
+  const showScrollbar = () => {
+    updateScrollbar();
+    if (deckScrollbar.hidden) return;
+    deckScrollFrame.setAttribute("data-scroll-active", "");
+    hideAfterIdle();
+  };
+  const resizeObserver = new ResizeObserver(scheduleUpdate);
+  const observeSizes = () => {
+    resizeObserver.disconnect();
+    resizeObserver.observe(deckScroll);
+    for (const child of deckScroll.children) resizeObserver.observe(child);
+    scheduleUpdate();
+  };
+  const mutationObserver = new MutationObserver(observeSizes);
+  mutationObserver.observe(deckScroll, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"],
+  });
+  observeSizes();
+  deckScroll.addEventListener("scroll", showScrollbar, { passive: true });
+
+  const moveThumb = (event) => {
+    const track = deckScrollbar.getBoundingClientRect();
+    const thumbHeight = deckThumb.offsetHeight;
+    const travel = track.height - thumbHeight;
+    if (travel > 0) {
+      const position = Math.max(0, Math.min(travel, event.clientY - track.top - drag.offset));
+      deckScroll.scrollTop = position / travel * (deckScroll.scrollHeight - deckScroll.clientHeight);
+    }
+  };
+  deckScrollbar.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || drag) return;
+    event.preventDefault();
+    const thumb = deckThumb.getBoundingClientRect();
+    drag = {
+      pointerId: event.pointerId,
+      offset: event.target === deckThumb ? event.clientY - thumb.top : thumb.height / 2,
+    };
+    deckScrollbar.setPointerCapture(event.pointerId);
+    showScrollbar();
+    moveThumb(event);
+  });
+  deckScrollbar.addEventListener("pointermove", (event) => {
+    if (drag?.pointerId === event.pointerId) moveThumb(event);
+  });
+  const endDrag = (event) => {
+    if (drag?.pointerId !== event.pointerId) return;
+    drag = null;
+    hideAfterIdle();
+  };
+  deckScrollbar.addEventListener("pointerup", endDrag);
+  deckScrollbar.addEventListener("pointercancel", endDrag);
+  deckScrollbar.addEventListener("lostpointercapture", endDrag);
+  deckScrollFrame.classList.add("scrollbar-enhanced");
+}

@@ -428,7 +428,12 @@ native links described above.
 ### Deck list (`/app/`)
 
 The title and search remain visible while the deck list scrolls independently; extremely
-short viewports fall back to page scrolling so every control stays reachable.
+short viewports fall back to page scrolling so every control stays reachable. With JavaScript,
+the native scroll mechanics remain, while a narrow overlay thumb appears during scrolling
+and briefly afterwards without taking content width. Drag the thumb or click its track;
+the edge remains interactive after it fades. The focused list accepts normal keyboard
+scrolling. Without JavaScript,
+the browser's native scrollbar remains available.
 
 The deck list has no data signals. It follows Datastar's click-to-edit pattern: a
 click asks the server for the editing UI (`GET /app/decks/new`, `/{id}/settings`,

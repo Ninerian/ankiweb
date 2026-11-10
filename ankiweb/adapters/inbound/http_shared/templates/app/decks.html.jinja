@@ -75,19 +75,27 @@
             <h1 class="mb-4.5 text-deck-title leading-none font-black tracking-deck-title">{{ s("app_decks_my_decks") }}</h1>
             {{ search_form() }}
         </header>
-        <div id="deck-scroll">
-            {{ results() }}
-            <button id="install-app"
-                    type="button"
-                    class="btn neo-press mt-4"
-                    hidden>{{ s("app_install_button") }}</button>
-            <div id="ios-install-hint"
-                 class="mt-4 rounded-box border-2 border-neo-edge bg-base-200 p-4 font-bold shadow-neo"
-                 hidden>
-                <p>{{ s("app_install_ios_hint") }}</p>
-                <button id="ios-install-dismiss"
+        <div id="deck-scroll-frame">
+            <div id="deck-scroll"
+                 role="region"
+                 aria-label="{{ s('app_decks_my_decks') }}"
+                 tabindex="0">
+                {{ results() }}
+                <button id="install-app"
                         type="button"
-                        class="btn btn-sm neo-press mt-3">{{ s("app_install_ios_dismiss") }}</button>
+                        class="btn neo-press mt-4"
+                        hidden>{{ s("app_install_button") }}</button>
+                <div id="ios-install-hint"
+                     class="mt-4 rounded-box border-2 border-neo-edge bg-base-200 p-4 font-bold shadow-neo"
+                     hidden>
+                    <p>{{ s("app_install_ios_hint") }}</p>
+                    <button id="ios-install-dismiss"
+                            type="button"
+                            class="btn btn-sm neo-press mt-3">{{ s("app_install_ios_dismiss") }}</button>
+                </div>
+            </div>
+            <div id="deck-scrollbar" aria-hidden="true" hidden>
+                <div id="deck-scrollbar-thumb"></div>
             </div>
         </div>
     </div>

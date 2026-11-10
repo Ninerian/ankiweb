@@ -119,6 +119,204 @@ def decks_server(tmp_path: Path) -> Iterator[tuple[str, dict[str, int], _Respons
             thread.join(timeout=10)
 
 
+def test_transient_scrollbar_keeps_width_and_supports_mouse_and_keyboard(
+    decks_server: tuple[str, dict[str, int], _ResponseGate],
+) -> None:
+    base, _, _ = decks_server
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 1280, "height": 720})
+        page.emulate_media(reduced_motion="reduce")
+        page.goto(f"{base}/app/")
+        page.wait_for_load_state("networkidle")
+        scroller = page.locator("#deck-scroll")
+        scrollbar = page.locator("#deck-scrollbar")
+        thumb = page.locator("#deck-scrollbar-thumb")
+        card = page.locator("#deck-list article").first
+        expect(scrollbar).to_have_css("opacity", "0")
+        widths = scroller.evaluate("(el) => [el.clientWidth, el.offsetWidth]")
+        assert widths[0] == widths[1]
+        initial_card = card.bounding_box()
+        assert initial_card
+        card_width = initial_card["width"]
+        box = scroller.bounding_box()
+        assert box
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        page.mouse.wheel(0, 200)
+        page.wait_for_function("document.querySelector('#deck-scroll').scrollTop > 0")
+        expect(scrollbar).to_have_css("opacity", "1")
+        assert scroller.evaluate("(el) => [el.clientWidth, el.offsetWidth]") == widths
+        active_card = card.bounding_box()
+        assert active_card and active_card["width"] == card_width
+
+        page.mouse.wheel(0, -10000)
+        page.wait_for_function("document.querySelector('#deck-scroll').scrollTop === 0")
+        expect(scrollbar).to_have_css("opacity", "1")
+        thumb_box = thumb.bounding_box()
+        track_box = scrollbar.bounding_box()
+        assert thumb_box and track_box
+        page.mouse.move(
+            thumb_box["x"] + thumb_box["width"] / 2,
+            thumb_box["y"] + thumb_box["height"] / 2,
+        )
+        page.mouse.down()
+        page.mouse.move(
+            thumb_box["x"] + thumb_box["width"] / 2,
+            track_box["y"] + track_box["height"],
+        )
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('#deck-scroll');
+                return el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+            }"""
+        )
+        expect(scrollbar).to_have_css("opacity", "1")
+        page.mouse.up()
+        last = (
+            page.locator("#deck-list article")
+            .last.get_by_role("link", name="Edit", exact=True)
+            .bounding_box()
+        )
+        dock = page.locator("#btn-new-deck").bounding_box()
+        assert last and dock and last["y"] + last["height"] <= dock["y"]
+
+        page.mouse.click(track_box["x"] + track_box["width"] / 2, track_box["y"] + 1)
+        page.wait_for_function("document.querySelector('#deck-scroll').scrollTop === 0")
+        scroller.focus()
+        page.keyboard.press("End")
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('#deck-scroll');
+                return el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+            }"""
+        )
+        expect(scrollbar).to_have_css("opacity", "1")
+        expect(scrollbar).to_have_css("opacity", "0", timeout=5000)
+        assert scroller.evaluate("(el) => [el.clientWidth, el.offsetWidth]") == widths
+        idle_card = card.bounding_box()
+        assert idle_card and idle_card["width"] == card_width
+        # The edge remains draggable even after the visual thumb fades.
+        thumb_box = thumb.bounding_box()
+        assert thumb_box
+        x = thumb_box["x"] + thumb_box["width"] / 2
+        page.mouse.move(x, thumb_box["y"] + thumb_box["height"] / 2)
+        page.mouse.down()
+        expect(scrollbar).to_have_css("opacity", "1")
+        page.mouse.move(x, track_box["y"])
+        page.mouse.up()
+        page.wait_for_function("document.querySelector('#deck-scroll').scrollTop === 0")
+        expect(scrollbar).to_have_css("opacity", "0", timeout=5000)
+        browser.close()
+
+
+def test_scrollbar_tracks_search_results_and_viewport_size(
+    decks_server: tuple[str, dict[str, int], _ResponseGate],
+) -> None:
+    base, _, _ = decks_server
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 375, "height": 812})
+        page.emulate_media(reduced_motion="reduce")
+        page.goto(f"{base}/app/")
+        page.wait_for_load_state("networkidle")
+        scrollbar = page.locator("#deck-scrollbar")
+        search = page.locator("#deck-search")
+        expect(scrollbar).not_to_have_attribute("hidden", "")
+        search.fill("biology")
+        expect(page.locator("article:visible h3")).to_have_text(["Biology Cells"])
+        expect(scrollbar).to_have_attribute("hidden", "")
+        page.set_viewport_size({"width": 375, "height": 320})
+        expect(scrollbar).not_to_have_attribute("hidden", "")
+        page.locator("#deck-scroll").focus()
+        page.keyboard.press("End")
+        expect(scrollbar).to_have_css("opacity", "1")
+        page.set_viewport_size({"width": 375, "height": 812})
+        expect(scrollbar).to_have_attribute("hidden", "")
+        search.fill("")
+        expect(page.locator("#deck-list article")).to_have_count(5)
+        expect(scrollbar).not_to_have_attribute("hidden", "")
+        expect(scrollbar).to_have_css("opacity", "0")
+        browser.close()
+
+
+def test_short_viewport_can_reach_last_deck(
+    decks_server: tuple[str, dict[str, int], _ResponseGate],
+) -> None:
+    base, _, _ = decks_server
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 375, "height": 240})
+        page.emulate_media(reduced_motion="reduce")
+        page.goto(f"{base}/app/")
+        page.wait_for_load_state("networkidle")
+        scroller = page.locator("#deck-scroll")
+        scroller.focus()
+        page.keyboard.press("End")
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('#deck-scroll');
+                return el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+            }"""
+        )
+        page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
+        page.wait_for_function("window.scrollY > 0")
+        last = (
+            page.locator("#deck-list article")
+            .last.get_by_role("link", name="Edit", exact=True)
+            .bounding_box()
+        )
+        dock = page.locator("#btn-new-deck").bounding_box()
+        assert last and dock and last["y"] >= 0
+        assert last["y"] + last["height"] <= dock["y"]
+        browser.close()
+
+
+def test_scrollbar_remains_visible_in_forced_colors(
+    decks_server: tuple[str, dict[str, int], _ResponseGate],
+) -> None:
+    base, _, _ = decks_server
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 375, "height": 812})
+        page.emulate_media(forced_colors="active", reduced_motion="reduce")
+        page.goto(f"{base}/app/")
+        page.wait_for_load_state("networkidle")
+        page.locator("#deck-scroll").focus()
+        page.keyboard.press("End")
+        expect(page.locator("#deck-scrollbar")).to_have_css("opacity", "1")
+        assert (
+            page.locator("#deck-scrollbar-thumb").evaluate(
+                "(el) => getComputedStyle(el).backgroundColor"
+            )
+            != "rgba(0, 0, 0, 0)"
+        )
+        browser.close()
+
+
+def test_deck_scrollbar_preserves_native_fallback_without_javascript(
+    decks_server: tuple[str, dict[str, int], _ResponseGate],
+) -> None:
+    base, _, _ = decks_server
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        context = browser.new_context(
+            viewport={"width": 375, "height": 812}, java_script_enabled=False
+        )
+        page = context.new_page()
+        page.goto(f"{base}/app/")
+        scroller = page.locator("#deck-scroll")
+        expect(page.locator("#deck-scrollbar")).to_have_attribute("hidden", "")
+        assert (
+            scroller.evaluate("(el) => getComputedStyle(el).scrollbarWidth") == "auto"
+        )
+        max_scroll = scroller.evaluate("(el) => el.scrollHeight - el.clientHeight")
+        assert max_scroll > 0
+        scroller.focus()
+        page.keyboard.press("End")
+        expect(scroller).to_have_js_property("scrollTop", max_scroll)
+        browser.close()
+
+
 @pytest.mark.parametrize(
     ("width", "height"),
     [(375, 812), (375, 500), (375, 320), (1280, 720)],
@@ -220,6 +418,7 @@ def test_deck_list_scrolls_by_touch_without_moving_header(
             viewport={"width": 375, "height": 812}, has_touch=True
         )
         page = context.new_page()
+        page.emulate_media(reduced_motion="reduce")
         page.goto(f"{base}/app/")
         page.wait_for_load_state("networkidle")
         title = page.locator("#decks-page h1")
@@ -241,6 +440,10 @@ def test_deck_list_scrolls_by_touch_without_moving_header(
         )
         touch.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
         page.wait_for_function("document.querySelector('#deck-scroll').scrollTop > 0")
+        expect(page.locator("#deck-scrollbar")).to_have_css("opacity", "1")
+        expect(page.locator("#deck-scrollbar")).to_have_css(
+            "opacity", "0", timeout=5000
+        )
         title_after = title.bounding_box()
         search_after = search.bounding_box()
         assert title_after and search_after
@@ -462,6 +665,7 @@ def test_create_save_and_delete_reproject_active_search(
         search = page.locator("#deck-search")
         search.press_sequentially("biology")
         expect(page.locator("article:visible h3")).to_have_text(["Biology Cells"])
+        expect(page.locator("#deck-scrollbar")).to_have_attribute("hidden", "")
 
         page.locator("#btn-new-deck").click()
         create = page.locator("#deck-dialog")
@@ -475,6 +679,7 @@ def test_create_save_and_delete_reproject_active_search(
             page.get_by_role("heading", name="Marine Biology", level=3)
         ).to_be_visible()
         expect(page.locator("article:visible")).to_have_count(6)
+        expect(page.locator("#deck-scrollbar")).not_to_have_attribute("hidden", "")
 
         search.fill("biology")
         expect(page.locator("article:visible h3")).to_have_text(
@@ -499,6 +704,7 @@ def test_create_save_and_delete_reproject_active_search(
         expect(search).to_have_value("biology")
         expect(page.locator("#empty-state")).to_be_visible()
         expect(page.locator("article:visible")).to_have_count(0)
+        expect(page.locator("#deck-scrollbar")).to_have_attribute("hidden", "")
         search.fill("")
         expect(
             page.get_by_role("heading", name="Botany Cells", level=3)
