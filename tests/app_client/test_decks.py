@@ -430,9 +430,9 @@ def test_page_has_one_learn_and_edit_link_per_deck(tmp_path: Path) -> None:
         html = client.get("/app/").text
     hrefs = _parse(html).hrefs()
     assert sorted(h for h in hrefs if h.startswith("/app/")) == sorted(
-        f"/app/{kind}?deck={ids[name]}"
+        href
         for name in ("Alpha", "Beta")
-        for kind in ("review", "edit")
+        for href in (f"/app/review?deck={ids[name]}", f"/app/edit/{ids[name]}/front")
     )
     assert "Child" not in html
 
@@ -447,7 +447,7 @@ def test_deck_edit_link_uses_localized_label(
             html = client.get("/app/").text
     finally:
         anki.lang.set_lang("en")
-    assert f'href="/app/edit?deck={ids["Alpha"]}">{label}</a>' in html
+    assert f'href="/app/edit/{ids["Alpha"]}/front">{label}</a>' in html
 
 
 def test_page_renders_complete_emoji_and_deck_names(tmp_path: Path) -> None:

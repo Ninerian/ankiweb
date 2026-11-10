@@ -37,7 +37,7 @@ def test_review_and_edit_show_the_same_deck_display(
     deck_id, card_id = client.portal.call(service.run, seed)
 
     review = client.get("/app/review", params={"deck": deck_id})
-    edit = client.get("/app/edit", params={"deck": deck_id})
+    edit = client.get(f"/app/edit/{deck_id}/front")
     assert review.status_code == edit.status_code == 200
 
     def display(markup: str, element_id: str) -> tuple[str, str]:

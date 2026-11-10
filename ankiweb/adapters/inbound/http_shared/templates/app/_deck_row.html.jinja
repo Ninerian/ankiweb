@@ -74,7 +74,7 @@
                href="/app/review?deck={{ row.deck_id }}"
                aria-label="{{ s('app_decks_learn_deck', deck=row.name) }}">{{ s("app_decks_learn") }}</a>
             <a class="btn depth-flat min-h-11 rounded-deck border-neo-edge p-2 text-deck-btn font-black shadow-neo transition-neo duration-neo ease-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-primary motion-reduce:transition-none motion-reduce:active:transform-none bg-base-200 dark:bg-base-300"
-               href="/app/edit?deck={{ row.deck_id }}">{{ s("app_decks_edit") }}</a>
+               href="/app/edit/{{ row.deck_id }}/front">{{ s("app_decks_edit") }}</a>
         </div>
     </div>
 </article>
