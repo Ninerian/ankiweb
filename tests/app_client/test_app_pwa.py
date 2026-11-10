@@ -53,7 +53,7 @@ def test_pwa_assets_are_public_but_app_remains_password_protected(
             client.get("/shell/static/datastar.js", follow_redirects=False).status_code
             == 200
         )
-        for path in ("/app/", "/app/review", "/app/edit?deck=1"):
+        for path in ("/app/", "/app/review", "/app/edit/1/front"):
             response = client.get(path, follow_redirects=False)
             assert response.status_code == 303, path
             assert response.headers["location"] == "/app/login"

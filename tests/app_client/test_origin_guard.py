@@ -1,9 +1,10 @@
 """Cross-site writes to /app POST routes must be rejected before they touch the collection."""
 
-import json
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import cast
+from urllib.parse import urlencode
 
 import pytest
 from fastapi import FastAPI
@@ -12,8 +13,8 @@ from fastapi.testclient import TestClient
 from ankiweb.app import create_app
 from ankiweb.core.config import Settings
 
-_JSON = {"Content-Type": "application/json"}
-_BODY = {"front": "probe", "back": "b", "hint": "", "example": "", "step": 3, "nid": 0}
+_FORM = {"Content-Type": "application/x-www-form-urlencoded"}
+_BODY = {"front": "probe", "back": "b", "hint": "", "example": "", "nid": "0"}
 
 
 @pytest.fixture
@@ -27,7 +28,7 @@ def _deck_and_notes(client: TestClient):
     service = cast(FastAPI, client.app).state.service
     deck_id = client.portal.call(service.run, lambda col: col.decks.id("Origin deck"))
     assert deck_id is not None
-    assert client.get(f"/app/edit?deck={deck_id}").status_code == 200
+    assert client.get(f"/app/edit/{deck_id}/front").status_code == 200
 
     def notes() -> int:
         assert client.portal is not None
@@ -37,19 +38,24 @@ def _deck_and_notes(client: TestClient):
 
 
 def _commit(client: TestClient, deck_id: int, headers: dict[str, str]):
+    page = client.get(f"/app/edit/{deck_id}/front")
+    token = re.search(r'data-instance="([0-9a-f]{16})"', page.text)
+    assert token is not None
     return client.post(
-        f"/app/edit/commit?deck={deck_id}", content=json.dumps(_BODY), headers=headers
+        f"/app/edit/{deck_id}/{token.group(1)}/0/commit",
+        content=urlencode(_BODY),
+        headers=headers,
     )
 
 
 @pytest.mark.parametrize(
     "headers",
     [
-        {**_JSON, "Origin": "https://evil.example"},
+        {**_FORM, "Origin": "https://evil.example"},
         {"Content-Type": "text/plain", "Origin": "https://evil.example"},
-        {**_JSON, "Sec-Fetch-Site": "cross-site"},
-        {**_JSON, "Sec-Fetch-Site": "same-site"},
-        {**_JSON, "Origin": "null"},
+        {**_FORM, "Sec-Fetch-Site": "cross-site"},
+        {**_FORM, "Sec-Fetch-Site": "same-site"},
+        {**_FORM, "Origin": "null"},
     ],
     ids=[
         "foreign-origin",
@@ -73,9 +79,9 @@ def test_cross_site_post_is_rejected_and_writes_nothing(
 @pytest.mark.parametrize(
     "headers",
     [
-        _JSON,
-        {**_JSON, "Sec-Fetch-Site": "same-origin"},
-        {**_JSON, "Origin": "http://testserver"},
+        _FORM,
+        {**_FORM, "Sec-Fetch-Site": "same-origin"},
+        {**_FORM, "Origin": "http://testserver"},
     ],
     ids=["no-fetch-metadata", "same-origin-fetch", "matching-origin"],
 )

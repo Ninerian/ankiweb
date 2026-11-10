@@ -1,6 +1,6 @@
 """Exercise the links rendered by the app's deck, review, add and offline pages."""
 
-import json
+import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from urllib.parse import urldefrag, urljoin, urlsplit
@@ -179,7 +179,7 @@ def test_rendered_app_link_matrix(
         learn = _link(decks_links, text="Learn", ancestor=row)
         add = _link(decks_links, text="Edit", ancestor=row)
         review_url = f"/app/review?deck={deck_id}"
-        add_url = f"/app/edit?deck={deck_id}"
+        add_url = f"/app/edit/{deck_id}/front"
         _assert_target(client, "/app/", learn, review_url)
         _assert_target(client, "/app/", add, add_url)
 
@@ -261,19 +261,23 @@ def test_add_summary_study_link_after_commit(
     client: TestClient, link_decks: list[tuple[int, int]]
 ) -> None:
     deck_id, _ = link_decks[0]
-    add_url = f"/app/edit?deck={deck_id}"
-    assert client.get(add_url).status_code == 200
+    add_url = f"/app/edit/{deck_id}/front"
+    editor = client.get(add_url)
+    assert editor.status_code == 200
+    token = re.search(r'data-instance="([0-9a-f]{16})"', editor.text)
+    assert token is not None
     added = client.post(
-        f"/app/edit/commit?deck={deck_id}",
-        json={"front": "A new word", "back": "A new meaning"},
+        f"/app/edit/{deck_id}/{token.group(1)}/0/commit",
+        data={
+            "front": "A new word",
+            "back": "A new meaning",
+            "hint": "",
+            "example": "",
+            "nid": "0",
+        },
     )
     assert added.status_code == 200
-    signals = [
-        json.loads(line.removeprefix("data: signals "))
-        for line in added.text.splitlines()
-        if line.startswith("data: signals ")
-    ]
-    assert any(patch.get("count") == 1 for patch in signals)
+    assert re.search(r'id="summary-count"[^>]*>1</span>', added.text)
     page = client.get(add_url)
     assert page.status_code == 200
     links = _anchors(page.text)
