@@ -1,13 +1,10 @@
-<div id="add-summary"
-     class="modal"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="add-summary-title"
-     tabindex="-1"
-     data-show="$_summaryOpen"
-     data-class:modal-open="$_summaryOpen"
-     style="display:none"
-     data-on:keydown="evt.key === 'Escape' ? (evt.stopPropagation(), $_summaryOpen = false, window.avCloseSummary()) : window.avModalKey(evt)">
+<dialog id="add-summary"
+        class="modal"
+        aria-modal="true"
+        aria-labelledby="add-summary-title"
+        data-init="el.showModal()"
+        data-on:close="window.avSummaryClosed(el)"
+        data-on:keydown="window.avSummaryKey(evt, el)">
     <div class="modal-box rounded-box border-3 border-neo-edge bg-base-200 p-6 text-center shadow-neo">
         <div class="review-celebration" aria-hidden="true">
             <div class="review-confetti">
@@ -20,11 +17,11 @@
         <div class="modal-action flex-wrap justify-center">
             <a id="summary-keep-adding"
                class="btn neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge bg-base-200 font-black shadow-neo active:shadow-none"
+               autofocus
                href="/app/">{{ s("app_review_complete_back_to_decks") }}</a>
             <a class="btn btn-accent neo-press min-h-11 rounded-review-sheet-control border-2 border-neo-edge font-black shadow-neo active:shadow-none"
                href="/app/review?deck={{ deck_id }}">{{ s("app_add_start_studying") }}</a>
         </div>
     </div>
-    <div class="modal-backdrop"
-         data-on:click="$_summaryOpen = false; window.avCloseSummary()"></div>
-</div>
+    <div class="modal-backdrop" data-on:click="el.closest('dialog').close()"></div>
+</dialog>

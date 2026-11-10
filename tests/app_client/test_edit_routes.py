@@ -480,6 +480,20 @@ def _notes(client: TestClient) -> list[NoteId]:
     )
 
 
+def test_done_patches_guarded_dialog_with_session_count(client: TestClient) -> None:
+    client.get("/app/edit/1/front")
+    _post(client, "/app/edit/1/commit", values={"front": "One", "back": "Answer"})
+
+    reset = _post(client, "/app/edit/1/reset")
+    assert 'id="add-summary"' not in reset.text
+    done = _post(client, "/app/edit/1/done")
+    assert 'id="add-summary"' in done.text
+    assert 'data-init="el.showModal()"' in done.text
+    assert "#edit-dialog-host" in done.text
+    assert 'data-reset-from="0"' in done.text
+    assert _summary(done.text) == 1
+
+
 def test_commit_persists_escaped_note_and_patches_session_cards(
     client: TestClient,
 ) -> None:

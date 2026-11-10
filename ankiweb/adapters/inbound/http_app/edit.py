@@ -456,9 +456,30 @@ class _EditRoutes:
             return deck_dialog.no_patch()
         if await deck_dialog.form_fields(request) is None:
             return self.error(guard, "app_add_save_failed")
-        return DatastarResponse(
-            await self.reset_events(deck_id, guard, project_form(Draft()))
-        )
+        events = await self.reset_events(deck_id, guard, project_form(Draft()))
+        if request.url.path.endswith("/done") and events:
+            session, new_session_id = get_session(request)
+            count = await self.get_service().run(
+                lambda col: self.added_count(col, session, deck_id)
+            )
+            dialog = render(
+                "app/_edit_summary.html.jinja",
+                app_lang=self.lang,
+                deck_id=deck_id,
+                count=count,
+            )
+            next_guard = (guard[0], guard[1] + 1)
+            selector = (
+                f"#add-wizard:has({self.selector(next_guard)}"
+                f'[data-reset-from="{guard[1]}"]) #edit-dialog-host'
+            )
+            events.append(
+                SSE.patch_elements(
+                    dialog, selector=selector, mode=ElementPatchMode.INNER
+                )
+            )
+            return _with_session_cookie(DatastarResponse(events), new_session_id)
+        return DatastarResponse(events)
 
     async def load_card(self, request: Request) -> Response:
         guard, deck_id = self.guard(request), _parse_deck(request)
@@ -699,6 +720,7 @@ def build_edit_router(
     prefix = "/edit/{deck_id}/{instance}/{rev}"
     router.add_api_route(prefix + "/step/{step}/{via}", routes.step, methods=["POST"])
     router.add_api_route(prefix + "/reset", routes.reset, methods=["POST"])
+    router.add_api_route(prefix + "/done", routes.reset, methods=["POST"])
     router.add_api_route(prefix + "/commit", routes.commit, methods=["POST"])
     router.add_api_route(prefix + "/card/{nid}", routes.load_card, methods=["POST"])
     return router

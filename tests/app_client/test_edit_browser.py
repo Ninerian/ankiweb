@@ -3865,7 +3865,12 @@ def test_finish_clean_empty_session_opens_summary(
     expect(page).to_have_url(f"{live_app}/app/edit/1/front")
     summary = page.get_by_role("dialog")
     expect(summary).to_be_visible()
+    expect(summary).to_have_attribute("open", "")
+    assert summary.evaluate("el => el.matches(':modal')")
     expect(summary.locator("#summary-count")).to_have_text("0")
+    page.keyboard.press("Escape")
+    expect(summary).not_to_be_visible()
+    expect(page.locator("#edit-done")).to_be_focused()
     assert live_app.notes() == []
 
 

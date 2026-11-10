@@ -140,7 +140,7 @@
                         class="btn btn-accent neo-press h-review-hud-control min-h-0 shrink-0 rounded-review-sheet-control border-2 border-neo-edge px-3.5 text-sm font-black uppercase shadow-neo active:shadow-none"
                         data-attr:disabled="$saving"
                         data-discard="{{ s('app_add_discard_finish') }}"
-                        data-on:click="$_summaryOpen || $_browsePhase === 'opening' || $_browsePhase === 'closing' || $_browsePhase === 'returning' ? null : (window.avConfirmDiscard($saving, el.dataset.discard) ? (window.avBumpRev(), @post(window.avAction('/reset'), {contentType:'form', selector:'#edit-form'}), $_summaryOpen = true, window.avOpenSummary(el)) : null)">{{ s("app_add_done") }}</button>
+                        data-on:click="document.getElementById('add-summary')?.open || $_browsePhase === 'opening' || $_browsePhase === 'closing' || $_browsePhase === 'returning' ? null : (window.avConfirmDiscard($saving, el.dataset.discard) ? (window.avBumpRev(), window.avFinishEditor(), @post(window.avAction('/done'), {contentType:'form', selector:'#edit-form'})) : null)">{{ s("app_add_done") }}</button>
             </div>
             {{ steps() }}
         </header>
@@ -222,7 +222,7 @@
           data-initial-view="{{ initial_view }}"
           data-initial-card="{{ projection.draft.nid }}"
           data-initial-step="{{ projection.step.path }}"
-          data-signals="{saving: false, stepping: false, _summaryOpen: false, _browsing: {{ (initial_view == 'cards')|tojson }}, _browsePhase: '{{ 'open' if initial_view == 'cards' else 'closed' }}'}"
+          data-signals="{saving: false, stepping: false, _browsing: {{ (initial_view == 'cards')|tojson }}, _browsePhase: '{{ 'open' if initial_view == 'cards' else 'closed' }}'}"
           data-discard="{{ s('app_edit_discard') }}"
           data-load-failed="{{ s('app_add_edit_unavailable') }}"
           data-attr:data-browse-phase="$_browsePhase"
@@ -235,10 +235,12 @@
           data-on:av-open-saved="$_browsing = true; $_browsePhase = 'opening'; window.avOpenBrowseAfterSave()"
           data-on:av-history="evt.detail.view === 'card' ? (window.avBumpRev(), @post(window.avAction('/card/' + encodeURIComponent(evt.detail.card)), {contentType:'form', selector:'#edit-form'})) : (window.avBumpRev(), window.avNid() ? @post(window.avAction('/reset'), {contentType:'form', selector:'#edit-form'}) : null, evt.detail.view === 'cards' ? ($_browsing &amp;&amp; ($_browsePhase === 'opening' || $_browsePhase === 'open') ? null : ($_browsing = true, $_browsePhase = 'opening', window.avOpenBrowse(document.getElementById('pile'), false))) : window.avCloseBrowse(false, $_browsePhase))"
           data-on:av-history-failed="window.avEditError(el.dataset.loadFailed)"
-          data-on:popstate__window="$_summaryOpen ? ($_summaryOpen = false, window.avCloseSummary()) : null; window.avEditPop(evt, $saving, el.dataset.discard, $_browsing, $_browsePhase)"
+          data-on:popstate__window="window.avSummaryHistory(); window.avEditPop(evt, $saving, el.dataset.discard, $_browsing, $_browsePhase)"
           data-on:datastar-fetch__document="evt.detail.el.id === 'add-wizard' ? (evt.detail.type === 'error' || evt.detail.type === 'retries-failed' ? window.avEditHistoryFailed() : (evt.detail.type === 'finished' &amp;&amp; document.getElementById('edit-error')?.textContent.trim() ? window.avEditHistoryFailed(false) : null)) : null"
-          data-on:keydown__window="evt.key === 'Escape' &amp;&amp; $_summaryOpen ? ($_summaryOpen = false, window.avCloseSummary()) : window.avEditKey(evt, $saving, $_browsing)">
+          data-on:keydown__window="window.avEditKey(evt, $saving, $_browsing)">
         {{ form() }}
-        {% include "app/_edit_summary.html.jinja" %}
+        <div id="edit-dialog-host">
+            <div hidden>{% include "app/_edit_summary_count.html.jinja" %}</div>
+        </div>
     </main>
 {% endif %}

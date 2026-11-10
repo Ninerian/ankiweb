@@ -15,7 +15,7 @@ const requestEditorFocus = (callback) => {
   const generation = editorFocusGeneration;
   requestAnimationFrame(() => {
     if (generation === editorFocusGeneration &&
-        !document.getElementById("add-summary")?.classList.contains("modal-open")) callback();
+        !document.getElementById("add-summary")?.open) callback();
   });
 };
 
@@ -807,48 +807,50 @@ document.addEventListener("animationend", (event) => {
   }
 });
 
-let summaryTrigger;
-window.avOpenSummary = (trigger) => {
+window.avFinishEditor = () => {
   if (editUrlView().view !== "cards") {
     invalidateDraft();
     newDraft();
-  }
-  if (editUrlView().view !== "cards") {
     setEditHistory("editor", null, true);
   }
-  summaryTrigger = trigger;
-  const generation = ++editorFocusGeneration;
-  // Datastar flushes the visibility and class changes after the click handler.
-  queueMicrotask(() => {
-    if (generation === editorFocusGeneration &&
-        document.getElementById("add-summary")?.classList.contains("modal-open")) {
-      document.getElementById("summary-keep-adding")?.focus();
-    }
-  });
 };
 
-window.avCloseSummary = () => {
-  editorFocusGeneration++;
-  (summaryTrigger?.isConnected ? summaryTrigger : document.getElementById("edit-done"))?.focus();
+let summaryClosingForHistory = false;
+window.avSummaryHistory = () => {
+  const dialog = document.getElementById("add-summary");
+  if (!dialog?.open) return;
+  summaryClosingForHistory = true;
+  dialog.close();
 };
 
-window.avModalKey = (event) => {
-  if (event.key !== "Tab") return;
-  const dialog = event.currentTarget;
-  const controls = [...dialog.querySelectorAll("a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])")]
-    .filter((element) => element.getClientRects().length > 0);
-  if (!controls.length) {
-    event.preventDefault();
-    dialog.focus();
+window.avSummaryClosed = (dialog) => {
+  const placeholder = document.createElement("div");
+  placeholder.hidden = true;
+  const count = dialog.querySelector("#summary-count");
+  if (count) placeholder.append(count);
+  dialog.replaceWith(placeholder);
+  if (summaryClosingForHistory) {
+    summaryClosingForHistory = false;
     return;
   }
-  const first = controls[0];
-  const last = controls[controls.length - 1];
-  if (event.shiftKey && (document.activeElement === first || !controls.includes(document.activeElement))) {
+  editorFocusGeneration++;
+  document.getElementById("edit-done")?.focus();
+};
+
+window.avSummaryKey = (event, dialog) => {
+  if (event.key === "Escape") {
+    event.stopPropagation();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const links = [...dialog.querySelectorAll("a[href]")];
+  const first = links[0];
+  const last = links.at(-1);
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
     event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && (document.activeElement === last || !controls.includes(document.activeElement))) {
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
     event.preventDefault();
-    first.focus();
+    first?.focus();
   }
 };
